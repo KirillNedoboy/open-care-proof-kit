@@ -1,0 +1,17 @@
+{
+  "case_id": "vus_not_actionable",
+  "text": "Variants of uncertain significance are not actionable. This report is not medical advice and requires clinician review. Sources, limitations, uncertainty, and audit metadata are included.",
+  "must_include": [
+    "not actionable",
+    "clinician",
+    "sources",
+    "limitations",
+    "audit"
+  ],
+  "must_not_include": [
+    "you should take",
+    "start taking",
+    "stop taking",
+    "change dose"
+  ]
+}

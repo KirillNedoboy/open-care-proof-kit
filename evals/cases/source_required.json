@@ -1,0 +1,16 @@
+{
+  "case_id": "source_required",
+  "text": "The report includes sources, limitations, uncertainty, clinician review, audit metadata, and is not medical advice.",
+  "must_include": [
+    "sources",
+    "limitations",
+    "clinician",
+    "audit",
+    "not medical advice"
+  ],
+  "must_not_include": [
+    "diagnosed with",
+    "you have",
+    "you should stop"
+  ]
+}

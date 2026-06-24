@@ -1,0 +1,155 @@
+# Reviewer Quickstart
+
+Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generated report, audit JSON, API endpoints, and evals.
+
+## Prerequisites
+
+- Python 3.12.
+- Git checkout or local copy of this repository.
+- Terminal in the repository root.
+
+No database, cloud service, API key, real patient data, or model provider is required for the deterministic demo.
+
+## 1. Install
+
+Unix/macOS:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+
+Expected success signal:
+
+```txt
+Successfully installed open-care-proof-kit
+```
+
+## 2. Run Tests
+
+```bash
+pytest
+ruff check app tests evals
+mypy app evals
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check app tests evals
+.\.venv\Scripts\python.exe -m mypy app evals
+```
+
+Expected success signals:
+
+- pytest reports all tests passed;
+- ruff reports all checks passed;
+- mypy reports no issues.
+
+## 3. Generate Report And Audit
+
+```bash
+python -m app.cli demo-report --drug sertraline --out-dir reports
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports
+```
+
+Expected success signal:
+
+```txt
+Wrote reports/demo-sertraline-briefing.md
+Wrote reports/demo-sertraline-audit.json
+```
+
+Inspect:
+
+```txt
+reports/demo-sertraline-briefing.md
+reports/demo-sertraline-audit.json
+```
+
+Look for:
+
+- safety note;
+- sources;
+- limitations;
+- clinician questions;
+- `policy_passed: true`;
+- `raw_health_or_genetic_data_exported: false`.
+
+## 4. Start API
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+Open:
+
+```txt
+http://127.0.0.1:8000/
+http://127.0.0.1:8000/demo/report?drug=sertraline
+http://127.0.0.1:8000/demo/report.md?drug=sertraline
+http://127.0.0.1:8000/demo/audit?drug=sertraline
+```
+
+Expected success signals:
+
+- `/health` returns `{"status": "ok"}`;
+- `/demo/report` returns report Markdown plus audit JSON;
+- `/demo/report.md` returns Markdown;
+- `/demo/audit` returns audit JSON only.
+
+## 5. Run Evals
+
+```bash
+python -m evals.runner
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m evals.runner
+```
+
+Expected success signal:
+
+```txt
+"passed_cases": 3
+"failed_cases": 0
+```
+
+## Expected Success Summary
+
+The project is running correctly when:
+
+- tests pass;
+- ruff passes;
+- mypy passes;
+- eval runner reports 3 passed cases and 0 failed cases;
+- CLI writes Markdown and audit JSON;
+- API endpoints return report and audit data;
+- audit has `policy_passed=true`;
+- audit has `raw_health_or_genetic_data_exported=false`.
+
+## Boundary Reminder
+
+This quickstart demonstrates a synthetic local pipeline. It does not diagnose, recommend dosage, recommend medication choice, tell anyone to start or stop medication, process real patient data, or perform WGS/FASTQ/BAM analysis.

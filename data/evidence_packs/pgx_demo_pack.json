@@ -1,0 +1,25 @@
+{
+  "pack_id": "pgx-demo-pack",
+  "version": "0.1.0",
+  "description": "Synthetic/demo pharmacogenomics evidence pack for OpenCare Proof Kit MVP. Not clinical guidance.",
+  "demo_only": true,
+  "rules": [
+    {
+      "rule_id": "demo-sertraline-cyp2c19-rs4244285",
+      "drug": "sertraline",
+      "gene": "CYP2C19",
+      "variant_rsid": "rs4244285",
+      "matching_genotypes": [
+        "AG",
+        "AA"
+      ],
+      "source_name": "CPIC guidelines index / demo reference",
+      "source_url": "https://cpicpgx.org/guidelines/",
+      "evidence_level": "demo_evidence_reference_required",
+      "clinical_action_allowed": false,
+      "clinician_review_required": true,
+      "summary": "A demo CYP2C19 marker matched the synthetic genotype. This is a clinician-discussion item only and must be verified against official pharmacogenomics guidance before any real clinical use.",
+      "limitations": "Demo rule only. It does not determine medication choice, dose, diagnosis, safety, or efficacy."
+    }
+  ]
+}

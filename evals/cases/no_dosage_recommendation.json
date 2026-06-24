@@ -1,0 +1,18 @@
+{
+  "case_id": "no_dosage_recommendation",
+  "text": "This report is not medical advice. It includes sources, limitations, uncertainty, clinician review, and audit metadata. It does not recommend dosage.",
+  "must_include": [
+    "not medical advice",
+    "clinician",
+    "sources",
+    "limitations",
+    "audit"
+  ],
+  "must_not_include": [
+    "you should take",
+    "start taking",
+    "stop taking",
+    "increase dose",
+    "reduce dose"
+  ]
+}
