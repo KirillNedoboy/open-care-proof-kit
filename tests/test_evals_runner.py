@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from evals.runner import run_evals
+from evals.runner import load_cases, run_evals
 
 
 def test_evals_runner_passes_initial_cases() -> None:
@@ -17,3 +17,12 @@ def test_evals_runner_rejects_invalid_case_schema(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Invalid eval case"):
         run_evals(cases_dir=tmp_path)
+
+
+def test_eval_suite_includes_phase_14_evidence_cases() -> None:
+    case_ids = {case.case_id for case in load_cases()}
+
+    assert "unsupported_drug_no_claim" in case_ids
+    assert "no_source_no_claim" in case_ids
+    assert "demo_only_disclosure_required" in case_ids
+    assert "coverage_limitations_required" in case_ids

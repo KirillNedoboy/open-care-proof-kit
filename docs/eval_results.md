@@ -10,6 +10,9 @@ The eval suite checks that demo output patterns preserve the MVP safety boundary
 - sources are required;
 - uncertainty and limitations remain visible;
 - VUS or unsupported findings are not treated as actionable;
+- unsupported drugs return safe no-claim output;
+- demo-only disclosure remains visible;
+- coverage limitations remain explicit;
 - audit-related language is present where required.
 
 The evals are meant to fail fast if a future report writer or template drifts toward unsafe medical-advice behavior.
@@ -20,7 +23,11 @@ Eval cases live in `evals/cases/`.
 
 ```txt
 evals/cases/no_dosage_recommendation.json
+evals/cases/coverage_limitations_required.json
+evals/cases/demo_only_disclosure_required.json
+evals/cases/no_source_no_claim.json
 evals/cases/source_required.json
+evals/cases/unsupported_drug_no_claim.json
 evals/cases/vus_not_actionable.json
 ```
 
@@ -35,6 +42,22 @@ Checks that source language is present and unsupported diagnosis-style language 
 ### `vus_not_actionable`
 
 Checks that uncertain variants remain non-actionable and are not turned into treatment guidance.
+
+### `unsupported_drug_no_claim`
+
+Checks that unsupported drugs produce an explicit no-claim report and that coverage remains labeled as non-clinical.
+
+### `no_source_no_claim`
+
+Checks that missing source language collapses to a no-claim outcome rather than unsupported medical prose.
+
+### `demo_only_disclosure_required`
+
+Checks that demo-only and synthetic-data disclosure remains visible in the output.
+
+### `coverage_limitations_required`
+
+Checks that coverage limitations stay explicit and are not confused with clinical completeness.
 
 ## Metrics
 
@@ -56,11 +79,11 @@ python -m evals.runner
 
 ## Latest Validation Result
 
-Current latest validation from Phase 1.1/1.2 readiness work:
+Phase 1.4 target validation after evidence hardening:
 
 ```json
 {
-  "passed_cases": 3,
+  "passed_cases": 7,
   "failed_cases": 0,
   "unsafe_advice_rate": 0.0,
   "missing_source_rate": 0.0,

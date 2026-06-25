@@ -1,0 +1,17 @@
+{
+  "case_id": "unsupported_drug_no_claim",
+  "text": "This report is not medical advice. No demo evidence-pack rules exist for this drug. The report makes no clinical claim for unsupported drugs in the local demo pack. Demo evidence-pack coverage is not clinical coverage. Sources remain limited to the demo pack. Audit metadata is included.",
+  "must_include": [
+    "not medical advice",
+    "no demo evidence-pack rules exist for this drug",
+    "no clinical claim",
+    "not clinical coverage",
+    "audit"
+  ],
+  "must_not_include": [
+    "start taking",
+    "stop taking",
+    "diagnosis is",
+    "10 mg"
+  ]
+}

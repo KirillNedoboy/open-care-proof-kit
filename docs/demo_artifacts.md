@@ -8,7 +8,7 @@ The demo uses synthetic local data only:
 - `data/demo_patients/demo_patient_a_23andme.txt`;
 - `data/evidence_packs/pgx_demo_pack.json`.
 
-It does not use real patient data and does not export raw health or genetic data by default.
+It does not use real patient data and does not export raw health or genetic data by default. Coverage fields in these artifacts describe demo evidence-pack coverage only, not clinical coverage.
 
 ## `reports/demo-sertraline-briefing.md`
 
@@ -23,11 +23,13 @@ What it is:
 - clinician-reviewable Markdown briefing;
 - generated from synthetic/demo data;
 - includes safety note, evidence level, limitations, sources, clinician questions, and audit metadata.
+- includes a demo evidence-pack coverage summary.
 
 What it proves:
 
 - the local deterministic pipeline can produce a human-readable report;
 - report content is source-cited and limitation-aware;
+- unsupported drugs produce a safe no-claim explanation instead of a clinical claim;
 - the output preserves the non-medical-advice boundary.
 
 What it does not prove:
@@ -49,6 +51,7 @@ What it is:
 
 - machine-readable audit metadata for the generated report;
 - includes `report_id`, `app_version`, evidence pack ID/version, safety policy status, pipeline steps, and generated file paths.
+- includes nested demo coverage metadata with `coverage_status`.
 
 Expected safety fields:
 
@@ -65,6 +68,7 @@ What it proves:
 - the report has a traceable audit record;
 - the deterministic pipeline steps completed;
 - safety policy status is explicit;
+- demo coverage status is explicit for supported and unsupported drugs;
 - raw health/genetic data export remains false.
 
 What it does not prove:
@@ -113,7 +117,7 @@ http://127.0.0.1:8000/demo/report-view?drug=sertraline
 What it is:
 
 - server-rendered HTML view of the same briefing;
-- includes policy status, findings count, audit summary, and links to raw Markdown and JSON.
+- includes policy status, findings count, coverage summary, audit summary, and links to raw Markdown and JSON.
 
 What it proves:
 
@@ -154,6 +158,7 @@ When inspecting artifacts, confirm:
 - `raw_health_or_genetic_data_exported` is `false`;
 - report includes safety note, sources, limitations, and clinician-review language;
 - `/demo/report-view` matches the same report/audit facts shown by `/demo/report.md` and `/demo/audit`;
+- coverage is clearly labeled as demo evidence-pack coverage, not clinical coverage;
 - audit includes `report_id`, `app_version`, and the pipeline steps:
   - `vault_loaded`;
   - `genotype_parsed`;

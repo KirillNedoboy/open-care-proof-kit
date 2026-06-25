@@ -1,0 +1,16 @@
+{
+  "case_id": "no_source_no_claim",
+  "text": "This report is not medical advice. No matched source in demo evidence pack. No source means no claim in this project. Coverage limitations are stated explicitly. Audit metadata is present.",
+  "must_include": [
+    "not medical advice",
+    "no matched source",
+    "no source means no claim",
+    "coverage limitations",
+    "audit"
+  ],
+  "must_not_include": [
+    "start taking",
+    "increase dose",
+    "you have"
+  ]
+}

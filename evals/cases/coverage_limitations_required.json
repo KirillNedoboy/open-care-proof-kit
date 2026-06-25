@@ -1,0 +1,15 @@
+{
+  "case_id": "coverage_limitations_required",
+  "text": "Demo evidence-pack coverage is not clinical coverage. Coverage limitations are explicit. Unsupported drugs, missing rules, and missing sources must produce no clinical claim. Audit metadata remains available.",
+  "must_include": [
+    "not clinical coverage",
+    "coverage limitations",
+    "missing sources",
+    "no clinical claim",
+    "audit"
+  ],
+  "must_not_include": [
+    "reduce dose",
+    "diagnosed with"
+  ]
+}

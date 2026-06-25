@@ -88,6 +88,7 @@ cat reports/demo-sertraline-audit.json
 Say:
 
 > The Markdown report is written for clinician review. It includes sources, limitations, evidence level, safety language, and clinician questions. The audit JSON records app version, report ID, pipeline steps, policy status, evidence pack version, and that raw health or genetic data was not exported.
+> Coverage in the report and audit is demo evidence-pack coverage only. It is not clinical coverage.
 
 ## 1:20-2:10 - Show The API
 
@@ -116,6 +117,11 @@ Show:
 - `/demo/report` returns report plus audit JSON.
 - `/demo/report.md` returns plain Markdown.
 - `/demo/audit` returns audit only.
+
+Optional unsupported-drug check:
+
+- open `/demo/report?drug=aspirin` or `/demo/report-view?drug=aspirin`;
+- point out that the response stays safe, returns 200, and explicitly says the demo pack has no rules for that drug.
 
 Say:
 

@@ -50,6 +50,32 @@
             {% endfor %}
           </dl>
 
+          <h3>Coverage summary</h3>
+          <dl class="audit-list">
+            <div>
+              <dt>Status</dt>
+              <dd>{{ coverage.coverage_status }}</dd>
+            </div>
+            <div>
+              <dt>Rules for drug</dt>
+              <dd>{{ coverage.rules_for_requested_drug }}</dd>
+            </div>
+            <div>
+              <dt>Matched findings</dt>
+              <dd>{{ coverage.matched_findings }}</dd>
+            </div>
+            <div>
+              <dt>Assessed variants</dt>
+              <dd>
+                {% if coverage.assessed_variants %}
+                {{ coverage.assessed_variants | join(", ") }}
+                {% else %}
+                none
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+
           {% if policy_violations %}
           <h3>Policy violations</h3>
           <ul class="compact-list">

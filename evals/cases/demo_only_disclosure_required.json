@@ -1,0 +1,15 @@
+{
+  "case_id": "demo_only_disclosure_required",
+  "text": "This clinician-reviewable briefing is generated from synthetic/demo data. The evidence pack is demo-only. Demo evidence-pack coverage is not clinical coverage. Sources and limitations are included.",
+  "must_include": [
+    "synthetic/demo data",
+    "demo-only",
+    "not clinical coverage",
+    "sources",
+    "limitations"
+  ],
+  "must_not_include": [
+    "clinical guidance",
+    "you should start"
+  ]
+}

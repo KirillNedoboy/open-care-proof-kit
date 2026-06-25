@@ -1,3 +1,4 @@
+from app.pgx.coverage import CoverageSummary
 from app.pgx.rule_schema import PgxFinding
 from app.vault.schema import HealthVault
 
@@ -9,6 +10,7 @@ def render_markdown_report(
     findings: list[PgxFinding],
     evidence_pack_id: str,
     evidence_pack_version: str,
+    coverage: CoverageSummary,
 ) -> str:
     finding_lines: list[str] = []
     source_lines: list[str] = []
@@ -37,9 +39,16 @@ def render_markdown_report(
             )
             source_lines.append(f"- {finding.source_name}: {finding.source_url}")
     else:
-        finding_lines.append(
-            "No matching evidence-pack rule was found for this medication and demo genotype data."
-        )
+        if coverage["coverage_status"] == "drug_not_in_demo_pack":
+            finding_lines.append(
+                "No demo evidence-pack rules exist for this drug. The report makes no clinical "
+                "claim for unsupported drugs in the local demo pack."
+            )
+        else:
+            finding_lines.append(
+                "No matching demo evidence-pack rule was found for this medication and demo "
+                "genotype data."
+            )
 
     current_medications = ", ".join(med.name for med in vault.medications) or "none"
     problems = ", ".join(problem.name for problem in vault.problems) or "none"
@@ -65,12 +74,37 @@ def render_markdown_report(
         f"- Problems listed: {problems}",
         "## Medication question",
         f"What should be discussed with a clinician before or during use of `{drug}`?",
+        "## Demo evidence-pack coverage",
+        f"- Coverage status: `{coverage['coverage_status']}`",
+        f"- Rules for requested drug: `{coverage['rules_for_requested_drug']}`",
+        f"- Matched findings: `{coverage['matched_findings']}`",
+        (
+            "- Assessed variants in demo pack: "
+            + (
+                ", ".join(f"`{variant}`" for variant in coverage["assessed_variants"])
+                if coverage["assessed_variants"]
+                else "none"
+            )
+        ),
+        (
+            "- Missing rule variants: "
+            + (
+                ", ".join(f"`{variant}`" for variant in coverage["missing_rule_variants"])
+                if coverage["missing_rule_variants"]
+                else "none"
+            )
+        ),
         "## Relevant findings",
         "\n".join(finding_lines),
         "## Not found / insufficient data",
         (
             "This MVP uses a small local demo evidence pack. Absence of a finding means only "
             "that no demo rule matched. It does not prove absence of pharmacogenomic relevance."
+        ),
+        "## Coverage limitations",
+        (
+            "Demo evidence-pack coverage is not clinical coverage. Unsupported drugs, missing "
+            "rules, and missing sources must produce no clinical claim in this project."
         ),
         "## Uncertain / not actionable",
         (

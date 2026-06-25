@@ -10,30 +10,33 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.3 Minimal Local Web Demo
+Phase 1.4 Evidence Pack Hardening
 
 ## Current status
 
-Phase 1.2 grant/demo readiness is complete and validated. Phase 1.3 adds a minimal server-rendered browser demo on top of the existing deterministic CLI/API flow without changing product boundaries.
+Phase 1.4 hardens the demo evidence layer with strict source validation, explicit demo-only coverage reporting, and safe unsupported-drug behavior while preserving the existing local-first CLI/API/web demo boundaries.
 
 ## Last validated state
 
-Phase 1.3 validation:
+Phase 1.4 validation:
 
-- pytest: 22 passed;
+- pytest: 29 passed;
 - ruff: passed;
 - mypy: passed;
-- eval runner: 3 passed cases, 0 failed cases;
+- eval runner: 7 passed cases, 0 failed cases;
 - CLI wrote `reports/demo-sertraline-briefing.md`;
 - CLI wrote `reports/demo-sertraline-audit.json`;
+- CLI wrote `reports/demo-aspirin-briefing.md`;
+- CLI wrote `reports/demo-aspirin-audit.json`;
 - Server-rendered web pages worked:
-  - `/`;
-  - `/demo`;
   - `/demo/report-view?drug=sertraline`;
+  - `/demo/report-view?drug=aspirin`;
 - API endpoints worked:
   - `/demo/report?drug=sertraline`;
+  - `/demo/report?drug=aspirin`;
   - `/demo/report.md?drug=sertraline`;
   - `/demo/audit?drug=sertraline`;
+  - `/demo/audit?drug=aspirin`;
 - audit recorded `policy_passed=True`;
 - audit recorded `raw_health_or_genetic_data_exported=False`.
 
@@ -63,9 +66,10 @@ Positioning:
 - Parse demo genotype-like data.
 - Load a local demo evidence pack.
 - Match deterministic PGx rules for the sertraline reference workflow.
+- Summarize demo evidence-pack coverage for supported and unsupported drug queries.
 - Render a clinician-reviewable Markdown briefing.
 - Run safety policy checks.
-- Produce JSON audit metadata with report ID, app version, pipeline steps, evidence pack version, policy status, and raw-export status.
+- Produce JSON audit metadata with report ID, app version, pipeline steps, evidence pack version, policy status, raw-export status, and demo coverage status.
 - Generate report/audit files from the CLI.
 - Serve minimal landing/demo/report HTML pages from FastAPI.
 - Serve report/audit data from FastAPI.
@@ -138,10 +142,11 @@ Expected:
 - generated audit records policy status and raw-export status;
 - API exposes report and audit endpoints;
 - FastAPI exposes landing, demo, report-view, and reviewer quickstart browser paths;
+- unsupported drugs return a safe no-claim report with `coverage_status=drug_not_in_demo_pack`;
 - no medical advice or dosage recommendation;
 - reviewer docs are clear enough to run the demo locally;
 - SESSION_NOTES.md updated.
 
 ## Current next step
 
-Validate Phase 1.3 end-to-end, then add a lightweight CI workflow or local `make check` equivalent so reviewers and contributors can repeat the same validation sequence consistently.
+Add a lightweight CI workflow or local `make check` equivalent, then expand the demo evidence pack cautiously without weakening source validation, coverage disclosure, or medical-safety boundaries.

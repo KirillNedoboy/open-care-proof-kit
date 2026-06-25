@@ -290,3 +290,95 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Add a lightweight CI workflow or local `make check` equivalent so validation and artifact hygiene remain repeatable for reviewers and contributors.
+
+## 2026-06-25 - Phase 1.4 evidence pack hardening
+
+### Changed
+- Hardened evidence source validation in `app/evidence/sources.py`:
+  - only `https` URLs are accepted;
+  - only `cpicpgx.org`, `clinpgx.org`, `ncbi.nlm.nih.gov`, `fda.gov`, or their subdomains are accepted;
+  - no network calls are performed.
+- Strengthened `app/evidence/pack_schema.py`:
+  - source URLs are validated through the local source validator;
+  - empty `limitations` are rejected;
+  - `clinical_action_allowed=true` is rejected with a clear error;
+  - `clinician_review_required` must remain `true`;
+  - rules inherit `demo_only` from the pack when omitted and must remain demo-only.
+- Added `app/pgx/coverage.py` with demo evidence-pack coverage summaries:
+  - `matched_demo_rule`;
+  - `no_matching_demo_rule`;
+  - `drug_not_in_demo_pack`.
+- Integrated coverage through:
+  - `app/demo_pipeline.py`;
+  - `app/ai/report_writer.py`;
+  - `app/reports/markdown.py`;
+  - `app/reports/json_audit.py`;
+  - `app/main.py`;
+  - `app/templates/report.html`.
+- Safe unsupported-drug behavior now returns a 200 no-claim report and audit for drugs like `aspirin`.
+- Added regression tests for evidence validation, coverage status, unsupported-drug safety, audit/report coverage fields, and eval-case expansion.
+- Added four eval cases:
+  - `unsupported_drug_no_claim`;
+  - `no_source_no_claim`;
+  - `demo_only_disclosure_required`;
+  - `coverage_limitations_required`.
+- Updated reviewer docs to clarify:
+  - the evidence pack is demo-only;
+  - coverage is demo evidence-pack coverage, not clinical coverage;
+  - no source means no claim;
+  - unsupported drugs return a safe no-claim report.
+
+### Files changed
+- `app/evidence/sources.py`
+- `app/evidence/pack_schema.py`
+- `app/pgx/coverage.py`
+- `app/demo_pipeline.py`
+- `app/ai/report_writer.py`
+- `app/reports/markdown.py`
+- `app/reports/json_audit.py`
+- `app/main.py`
+- `app/templates/report.html`
+- `tests/test_api.py`
+- `tests/test_demo_pipeline.py`
+- `tests/test_evals_runner.py`
+- `tests/test_evidence_pack.py`
+- `tests/test_report_generation.py`
+- `evals/cases/coverage_limitations_required.json`
+- `evals/cases/demo_only_disclosure_required.json`
+- `evals/cases/no_source_no_claim.json`
+- `evals/cases/unsupported_drug_no_claim.json`
+- `README.md`
+- `docs/evidence_policy.md`
+- `docs/demo_artifacts.md`
+- `docs/demo_script.md`
+- `docs/eval_results.md`
+- `CHECKPOINT.md`
+- `SESSION_NOTES.md`
+
+### Validation
+- RED phase:
+  - `.venv\Scripts\python.exe -m pytest tests/test_evidence_pack.py tests/test_demo_pipeline.py tests/test_report_generation.py tests/test_api.py` - failed for missing strict validation, missing coverage, and unsupported-drug 422 behavior.
+  - `.venv\Scripts\python.exe -m pytest tests/test_evals_runner.py` - failed until the new eval cases were added.
+- GREEN phase:
+  - `.venv\Scripts\python.exe -m pytest tests/test_evidence_pack.py tests/test_demo_pipeline.py tests/test_report_generation.py tests/test_api.py tests/test_evals_runner.py` - 19 passed.
+- Full validation:
+  - `.venv\Scripts\python.exe -m pytest` - 29 passed.
+  - `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+  - `.venv\Scripts\python.exe -m mypy app evals` - passed.
+  - `.venv\Scripts\python.exe -m evals.runner` - 7 passed cases, 0 failed cases.
+  - `.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports` - wrote both sertraline artifacts.
+  - `.venv\Scripts\python.exe -m app.cli demo-report --drug aspirin --out-dir reports` - wrote both aspirin artifacts.
+- Manual HTTP checks passed for:
+  - `/demo/report?drug=sertraline`;
+  - `/demo/audit?drug=sertraline`;
+  - `/demo/report-view?drug=sertraline`;
+  - `/demo/report?drug=aspirin`;
+  - `/demo/audit?drug=aspirin`;
+  - `/demo/report-view?drug=aspirin`.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, start/stop advice, real patient data, FASTQ/BAM/WGS support, SaaS/auth/payments, Telegram, blockchain, or cloud raw genotype upload was added.
+- Unsupported drugs now fail closed with a safe no-claim report rather than an unsafe or misleading claim.
+
+### Next safe step
+- Add CI or a local `make check` equivalent, then expand the demo evidence pack only with explicit sources, explicit limitations, and preserved no-claim behavior for unsupported drugs.

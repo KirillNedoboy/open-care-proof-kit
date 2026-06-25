@@ -161,6 +161,7 @@ def demo_report_view(request: Request, drug: str = "sertraline") -> HTMLResponse
             "drug": drug,
             "policy_passed": result.policy_passed,
             "findings_count": result.findings_count,
+            "coverage": result.coverage,
             "policy_violations": result.policy_violations,
             "report_html": _render_report_markdown_as_html(result.report_markdown),
             "audit": audit,
@@ -169,6 +170,7 @@ def demo_report_view(request: Request, drug: str = "sertraline") -> HTMLResponse
                 ("Created at", str(audit["created_at"])),
                 ("Evidence pack", str(audit["evidence_pack_id"])),
                 ("Evidence pack version", str(audit["evidence_pack_version"])),
+                ("Coverage status", str(audit["coverage"]["coverage_status"])),
                 ("Policy passed", str(audit["policy_passed"])),
                 (
                     "Raw data exported",
@@ -182,7 +184,11 @@ def demo_report_view(request: Request, drug: str = "sertraline") -> HTMLResponse
 @app.get("/demo/report")
 def demo_report(drug: str = "sertraline") -> dict[str, Any]:
     result = _build_checked_demo_briefing(drug)
-    return {"report_markdown": result.report_markdown, "audit": result.audit}
+    return {
+        "report_markdown": result.report_markdown,
+        "coverage": result.coverage,
+        "audit": result.audit,
+    }
 
 
 @app.get("/demo/report.md")

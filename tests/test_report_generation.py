@@ -23,10 +23,21 @@ def test_generated_report_passes_safety_policy() -> None:
         findings=findings,
         evidence_pack_id=pack.pack_id,
         evidence_pack_version=pack.version,
+        coverage={
+            "requested_drug": "sertraline",
+            "evidence_pack_id": pack.pack_id,
+            "evidence_pack_version": pack.version,
+            "rules_for_requested_drug": 1,
+            "matched_findings": 1,
+            "assessed_variants": ["rs4244285"],
+            "missing_rule_variants": [],
+            "coverage_status": "matched_demo_rule",
+        },
     )
     assert "not medical advice" in report.lower()
     assert "Sources" in report
     assert "Audit metadata" in report
+    assert "Demo evidence-pack coverage" in report
     assert evaluate_report_safety(report) == []
 
 
@@ -53,6 +64,16 @@ def test_report_rejects_clinical_action_findings() -> None:
             findings=[finding],
             evidence_pack_id="demo",
             evidence_pack_version="0.1",
+            coverage={
+                "requested_drug": "sertraline",
+                "evidence_pack_id": "demo",
+                "evidence_pack_version": "0.1",
+                "rules_for_requested_drug": 1,
+                "matched_findings": 1,
+                "assessed_variants": ["rs4244285"],
+                "missing_rule_variants": [],
+                "coverage_status": "matched_demo_rule",
+            },
         )
 
 
@@ -66,6 +87,16 @@ def test_audit_payload_contains_boundary_metadata_without_raw_identifiers() -> N
         evidence_pack_version="0.1",
         policy_passed=True,
         policy_violations=[],
+        coverage={
+            "requested_drug": "sertraline",
+            "evidence_pack_id": "pgx-demo",
+            "evidence_pack_version": "0.1",
+            "rules_for_requested_drug": 1,
+            "matched_findings": 0,
+            "assessed_variants": ["rs4244285"],
+            "missing_rule_variants": ["rs4244285"],
+            "coverage_status": "no_matching_demo_rule",
+        },
     )
 
     assert audit["local_first"] is True
@@ -77,3 +108,4 @@ def test_audit_payload_contains_boundary_metadata_without_raw_identifiers() -> N
     assert len(audit["patient_id_hash"]) == 64
     assert "patient_id" not in audit
     assert audit["raw_health_or_genetic_data_exported"] is False
+    assert audit["coverage"]["coverage_status"] == "no_matching_demo_rule"

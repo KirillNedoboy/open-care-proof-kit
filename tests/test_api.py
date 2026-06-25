@@ -34,6 +34,7 @@ def test_demo_audit_endpoint_returns_audit_only() -> None:
     assert payload["drug"] == "sertraline"
     assert payload["policy_passed"] is True
     assert payload["raw_health_or_genetic_data_exported"] is False
+    assert payload["coverage"]["coverage_status"] == "matched_demo_rule"
     assert "report_markdown" not in payload
 
 
@@ -60,6 +61,17 @@ def test_demo_report_view_renders_briefing() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "Medication-to-Doctor Briefing" in response.text
+    assert "Demo evidence-pack coverage" in response.text
+
+
+def test_demo_report_endpoint_returns_safe_no_claim_for_unsupported_drug() -> None:
+    response = get("/demo/report?drug=aspirin")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["audit"]["policy_passed"] is True
+    assert payload["audit"]["coverage"]["coverage_status"] == "drug_not_in_demo_pack"
+    assert "no demo evidence-pack rules exist for this drug" in payload["report_markdown"].lower()
 
 
 def test_reviewer_quickstart_endpoint_returns_markdown() -> None:

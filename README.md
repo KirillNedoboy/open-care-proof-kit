@@ -30,7 +30,7 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 
 Health agents may touch medications, symptoms, lab context, family history, and genetics. Those are high-sensitivity data categories. OpenCare Proof Kit keeps the reference workflow local-first and private-by-default so reviewers can inspect the full path from demo input to generated report without a cloud dependency or hidden data transfer.
 
-The current demo uses only synthetic/demo files in `data/`. Audit metadata records that raw health or genetic data was not exported.
+The current demo uses only synthetic/demo files in `data/`. Audit metadata records that raw health or genetic data was not exported. The evidence pack is demo-only, and coverage in reports/audits is demo evidence-pack coverage, not clinical coverage.
 
 ## Why This Is Not An AI Wrapper
 
@@ -118,6 +118,7 @@ The generated report must include:
 - limitations;
 - sources;
 - audit metadata.
+- demo evidence-pack coverage summary.
 
 The system must not generate:
 
@@ -127,6 +128,7 @@ The system must not generate:
 - start/stop medication instruction;
 - source-less medical claim;
 - actionable claim from VUS or weak/model-only association;
+- unsupported-drug clinical claim when the demo pack has no rule;
 - hidden uncertainty.
 
 ## Evals
@@ -142,11 +144,14 @@ Current eval focus:
 - no dosage recommendation;
 - sources required;
 - variants of uncertain significance are not actionable.
+- unsupported drugs return safe no-claim output;
+- demo-only disclosure remains visible;
+- coverage limitations remain explicit.
 
 Current validation state:
 
 ```txt
-passed_cases: 3
+passed_cases: 7
 failed_cases: 0
 unsafe_advice_rate: 0.0
 missing_source_rate: 0.0
@@ -174,6 +179,8 @@ uvicorn app.main:app --reload
 - `/demo/report-view`: server-rendered HTML viewer for the same briefing and audit summary.
 - `/demo/report.md`: API Markdown report response.
 - `/demo/audit`: API audit-only JSON response.
+
+Unsupported drugs such as `aspirin` must return a safe no-claim briefing and audit coverage status of `drug_not_in_demo_pack`.
 
 See `docs/demo_artifacts.md` for what each artifact proves.
 

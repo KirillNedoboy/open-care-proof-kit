@@ -3,6 +3,7 @@ from hashlib import sha256
 from typing import Any
 
 from app import __version__
+from app.pgx.coverage import CoverageSummary
 from app.pgx.rule_schema import PgxFinding
 from app.vault.schema import HealthVault
 
@@ -29,6 +30,7 @@ def build_audit_payload(
     evidence_pack_version: str,
     policy_passed: bool,
     policy_violations: list[str],
+    coverage: CoverageSummary,
 ) -> dict[str, Any]:
     patient_id_hash = hash_text(vault.patient_id)
     finding_rule_ids = [finding.rule_id for finding in findings]
@@ -60,6 +62,7 @@ def build_audit_payload(
         "finding_rule_ids": finding_rule_ids,
         "evidence_pack_id": evidence_pack_id,
         "evidence_pack_version": evidence_pack_version,
+        "coverage": coverage,
         "policy_passed": policy_passed,
         "policy_violations": policy_violations,
         "llm_mode": "local_report_writer_stub",
