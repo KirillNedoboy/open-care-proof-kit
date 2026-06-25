@@ -11,6 +11,8 @@ build/
 .env.*
 !.env.example
 data/private/
+reports/*
+!reports/.gitkeep
 reports/private/
 evals/results/*.json
 !evals/results/.gitkeep

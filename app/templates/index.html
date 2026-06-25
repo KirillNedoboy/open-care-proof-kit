@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenCare Proof Kit</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Local-first health AI proof layer</p>
+          <h1>OpenCare Proof Kit</h1>
+          <p class="lede">
+            A private, evidence-grounded demo pipeline for turning synthetic health data and
+            deterministic PGx rules into a clinician-reviewable briefing.
+          </p>
+          <div class="cta-row">
+            <a class="button button-primary" href="/demo">Open synthetic demo</a>
+            <a class="button button-secondary" href="/demo/report-view?drug=sertraline">
+              View report
+            </a>
+          </div>
+        </div>
+        <div class="hero-panel">
+          <h2>What it is</h2>
+          <ul class="compact-list">
+            <li>Local-first and private by default.</li>
+            <li>Deterministic evidence and safety checks before report writing.</li>
+            <li>Designed for reviewer demos, audits, and transparent inspection.</li>
+          </ul>
+          <h2>What it is not</h2>
+          <ul class="compact-list">
+            <li>No diagnosis.</li>
+            <li>No dosage recommendation.</li>
+            <li>No start/stop medication advice.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="grid two-up">
+        <article class="panel">
+          <h2>Local-first architecture</h2>
+          <ol class="pipeline-list">
+            {% for step in pipeline_steps %}
+            <li>{{ step.replace("_", " ") }}</li>
+            {% endfor %}
+          </ol>
+        </article>
+
+        <article class="panel">
+          <h2>Reviewer quick links</h2>
+          <ul class="link-list">
+            {% for label, href in quick_links %}
+            <li><a href="{{ href }}">{{ label }}</a></li>
+            {% endfor %}
+          </ul>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

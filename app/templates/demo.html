@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Synthetic Demo Patient | OpenCare Proof Kit</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="page-header">
+        <p class="eyebrow">Synthetic local walkthrough</p>
+        <h1>Synthetic Demo Patient</h1>
+        <p class="lede">
+          This page uses only demo data stored in the repository. It prepares the exact
+          deterministic briefing flow for sertraline without changing clinical boundaries.
+        </p>
+      </header>
+
+      <section class="grid two-up">
+        <article class="panel patient-card">
+          <h2>{{ patient.display_name }}</h2>
+          <dl class="meta-grid">
+            <div>
+              <dt>Classification</dt>
+              <dd>{{ patient.data_classification }}</dd>
+            </div>
+            <div>
+              <dt>Age range</dt>
+              <dd>{{ patient.age_range }}</dd>
+            </div>
+            <div>
+              <dt>Sex</dt>
+              <dd>{{ patient.sex }}</dd>
+            </div>
+            <div>
+              <dt>Medication question</dt>
+              <dd>{{ question_drug }}</dd>
+            </div>
+          </dl>
+          <p class="callout">{{ patient.notes }}</p>
+        </article>
+
+        <article class="panel">
+          <h2>Medication question for sertraline</h2>
+          <p>
+            What should be discussed with a clinician before or during use of
+            <code>{{ question_drug }}</code>?
+          </p>
+          <h3>Pipeline steps</h3>
+          <ol class="pipeline-list">
+            {% for step in pipeline_steps %}
+            <li>{{ step.replace("_", " ") }}</li>
+            {% endfor %}
+          </ol>
+          <a class="button button-primary" href="/demo/report-view?drug={{ question_drug }}">
+            Generate Briefing
+          </a>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

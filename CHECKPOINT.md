@@ -10,22 +10,26 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.2 Grant/Demo Readiness
+Phase 1.3 Minimal Local Web Demo
 
 ## Current status
 
-Phase 1.1 demo hardening is complete and validated. Phase 1.2 is focused on reviewer-ready documentation, grant positioning, demo instructions, artifact documentation, and eval documentation.
+Phase 1.2 grant/demo readiness is complete and validated. Phase 1.3 adds a minimal server-rendered browser demo on top of the existing deterministic CLI/API flow without changing product boundaries.
 
 ## Last validated state
 
-Phase 1.1 validation:
+Phase 1.3 validation:
 
-- pytest: 18 passed;
+- pytest: 22 passed;
 - ruff: passed;
 - mypy: passed;
 - eval runner: 3 passed cases, 0 failed cases;
 - CLI wrote `reports/demo-sertraline-briefing.md`;
 - CLI wrote `reports/demo-sertraline-audit.json`;
+- Server-rendered web pages worked:
+  - `/`;
+  - `/demo`;
+  - `/demo/report-view?drug=sertraline`;
 - API endpoints worked:
   - `/demo/report?drug=sertraline`;
   - `/demo/report.md?drug=sertraline`;
@@ -63,6 +67,7 @@ Positioning:
 - Run safety policy checks.
 - Produce JSON audit metadata with report ID, app version, pipeline steps, evidence pack version, policy status, and raw-export status.
 - Generate report/audit files from the CLI.
+- Serve minimal landing/demo/report HTML pages from FastAPI.
 - Serve report/audit data from FastAPI.
 - Run unit tests, lint checks, strict typing checks, and synthetic evals.
 
@@ -132,10 +137,11 @@ Expected:
 - generated report contains sources, limitations, safety note, clinician questions, and audit metadata;
 - generated audit records policy status and raw-export status;
 - API exposes report and audit endpoints;
+- FastAPI exposes landing, demo, report-view, and reviewer quickstart browser paths;
 - no medical advice or dosage recommendation;
 - reviewer docs are clear enough to run the demo locally;
 - SESSION_NOTES.md updated.
 
 ## Current next step
 
-Finish Phase 1.2 validation, then add a lightweight CI workflow or local `make check` equivalent so reviewers and contributors can repeat the same validation sequence consistently.
+Validate Phase 1.3 end-to-end, then add a lightweight CI workflow or local `make check` equivalent so reviewers and contributors can repeat the same validation sequence consistently.

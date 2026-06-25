@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Medication-to-Doctor Briefing | OpenCare Proof Kit</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <main class="shell report-shell">
+      <header class="page-header">
+        <p class="eyebrow">Synthetic local report viewer</p>
+        <h1>Medication-to-Doctor Briefing</h1>
+        <p class="lede">
+          Readable HTML view for the deterministic sertraline demo. The underlying Markdown
+          report and audit JSON remain available unchanged.
+        </p>
+      </header>
+
+      <section class="grid three-up">
+        <article class="panel stat-card">
+          <span class="stat-label">Policy status</span>
+          <strong class="stat-value {% if policy_passed %}ok{% else %}fail{% endif %}">
+            {% if policy_passed %}Passed{% else %}Failed{% endif %}
+          </strong>
+        </article>
+        <article class="panel stat-card">
+          <span class="stat-label">Findings count</span>
+          <strong class="stat-value">{{ findings_count }}</strong>
+        </article>
+        <article class="panel stat-card">
+          <span class="stat-label">Drug</span>
+          <strong class="stat-value">{{ drug }}</strong>
+        </article>
+      </section>
+
+      <section class="grid two-up report-layout">
+        <article class="panel report-body">
+          {{ report_html | safe }}
+        </article>
+
+        <aside class="panel">
+          <h2>Audit summary</h2>
+          <dl class="audit-list">
+            {% for label, value in audit_summary %}
+            <div>
+              <dt>{{ label }}</dt>
+              <dd>{{ value }}</dd>
+            </div>
+            {% endfor %}
+          </dl>
+
+          {% if policy_violations %}
+          <h3>Policy violations</h3>
+          <ul class="compact-list">
+            {% for violation in policy_violations %}
+            <li>{{ violation }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+
+          <h3>Raw links</h3>
+          <ul class="link-list">
+            <li><a href="/demo/report.md?drug={{ drug }}">Open Markdown</a></li>
+            <li><a href="/demo/audit?drug={{ drug }}">Open audit JSON</a></li>
+            <li><a href="/demo/report?drug={{ drug }}">Open combined JSON</a></li>
+          </ul>
+
+          <h3>Pipeline steps</h3>
+          <ul class="compact-list">
+            {% for step in audit.pipeline_steps %}
+            <li>{{ step }}</li>
+            {% endfor %}
+          </ul>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

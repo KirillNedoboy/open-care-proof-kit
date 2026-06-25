@@ -96,6 +96,31 @@ What it proves:
 - the web presentation path uses the same deterministic demo pipeline;
 - reviewers can inspect the report in a browser without reading JSON.
 
+## `/demo/report-view`
+
+Run:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Open:
+
+```txt
+http://127.0.0.1:8000/demo/report-view?drug=sertraline
+```
+
+What it is:
+
+- server-rendered HTML view of the same briefing;
+- includes policy status, findings count, audit summary, and links to raw Markdown and JSON.
+
+What it proves:
+
+- the local demo can be presented cleanly in a browser without adding a frontend framework;
+- the presentation layer stays separate from the deterministic report/audit artifacts;
+- reviewers can inspect both the polished view and the raw outputs from one path.
+
 ## `/demo/audit`
 
 Run:
@@ -128,6 +153,7 @@ When inspecting artifacts, confirm:
 - `policy_violations` is empty;
 - `raw_health_or_genetic_data_exported` is `false`;
 - report includes safety note, sources, limitations, and clinician-review language;
+- `/demo/report-view` matches the same report/audit facts shown by `/demo/report.md` and `/demo/audit`;
 - audit includes `report_id`, `app_version`, and the pipeline steps:
   - `vault_loaded`;
   - `genotype_parsed`;

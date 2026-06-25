@@ -101,6 +101,8 @@ Open:
 
 ```txt
 http://127.0.0.1:8000/
+http://127.0.0.1:8000/demo
+http://127.0.0.1:8000/demo/report-view?drug=sertraline
 http://127.0.0.1:8000/demo/report?drug=sertraline
 http://127.0.0.1:8000/demo/report.md?drug=sertraline
 http://127.0.0.1:8000/demo/audit?drug=sertraline
@@ -108,6 +110,9 @@ http://127.0.0.1:8000/demo/audit?drug=sertraline
 
 Show:
 
+- `/` frames the project, architecture, and reviewer links.
+- `/demo` shows the synthetic patient card, the sertraline question, and the deterministic pipeline stages.
+- `/demo/report-view` renders the briefing as readable HTML with policy status, findings count, and audit summary.
 - `/demo/report` returns report plus audit JSON.
 - `/demo/report.md` returns plain Markdown.
 - `/demo/audit` returns audit only.
@@ -115,6 +120,13 @@ Show:
 Say:
 
 > The API and CLI use the same deterministic demo pipeline service, so the same safety and audit path is used from both entrypoints.
+
+Optional browser-first path:
+
+- Start at `/` for positioning.
+- Click through to `/demo`.
+- Use `Generate Briefing` to open `/demo/report-view?drug=sertraline`.
+- Open `/demo/report.md` and `/demo/audit` from the report page to show the raw artifacts behind the presentation layer.
 
 ## 2:10-2:40 - Emphasize Boundaries
 

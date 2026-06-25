@@ -91,10 +91,22 @@ Open:
 
 ```txt
 http://127.0.0.1:8000/
+http://127.0.0.1:8000/demo
+http://127.0.0.1:8000/demo/report-view?drug=sertraline
 http://127.0.0.1:8000/demo/report?drug=sertraline
 http://127.0.0.1:8000/demo/report.md?drug=sertraline
 http://127.0.0.1:8000/demo/audit?drug=sertraline
 ```
+
+## Local Web Demo
+
+The local web demo is server-rendered with FastAPI + Jinja2. It is a presentation layer over the same deterministic briefing pipeline used by the CLI and JSON/Markdown API endpoints.
+
+Browser path:
+
+- `/`: landing page with project framing, boundaries, architecture summary, and reviewer links.
+- `/demo`: synthetic patient card, sertraline question, and pipeline overview.
+- `/demo/report-view?drug=sertraline`: readable HTML report with policy status, findings count, audit summary, and links to raw Markdown and JSON.
 
 ## Safety Boundaries
 
@@ -159,6 +171,7 @@ uvicorn app.main:app --reload
 
 - `reports/demo-sertraline-briefing.md`: clinician-reviewable Markdown briefing from synthetic/demo data.
 - `reports/demo-sertraline-audit.json`: audit metadata with report ID, app version, pipeline steps, evidence pack version, safety policy status, and generated file paths.
+- `/demo/report-view`: server-rendered HTML viewer for the same briefing and audit summary.
 - `/demo/report.md`: API Markdown report response.
 - `/demo/audit`: API audit-only JSON response.
 
@@ -193,6 +206,7 @@ Phase 1: deterministic local MVP.
 - JSON audit.
 - Eval runner.
 - CLI/API demo path.
+- Local web demo path.
 
 Phase 1.2: grant/demo readiness.
 
@@ -207,7 +221,7 @@ Next safe steps:
 
 - Add a lightweight CI workflow or `make check` equivalent.
 - Expand eval cases without weakening safety boundaries.
-- Improve report presentation while preserving clinician-review and non-medical-advice language.
+- Improve report presentation further while preserving clinician-review and non-medical-advice language.
 - Add more demo evidence packs only when sources and limitations are explicit.
 
 Non-goals for the current MVP remain: diagnosis, dosage recommendation, treatment planning, real patient data, WGS/FASTQ/BAM support, SaaS/auth/payments, Telegram, blockchain, or cloud raw genotype upload by default.

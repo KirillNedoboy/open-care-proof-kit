@@ -207,3 +207,86 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Add a lightweight CI workflow or local `make check` equivalent once the repo is under Git, then expand eval coverage without changing medical-safety boundaries.
+
+## 2026-06-25 - Phase 1.3 minimal local web demo
+
+### Changed
+- Added server-rendered FastAPI pages for the local demo:
+  - `/` landing page with project framing, boundaries, architecture summary, and reviewer links;
+  - `/demo` synthetic patient view with sertraline question and pipeline steps;
+  - `/demo/report-view?drug=sertraline` readable HTML report view with policy status, findings count, audit summary, and raw artifact links.
+- Mounted static CSS and added Jinja2 templates under `app/templates/` and `app/static/`.
+- Kept existing JSON/Markdown API endpoints unchanged.
+- Added API regression tests for the new HTML pages.
+- Updated README and demo docs to include the browser-based path and HTML report viewer.
+- Updated `CHECKPOINT.md` to move the project to Phase 1.3.
+
+### Design input
+- Used Lazyweb reference search before implementation.
+- Chose a restrained reviewer-oriented UI: editorial landing framing, quick links, pipeline lists, stat cards, and a split report/audit layout.
+- Did not add external frontend assets, downloaded references, or runtime dependencies beyond Jinja2.
+
+### Files changed
+- `app/main.py`
+- `app/static/styles.css`
+- `app/templates/index.html`
+- `app/templates/demo.html`
+- `app/templates/report.html`
+- `tests/test_api.py`
+- `pyproject.toml`
+- `README.md`
+- `docs/demo_script.md`
+- `docs/demo_artifacts.md`
+- `CHECKPOINT.md`
+- `SESSION_NOTES.md`
+
+### Validation
+- RED phase: `python -m pytest tests/test_api.py` - 3 expected failures for missing HTML routes/content type.
+- RED phase: `python -m pytest tests/test_api.py` - 2 expected failures for missing reviewer quickstart route/link.
+- GREEN phase: `python -m pytest tests/test_api.py` - 6 passed.
+- `.venv\Scripts\python.exe -m pip install -e ".[dev]"` - installed `jinja2` into the project environment after the dependency change.
+- `.venv\Scripts\python.exe -m pytest` - 22 passed.
+- `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.venv\Scripts\python.exe -m mypy app evals` - passed.
+- `.venv\Scripts\python.exe -m evals.runner` - 3 passed cases, 0 failed cases.
+- `.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports` - wrote both required files.
+- Uvicorn manual HTTP checks passed for:
+  - `/`;
+  - `/demo`;
+  - `/demo/report-view?drug=sertraline`;
+  - `/demo/report.md?drug=sertraline`;
+  - `/demo/audit?drug=sertraline`;
+  - `/reviewer-quickstart`.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, treatment plan, start/stop advice, real patient data, FASTQ/BAM/WGS support, auth, payments, Telegram, blockchain, or cloud raw genotype upload was added.
+- The HTML pages are presentation-only and use the same deterministic report/audit path.
+
+### Next safe step
+- Run the full validation sequence, then manually verify the browser routes and raw artifact endpoints under Uvicorn.
+
+## 2026-06-25 - Phase 1.3 worktree hygiene and commit
+
+### Changed
+- Updated `.gitignore` to ignore generated `reports/*` outputs while preserving `reports/.gitkeep`.
+- Removed `reports/demo-sertraline-briefing.md` and `reports/demo-sertraline-audit.json` from Git tracking with `git rm --cached` without deleting local copies.
+- Kept `evals/results/*.json` ignored and did not change product behavior, safety policy, eval logic, or web demo functionality.
+
+### Validation
+- `git diff --check` - no whitespace errors; only line-ending warnings from the local Windows checkout.
+- `.venv\Scripts\python.exe -m pytest` - 22 passed.
+- `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.venv\Scripts\python.exe -m mypy app evals` - passed.
+- `.venv\Scripts\python.exe -m evals.runner` - 3 passed cases, 0 failed cases.
+- `.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports` - wrote both report files locally.
+- `git status --short` after CLI regeneration - generated report files did not appear as modified or untracked files; only the staged untracking remained.
+
+### Commit summary
+- Prepared Phase 1.3 for commit with generated runtime reports ignored and removed from version control.
+- Commit message target: `feat: add minimal local web demo`.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, start/stop advice, real patient data, FASTQ/BAM/WGS support, SaaS/auth/payments, Telegram, blockchain, or cloud raw genotype upload was added.
+
+### Next safe step
+- Add a lightweight CI workflow or local `make check` equivalent so validation and artifact hygiene remain repeatable for reviewers and contributors.
