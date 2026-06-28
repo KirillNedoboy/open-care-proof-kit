@@ -8,11 +8,19 @@ OpenCare Proof Kit is a local-first, synthetic-data-only proof kit for evidence-
 phase-1-github-grant-readiness
 ```
 
+## Public Repository
+
+```txt
+https://github.com/KirillNedoboy/open-care-proof-kit
+```
+
+The public GitHub repository has been created and pushed.
+
 ## Current Phase
 
-Phase 1.6 GitHub + Grant Readiness Pack.
+Phase 1.8 Grant Submission Answers Pack.
 
-This phase is documentation and repository-readiness work only. It does not add medical functionality, new clinical claims, real patient data, or cloud raw genotype upload.
+This phase is grant-copy documentation only. It does not add medical functionality, new clinical claims, real patient data, real genetic data, or cloud raw genotype upload.
 
 ## Current Commits
 
@@ -20,6 +28,7 @@ This phase is documentation and repository-readiness work only. It does not add 
 - `b46e336 feat: add minimal local web demo`
 - `dda7958 feat: harden evidence pack validation and coverage reporting`
 - `608fc11 feat: add pipeline-backed evals`
+- `8b2c2fb docs: prepare github and grant readiness pack`
 
 ## Current Capabilities
 
@@ -30,10 +39,11 @@ This phase is documentation and repository-readiness work only. It does not add 
 - Strict evidence-pack validation for source domains, limitations, demo-only behavior, and no unauthorized clinical-action flags.
 - Static-text eval guardrails plus pipeline-backed evals that execute the real local demo pipeline.
 - GitHub/grant readiness docs: license, contribution policy, security policy, grant pack, roadmap, release checklist, and screenshot guide.
+- Grant submission docs: copy-paste application answers, short pitches, conservative milestones, and application wording guardrails.
 
 ## Current Validation State
 
-Phase 1.6 validation:
+Phase 1.8 validation:
 
 ```txt
 pytest: 34 passed
@@ -82,3 +92,10 @@ Validation commands:
 - Add more pipeline-backed eval cases when new demo drugs or evidence-pack states are introduced.
 - Improve clinician-review handoff and structured exports without automating clinical action.
 - Research optional confidential compute adapters only after official docs and current research review.
+
+## Grant Submission Pack Status
+
+- `docs/grant_submission_answers.md` provides copy-paste-ready long-form answers.
+- `docs/grant_short_pitch.md` provides short spoken/written pitch variants.
+- `docs/grant_milestones.md` provides conservative 30/60/90-day milestones.
+- Wording guardrails emphasize doctor briefing, clinician-reviewable outputs, demo-only evidence-pack coverage, audit trail, private/local-first design, and not-medical-advice boundaries.

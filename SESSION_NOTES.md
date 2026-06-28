@@ -512,3 +512,52 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Run the full Phase 1.6 validation sequence, confirm generated reports remain ignored, inspect `git diff --stat`, and decide whether to commit.
+
+## 2026-06-28 - Phase 1.8 Grant Submission Answers Pack
+
+### Changed
+- Added `docs/grant_submission_answers.md` with copy-paste-ready Sentient/public-goods grant answers:
+  - project title;
+  - one-sentence pitch;
+  - short and long summaries;
+  - problem and solution;
+  - open-source and local-first rationale;
+  - beneficiaries;
+  - built-so-far status;
+  - technical architecture;
+  - safety model;
+  - eval/audit model;
+  - grant alignment;
+  - support needs;
+  - 30/60/90-day milestones;
+  - risks and mitigations;
+  - non-goals;
+  - repository/demo instructions;
+  - final short blurb.
+- Added `docs/grant_short_pitch.md` with 15-second, 30-second, and 60-second pitch variants plus reviewer, technical, and safety summaries.
+- Added `docs/grant_milestones.md` with conservative Month 1, Month 2, and Month 3 milestones.
+- Added application wording guardrails to the grant docs.
+- Updated `docs/grant_application_pack.md` to link the new submission docs and include wording guardrails.
+- Updated `docs/project_status.md`, `CHECKPOINT.md`, and this session log for Phase 1.8.
+
+### Files changed
+- `docs/grant_submission_answers.md`
+- `docs/grant_short_pitch.md`
+- `docs/grant_milestones.md`
+- `docs/grant_application_pack.md`
+- `docs/project_status.md`
+- `CHECKPOINT.md`
+- `SESSION_NOTES.md`
+
+### Validation
+- `.venv\Scripts\python.exe -m pytest` - 34 passed.
+- `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
+- `.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, start/stop advice, real patient data, real genetic data, FASTQ/BAM/WGS support, AlphaMissense clinical interpretation, SaaS/auth/payments, Telegram, blockchain, cloud raw genotype upload, new clinical claims, medical functionality, or weakened safety/evals were added.
+
+### Next safe step
+- Run Phase 1.8 validation, confirm generated reports remain ignored, inspect `git diff --stat`, and decide whether to commit.

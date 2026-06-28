@@ -10,15 +10,15 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.6 GitHub + Grant Readiness Pack
+Phase 1.8 Grant Submission Answers Pack
 
 ## Current status
 
-Phase 1.6 prepares the repository for GitHub review and grant submission with README polish, license, contribution/security docs, grant application materials, release checklist, screenshot guide, and conservative roadmap updates. It does not add medical functionality or expand product scope.
+Phase 1.8 adds copy-paste-ready Sentient/public-goods grant submission answers, short pitches, conservative milestones, and application wording guardrails. It is documentation-only and does not add medical functionality or expand product scope.
 
 ## Last validated state
 
-Phase 1.6 validation:
+Phase 1.8 validation:
 
 - pytest: 34 passed;
 - ruff: passed;
@@ -78,6 +78,7 @@ Positioning:
 - Serve report/audit data from FastAPI.
 - Run unit tests, lint checks, strict typing checks, and synthetic evals.
 - Provide GitHub/grant readiness docs for license, contribution rules, security reporting, release checks, screenshots, roadmap, and grant review.
+- Provide grant submission docs with copy-paste answers, short pitches, conservative milestones, and wording guardrails.
 
 ## Hard boundaries
 
@@ -154,4 +155,4 @@ Expected:
 
 ## Current next step
 
-Run Phase 1.6 validation, confirm generated reports remain ignored, inspect the diff, and then decide whether to commit the readiness pack. After that, add a lightweight CI workflow or local `make check` equivalent.
+Run Phase 1.8 validation, confirm generated reports remain ignored, inspect the diff, and then decide whether to commit the grant submission answers pack. After that, add a lightweight CI workflow or local `make check` equivalent.

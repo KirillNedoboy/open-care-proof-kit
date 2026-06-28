@@ -4,6 +4,12 @@
 
 OpenCare Proof Kit: Local-first evidence, safety, audit, and eval infrastructure for private health AI agents.
 
+## Related Submission Docs
+
+- `docs/grant_submission_answers.md` contains copy-paste-ready application answers.
+- `docs/grant_short_pitch.md` contains 15-second, 30-second, and 60-second pitches.
+- `docs/grant_milestones.md` contains conservative 30/60/90-day grant milestones.
+
 ## Short Pitch
 
 OpenCare Proof Kit is open-source infrastructure for building private, evidence-grounded health AI agents. It provides a local-first reference pipeline, deterministic evidence matching, safety policy checks, Markdown reports, JSON audit trails, and evals that catch unsafe medical-advice drift.
@@ -194,3 +200,26 @@ OpenCare Proof Kit does not aim to provide:
 - blockchain features;
 - cloud raw genotype upload by default;
 - clinical validation claims.
+
+## Application Wording Guardrails
+
+Use:
+
+- "doctor briefing"
+- "clinician-reviewable"
+- "evidence-pack coverage"
+- "demo-only evidence"
+- "audit trail"
+- "private/local-first"
+- "not medical advice"
+
+Avoid:
+
+- "diagnosis"
+- "treatment recommendation"
+- "which medication should I take"
+- "dosage guidance"
+- "clinical decision support"
+- "genetic consultant"
+- "real patient upload"
+- "whole genome interpretation"
