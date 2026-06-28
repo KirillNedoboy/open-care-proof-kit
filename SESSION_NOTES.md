@@ -453,3 +453,62 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Run the full Phase 1.5 validation sequence, confirm generated reports remain ignored, inspect `git diff --stat`, and only then decide whether to commit.
+
+## 2026-06-28 - Phase 1.6 GitHub + Grant Readiness Pack
+
+### Changed
+- Created branch `phase-1-github-grant-readiness` from clean Phase 1.5 state.
+- Polished `README.md` for fast reviewer understanding:
+  - one-liner;
+  - current status;
+  - what it is / is not;
+  - local-first rationale;
+  - text architecture;
+  - quickstart;
+  - CLI demo commands;
+  - web demo routes;
+  - eval metrics;
+  - safety boundaries;
+  - roadmap;
+  - grant alignment;
+  - link to project status.
+- Added Apache-2.0 `LICENSE`.
+- Added `CONTRIBUTING.md` with contribution boundaries, validation commands, evidence-pack rules, and no-real-patient-data policy.
+- Added `SECURITY.md` with no-sensitive-data policy, maintainer responsible-disclosure contact, local-first privacy model, secret handling, generated reports policy, and medical safety boundary.
+- Added `docs/grant_application_pack.md` for grant reviewers.
+- Rewrote `docs/roadmap.md` as a conservative roadmap:
+  - Phase 2 evidence-pack tooling and better pipeline evals;
+  - Phase 3 clinician-review workspace and structured export;
+  - Phase 4 optional confidential compute adapter research.
+- Added `docs/release_checklist.md`.
+- Added `docs/screenshots.md` with exact local pages and captions.
+- Updated `docs/project_status.md`, `CHECKPOINT.md`, and this session log for Phase 1.6.
+
+### Files changed
+- `README.md`
+- `LICENSE`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `docs/grant_application_pack.md`
+- `docs/roadmap.md`
+- `docs/release_checklist.md`
+- `docs/screenshots.md`
+- `docs/project_status.md`
+- `CHECKPOINT.md`
+- `SESSION_NOTES.md`
+
+### Validation
+- `.venv\Scripts\python.exe -m pytest` - 34 passed.
+- `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
+- `.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+- `.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports` - wrote `reports/demo-sertraline-briefing.md` and `reports/demo-sertraline-audit.json`.
+- `.venv\Scripts\python.exe -m app.cli demo-report --drug aspirin --out-dir reports` - wrote `reports/demo-aspirin-briefing.md` and `reports/demo-aspirin-audit.json`.
+- `git status --short --ignored reports` - generated report and audit artifacts remained ignored.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, start/stop advice, real patient data, FASTQ/BAM/WGS support, SaaS/auth/payments, Telegram, blockchain, cloud raw genotype upload, new clinical claims, medical functionality, or weakened safety/evals were added.
+
+### Next safe step
+- Run the full Phase 1.6 validation sequence, confirm generated reports remain ignored, inspect `git diff --stat`, and decide whether to commit.

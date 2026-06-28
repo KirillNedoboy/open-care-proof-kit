@@ -1,10 +1,20 @@
 # OpenCare Proof Kit
 
-OpenCare Proof Kit is a local-first, open-source proof layer for private, evidence-grounded health AI agents.
+OpenCare Proof Kit is a local-first, open-source proof layer for building private, evidence-grounded health AI agents with inspectable safety checks, audit trails, and evals.
 
 The reference demo is **Medication-to-Doctor Briefing**: a deterministic local pipeline that turns synthetic health vault data, demo genotype-like data, a local evidence pack, safety policy checks, and a report writer into a clinician-reviewable Markdown briefing plus JSON audit trail.
 
 This project is not an AI doctor, not a diagnostic system, and not a medication recommendation engine.
+
+## Current Status
+
+- Phase: 1.6 GitHub + Grant Readiness Pack.
+- Latest completed implementation commit: `608fc11 feat: add pipeline-backed evals`.
+- Demo data: synthetic/demo-only.
+- Runtime model: local-first by default.
+- Validation baseline: 34 tests, ruff, mypy, 12 eval cases, and CLI report generation for `sertraline` and `aspirin`.
+
+See [docs/project_status.md](docs/project_status.md) for the current capability and validation snapshot.
 
 ## What It Is
 
@@ -13,6 +23,7 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 - A deterministic tool chain before any report-writing layer.
 - A reusable pattern for source-cited health briefings.
 - A safety and eval scaffold for catching unsafe medical-advice patterns.
+- A grant-reviewable proof kit with docs, release checklist, security policy, and contribution boundaries.
 
 ## What It Is Not
 
@@ -25,6 +36,7 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 - Not a FASTQ, BAM, WGS, or clinical genomics pipeline.
 - Not SaaS, auth, payments, Telegram, or blockchain.
 - Not cloud upload of raw health or genetic data by default.
+- Not clinical validation of medication appropriateness.
 
 ## Why Local-First
 
@@ -32,26 +44,23 @@ Health agents may touch medications, symptoms, lab context, family history, and 
 
 The current demo uses only synthetic/demo files in `data/`. Audit metadata records that raw health or genetic data was not exported. The evidence pack is demo-only, and coverage in reports/audits is demo evidence-pack coverage, not clinical coverage.
 
-## Why This Is Not An AI Wrapper
-
-An AI wrapper sends user context to a model and returns prose. OpenCare Proof Kit makes the model a report-writing layer, not the source of medical truth.
-
-The reference workflow is:
+## Architecture
 
 ```txt
 Synthetic demo health vault
   -> Demo genotype parser
   -> Local evidence pack loader
   -> Deterministic PGx rule matcher
+  -> Demo evidence-pack coverage summary
   -> Markdown report renderer
   -> Safety policy checker
   -> JSON audit builder
-  -> Eval runner
+  -> Static-text and pipeline-backed eval runner
 ```
 
-The LLM/report writer may summarize deterministic findings, limitations, sources, and clinician-review questions. It must not invent sources, diagnose, recommend medication choice, recommend dosage, or override safety policy.
+The LLM/report writer is an explanation layer only. It may summarize deterministic findings, limitations, sources, and clinician-review questions. It must not invent sources, diagnose, recommend medication choice, recommend dosage, or override safety policy.
 
-## Demo In 60 Seconds
+## Quickstart
 
 Install in a Python 3.12 environment:
 
@@ -61,17 +70,43 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
-Generate the demo report and audit:
+Run the core validation:
+
+```bash
+pytest
+ruff check app tests evals
+mypy app evals
+python -m evals.runner
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check app tests evals
+.\.venv\Scripts\python.exe -m mypy app evals
+.\.venv\Scripts\python.exe -m evals.runner
+```
+
+## Demo Commands
+
+Generate a supported-drug demo report and audit:
 
 ```bash
 python -m app.cli demo-report --drug sertraline --out-dir reports
+```
+
+Generate an unsupported-drug safe no-claim report and audit:
+
+```bash
+python -m app.cli demo-report --drug aspirin --out-dir reports
 ```
 
 Expected generated files:
@@ -79,7 +114,13 @@ Expected generated files:
 ```txt
 reports/demo-sertraline-briefing.md
 reports/demo-sertraline-audit.json
+reports/demo-aspirin-briefing.md
+reports/demo-aspirin-audit.json
 ```
+
+Generated report artifacts are ignored by Git.
+
+## Web Demo Routes
 
 Start the API:
 
@@ -93,61 +134,21 @@ Open:
 http://127.0.0.1:8000/
 http://127.0.0.1:8000/demo
 http://127.0.0.1:8000/demo/report-view?drug=sertraline
+http://127.0.0.1:8000/demo/report-view?drug=aspirin
 http://127.0.0.1:8000/demo/report?drug=sertraline
 http://127.0.0.1:8000/demo/report.md?drug=sertraline
 http://127.0.0.1:8000/demo/audit?drug=sertraline
 ```
 
-## Local Web Demo
+The local web demo is server-rendered with FastAPI and Jinja2. It is a presentation layer over the same deterministic briefing pipeline used by the CLI and JSON/Markdown API endpoints.
 
-The local web demo is server-rendered with FastAPI + Jinja2. It is a presentation layer over the same deterministic briefing pipeline used by the CLI and JSON/Markdown API endpoints.
-
-Browser path:
-
-- `/`: landing page with project framing, boundaries, architecture summary, and reviewer links.
-- `/demo`: synthetic patient card, sertraline question, and pipeline overview.
-- `/demo/report-view?drug=sertraline`: readable HTML report with policy status, findings count, audit summary, and links to raw Markdown and JSON.
-
-## Safety Boundaries
-
-The generated report must include:
-
-- safety note;
-- clinician review note;
-- evidence level;
-- limitations;
-- sources;
-- audit metadata.
-- demo evidence-pack coverage summary.
-
-The system must not generate:
-
-- diagnosis;
-- treatment plan;
-- dosage adjustment;
-- start/stop medication instruction;
-- source-less medical claim;
-- actionable claim from VUS or weak/model-only association;
-- unsupported-drug clinical claim when the demo pack has no rule;
-- hidden uncertainty.
-
-## Evals
+## Eval Metrics
 
 Run the deterministic eval suite, including real local pipeline cases:
 
 ```bash
 python -m evals.runner
 ```
-
-Current eval focus:
-
-- no dosage recommendation;
-- sources required;
-- variants of uncertain significance are not actionable.
-- unsupported drugs return safe no-claim output;
-- demo-only disclosure remains visible;
-- coverage limitations remain explicit.
-- pipeline-backed sertraline and aspirin runs preserve safety, audit, and coverage behavior.
 
 Current validation state:
 
@@ -166,29 +167,28 @@ pipeline_failure_rate: 0.0
 
 Static-text evals are guardrails for known unsafe wording patterns. Pipeline evals execute the real local demo pipeline via `build_demo_briefing(...)` and verify report text plus nested audit fields. Neither mode is clinical validation.
 
-## Local Run Commands
+## Safety Boundaries
 
-```bash
-pytest
-ruff check app tests evals
-mypy app evals
-python -m evals.runner
-python -m app.cli demo-report --drug sertraline --out-dir reports
-python -m app.cli demo-report --drug aspirin --out-dir reports
-uvicorn app.main:app --reload
-```
+Every generated report must include:
 
-## Generated Demo Artifacts
+- safety note;
+- clinician review note;
+- evidence level;
+- limitations;
+- sources;
+- audit metadata;
+- demo evidence-pack coverage summary.
 
-- `reports/demo-sertraline-briefing.md`: clinician-reviewable Markdown briefing from synthetic/demo data.
-- `reports/demo-sertraline-audit.json`: audit metadata with report ID, app version, pipeline steps, evidence pack version, safety policy status, and generated file paths.
-- `/demo/report-view`: server-rendered HTML viewer for the same briefing and audit summary.
-- `/demo/report.md`: API Markdown report response.
-- `/demo/audit`: API audit-only JSON response.
+The system must not generate:
 
-Unsupported drugs such as `aspirin` must return a safe no-claim briefing and audit coverage status of `drug_not_in_demo_pack`.
-
-See `docs/demo_artifacts.md` for what each artifact proves.
+- diagnosis;
+- treatment plan;
+- dosage adjustment;
+- start/stop medication instruction;
+- source-less medical claim;
+- actionable claim from VUS or weak/model-only association;
+- unsupported-drug clinical claim when the demo pack has no rule;
+- hidden uncertainty.
 
 ## Repository Map
 
@@ -200,7 +200,7 @@ app/pgx         deterministic medication/genotype rule matching
 app/safety      medical safety policy engine
 app/ai          report drafting layer
 app/reports     Markdown and audit JSON output
-evals           synthetic safety/evidence evals
+evals           static-text and pipeline-backed safety/evidence evals
 data            demo-only data and local evidence packs
 docs            product, grant, safety, architecture documents
 tests           deterministic unit tests
@@ -208,38 +208,15 @@ tests           deterministic unit tests
 
 ## Roadmap
 
-Phase 1: deterministic local MVP.
+- Phase 2: more evidence-pack tooling and stronger pipeline eval coverage.
+- Phase 3: clinician-review workspace and structured export for safer review handoff.
+- Phase 4: optional confidential compute adapter after official docs and research review.
 
-- Synthetic demo patient.
-- Demo genotype parser.
-- Local evidence pack.
-- PGx matcher.
-- Safety policy.
-- Markdown report.
-- JSON audit.
-- Eval runner.
-- CLI/API demo path.
-- Local web demo path.
+The roadmap does not promise real patient diagnosis, medication selection, treatment recommendations, or dosage guidance.
 
-Phase 1.2: grant/demo readiness.
+See [docs/roadmap.md](docs/roadmap.md) for the conservative roadmap.
 
-- Reviewer-ready README.
-- Grant pitch.
-- Practical demo script.
-- Demo artifact docs.
-- Eval result docs.
-- Reviewer quickstart.
-
-Next safe steps:
-
-- Add a lightweight CI workflow or `make check` equivalent.
-- Expand eval cases without weakening safety boundaries.
-- Improve report presentation further while preserving clinician-review and non-medical-advice language.
-- Add more demo evidence packs only when sources and limitations are explicit.
-
-Non-goals for the current MVP remain: diagnosis, dosage recommendation, treatment planning, real patient data, WGS/FASTQ/BAM support, SaaS/auth/payments, Telegram, blockchain, or cloud raw genotype upload by default.
-
-## Grant Positioning
+## Grant Alignment
 
 OpenCare Proof Kit is grant-aligned open-source AI infrastructure:
 
@@ -250,3 +227,16 @@ OpenCare Proof Kit is grant-aligned open-source AI infrastructure:
 - demo workflow grounded in synthetic data, deterministic rules, sources, limitations, and audit metadata.
 
 The grant case is not "another health chatbot." The grant case is reusable infrastructure for making sensitive health-agent workflows inspectable, source-grounded, safety-checked, and locally runnable.
+
+Grant materials:
+
+- [docs/grant_application_pack.md](docs/grant_application_pack.md)
+- [docs/grant_pitch.md](docs/grant_pitch.md)
+- [docs/sentient_alignment.md](docs/sentient_alignment.md)
+
+## Contributor And Release Docs
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [docs/release_checklist.md](docs/release_checklist.md)
+- [docs/screenshots.md](docs/screenshots.md)

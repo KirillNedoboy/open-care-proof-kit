@@ -10,15 +10,15 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.5 Pipeline-backed Evals and GitHub Polish
+Phase 1.6 GitHub + Grant Readiness Pack
 
 ## Current status
 
-Phase 1.5 extends eval coverage from static guardrails to real local pipeline execution, adds Phase 1.5 reviewer docs/status polish, and preserves the existing local-first CLI/API/web demo boundaries and medical-safety rules.
+Phase 1.6 prepares the repository for GitHub review and grant submission with README polish, license, contribution/security docs, grant application materials, release checklist, screenshot guide, and conservative roadmap updates. It does not add medical functionality or expand product scope.
 
 ## Last validated state
 
-Phase 1.5 validation:
+Phase 1.6 validation:
 
 - pytest: 34 passed;
 - ruff: passed;
@@ -77,6 +77,7 @@ Positioning:
 - Serve minimal landing/demo/report HTML pages from FastAPI.
 - Serve report/audit data from FastAPI.
 - Run unit tests, lint checks, strict typing checks, and synthetic evals.
+- Provide GitHub/grant readiness docs for license, contribution rules, security reporting, release checks, screenshots, roadmap, and grant review.
 
 ## Hard boundaries
 
@@ -153,4 +154,4 @@ Expected:
 
 ## Current next step
 
-Add a lightweight CI workflow or local `make check` equivalent, then expand demo evidence-pack coverage cautiously while preserving explicit sources, explicit limitations, fail-closed unsupported-drug behavior, and the new pipeline-backed eval guardrails.
+Run Phase 1.6 validation, confirm generated reports remain ignored, inspect the diff, and then decide whether to commit the readiness pack. After that, add a lightweight CI workflow or local `make check` equivalent.
