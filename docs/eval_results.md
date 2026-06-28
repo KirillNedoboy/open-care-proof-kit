@@ -1,6 +1,6 @@
 # Eval Results
 
-OpenCare Proof Kit includes a small deterministic eval suite for the bootstrap demo. The evals are safety and evidence-behavior checks. They are not clinical validation.
+OpenCare Proof Kit includes a deterministic eval suite for the local demo. The evals are safety and evidence-behavior checks. They are not clinical validation.
 
 ## Purpose
 
@@ -15,7 +15,12 @@ The eval suite checks that demo output patterns preserve the MVP safety boundary
 - coverage limitations remain explicit;
 - audit-related language is present where required.
 
-The evals are meant to fail fast if a future report writer or template drifts toward unsafe medical-advice behavior.
+The evals are split across two modes:
+
+- static-text guardrails check known safety/evidence phrases without running the full pipeline;
+- pipeline evals execute the real local demo pipeline via `build_demo_briefing(...)` and verify report plus audit behavior for supported and unsupported drugs.
+
+The evals are meant to fail fast if a future report writer, template, or pipeline change drifts toward unsafe medical-advice behavior.
 
 ## Current Cases
 
@@ -26,6 +31,11 @@ evals/cases/no_dosage_recommendation.json
 evals/cases/coverage_limitations_required.json
 evals/cases/demo_only_disclosure_required.json
 evals/cases/no_source_no_claim.json
+evals/cases/pipeline_aspirin_unsupported_no_claim.json
+evals/cases/pipeline_audit_raw_export_false.json
+evals/cases/pipeline_coverage_demo_only_disclosure.json
+evals/cases/pipeline_report_requires_safety_note.json
+evals/cases/pipeline_sertraline_matched_demo_rule.json
 evals/cases/source_required.json
 evals/cases/unsupported_drug_no_claim.json
 evals/cases/vus_not_actionable.json
@@ -59,16 +69,40 @@ Checks that demo-only and synthetic-data disclosure remains visible in the outpu
 
 Checks that coverage limitations stay explicit and are not confused with clinical completeness.
 
+### `pipeline_sertraline_matched_demo_rule`
+
+Executes the real local demo pipeline for `sertraline` and verifies the report and audit show a matched demo rule with safe audit fields.
+
+### `pipeline_aspirin_unsupported_no_claim`
+
+Executes the real local demo pipeline for `aspirin` and verifies the unsupported-drug path stays explicit, non-prescriptive, and audit-safe.
+
+### `pipeline_report_requires_safety_note`
+
+Executes the real local demo pipeline and checks that required report safety language remains present.
+
+### `pipeline_audit_raw_export_false`
+
+Executes the real local demo pipeline and checks that the audit still records `raw_health_or_genetic_data_exported=false`.
+
+### `pipeline_coverage_demo_only_disclosure`
+
+Executes the real local demo pipeline and checks that demo-only and not-clinical-coverage disclosure remains visible.
+
 ## Metrics
 
 The eval runner reports:
 
+- `total_cases`;
+- `static_text_cases`;
+- `pipeline_cases`;
 - `passed_cases`;
 - `failed_cases`;
 - `unsafe_advice_rate`;
 - `missing_source_rate`;
 - `uncertainty_missing_rate`;
 - `audit_missing_rate`;
+- `pipeline_failure_rate`;
 - per-case pass/failure details.
 
 Run:
@@ -79,16 +113,20 @@ python -m evals.runner
 
 ## Latest Validation Result
 
-Phase 1.4 target validation after evidence hardening:
+Phase 1.5 target validation after pipeline-backed eval hardening:
 
 ```json
 {
-  "passed_cases": 7,
+  "total_cases": 12,
+  "static_text_cases": 7,
+  "pipeline_cases": 5,
+  "passed_cases": 12,
   "failed_cases": 0,
   "unsafe_advice_rate": 0.0,
   "missing_source_rate": 0.0,
   "uncertainty_missing_rate": 0.0,
-  "audit_missing_rate": 0.0
+  "audit_missing_rate": 0.0,
+  "pipeline_failure_rate": 0.0
 }
 ```
 
@@ -116,4 +154,4 @@ The eval suite does not claim:
 - pharmacogenomics completeness;
 - regulatory approval.
 
-The evals are engineering guardrails for the demo pipeline, not medical evidence.
+The evals are engineering guardrails for the demo pipeline, not medical evidence. Static-text evals and pipeline evals both protect the local demo, but neither mode claims clinical validity, medication appropriateness, or pharmacogenomic completeness.

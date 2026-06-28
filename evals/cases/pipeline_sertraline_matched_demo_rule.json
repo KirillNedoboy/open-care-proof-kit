@@ -1,0 +1,23 @@
+{
+  "case_id": "pipeline_sertraline_matched_demo_rule",
+  "mode": "pipeline",
+  "drug": "sertraline",
+  "must_include_report": [
+    "not medical advice",
+    "demo evidence-pack coverage",
+    "sources",
+    "limitations"
+  ],
+  "must_not_include_report": [
+    "you should start",
+    "you should stop",
+    "increase dose",
+    "reduce dose"
+  ],
+  "must_match_audit": {
+    "policy_passed": true,
+    "coverage.coverage_status": "matched_demo_rule",
+    "coverage.matched_findings": 1,
+    "raw_health_or_genetic_data_exported": false
+  }
+}

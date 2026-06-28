@@ -133,9 +133,19 @@ Windows PowerShell without activating:
 Expected success signal:
 
 ```txt
-"passed_cases": 3
+"total_cases": 12
+"static_text_cases": 7
+"pipeline_cases": 5
+"passed_cases": 12
 "failed_cases": 0
+"pipeline_failure_rate": 0.0
 ```
+
+Interpretation:
+
+- static-text evals are wording/safety guardrails;
+- pipeline evals execute the real local demo pipeline for supported and unsupported drug paths;
+- neither mode is clinical validation.
 
 ## Expected Success Summary
 
@@ -144,11 +154,13 @@ The project is running correctly when:
 - tests pass;
 - ruff passes;
 - mypy passes;
-- eval runner reports 3 passed cases and 0 failed cases;
+- eval runner reports 12 passed cases and 0 failed cases;
+- eval runner reports 7 static-text cases and 5 pipeline-backed cases;
 - CLI writes Markdown and audit JSON;
 - API endpoints return report and audit data;
 - audit has `policy_passed=true`;
-- audit has `raw_health_or_genetic_data_exported=false`.
+- audit has `raw_health_or_genetic_data_exported=false`;
+- reports and audits label coverage as demo evidence-pack coverage, not clinical coverage.
 
 ## Boundary Reminder
 

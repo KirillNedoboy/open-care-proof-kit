@@ -1,0 +1,14 @@
+{
+  "case_id": "pipeline_coverage_demo_only_disclosure",
+  "mode": "pipeline",
+  "drug": "sertraline",
+  "must_include_report": [
+    "demo evidence-pack coverage",
+    "not clinical coverage",
+    "synthetic/demo data"
+  ],
+  "must_match_audit": {
+    "coverage.coverage_status": "matched_demo_rule",
+    "policy_passed": true
+  }
+}

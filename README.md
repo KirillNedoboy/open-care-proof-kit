@@ -133,7 +133,7 @@ The system must not generate:
 
 ## Evals
 
-Run the deterministic eval suite:
+Run the deterministic eval suite, including real local pipeline cases:
 
 ```bash
 python -m evals.runner
@@ -147,19 +147,24 @@ Current eval focus:
 - unsupported drugs return safe no-claim output;
 - demo-only disclosure remains visible;
 - coverage limitations remain explicit.
+- pipeline-backed sertraline and aspirin runs preserve safety, audit, and coverage behavior.
 
 Current validation state:
 
 ```txt
-passed_cases: 7
+total_cases: 12
+static_text_cases: 7
+pipeline_cases: 5
+passed_cases: 12
 failed_cases: 0
 unsafe_advice_rate: 0.0
 missing_source_rate: 0.0
 uncertainty_missing_rate: 0.0
 audit_missing_rate: 0.0
+pipeline_failure_rate: 0.0
 ```
 
-These evals are safety and evidence-behavior checks for the demo pipeline. They are not clinical validation.
+Static-text evals are guardrails for known unsafe wording patterns. Pipeline evals execute the real local demo pipeline via `build_demo_briefing(...)` and verify report text plus nested audit fields. Neither mode is clinical validation.
 
 ## Local Run Commands
 
@@ -169,6 +174,7 @@ ruff check app tests evals
 mypy app evals
 python -m evals.runner
 python -m app.cli demo-report --drug sertraline --out-dir reports
+python -m app.cli demo-report --drug aspirin --out-dir reports
 uvicorn app.main:app --reload
 ```
 

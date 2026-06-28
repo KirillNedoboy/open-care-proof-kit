@@ -10,20 +10,21 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.4 Evidence Pack Hardening
+Phase 1.5 Pipeline-backed Evals and GitHub Polish
 
 ## Current status
 
-Phase 1.4 hardens the demo evidence layer with strict source validation, explicit demo-only coverage reporting, and safe unsupported-drug behavior while preserving the existing local-first CLI/API/web demo boundaries.
+Phase 1.5 extends eval coverage from static guardrails to real local pipeline execution, adds Phase 1.5 reviewer docs/status polish, and preserves the existing local-first CLI/API/web demo boundaries and medical-safety rules.
 
 ## Last validated state
 
-Phase 1.4 validation:
+Phase 1.5 validation:
 
-- pytest: 29 passed;
+- pytest: 34 passed;
 - ruff: passed;
 - mypy: passed;
-- eval runner: 7 passed cases, 0 failed cases;
+- eval runner: 12 passed cases, 0 failed cases;
+- eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
 - CLI wrote `reports/demo-sertraline-briefing.md`;
 - CLI wrote `reports/demo-sertraline-audit.json`;
 - CLI wrote `reports/demo-aspirin-briefing.md`;
@@ -39,6 +40,7 @@ Phase 1.4 validation:
   - `/demo/audit?drug=aspirin`;
 - audit recorded `policy_passed=True`;
 - audit recorded `raw_health_or_genetic_data_exported=False`.
+- generated reports remained ignored by Git.
 
 ## Product definition
 
@@ -70,6 +72,7 @@ Positioning:
 - Render a clinician-reviewable Markdown briefing.
 - Run safety policy checks.
 - Produce JSON audit metadata with report ID, app version, pipeline steps, evidence pack version, policy status, raw-export status, and demo coverage status.
+- Run static-text guardrail evals and pipeline-backed evals against the real local demo pipeline.
 - Generate report/audit files from the CLI.
 - Serve minimal landing/demo/report HTML pages from FastAPI.
 - Serve report/audit data from FastAPI.
@@ -115,6 +118,7 @@ ruff check app tests evals
 mypy app evals
 python -m evals.runner
 python -m app.cli demo-report --drug sertraline --out-dir reports
+python -m app.cli demo-report --drug aspirin --out-dir reports
 uvicorn app.main:app --reload
 ```
 
@@ -149,4 +153,4 @@ Expected:
 
 ## Current next step
 
-Add a lightweight CI workflow or local `make check` equivalent, then expand the demo evidence pack cautiously without weakening source validation, coverage disclosure, or medical-safety boundaries.
+Add a lightweight CI workflow or local `make check` equivalent, then expand demo evidence-pack coverage cautiously while preserving explicit sources, explicit limitations, fail-closed unsupported-drug behavior, and the new pipeline-backed eval guardrails.

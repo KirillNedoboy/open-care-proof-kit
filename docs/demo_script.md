@@ -57,11 +57,11 @@ Expected output:
 - pytest passes;
 - ruff passes;
 - mypy passes;
-- eval runner reports 3 passed cases and 0 failed cases.
+- eval runner reports 12 passed cases and 0 failed cases, including 7 static-text guardrails and 5 pipeline-backed cases.
 
 Say:
 
-> The checks verify deterministic unit behavior, linting, strict typing, and synthetic safety/evidence evals. These evals are not clinical validation; they are guardrails against unsafe demo output.
+> The checks verify deterministic unit behavior, linting, strict typing, and synthetic safety/evidence evals. Some evals are static text guardrails; some run the real local demo pipeline. None of them are clinical validation.
 
 ## 0:50-1:20 - Generate Demo Artifacts
 

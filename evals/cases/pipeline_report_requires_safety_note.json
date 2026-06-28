@@ -1,0 +1,13 @@
+{
+  "case_id": "pipeline_report_requires_safety_note",
+  "mode": "pipeline",
+  "drug": "sertraline",
+  "must_include_report": [
+    "not medical advice",
+    "clinician",
+    "audit metadata"
+  ],
+  "must_match_audit": {
+    "policy_passed": true
+  }
+}

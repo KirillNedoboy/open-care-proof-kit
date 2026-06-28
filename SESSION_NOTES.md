@@ -382,3 +382,74 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Add CI or a local `make check` equivalent, then expand the demo evidence pack only with explicit sources, explicit limitations, and preserved no-claim behavior for unsupported drugs.
+
+## 2026-06-25 - Phase 1.5 pipeline-backed evals and GitHub polish
+
+### Changed
+- Extended `evals/runner.py` so eval cases support both:
+  - `static_text` mode for existing wording guardrails;
+  - `pipeline` mode that executes the real local demo pipeline through `build_demo_briefing(drug)`.
+- Added nested audit matching for dotted paths such as `coverage.coverage_status`.
+- Expanded eval metrics in `evals/metrics.py`:
+  - `total_cases`;
+  - `static_text_cases`;
+  - `pipeline_cases`;
+  - `passed_cases`;
+  - `failed_cases`;
+  - `unsafe_advice_rate`;
+  - `missing_source_rate`;
+  - `uncertainty_missing_rate`;
+  - `audit_missing_rate`;
+  - `pipeline_failure_rate`.
+- Added five pipeline-backed eval cases:
+  - `pipeline_sertraline_matched_demo_rule`;
+  - `pipeline_aspirin_unsupported_no_claim`;
+  - `pipeline_report_requires_safety_note`;
+  - `pipeline_audit_raw_export_false`;
+  - `pipeline_coverage_demo_only_disclosure`.
+- Added/updated eval runner tests for:
+  - preserved static-text behavior;
+  - pipeline execution through `build_demo_briefing`;
+  - safe unsupported-drug pipeline behavior;
+  - nested audit path matching;
+  - summary JSON static/pipeline counts.
+- Updated reviewer-facing docs to describe pipeline-backed evals, Phase 1.5 metrics, demo-only coverage language, and current repo status.
+- Added `docs/project_status.md` with current commits, capabilities, non-goals, validation commands, and next safe roadmap.
+
+### Files changed
+- `evals/metrics.py`
+- `evals/runner.py`
+- `evals/cases/pipeline_aspirin_unsupported_no_claim.json`
+- `evals/cases/pipeline_audit_raw_export_false.json`
+- `evals/cases/pipeline_coverage_demo_only_disclosure.json`
+- `evals/cases/pipeline_report_requires_safety_note.json`
+- `evals/cases/pipeline_sertraline_matched_demo_rule.json`
+- `tests/test_evals_runner.py`
+- `README.md`
+- `docs/reviewer_quickstart.md`
+- `docs/eval_results.md`
+- `docs/demo_script.md`
+- `docs/project_status.md`
+- `CHECKPOINT.md`
+- `SESSION_NOTES.md`
+
+### Validation
+- `.venv\Scripts\python.exe -m pytest` - 34 passed.
+- `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
+- `.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+- `.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports` - wrote `reports/demo-sertraline-briefing.md` and `reports/demo-sertraline-audit.json`.
+- `.venv\Scripts\python.exe -m app.cli demo-report --drug aspirin --out-dir reports` - wrote `reports/demo-aspirin-briefing.md` and `reports/demo-aspirin-audit.json`.
+- `git status --short --ignored reports` - generated report and audit artifacts remained ignored.
+
+### Commit summary
+- Phase 1.5 prepared as an uncommitted working tree on `phase-1-pipeline-evals`.
+- Scope stayed limited to eval coverage, test coverage, and reviewer/status documentation.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, start/stop advice, real patient data, FASTQ/BAM/WGS support, SaaS/auth/payments, Telegram, blockchain, cloud raw genotype upload, or new clinical claims beyond the demo evidence pack were added.
+- Safety policy and eval boundaries were strengthened, not weakened.
+
+### Next safe step
+- Run the full Phase 1.5 validation sequence, confirm generated reports remain ignored, inspect `git diff --stat`, and only then decide whether to commit.

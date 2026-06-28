@@ -1,0 +1,21 @@
+{
+  "case_id": "pipeline_aspirin_unsupported_no_claim",
+  "mode": "pipeline",
+  "drug": "aspirin",
+  "must_include_report": [
+    "no demo evidence-pack rules exist for this drug",
+    "not medical advice"
+  ],
+  "must_not_include_report": [
+    "you should start",
+    "you should stop",
+    "increase dose",
+    "reduce dose"
+  ],
+  "must_match_audit": {
+    "policy_passed": true,
+    "coverage.coverage_status": "drug_not_in_demo_pack",
+    "coverage.matched_findings": 0,
+    "raw_health_or_genetic_data_exported": false
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "case_id": "pipeline_audit_raw_export_false",
+  "mode": "pipeline",
+  "drug": "sertraline",
+  "must_match_audit": {
+    "raw_health_or_genetic_data_exported": false,
+    "policy_passed": true
+  }
+}
