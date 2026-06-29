@@ -2,66 +2,60 @@
 
 ## One-Liner
 
-OpenCare Proof Kit is open-source infrastructure for private, evidence-grounded health AI agents: local-first data loading, deterministic evidence tools, safety policy checks, audit trails, and evals, with Medication-to-Doctor Briefing as the first reference workflow.
+OpenCare Proof Kit is open-source trust infrastructure for private personal agents: local-first input handling, evidence packs, deterministic policy checks, constrained reporting, audit trails, and evals, with health as the reference stress-test workflow.
 
 ## Problem
 
-Health AI agents will operate around some of the most sensitive personal data: medications, symptoms, labs, family history, and genetics. Generic LLM applications are not enough for this domain because they can blur evidence, omit uncertainty, invent sources, or produce unsafe medical advice.
+Personal agents are starting to work with sensitive user context before the open-source stack has enough trust primitives around them. In domains like health, finance, legal, and identity, the hard question is not whether an LLM can produce a fluent answer. It is whether a user, reviewer, or downstream builder can inspect what data was used, which evidence supported the output, which policy checks ran, and why the system refused to make unsupported claims.
 
-At the same time, closed cloud-first products can require users to surrender raw health or genetic context before they see any value. That model is difficult to trust, difficult to audit, and misaligned with users who need privacy-preserving tools for sensitive decisions.
+Health makes the problem visible. Medication, symptoms, labs, family history, and genetics are private, easy to misuse, and easy for a generic chatbot to overstate. A closed cloud-first workflow can also require users to surrender raw sensitive context before they can see whether the system is safe or useful.
 
 ## Solution
 
-OpenCare Proof Kit provides a reusable trust/evidence/safety layer for health AI agents:
+OpenCare Proof Kit provides a small, runnable trust/evidence/audit/safety substrate:
 
-- local-first demo execution;
 - synthetic/demo data by default;
+- local-first execution;
+- evidence packs with source, limitation, and coverage fields;
 - deterministic parsers and rule matching before report writing;
-- local evidence packs with source and limitation fields;
-- explicit safety policy;
-- Markdown report plus JSON audit;
-- open eval suite for unsafe-output patterns.
+- explicit safety policy with fail-closed behavior;
+- constrained Markdown output plus JSON audit metadata;
+- static-text and pipeline-backed evals for unsafe-output patterns.
 
-The first reference workflow is pharmacogenomics Medication-to-Doctor Briefing. It uses a synthetic patient and demo genotype-like data to produce a clinician-reviewable briefing about what to discuss with a clinician. It does not recommend medication choice, dosage, or start/stop actions.
+The first reference workflow is Medication-to-Doctor Briefing. It uses a synthetic patient, demo genotype-like data, and a local demo evidence pack to produce a clinician-reviewable briefing about what to discuss with a clinician. It does not diagnose, recommend medication choice, recommend dosage, or instruct start/stop actions.
 
-## Why This Is Open-Source Infrastructure
+## Reusable Trust Pattern
 
-The project is not trying to own the patient relationship, monetize a closed chatbot, or become a SaaS workflow in v0.1. Its value is in reusable building blocks:
+The infrastructure pattern is intentionally simple:
 
 ```txt
-private/local data input
-  -> deterministic normalization
-  -> evidence pack
-  -> rule matcher
-  -> safety policy
-  -> report writer
-  -> audit JSON
-  -> eval suite
+private input context
+  -> evidence
+  -> deterministic policy
+  -> report/output
+  -> audit
+  -> evals
 ```
 
-Other health-agent builders can reuse the pattern for different evidence-grounded workflows while preserving the same principles: source grounding, local-first execution, safety boundaries, and auditability.
+Health is the reference implementation because it stress-tests the pattern against sensitive data, evidence requirements, safety boundaries, and uncertainty. The repo is not claiming to be a generalized cross-domain platform in production. It is a proof kit that makes the trust layer inspectable and reusable.
+
+## Why This Fits Sentient-Style Public-Good AI
+
+Sentient-aligned open-source AI should let users and builders inspect and control the systems that act on private context. OpenCare Proof Kit supports that direction by keeping the workflow local-first, exposing evidence and audit metadata, enforcing deterministic checks before any report-writing layer, and shipping evals that can be run by reviewers.
+
+The grant case is infrastructure, not another health chatbot. The value is the reusable boundary around sensitive-agent behavior: no source, no claim; unsupported inputs produce safe no-claim output; report text must include limitations and clinician-review language; audits record policy status and raw-export status.
 
 ## Private-By-Default
 
-The demo runs locally and uses synthetic/demo data. The audit trail records that raw health or genetic data was not exported. Cloud raw genotype upload is not enabled by default and is outside the MVP boundary.
+The demo runs locally and uses synthetic/demo data. Audit metadata records that raw health or genetic data was not exported. Cloud raw genotype upload is not enabled by default and is outside the MVP boundary.
 
-Privacy is not a marketing layer added after the product works. It is part of the architecture: deterministic local data handling comes before any report-writing layer.
+Privacy is part of the architecture, not a deployment promise added later. Local deterministic handling comes before any explanation or report-writing layer.
 
 ## Empowering, Not Extractive
 
-The output is meant to help a person prepare a better clinician conversation. It does not replace a clinician, make a diagnosis, prescribe, recommend dosage, or instruct medication changes.
+The output helps a person prepare a better clinician conversation. It does not replace a clinician, make a diagnosis, prescribe, recommend dosage, or instruct medication changes.
 
-The report exposes:
-
-- the evidence source;
-- the evidence level;
-- limitations;
-- uncertainty;
-- clinician-review language;
-- safety status;
-- audit metadata.
-
-That makes the workflow inspectable instead of opaque.
+The report exposes evidence sources, evidence level, limitations, uncertainty, clinician-review language, safety status, and audit metadata. That makes the workflow reviewable instead of opaque.
 
 ## Reference Workflow
 
@@ -76,7 +70,7 @@ Medication-to-Doctor Briefing:
 7. Produce JSON audit metadata.
 8. Run synthetic evals.
 
-This is a focused pharmacogenomics demo. It is not a full clinical genetics pipeline, not WGS interpretation, and not medical advice.
+This is a focused pharmacogenomics reference workflow. It is not a full clinical genetics pipeline, not WGS interpretation, not clinical decision support, and not medical advice.
 
 ## Safety Boundary
 
@@ -94,22 +88,22 @@ Every report must include sources, limitations, evidence level, safety note, cli
 
 ## Why Now
 
-The AI ecosystem is moving quickly from chat interfaces toward agents that act on private context. Health is one of the domains where that shift is both promising and dangerous. Before health agents become normal, the open-source ecosystem needs reusable safety, evidence, audit, and privacy patterns that are easy to inspect and run locally.
+Agents are moving from chat into workflows that handle private context. Sensitive domains need open trust patterns before that shift becomes normal: local execution where possible, inspectable evidence, explicit policies, audit metadata, and evals that catch unsafe drift.
 
-OpenCare Proof Kit is intentionally small enough to review but structured enough to become a foundation for safer sensitive-data agents.
+OpenCare Proof Kit is small enough to review line by line and complete enough to run end to end. That is the point of the proof kit.
 
 ## Why This Deserves A Grant
 
 Grant funding supports public-good infrastructure rather than a closed product wedge. The project creates a concrete, runnable reference implementation for:
 
 - local-first sensitive-data AI;
-- deterministic tools before LLMs;
-- evidence packs and citations;
-- safety policy enforcement;
+- deterministic tools before LLM explanations;
+- source-grounded evidence packs;
+- fail-closed safety policy enforcement;
 - audit metadata;
 - evals focused on unsafe medical-advice prevention.
 
-The grant would fund infrastructure that others can fork, inspect, test, and adapt.
+The grant would fund infrastructure that others can fork, inspect, test, and adapt without accepting a black-box health assistant.
 
 ## What Grant Funding Unlocks
 
@@ -124,4 +118,4 @@ Funding would unlock:
 - privacy-preserving model adapter research without default raw-data upload;
 - a public demo video and maintainer documentation.
 
-The next work should deepen safety, evidence, and auditability. It should not expand into diagnosis, dosage recommendation, real patient data, WGS/FASTQ/BAM processing, SaaS auth, payments, Telegram, blockchain, or cloud raw genotype upload by default.
+The next work should deepen safety, evidence, auditability, and reviewer confidence. It should not expand into diagnosis, dosage recommendation, real patient data, WGS/FASTQ/BAM processing, SaaS auth, payments, Telegram, blockchain, or cloud raw genotype upload by default.
