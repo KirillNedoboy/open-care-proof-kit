@@ -1,10 +1,25 @@
 # OpenCare Proof Kit
 
-OpenCare Proof Kit is a local-first, open-source proof layer for building private, evidence-grounded health AI agents with inspectable safety checks, audit trails, and evals.
+OpenCare Proof Kit is open-source trust infrastructure for private, inspectable, fail-closed AI agent workflows, with health as the reference stress-test domain.
 
-The reference demo is **Medication-to-Doctor Briefing**: a deterministic local pipeline that turns synthetic health vault data, demo genotype-like data, a local evidence pack, safety policy checks, and a report writer into a clinician-reviewable Markdown briefing plus JSON audit trail.
+Personal agents are moving toward sensitive user context: health history, financial records, legal documents, identity data, and private work. Those workflows need reusable trust primitives before they scale: local input handling, source-grounded evidence, deterministic policy checks, conservative output generation, audit trails, and evals that fail when the system drifts.
 
-This project is not an AI doctor, not a diagnostic system, and not a medication recommendation engine.
+This repo makes that pattern concrete in the hardest safe MVP domain available here: health. The reference workflow is **Medication-to-Doctor Briefing**, a deterministic local pipeline that turns synthetic health vault data, demo genotype-like data, a local evidence pack, safety policy checks, and a report writer into a clinician-reviewable Markdown briefing plus JSON audit trail.
+
+Reusable substrate:
+
+```txt
+private input context
+  -> evidence pack
+  -> deterministic rules and safety policy
+  -> constrained report/output
+  -> audit metadata
+  -> evals
+```
+
+Current validation state: 35 tests, ruff, mypy, and evals runner with 12 passed cases / 0 failed cases.
+
+OpenCare Proof Kit is not an AI doctor, not a diagnostic system, not a clinical deployment, and not a medication recommendation engine.
 
 ## Current Status
 
@@ -27,11 +42,11 @@ See [docs/project_status.md](docs/project_status.md) for the current capability 
 
 ## What It Is
 
-- Open-source infrastructure for trust, evidence, safety, and auditability in health AI agents.
-- A local-first demo pipeline that runs on synthetic/demo data.
+- Open-source infrastructure for trust, evidence, safety, auditability, and evals in sensitive agent workflows.
+- A local-first health reference workflow that runs on synthetic/demo data.
 - A deterministic tool chain before any report-writing layer.
-- A reusable pattern for source-cited health briefings.
-- A safety and eval scaffold for catching unsafe medical-advice patterns.
+- A reusable pattern for source-grounded, policy-checked outputs.
+- A safety and eval scaffold for catching unsafe medical-advice patterns in the reference domain.
 - A grant-reviewable proof kit with docs, release checklist, security policy, and contribution boundaries.
 
 ## What It Is Not
@@ -49,9 +64,19 @@ See [docs/project_status.md](docs/project_status.md) for the current capability 
 
 ## Why Local-First
 
-Health agents may touch medications, symptoms, lab context, family history, and genetics. Those are high-sensitivity data categories. OpenCare Proof Kit keeps the reference workflow local-first and private-by-default so reviewers can inspect the full path from demo input to generated report without a cloud dependency or hidden data transfer.
+Sensitive agents should not require raw private context to leave the user's environment before the user can inspect what the system does. OpenCare Proof Kit keeps the reference workflow local-first and private-by-default so reviewers can inspect the full path from demo input to generated report without a cloud dependency or hidden data transfer.
 
 The current demo uses only synthetic/demo files in `data/`. Audit metadata records that raw health or genetic data was not exported. The evidence pack is demo-only, and coverage in reports/audits is demo evidence-pack coverage, not clinical coverage.
+
+## Reusable Trust Pattern
+
+The reusable pattern is:
+
+```txt
+input context -> evidence -> policy -> report/output -> audit
+```
+
+The health workflow is a reference case for this pattern, not a claim that the repo already solves broad healthcare. Health is useful as a proving ground because it has sensitive data, strong evidence requirements, clear safety boundaries, and a low tolerance for unsupported claims.
 
 ## Architecture
 
