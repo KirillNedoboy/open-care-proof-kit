@@ -1,25 +1,14 @@
 # OpenCare Proof Kit
 
-OpenCare Proof Kit is open-source trust infrastructure for private, inspectable, fail-closed AI agent workflows, with health as the reference stress-test domain.
+OpenCare Proof Kit is reusable trust infrastructure for private, inspectable, fail-closed AI agent workflows, with health as the reference stress-test domain.
 
-Personal agents are moving toward sensitive user context: health history, financial records, legal documents, identity data, and private work. Those workflows need reusable trust primitives before they scale: local input handling, source-grounded evidence, deterministic policy checks, conservative output generation, audit trails, and evals that fail when the system drifts.
+It provides a local-first proof layer for agent workflows that must be evidence-grounded, policy-checked, auditable, and conservative when data is missing or unsupported.
 
-This repo makes that pattern concrete in the hardest safe MVP domain available here: health. The reference workflow is **Medication-to-Doctor Briefing**, a deterministic local pipeline that turns synthetic health vault data, demo genotype-like data, a local evidence pack, safety policy checks, and a report writer into a clinician-reviewable Markdown briefing plus JSON audit trail.
+The implemented reference workflow is Medication-to-Doctor Briefing: a deterministic local pipeline that turns synthetic health vault data, demo genotype-like data, a local evidence pack, safety policy checks, and a report writer into a clinician-reviewable Markdown briefing plus JSON audit trail.
 
-Reusable substrate:
+Health is used as the first reference case because it is one of the hardest domains for personal agents: privacy is critical, mistakes are costly, sources matter, and unsupported claims must fail closed.
 
-```txt
-private input context
-  -> evidence pack
-  -> deterministic rules and safety policy
-  -> constrained report/output
-  -> audit metadata
-  -> evals
-```
-
-Current validation state: 35 tests, ruff, mypy, and evals runner with 12 passed cases / 0 failed cases.
-
-OpenCare Proof Kit is not an AI doctor, not a diagnostic system, not a clinical deployment, and not a medication recommendation engine.
+This project is not an AI doctor, not a diagnostic system, not a medication recommendation engine, and not a generalized cross-domain platform in production.
 
 ## Current Status
 
@@ -39,6 +28,19 @@ See [docs/project_status.md](docs/project_status.md) for the current capability 
 - [Milestones](docs/grant_milestones.md)
 - [Demo video script](docs/demo_video_script.md)
 - [Screenshots](docs/screenshots.md)
+
+## Reusable Trust Pattern
+
+```txt
+Sensitive context
+  -> local data adapter
+  -> evidence pack
+  -> deterministic rules
+  -> safety policy
+  -> report/output handoff
+  -> audit trail
+  -> evals
+```
 
 ## What It Is
 
@@ -67,16 +69,6 @@ See [docs/project_status.md](docs/project_status.md) for the current capability 
 Sensitive agents should not require raw private context to leave the user's environment before the user can inspect what the system does. OpenCare Proof Kit keeps the reference workflow local-first and private-by-default so reviewers can inspect the full path from demo input to generated report without a cloud dependency or hidden data transfer.
 
 The current demo uses only synthetic/demo files in `data/`. Audit metadata records that raw health or genetic data was not exported. The evidence pack is demo-only, and coverage in reports/audits is demo evidence-pack coverage, not clinical coverage.
-
-## Reusable Trust Pattern
-
-The reusable pattern is:
-
-```txt
-input context -> evidence -> policy -> report/output -> audit
-```
-
-The health workflow is a reference case for this pattern, not a claim that the repo already solves broad healthcare. Health is useful as a proving ground because it has sensitive data, strong evidence requirements, clear safety boundaries, and a low tolerance for unsupported claims.
 
 ## Architecture
 
