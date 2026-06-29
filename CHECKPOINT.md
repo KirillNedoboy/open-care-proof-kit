@@ -14,7 +14,7 @@ Final submission-ready packaging
 
 ## Current status
 
-The public branch `phase-1-github-grant-readiness` is in final submission-ready packaging state. This documentation drift cleanup aligns README, project status, checkpoint, and session notes with commit `97bb70f docs: add final submission checklist`. It is documentation-only and does not add product features, medical functionality, new clinical claims, or runtime behavior changes.
+The public branch `phase-1-github-grant-readiness` is in final submission-ready packaging state. This final public GitHub polish aligns README, project status, checkpoint, final checklist, and session notes with commit `2a1b539 docs: sync final submission status`. It is documentation-only and does not add product features, medical functionality, new clinical claims, or runtime behavior changes.
 
 ## Last validated state
 
@@ -154,4 +154,4 @@ Expected:
 
 ## Current next step
 
-Run final validation, inspect the documentation-only diff, commit `docs: sync final submission status`, and push `phase-1-github-grant-readiness`. After submission packaging, the next implementation-safe improvement remains lightweight CI or a local `make check` equivalent.
+Run final validation and hygiene checks, commit `docs: polish final public submission state`, push `phase-1-github-grant-readiness`, create public `main` from the final branch, and set GitHub default branch to `main`. Do not delete old branches or force-push.

@@ -6,6 +6,7 @@ Use this checklist before submitting OpenCare Proof Kit for grant or reviewer ev
 
 - Repository: https://github.com/KirillNedoboy/open-care-proof-kit
 - Submission branch: `phase-1-github-grant-readiness`
+- Recommended final public default branch: `main`, created from `phase-1-github-grant-readiness`.
 - Current submission state includes the grant readiness docs, grant submission answers, visual demo screenshots, and demo video script.
 
 ## Reviewer Materials

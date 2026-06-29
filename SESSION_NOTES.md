@@ -619,3 +619,24 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
 - `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
 - `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+
+## 2026-06-29 - Final public GitHub polish
+
+### Changed
+- Updated `README.md` to show latest pushed commit `2a1b539 docs: sync final submission status`.
+- Added a compact reviewer-links block near the top of `README.md`.
+- Updated `docs/project_status.md` to include `2a1b539` and keep current state as final submission-ready packaging.
+- Updated `docs/final_submission_checklist.md` with the recommended final public default branch: `main`, created from `phase-1-github-grant-readiness`.
+- Updated `CHECKPOINT.md` to record this as final public GitHub polish.
+
+### Product boundaries
+- Documentation-only public polish.
+- No runtime behavior changed.
+- No product scope changed.
+- No medical logic, evidence rules, safety policy, eval logic, clinical claims, real patient data, real genetic data, or cloud raw genotype upload changed.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 35 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.

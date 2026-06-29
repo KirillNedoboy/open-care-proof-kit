@@ -33,6 +33,7 @@ The current public branch packages the grant/reviewer docs, submission answers, 
 - `ba6b4f9 docs: add visual demo assets`
 - `53cb7f8 docs: add visual demo assets`
 - `97bb70f docs: add final submission checklist`
+- `2a1b539 docs: sync final submission status`
 
 ## Current Capabilities
 
@@ -48,7 +49,7 @@ The current public branch packages the grant/reviewer docs, submission answers, 
 
 ## Current Validation State
 
-Phase 1.9 validation:
+Final submission validation:
 
 ```txt
 pytest: 35 passed

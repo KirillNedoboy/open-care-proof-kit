@@ -9,12 +9,21 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 ## Current Status
 
 - Phase: final submission-ready packaging.
-- Latest pushed commit: `97bb70f docs: add final submission checklist`.
+- Latest pushed commit: `2a1b539 docs: sync final submission status`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
 - Validation baseline: 35 tests, ruff, mypy, and evals runner with 12 passed cases / 0 failed cases.
 
 See [docs/project_status.md](docs/project_status.md) for the current capability and validation snapshot.
+
+## Reviewer Links
+
+- [Final submission checklist](docs/final_submission_checklist.md)
+- [Grant submission answers](docs/grant_submission_answers.md)
+- [Short pitch](docs/grant_short_pitch.md)
+- [Milestones](docs/grant_milestones.md)
+- [Demo video script](docs/demo_video_script.md)
+- [Screenshots](docs/screenshots.md)
 
 ## What It Is
 
@@ -242,14 +251,8 @@ OpenCare Proof Kit is grant-aligned open-source AI infrastructure:
 
 The grant case is not "another health chatbot." The grant case is reusable infrastructure for making sensitive health-agent workflows inspectable, source-grounded, safety-checked, and locally runnable.
 
-Grant materials:
+Grant materials are linked near the top of this README for reviewers. Additional background:
 
-- [docs/final_submission_checklist.md](docs/final_submission_checklist.md)
-- [docs/grant_submission_answers.md](docs/grant_submission_answers.md)
-- [docs/grant_short_pitch.md](docs/grant_short_pitch.md)
-- [docs/grant_milestones.md](docs/grant_milestones.md)
-- [docs/demo_video_script.md](docs/demo_video_script.md)
-- [docs/screenshots.md](docs/screenshots.md)
 - [docs/grant_application_pack.md](docs/grant_application_pack.md)
 - [docs/grant_pitch.md](docs/grant_pitch.md)
 - [docs/sentient_alignment.md](docs/sentient_alignment.md)
