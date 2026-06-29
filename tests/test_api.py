@@ -64,6 +64,14 @@ def test_demo_report_view_renders_briefing() -> None:
     assert "Demo evidence-pack coverage" in response.text
 
 
+def test_demo_report_view_uses_neutral_demo_subtitle_for_any_drug() -> None:
+    response = get("/demo/report-view?drug=aspirin")
+
+    assert response.status_code == 200
+    assert "Medication-to-Doctor Briefing demo" in response.text
+    assert "sertraline demo" not in response.text
+
+
 def test_demo_report_endpoint_returns_safe_no_claim_for_unsupported_drug() -> None:
     response = get("/demo/report?drug=aspirin")
 

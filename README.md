@@ -8,8 +8,8 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 
 ## Current Status
 
-- Phase: 1.6 GitHub + Grant Readiness Pack.
-- Latest completed implementation commit: `608fc11 feat: add pipeline-backed evals`.
+- Phase: 1.9 Visual Demo Assets Pack.
+- Latest pushed commit: `ed2ac9d docs: add grant submission answer pack`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
 - Validation baseline: 34 tests, ruff, mypy, 12 eval cases, and CLI report generation for `sertraline` and `aspirin`.
@@ -141,6 +141,20 @@ http://127.0.0.1:8000/demo/audit?drug=sertraline
 ```
 
 The local web demo is server-rendered with FastAPI and Jinja2. It is a presentation layer over the same deterministic briefing pipeline used by the CLI and JSON/Markdown API endpoints.
+
+## Visual Demo
+
+Screenshots captured from the local demo:
+
+![OpenCare Proof Kit landing page](docs/assets/screenshots/landing.png)
+
+![Synthetic demo patient and local pipeline](docs/assets/screenshots/demo.png)
+
+![Sertraline matched demo-rule report](docs/assets/screenshots/sertraline-report.png)
+
+![Aspirin unsupported-drug safe no-claim report](docs/assets/screenshots/aspirin-safe-no-claim.png)
+
+See [docs/screenshots.md](docs/screenshots.md) for screenshot captions, proof points, and manual recapture instructions. See [docs/demo_video_script.md](docs/demo_video_script.md) for a 90-120 second grant/reviewer demo script.
 
 ## Eval Metrics
 

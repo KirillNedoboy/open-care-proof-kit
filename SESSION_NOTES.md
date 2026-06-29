@@ -561,3 +561,33 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Run Phase 1.8 validation, confirm generated reports remain ignored, inspect `git diff --stat`, and decide whether to commit.
+
+## 2026-06-29 - Phase 1.9 Visual Demo Assets Pack
+
+### Changed
+- Created branch `phase-1-demo-assets` from clean `phase-1-github-grant-readiness` state.
+- Captured local web demo screenshots from `http://127.0.0.1:8000/` using synthetic/demo data only:
+  - `docs/assets/screenshots/landing.png`;
+  - `docs/assets/screenshots/demo.png`;
+  - `docs/assets/screenshots/sertraline-report.png`;
+  - `docs/assets/screenshots/aspirin-safe-no-claim.png`.
+- Added `docs/demo_video_script.md` with a 90-120 second reviewer/grant demo script.
+- Updated `docs/screenshots.md` with file paths, captions, proof points, and manual capture fallback.
+- Updated `README.md` with a visual demo section.
+- Updated grant/status docs to reference the visual assets without changing the product pitch or scope.
+- Fixed the report-view subtitle from hardcoded "sertraline demo" wording to neutral "Medication-to-Doctor Briefing demo" wording.
+- Refreshed the sertraline and aspirin report screenshots after the subtitle fix.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 35 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+- Focused regression check after the subtitle fix: `.\.venv\Scripts\python.exe -m pytest tests\test_api.py -k neutral_demo_subtitle` - passed.
+
+### Product boundaries
+- No diagnosis, dosage recommendation, start/stop advice, real patient data, real genetic data, FASTQ/BAM/WGS support, SaaS/auth/payments, Telegram, blockchain, cloud raw genotype upload, new clinical claims, medical functionality, or weakened safety/evals were added.
+
+### Next safe step
+- Run validation, confirm generated reports remain ignored, inspect `git diff --stat`, and decide whether to commit the visual demo assets pack.

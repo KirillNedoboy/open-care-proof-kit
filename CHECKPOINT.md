@@ -10,25 +10,23 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.8 Grant Submission Answers Pack
+Phase 1.9 Visual Demo Assets Pack
 
 ## Current status
 
-Phase 1.8 adds copy-paste-ready Sentient/public-goods grant submission answers, short pitches, conservative milestones, and application wording guardrails. It is documentation-only and does not add medical functionality or expand product scope.
+Phase 1.9 adds visual GitHub/grant review assets: local-demo screenshots, screenshot documentation, and a 90-120 second demo video script. It is documentation/assets-only and does not add medical functionality, new clinical claims, or runtime behavior changes.
 
 ## Last validated state
 
-Phase 1.8 validation:
+Phase 1.9 validation:
 
-- pytest: 34 passed;
+- pytest: 35 passed;
 - ruff: passed;
 - mypy: passed;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
-- CLI wrote `reports/demo-sertraline-briefing.md`;
-- CLI wrote `reports/demo-sertraline-audit.json`;
-- CLI wrote `reports/demo-aspirin-briefing.md`;
-- CLI wrote `reports/demo-aspirin-audit.json`;
+- screenshots captured from local demo pages with synthetic/demo data only;
+- report-view screenshots refreshed after replacing the hardcoded sertraline subtitle with neutral demo wording;
 - Server-rendered web pages worked:
   - `/demo/report-view?drug=sertraline`;
   - `/demo/report-view?drug=aspirin`;
@@ -79,6 +77,7 @@ Positioning:
 - Run unit tests, lint checks, strict typing checks, and synthetic evals.
 - Provide GitHub/grant readiness docs for license, contribution rules, security reporting, release checks, screenshots, roadmap, and grant review.
 - Provide grant submission docs with copy-paste answers, short pitches, conservative milestones, and wording guardrails.
+- Provide visual demo screenshots and a 90-120 second reviewer/grant demo video script.
 
 ## Hard boundaries
 
@@ -155,4 +154,4 @@ Expected:
 
 ## Current next step
 
-Run Phase 1.8 validation, confirm generated reports remain ignored, inspect the diff, and then decide whether to commit the grant submission answers pack. After that, add a lightweight CI workflow or local `make check` equivalent.
+Run Phase 1.9 validation, confirm generated reports remain ignored, inspect the diff, and then decide whether to commit the visual demo assets pack. After that, add a lightweight CI workflow or local `make check` equivalent.
