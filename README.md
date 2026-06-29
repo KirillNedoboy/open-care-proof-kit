@@ -8,11 +8,11 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 
 ## Current Status
 
-- Phase: 1.9 Visual Demo Assets Pack.
-- Latest pushed commit: `ed2ac9d docs: add grant submission answer pack`.
+- Phase: final submission-ready packaging.
+- Latest pushed commit: `97bb70f docs: add final submission checklist`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
-- Validation baseline: 34 tests, ruff, mypy, 12 eval cases, and CLI report generation for `sertraline` and `aspirin`.
+- Validation baseline: 35 tests, ruff, mypy, and evals runner with 12 passed cases / 0 failed cases.
 
 See [docs/project_status.md](docs/project_status.md) for the current capability and validation snapshot.
 
@@ -244,6 +244,12 @@ The grant case is not "another health chatbot." The grant case is reusable infra
 
 Grant materials:
 
+- [docs/final_submission_checklist.md](docs/final_submission_checklist.md)
+- [docs/grant_submission_answers.md](docs/grant_submission_answers.md)
+- [docs/grant_short_pitch.md](docs/grant_short_pitch.md)
+- [docs/grant_milestones.md](docs/grant_milestones.md)
+- [docs/demo_video_script.md](docs/demo_video_script.md)
+- [docs/screenshots.md](docs/screenshots.md)
 - [docs/grant_application_pack.md](docs/grant_application_pack.md)
 - [docs/grant_pitch.md](docs/grant_pitch.md)
 - [docs/sentient_alignment.md](docs/sentient_alignment.md)

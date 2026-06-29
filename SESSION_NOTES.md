@@ -591,3 +591,31 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Run validation, confirm generated reports remain ignored, inspect `git diff --stat`, and decide whether to commit the visual demo assets pack.
+
+## 2026-06-29 - Final submission documentation drift cleanup
+
+### Changed
+- Synced `README.md` current status to final submission-ready packaging.
+- Updated the visible latest commit to `97bb70f docs: add final submission checklist`.
+- Updated the validation baseline to 35 tests, ruff, mypy, and evals runner 12 passed / 0 failed.
+- Added direct README links for final grant/reviewer materials:
+  - `docs/final_submission_checklist.md`;
+  - `docs/grant_submission_answers.md`;
+  - `docs/grant_short_pitch.md`;
+  - `docs/grant_milestones.md`;
+  - `docs/demo_video_script.md`;
+  - `docs/screenshots.md`.
+- Synced `docs/project_status.md` to the public branch `phase-1-github-grant-readiness` and included commits through `97bb70f`.
+- Updated `CHECKPOINT.md` to record this as documentation drift cleanup.
+
+### Product boundaries
+- Documentation-only cleanup.
+- No product features were added.
+- No runtime behavior changed.
+- No medical logic, safety policy, evidence rules, eval logic, or generated-report behavior changed.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 35 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.

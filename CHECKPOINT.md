@@ -10,15 +10,15 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Phase 1.9 Visual Demo Assets Pack
+Final submission-ready packaging
 
 ## Current status
 
-Phase 1.9 adds visual GitHub/grant review assets: local-demo screenshots, screenshot documentation, and a 90-120 second demo video script. It is documentation/assets-only and does not add medical functionality, new clinical claims, or runtime behavior changes.
+The public branch `phase-1-github-grant-readiness` is in final submission-ready packaging state. This documentation drift cleanup aligns README, project status, checkpoint, and session notes with commit `97bb70f docs: add final submission checklist`. It is documentation-only and does not add product features, medical functionality, new clinical claims, or runtime behavior changes.
 
 ## Last validated state
 
-Phase 1.9 validation:
+Final submission validation baseline:
 
 - pytest: 35 passed;
 - ruff: passed;
@@ -154,4 +154,4 @@ Expected:
 
 ## Current next step
 
-Run Phase 1.9 validation, confirm generated reports remain ignored, inspect the diff, and then decide whether to commit the visual demo assets pack. After that, add a lightweight CI workflow or local `make check` equivalent.
+Run final validation, inspect the documentation-only diff, commit `docs: sync final submission status`, and push `phase-1-github-grant-readiness`. After submission packaging, the next implementation-safe improvement remains lightweight CI or a local `make check` equivalent.
