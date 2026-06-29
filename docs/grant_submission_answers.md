@@ -75,6 +75,7 @@ The current demo uses only synthetic/demo data. Audit metadata records `raw_heal
 - JSON audit metadata.
 - Static-text and pipeline-backed evals.
 - GitHub/grant readiness docs, license, contribution guide, security policy, release checklist, screenshot guide, and reviewer quickstart.
+- Visual demo assets: local web screenshots and a 90-120 second demo video script using synthetic/demo data only.
 
 ## K. Technical Architecture
 

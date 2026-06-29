@@ -5,7 +5,7 @@ OpenCare Proof Kit is a local-first, synthetic-data-only proof kit for evidence-
 ## Current Branch
 
 ```txt
-phase-1-github-grant-readiness
+phase-1-demo-assets
 ```
 
 ## Public Repository
@@ -18,9 +18,9 @@ The public GitHub repository has been created and pushed.
 
 ## Current Phase
 
-Phase 1.8 Grant Submission Answers Pack.
+Phase 1.9 Visual Demo Assets Pack.
 
-This phase is grant-copy documentation only. It does not add medical functionality, new clinical claims, real patient data, real genetic data, or cloud raw genotype upload.
+This phase adds GitHub/grant visual demo assets only. It does not change runtime behavior, add medical functionality, add new clinical claims, introduce real patient data, introduce real genetic data, or enable cloud raw genotype upload.
 
 ## Current Commits
 
@@ -29,6 +29,7 @@ This phase is grant-copy documentation only. It does not add medical functionali
 - `dda7958 feat: harden evidence pack validation and coverage reporting`
 - `608fc11 feat: add pipeline-backed evals`
 - `8b2c2fb docs: prepare github and grant readiness pack`
+- `ed2ac9d docs: add grant submission answer pack`
 
 ## Current Capabilities
 
@@ -40,13 +41,14 @@ This phase is grant-copy documentation only. It does not add medical functionali
 - Static-text eval guardrails plus pipeline-backed evals that execute the real local demo pipeline.
 - GitHub/grant readiness docs: license, contribution policy, security policy, grant pack, roadmap, release checklist, and screenshot guide.
 - Grant submission docs: copy-paste application answers, short pitches, conservative milestones, and application wording guardrails.
+- Visual demo screenshots and a grant/reviewer demo video script.
 
 ## Current Validation State
 
-Phase 1.8 validation:
+Phase 1.9 validation:
 
 ```txt
-pytest: 34 passed
+pytest: 35 passed
 ruff: passed
 mypy: passed
 total_cases: 12
@@ -68,8 +70,6 @@ Validation commands:
 .\.venv\Scripts\python.exe -m ruff check app tests evals
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
-.\.venv\Scripts\python.exe -m app.cli demo-report --drug sertraline --out-dir reports
-.\.venv\Scripts\python.exe -m app.cli demo-report --drug aspirin --out-dir reports
 ```
 
 ## Current Non-Goals
@@ -92,6 +92,16 @@ Validation commands:
 - Add more pipeline-backed eval cases when new demo drugs or evidence-pack states are introduced.
 - Improve clinician-review handoff and structured exports without automating clinical action.
 - Research optional confidential compute adapters only after official docs and current research review.
+
+## Visual Demo Asset Status
+
+- `docs/assets/screenshots/landing.png`
+- `docs/assets/screenshots/demo.png`
+- `docs/assets/screenshots/sertraline-report.png`
+- `docs/assets/screenshots/aspirin-safe-no-claim.png`
+- `docs/demo_video_script.md`
+
+Screenshots were captured from local pages under `http://127.0.0.1:8000/` with synthetic/demo data only. They are reviewer assets and do not add clinical functionality.
 
 ## Grant Submission Pack Status
 
