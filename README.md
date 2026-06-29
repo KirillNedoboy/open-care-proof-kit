@@ -9,7 +9,7 @@ This project is not an AI doctor, not a diagnostic system, and not a medication 
 ## Current Status
 
 - Phase: final submission-ready packaging.
-- Latest pushed commit: `2a1b539 docs: sync final submission status`.
+- Public default branch: `main`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
 - Validation baseline: 35 tests, ruff, mypy, and evals runner with 12 passed cases / 0 failed cases.

@@ -640,3 +640,23 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
 - `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 29 source files.
 - `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+
+## 2026-06-29 - Set main as final public branch
+
+### Changed
+- Created `main` from `phase-1-github-grant-readiness`.
+- Pushed `main` to GitHub.
+- Set GitHub default branch to `main`.
+- Added repository topics through `gh`.
+- Updated public docs on `main` so README and project status name `main` as the public default branch.
+- Kept `phase-1-github-grant-readiness` as the historical submission branch.
+
+### Product boundaries
+- Documentation and GitHub repository metadata only.
+- No runtime behavior changed.
+- No product scope changed.
+- No medical logic, evidence rules, safety policy, eval logic, clinical claims, real patient data, real genetic data, or cloud raw genotype upload changed.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 35 passed.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.

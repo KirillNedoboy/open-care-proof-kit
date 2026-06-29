@@ -5,8 +5,8 @@ Use this checklist before submitting OpenCare Proof Kit for grant or reviewer ev
 ## Public Repository
 
 - Repository: https://github.com/KirillNedoboy/open-care-proof-kit
-- Submission branch: `phase-1-github-grant-readiness`
-- Recommended final public default branch: `main`, created from `phase-1-github-grant-readiness`.
+- Public default branch: `main`
+- Historical submission branch: `phase-1-github-grant-readiness`
 - Current submission state includes the grant readiness docs, grant submission answers, visual demo screenshots, and demo video script.
 
 ## Reviewer Materials
@@ -82,10 +82,10 @@ Every generated report must keep the safety note, clinician review note, evidenc
 
 ## Manual GitHub Steps
 
-- Confirm `phase-1-github-grant-readiness` is pushed.
+- Confirm `main` is the GitHub default branch.
+- Confirm historical branch `phase-1-github-grant-readiness` remains pushed.
 - Open the repository page and verify README image links render.
 - Confirm the repository license, security policy, contribution guide, roadmap, release checklist, reviewer quickstart, grant docs, screenshots, and demo video script are visible on GitHub.
 - Confirm generated `reports/` artifacts remain ignored and are not shown as repository files.
 - Confirm repository visibility is public before submitting the grant link.
-- Do not change the default branch automatically unless the maintainer explicitly decides to do it.
 - Do not merge additional feature work into the submission branch before review.

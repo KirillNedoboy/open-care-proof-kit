@@ -5,8 +5,10 @@ OpenCare Proof Kit is a local-first, synthetic-data-only proof kit for evidence-
 ## Current Branch
 
 ```txt
-phase-1-github-grant-readiness
+main
 ```
+
+Historical submission branch: `phase-1-github-grant-readiness`.
 
 ## Public Repository
 
@@ -20,7 +22,7 @@ The public GitHub repository has been created and pushed.
 
 Final submission-ready packaging.
 
-The current public branch packages the grant/reviewer docs, submission answers, visual demo assets, demo video script, and final submission checklist. It does not change runtime behavior, add medical functionality, add new clinical claims, introduce real patient data, introduce real genetic data, or enable cloud raw genotype upload.
+The current public default branch packages the grant/reviewer docs, submission answers, visual demo assets, demo video script, and final submission checklist. It does not change runtime behavior, add medical functionality, add new clinical claims, introduce real patient data, introduce real genetic data, or enable cloud raw genotype upload.
 
 ## Current Commits
 
@@ -34,6 +36,7 @@ The current public branch packages the grant/reviewer docs, submission answers, 
 - `53cb7f8 docs: add visual demo assets`
 - `97bb70f docs: add final submission checklist`
 - `2a1b539 docs: sync final submission status`
+- `0a74740 docs: polish final public submission state`
 
 ## Current Capabilities
 
