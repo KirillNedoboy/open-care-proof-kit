@@ -671,3 +671,17 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - No tests/evals changed.
 - No dependencies changed.
 - Next recommended phase: G1 genome_profile schemas + demo evidence pack.
+
+## 2026-07-02 - Open Care Master Plan integration
+
+- Added docs/master_plan.md.
+- Added docs/reference_landscape.md.
+- Reframed product as a privacy-first, agent-ready personal medical & genomics workspace.
+- Corrected implementation order to vault-first.
+- Moved Genome Expansion after Health/Family Vault foundations.
+- Kept task documentation-only.
+- No runtime changes.
+- No safety boundary changes.
+- No tests/evals changed.
+- No dependencies changed.
+- Next recommended phase: V1 Health/Family Vault Core schemas + synthetic family demo dataset.

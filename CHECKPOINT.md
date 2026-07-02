@@ -16,11 +16,12 @@ Final submission-ready packaging
 
 The public default branch is now `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. This final public GitHub polish is documentation-only and does not add product features, medical functionality, new clinical claims, or runtime behavior changes.
 
-- Genome Expansion Plan added as a docs-only planning/scope-lock task.
+- Master Plan added as current product direction.
+- Implementation order corrected to vault-first.
+- Genome Expansion remains valid but moved after Health/Family Vault foundations.
 - No runtime behavior changed.
 - No safety boundaries changed.
-- No API routes, CLI commands, tests, evals, dependencies, or evidence packs were added.
-- Next recommended implementation phase: G1 genome_profile schemas + demo evidence pack.
+- Next recommended phase: V1 Health/Family Vault Core schemas + synthetic family demo dataset.
 
 ## Last validated state
 
@@ -160,4 +161,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next implementation-safe improvement remains lightweight CI or a local `make check` equivalent.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase is V1 Health/Family Vault Core schemas + synthetic family demo dataset.
