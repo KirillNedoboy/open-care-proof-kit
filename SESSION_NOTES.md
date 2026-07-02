@@ -660,3 +660,14 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 ### Validation
 - `.\.venv\Scripts\python.exe -m pytest` - 35 passed.
 - `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+
+## 2026-07-02 - Genome Expansion Plan scope lock
+
+- Added docs/genome_expansion_plan.md.
+- Recorded approved direction for the future Genome Trust Console extension.
+- Kept the task documentation-only.
+- No runtime changes.
+- No safety boundary changes.
+- No tests/evals changed.
+- No dependencies changed.
+- Next recommended phase: G1 genome_profile schemas + demo evidence pack.

@@ -16,6 +16,12 @@ Final submission-ready packaging
 
 The public default branch is now `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. This final public GitHub polish is documentation-only and does not add product features, medical functionality, new clinical claims, or runtime behavior changes.
 
+- Genome Expansion Plan added as a docs-only planning/scope-lock task.
+- No runtime behavior changed.
+- No safety boundaries changed.
+- No API routes, CLI commands, tests, evals, dependencies, or evidence packs were added.
+- Next recommended implementation phase: G1 genome_profile schemas + demo evidence pack.
+
 ## Last validated state
 
 Final submission validation baseline:
