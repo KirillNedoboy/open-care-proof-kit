@@ -10,42 +10,35 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-Final submission-ready packaging
+V1A Health/Family Vault Core
 
 ## Current status
 
-The public default branch is now `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. This final public GitHub polish is documentation-only and does not add product features, medical functionality, new clinical claims, or runtime behavior changes.
+The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds the V1A Health/Family Vault Core as schema, loader, validation, and synthetic demo data only.
 
 - Master Plan added as current product direction.
 - Implementation order corrected to vault-first.
 - Genome Expansion remains valid but moved after Health/Family Vault foundations.
-- No runtime behavior changed.
+- V1A Health/Family Vault Core schemas and synthetic family demo dataset added.
+- New code is schema/loader/validation only.
+- No UI/API/CLI added.
+- No genetics support added.
+- Existing PGx flow remains backward-compatible.
 - No safety boundaries changed.
-- Next recommended phase: V1 Health/Family Vault Core schemas + synthetic family demo dataset.
+- Next recommended phase: V1B vault summary/read-model builder + tests.
 
 ## Last validated state
 
-Final submission validation baseline:
+V1A Health/Family Vault Core validation baseline:
 
-- pytest: 35 passed;
+- pytest: 51 passed;
 - ruff: passed;
-- mypy: passed;
+- mypy: passed with no issues in 32 source files;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
-- screenshots captured from local demo pages with synthetic/demo data only;
-- report-view screenshots refreshed after replacing the hardcoded sertraline subtitle with neutral demo wording;
-- Server-rendered web pages worked:
-  - `/demo/report-view?drug=sertraline`;
-  - `/demo/report-view?drug=aspirin`;
-- API endpoints worked:
-  - `/demo/report?drug=sertraline`;
-  - `/demo/report?drug=aspirin`;
-  - `/demo/report.md?drug=sertraline`;
-  - `/demo/audit?drug=sertraline`;
-  - `/demo/audit?drug=aspirin`;
-- audit recorded `policy_passed=True`;
-- audit recorded `raw_health_or_genetic_data_exported=False`.
-- generated reports remained ignored by Git.
+- Health/Family Vault Core focused tests: 16 passed;
+- existing PGx briefing regression still passed through `build_demo_briefing("sertraline")`;
+- no API, CLI, UI, genetics, PGx behavior, safety-policy, or eval behavior changes were added.
 
 ## Product definition
 
@@ -85,6 +78,7 @@ Positioning:
 - Provide GitHub/grant readiness docs for license, contribution rules, security reporting, release checks, screenshots, roadmap, and grant review.
 - Provide grant submission docs with copy-paste answers, short pitches, conservative milestones, and wording guardrails.
 - Provide visual demo screenshots and a 90-120 second reviewer/grant demo video script.
+- Load and validate a synthetic Health/Family Vault Core demo dataset with people, family relationships, medical context, document sources, provenance links, timeline events, and question threads.
 
 ## Hard boundaries
 
@@ -105,6 +99,7 @@ Do not implement without explicit approval:
 
 ```txt
 app/vault       health vault schema/load/validate
+app/health_vault V1A family/person medical vault schemas, validation, and demo loader
 app/genetics    genotype/VCF-like parser
 app/evidence    evidence pack schema/loader
 app/pgx         rule matcher
@@ -161,4 +156,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase is V1 Health/Family Vault Core schemas + synthetic family demo dataset.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase is V1B vault summary/read-model builder + tests.

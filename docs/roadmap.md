@@ -16,16 +16,22 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - Static-text and pipeline-backed evals.
 - GitHub/grant readiness documentation.
 - Genome Expansion Plan scope lock as a future genetics layer.
+- V1A Health/Family Vault Core schemas, validation, and synthetic family demo dataset.
 
-## Immediate Next Phase: V1 Health/Family Vault Core
+## Current Phase: V1A Health/Family Vault Core
 
 Goal:
 
-- implement vault-first schemas for a person and family;
+- add vault-first schemas for a person and family;
 - create a synthetic family demo dataset;
-- model medical history, medications, symptoms, labs, visits, documents, questions, and provenance;
+- model medical history, medications, conditions/concerns, labs, visits, documents, questions, and provenance;
 - keep the product useful without DNA;
 - preserve local-first and synthetic/demo-only defaults.
+
+Status:
+
+- V1A schema, loader, validation, and synthetic demo dataset have been added.
+- This phase remains schema/data-only and is not exposed through UI, API, CLI, or LLM summaries.
 
 Boundaries:
 
@@ -40,6 +46,21 @@ Acceptance direction:
 - a future agent can inspect a structured person/family vault without relying on an LLM as the source of truth;
 - each record can carry provenance/source metadata;
 - the synthetic family dataset is clearly marked synthetic/demo-only.
+
+## Immediate Next Phase: V1B Vault Summary/Read-Model Builder
+
+Goal:
+
+- build deterministic read models over the V1A vault;
+- expose safe summaries for people, family context, source coverage, timeline, medications, labs, and open questions;
+- keep summaries source-backed and explicitly non-diagnostic;
+- preserve the existing Medication-to-Doctor Briefing runtime until a later phase intentionally integrates new surfaces.
+
+Boundaries:
+
+- no diagnosis, treatment planning, dosage advice, medication selection advice, or start/stop medication advice;
+- no genetics or Genome Trust Console implementation;
+- no clinical decision support claims.
 
 ## Phase 2: Ingest And Provenance
 

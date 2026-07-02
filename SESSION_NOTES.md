@@ -685,3 +685,15 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - No tests/evals changed.
 - No dependencies changed.
 - Next recommended phase: V1 Health/Family Vault Core schemas + synthetic family demo dataset.
+
+## 2026-07-02 - V1A Health/Family Vault Core
+
+- Added Health/Family Vault Core schemas.
+- Added synthetic family demo vault dataset.
+- Added loader/validation tests.
+- Kept task schema/data-only.
+- No UI/API/CLI added.
+- No genetics support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Next recommended phase: V1B vault summary/read-model builder + tests.
