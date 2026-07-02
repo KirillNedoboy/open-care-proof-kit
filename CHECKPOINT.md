@@ -10,35 +10,38 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-V1A Health/Family Vault Core
+V1B Health/Family Vault read model
 
 ## Current status
 
-The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds the V1A Health/Family Vault Core as schema, loader, validation, and synthetic demo data only.
+The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds the V1B Health/Family Vault read-model builder as deterministic summaries over validated synthetic demo data only.
 
 - Master Plan added as current product direction.
 - Implementation order corrected to vault-first.
 - Genome Expansion remains valid but moved after Health/Family Vault foundations.
 - V1A Health/Family Vault Core schemas and synthetic family demo dataset added.
-- New code is schema/loader/validation only.
+- V1B Health/Family Vault read-model builder added.
+- New code creates deterministic summaries from validated synthetic vault data.
 - No UI/API/CLI added.
+- No LLM generation added.
 - No genetics support added.
 - Existing PGx flow remains backward-compatible.
 - No safety boundaries changed.
-- Next recommended phase: V1B vault summary/read-model builder + tests.
+- Next recommended phase: V1C vault reviewer JSON endpoint or local artifact builder, depending on roadmap.
 
 ## Last validated state
 
-V1A Health/Family Vault Core validation baseline:
+V1B Health/Family Vault read-model validation baseline:
 
-- pytest: 51 passed;
+- pytest: 67 passed;
 - ruff: passed;
-- mypy: passed with no issues in 32 source files;
+- mypy: passed with no issues in 33 source files;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
 - Health/Family Vault Core focused tests: 16 passed;
+- Health/Family Vault read-model focused tests: 16 passed;
 - existing PGx briefing regression still passed through `build_demo_briefing("sertraline")`;
-- no API, CLI, UI, genetics, PGx behavior, safety-policy, or eval behavior changes were added.
+- no API, CLI, UI, LLM generation, genetics, PGx behavior, safety-policy, or eval behavior changes were added.
 
 ## Product definition
 
@@ -79,6 +82,7 @@ Positioning:
 - Provide grant submission docs with copy-paste answers, short pitches, conservative milestones, and wording guardrails.
 - Provide visual demo screenshots and a 90-120 second reviewer/grant demo video script.
 - Load and validate a synthetic Health/Family Vault Core demo dataset with people, family relationships, medical context, document sources, provenance links, timeline events, and question threads.
+- Build deterministic Health/Family Vault read models with family/person summaries, per-person record groups, sorted timeline, question threads, provenance coverage, and safety boundary notices.
 
 ## Hard boundaries
 
@@ -99,7 +103,7 @@ Do not implement without explicit approval:
 
 ```txt
 app/vault       health vault schema/load/validate
-app/health_vault V1A family/person medical vault schemas, validation, and demo loader
+app/health_vault family/person medical vault schemas, validation, demo loader, and read model
 app/genetics    genotype/VCF-like parser
 app/evidence    evidence pack schema/loader
 app/pgx         rule matcher
@@ -156,4 +160,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase is V1B vault summary/read-model builder + tests.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase is V1C vault reviewer JSON endpoint or local artifact builder, depending on roadmap.

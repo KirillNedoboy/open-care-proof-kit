@@ -697,3 +697,17 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Existing PGx flow remains backward-compatible.
 - No safety boundary changed.
 - Next recommended phase: V1B vault summary/read-model builder + tests.
+
+## 2026-07-02 - V1B Health/Family Vault read model
+
+- Added deterministic Health/Family Vault read-model builder.
+- Added provenance-preserving summary structures.
+- Added safety boundary notices.
+- Added read-model tests.
+- Kept task data/read-model only.
+- No UI/API/CLI added.
+- No LLM generation added.
+- No genetics support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Next recommended phase: V1C vault reviewer JSON endpoint or local artifact builder.

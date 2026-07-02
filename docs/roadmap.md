@@ -17,8 +17,9 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - GitHub/grant readiness documentation.
 - Genome Expansion Plan scope lock as a future genetics layer.
 - V1A Health/Family Vault Core schemas, validation, and synthetic family demo dataset.
+- V1B deterministic Health/Family Vault read-model builder with provenance coverage and safety notices.
 
-## Current Phase: V1A Health/Family Vault Core
+## Completed Vault Phase: V1A Health/Family Vault Core
 
 Goal:
 
@@ -47,7 +48,7 @@ Acceptance direction:
 - each record can carry provenance/source metadata;
 - the synthetic family dataset is clearly marked synthetic/demo-only.
 
-## Immediate Next Phase: V1B Vault Summary/Read-Model Builder
+## Current Phase: V1B Vault Summary/Read-Model Builder
 
 Goal:
 
@@ -61,6 +62,25 @@ Boundaries:
 - no diagnosis, treatment planning, dosage advice, medication selection advice, or start/stop medication advice;
 - no genetics or Genome Trust Console implementation;
 - no clinical decision support claims.
+
+Status:
+
+- V1B read-model builder and focused tests have been added.
+- The read model is not exposed through UI, API, CLI, or LLM summaries.
+
+## Immediate Next Phase: V1C Vault Reviewer JSON Endpoint Or Local Artifact Builder
+
+Goal:
+
+- choose the smallest reviewer-facing surface for the V1B read model;
+- either add a local JSON artifact builder or a narrow reviewer JSON endpoint;
+- preserve source links, provenance coverage, safety notices, and synthetic/demo-only labels.
+
+Boundaries:
+
+- no diagnosis, treatment recommendation, dosage advice, medication selection advice, or start/stop medication advice;
+- no LLM-generated summaries;
+- no genetics or Genome Trust Console implementation.
 
 ## Phase 2: Ingest And Provenance
 

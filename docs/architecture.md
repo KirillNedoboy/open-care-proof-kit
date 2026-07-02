@@ -17,7 +17,7 @@ Local UI / CLI
 ## Components
 
 - `app/vault`: health vault schema and demo patient loading.
-- `app/health_vault`: V1A Health/Family Vault Core schemas, validation, provenance links, and synthetic family demo loading.
+- `app/health_vault`: Health/Family Vault Core schemas, validation, provenance links, synthetic family demo loading, and deterministic read models.
 - `app/genetics`: demo genotype/VCF-like parsing and normalization.
 - `app/evidence`: evidence pack schema and loading.
 - `app/pgx`: deterministic medication/genotype matching.
@@ -44,6 +44,14 @@ V1A adds a separate `app/health_vault` domain for structured personal and family
 The V1A loader validates the synthetic demo dataset from `data/demo_patients/demo_family_vault.json`. Records must reference known people, important facts must carry source/provenance links, and evidence links must reference known synthetic document sources.
 
 This phase does not add genetics, `genome_profile`, VCF/raw genotype support, API routes, CLI commands, dashboard UI, or AI-generated medical decisions. Conditions represent user/demo-recorded context only; they are not OpenCare diagnoses.
+
+## Health/Family Vault Read Model
+
+V1B adds a deterministic read-model layer in `app/health_vault/read_model.py`. It turns the validated synthetic family vault into source-preserving summaries for family overview, people, relationships, per-person medications, conditions/concerns, labs, visits, timeline events, questions, provenance coverage, and safety boundary notices.
+
+The read model preserves source links for every important summary item. Provenance coverage records total important records, records with source/provenance, records missing source/provenance, and missing item IDs.
+
+The read-model builder does not use an LLM and does not perform medical interpretation. Conditions remain recorded context, medications remain recorded medication context, labs remain recorded lab context, questions remain questions rather than answers, and timeline entries remain factual source-linked records.
 
 ## Risk controls
 
