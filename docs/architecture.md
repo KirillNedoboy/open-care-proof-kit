@@ -53,6 +53,16 @@ The read model preserves source links for every important summary item. Provenan
 
 The read-model builder does not use an LLM and does not perform medical interpretation. Conditions remain recorded context, medications remain recorded medication context, labs remain recorded lab context, questions remain questions rather than answers, and timeline entries remain factual source-linked records.
 
+## Health/Family Vault Local Artifacts
+
+V1C adds a deterministic local artifact builder in `app/health_vault/artifacts.py`. It turns the validated synthetic Health/Family Vault read model into reviewer-friendly local files:
+
+- `family-vault-read-model.json`: structured JSON read-model artifact;
+- `family-vault-summary.md`: Markdown summary of recorded demo context;
+- `family-vault-manifest.json`: manifest with artifact types, provenance coverage, builder metadata, and safety boundary flags.
+
+The artifact builder does not use LLM generation, does not add API routes, does not add CLI commands, does not add UI/templates, and does not add genetics or `genome_profile` support. Artifact content reorganizes existing validated synthetic vault/read-model data only and does not add medical interpretation.
+
 ## Risk controls
 
 - No real patient data in repo.

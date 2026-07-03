@@ -711,3 +711,16 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Existing PGx flow remains backward-compatible.
 - No safety boundary changed.
 - Next recommended phase: V1C vault reviewer JSON endpoint or local artifact builder.
+
+## 2026-07-02 - V1C Health/Family Vault local artifacts
+
+- Added deterministic Health/Family Vault local artifact builder.
+- Added JSON read-model artifact, Markdown summary artifact, and manifest artifact support.
+- Added artifact builder tests.
+- Kept task local artifact-only.
+- No UI/API/CLI added.
+- No LLM generation added.
+- No genetics support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Next recommended phase: V1D reviewer-facing vault route or V1D vault docs/demo packaging.

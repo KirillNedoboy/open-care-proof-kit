@@ -18,6 +18,7 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - Genome Expansion Plan scope lock as a future genetics layer.
 - V1A Health/Family Vault Core schemas, validation, and synthetic family demo dataset.
 - V1B deterministic Health/Family Vault read-model builder with provenance coverage and safety notices.
+- V1C deterministic Health/Family Vault local artifact builder for JSON, Markdown, and manifest files.
 
 ## Completed Vault Phase: V1A Health/Family Vault Core
 
@@ -68,18 +69,38 @@ Status:
 - V1B read-model builder and focused tests have been added.
 - The read model is not exposed through UI, API, CLI, or LLM summaries.
 
-## Immediate Next Phase: V1C Vault Reviewer JSON Endpoint Or Local Artifact Builder
+## Current Phase: V1C Health/Family Vault Local Artifact Builder
 
 Goal:
 
-- choose the smallest reviewer-facing surface for the V1B read model;
-- either add a local JSON artifact builder or a narrow reviewer JSON endpoint;
-- preserve source links, provenance coverage, safety notices, and synthetic/demo-only labels.
+- add the smallest reviewer-facing local artifact surface for the V1B read model;
+- write deterministic JSON, Markdown, and manifest artifacts;
+- preserve source links, provenance coverage, safety notices, and synthetic/demo-only labels;
+- keep the phase local artifact-only.
 
 Boundaries:
 
 - no diagnosis, treatment recommendation, dosage advice, medication selection advice, or start/stop medication advice;
 - no LLM-generated summaries;
+- no genetics or Genome Trust Console implementation.
+- no API routes, CLI commands, UI, or templates.
+
+Status:
+
+- V1C local vault artifact builder has been added.
+- The artifact builder is not exposed through UI, API, CLI, or LLM summaries.
+
+## Immediate Next Phase: V1D Reviewer-Facing Vault Route Or Demo Packaging
+
+Goal:
+
+- choose the next reviewer-facing surface after local artifacts;
+- either add a narrow reviewer route for vault artifacts or package the local artifact demo/docs;
+- keep Genome Expansion after vault foundations.
+
+Boundaries:
+
+- no diagnosis, treatment recommendation, dosage advice, medication selection advice, or start/stop medication advice;
 - no genetics or Genome Trust Console implementation.
 
 ## Phase 2: Ingest And Provenance
