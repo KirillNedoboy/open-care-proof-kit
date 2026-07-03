@@ -724,3 +724,16 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Existing PGx flow remains backward-compatible.
 - No safety boundary changed.
 - Next recommended phase: V1D reviewer-facing vault route or V1D vault docs/demo packaging.
+
+## 2026-07-03 - V1D Health/Family Vault reviewer/demo packaging
+
+- Added V1D Health/Family Vault reviewer/demo packaging.
+- Generated committed synthetic demo artifacts from the V1C builder.
+- Added Health/Family Vault reviewer demo documentation.
+- Updated README/reviewer quickstart with the Health/Family Vault reviewer path.
+- No API/CLI/UI added.
+- No LLM generation added.
+- No genetics support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Next recommended phase: V1E minimal reviewer UI or provenance/threat-model hardening.

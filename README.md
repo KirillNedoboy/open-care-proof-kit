@@ -26,6 +26,7 @@ See [docs/project_status.md](docs/project_status.md) for the current capability 
 - [Grant submission answers](docs/grant_submission_answers.md)
 - [Short pitch](docs/grant_short_pitch.md)
 - [Milestones](docs/grant_milestones.md)
+- [Health/Family Vault demo](docs/health_family_vault_demo.md)
 - [Demo video script](docs/demo_video_script.md)
 - [Screenshots](docs/screenshots.md)
 
@@ -145,6 +146,19 @@ reports/demo-aspirin-audit.json
 ```
 
 Generated report artifacts are ignored by Git.
+
+## Health/Family Vault Demo
+
+The Health/Family Vault demo exposes deterministic local demo artifacts for the new vault-first layer. It uses a synthetic family vault, a source-preserving read model, and generated JSON/Markdown/manifest files.
+
+Review:
+
+- [Health/Family Vault demo guide](docs/health_family_vault_demo.md)
+- [Markdown summary](docs/assets/health_vault/family-vault-summary.md)
+- [JSON read-model artifact](docs/assets/health_vault/family-vault-read-model.json)
+- [Artifact manifest](docs/assets/health_vault/family-vault-manifest.json)
+
+This layer uses no LLM generation, adds no genetics support, and provides no medical advice.
 
 ## Web Demo Routes
 

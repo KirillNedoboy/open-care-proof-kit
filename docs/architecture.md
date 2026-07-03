@@ -63,6 +63,19 @@ V1C adds a deterministic local artifact builder in `app/health_vault/artifacts.p
 
 The artifact builder does not use LLM generation, does not add API routes, does not add CLI commands, does not add UI/templates, and does not add genetics or `genome_profile` support. Artifact content reorganizes existing validated synthetic vault/read-model data only and does not add medical interpretation.
 
+V1D packages committed reviewer demo artifacts under `docs/assets/health_vault/`. These files are generated from the V1C builder and the synthetic dataset, not hand-written:
+
+```txt
+data/demo_patients/demo_family_vault.json
+  -> app.health_vault.loader
+  -> app.health_vault.read_model
+  -> app.health_vault.artifacts
+  -> docs/assets/health_vault/
+  -> future UI or agent context
+```
+
+V1D still adds no LLM generation, genetics, API routes, CLI commands, UI, or templates. The committed artifacts are reviewer demo assets, not real user output and not a real-patient export path.
+
 ## Risk controls
 
 - No real patient data in repo.

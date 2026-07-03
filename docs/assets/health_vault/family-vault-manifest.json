@@ -1,0 +1,31 @@
+{
+  "artifact_version": "0.1.0",
+  "builder_name": "health_vault_artifact_builder",
+  "builder_version": "0.1.0",
+  "created_artifacts": [
+    {
+      "artifact_type": "health_family_vault_read_model",
+      "filename": "family-vault-read-model.json"
+    },
+    {
+      "artifact_type": "health_family_vault_markdown_summary",
+      "filename": "family-vault-summary.md"
+    },
+    {
+      "artifact_type": "health_family_vault_manifest",
+      "filename": "family-vault-manifest.json"
+    }
+  ],
+  "demo_only": true,
+  "no_genetics": true,
+  "no_llm_generation": true,
+  "no_medical_advice": true,
+  "provenance_coverage_summary": {
+    "missing_source_item_ids": [],
+    "records_missing_source": 0,
+    "records_with_source": 14,
+    "total_important_records": 14
+  },
+  "safety_boundary_notice_count": 6,
+  "synthetic": true
+}

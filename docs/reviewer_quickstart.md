@@ -147,6 +147,51 @@ Interpretation:
 - pipeline evals execute the real local demo pipeline for supported and unsupported drug paths;
 - neither mode is clinical validation.
 
+## Health/Family Vault Reviewer Path
+
+The Health/Family Vault layer is packaged as committed synthetic reviewer artifacts. It does not add a new API route, CLI command, UI, LLM generation, genetics support, or medical advice.
+
+Inspect the source dataset:
+
+```txt
+data/demo_patients/demo_family_vault.json
+```
+
+Inspect the generated artifacts:
+
+```txt
+docs/assets/health_vault/family-vault-read-model.json
+docs/assets/health_vault/family-vault-summary.md
+docs/assets/health_vault/family-vault-manifest.json
+```
+
+Read the reviewer guide:
+
+```txt
+docs/health_family_vault_demo.md
+```
+
+Run the focused Health/Family Vault tests:
+
+```bash
+pytest tests/test_health_vault.py tests/test_health_vault_read_model.py tests/test_health_vault_artifacts.py
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\test_health_vault.py tests\test_health_vault_read_model.py tests\test_health_vault_artifacts.py
+```
+
+Run the full validation set if desired:
+
+```bash
+pytest
+ruff check app tests evals
+mypy app evals
+python -m evals.runner
+```
+
 ## Expected Success Summary
 
 The project is running correctly when:
@@ -161,7 +206,8 @@ The project is running correctly when:
 - audit has `policy_passed=true`;
 - audit has `raw_health_or_genetic_data_exported=false`;
 - reports and audits label coverage as demo evidence-pack coverage, not clinical coverage.
+- Health/Family Vault artifacts are synthetic/demo-only and include provenance coverage plus safety boundaries.
 
 ## Boundary Reminder
 
-This quickstart demonstrates a synthetic local pipeline. It does not diagnose, recommend dosage, recommend medication choice, tell anyone to start or stop medication, process real patient data, or perform WGS/FASTQ/BAM analysis.
+This quickstart demonstrates synthetic local pipelines and committed synthetic demo artifacts. It does not diagnose, recommend dosage, recommend medication choice, tell anyone to start or stop medication, process real patient data, process real genetic data, or perform WGS/FASTQ/BAM analysis.

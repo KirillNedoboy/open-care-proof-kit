@@ -1,0 +1,359 @@
+{
+  "artifact_type": "health_family_vault_read_model",
+  "artifact_version": "0.1.0",
+  "conditions_by_person": {
+    "person-alex": [
+      {
+        "description": "User-recorded context for clinician discussion; not an OpenCare clinical conclusion.",
+        "id": "condition-alex-sleep-concern",
+        "name": "Sleep concern recorded by demo user",
+        "person_id": "person-alex",
+        "safety_label": "recorded_context_not_system_diagnosis",
+        "source_links": [
+          {
+            "note": "Mentioned as a sleep question in the synthetic visit note.",
+            "source_id": "source-primary-care-note-2026-01",
+            "source_title": "Synthetic primary care note, January 2026",
+            "source_type": "visit_note",
+            "strength": "user_reported"
+          }
+        ],
+        "status": "active"
+      }
+    ],
+    "person-jordan": [],
+    "person-sam": [
+      {
+        "description": "Demo-recorded family context only; not an OpenCare clinical conclusion.",
+        "id": "condition-sam-seasonal-allergy-context",
+        "name": "Seasonal allergy context recorded by demo user",
+        "person_id": "person-sam",
+        "safety_label": "recorded_context_not_system_diagnosis",
+        "source_links": [
+          {
+            "note": "Listed as historical context in the synthetic visit note.",
+            "source_id": "source-primary-care-note-2026-01",
+            "source_title": "Synthetic primary care note, January 2026",
+            "source_type": "visit_note",
+            "strength": "source_backed"
+          }
+        ],
+        "status": "historical"
+      }
+    ]
+  },
+  "demo_only": true,
+  "family": {
+    "demo_only": true,
+    "display_name": "Synthetic Demo Family",
+    "id": "family-demo-01",
+    "people_count": 3,
+    "relationship_count": 2,
+    "synthetic": true
+  },
+  "generated_from": {
+    "dataset_id": "demo-family-vault-v1a",
+    "dataset_version": "0.1.0",
+    "deterministic_builder": "health_vault_artifact_builder",
+    "deterministic_builder_version": "0.1.0",
+    "source_dataset": "validated VaultDataset"
+  },
+  "labs_by_person": {
+    "person-alex": [
+      {
+        "collected_on": "2026-02-14",
+        "id": "lab-alex-a1c",
+        "name": "A1c",
+        "person_id": "person-alex",
+        "result_text": "Within synthetic reference context",
+        "safety_label": "recorded_lab_context_not_interpretation",
+        "source_links": [
+          {
+            "note": "Recorded in the synthetic lab panel.",
+            "source_id": "source-lab-panel-2026-02",
+            "source_title": "Synthetic lab panel, February 2026",
+            "source_type": "lab_report",
+            "strength": "source_backed"
+          }
+        ]
+      }
+    ],
+    "person-jordan": [
+      {
+        "collected_on": "2026-02-14",
+        "id": "lab-jordan-vitamin-d",
+        "name": "Vitamin D",
+        "person_id": "person-jordan",
+        "result_text": "Flagged in synthetic record for clinician discussion",
+        "safety_label": "recorded_lab_context_not_interpretation",
+        "source_links": [
+          {
+            "note": "Recorded in the synthetic lab panel.",
+            "source_id": "source-lab-panel-2026-02",
+            "source_title": "Synthetic lab panel, February 2026",
+            "source_type": "lab_report",
+            "strength": "source_backed"
+          }
+        ]
+      }
+    ],
+    "person-sam": []
+  },
+  "medications_by_person": {
+    "person-alex": [
+      {
+        "id": "medication-alex-sertraline",
+        "name": "sertraline",
+        "person_id": "person-alex",
+        "reason_context": "Medication question recorded for clinician-review preparation.",
+        "safety_label": "recorded_medication_context_not_recommendation",
+        "source_links": [
+          {
+            "note": "Listed in the synthetic medication record.",
+            "source_id": "source-medication-list-2026-03",
+            "source_title": "Synthetic medication list, March 2026",
+            "source_type": "medication_record",
+            "strength": "source_backed"
+          }
+        ],
+        "status": "current"
+      }
+    ],
+    "person-jordan": [
+      {
+        "id": "medication-jordan-loratadine",
+        "name": "loratadine",
+        "person_id": "person-jordan",
+        "reason_context": "Past medication recorded as synthetic family context.",
+        "safety_label": "recorded_medication_context_not_recommendation",
+        "source_links": [
+          {
+            "note": "Listed in the synthetic medication record.",
+            "source_id": "source-medication-list-2026-03",
+            "source_title": "Synthetic medication list, March 2026",
+            "source_type": "medication_record",
+            "strength": "source_backed"
+          }
+        ],
+        "status": "past"
+      }
+    ],
+    "person-sam": []
+  },
+  "people": [
+    {
+      "display_name": "Demo Adult Alex",
+      "id": "person-alex",
+      "role": "self",
+      "synthetic": true
+    },
+    {
+      "display_name": "Demo Adult Jordan",
+      "id": "person-jordan",
+      "role": "spouse",
+      "synthetic": true
+    },
+    {
+      "display_name": "Demo Teen Sam",
+      "id": "person-sam",
+      "role": "child",
+      "synthetic": true
+    }
+  ],
+  "provenance_coverage": {
+    "missing_source_item_ids": [],
+    "records_missing_source": 0,
+    "records_with_source": 14,
+    "total_important_records": 14
+  },
+  "question_threads": [
+    {
+      "id": "question-alex-sleep",
+      "person_id": "person-alex",
+      "question": "What context should Demo Adult Alex bring to a clinician about sleep concerns?",
+      "safety_label": "recorded_question_not_answer",
+      "scope": "person",
+      "source_links": [
+        {
+          "note": "Question grounded in synthetic visit context.",
+          "source_id": "source-primary-care-note-2026-01",
+          "source_title": "Synthetic primary care note, January 2026",
+          "source_type": "visit_note",
+          "strength": "user_reported"
+        }
+      ],
+      "status": "open"
+    },
+    {
+      "id": "question-family-missing-sources",
+      "person_id": null,
+      "question": "Which family records still need stronger source documents?",
+      "safety_label": "recorded_question_not_answer",
+      "scope": "family",
+      "source_links": [
+        {
+          "note": "Question created from synthetic vault organization context.",
+          "source_id": "source-primary-care-note-2026-01",
+          "source_title": "Synthetic primary care note, January 2026",
+          "source_type": "visit_note",
+          "strength": "inferred_from_demo_context"
+        }
+      ],
+      "status": "needs_source"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "relationship-alex-jordan",
+      "person_id": "person-alex",
+      "related_person_id": "person-jordan",
+      "relationship_type": "spouse"
+    },
+    {
+      "id": "relationship-alex-sam",
+      "person_id": "person-alex",
+      "related_person_id": "person-sam",
+      "relationship_type": "child"
+    }
+  ],
+  "safety_boundary_notices": [
+    {
+      "code": "no_diagnosis",
+      "message": "OpenCare does not diagnose."
+    },
+    {
+      "code": "no_treatment_recommendation",
+      "message": "OpenCare does not recommend treatment."
+    },
+    {
+      "code": "no_dosage_guidance",
+      "message": "OpenCare does not provide dosage guidance."
+    },
+    {
+      "code": "no_start_stop_medication",
+      "message": "OpenCare does not tell users to start or stop medication."
+    },
+    {
+      "code": "synthetic_demo_only",
+      "message": "This dataset is synthetic/demo-only."
+    },
+    {
+      "code": "deterministic_reorganization",
+      "message": "Summaries are deterministic reorganizations of recorded demo data."
+    }
+  ],
+  "synthetic": true,
+  "timeline": {
+    "events": [
+      {
+        "date": "2026-01-22",
+        "event_type": "visit",
+        "id": "event-alex-primary-care",
+        "person_id": "person-alex",
+        "safety_label": "recorded_timeline_event",
+        "source_links": [
+          {
+            "note": "Timeline entry from synthetic visit note.",
+            "source_id": "source-primary-care-note-2026-01",
+            "source_title": "Synthetic primary care note, January 2026",
+            "source_type": "visit_note",
+            "strength": "source_backed"
+          }
+        ],
+        "title": "Primary care visit recorded"
+      },
+      {
+        "date": "2026-02-14",
+        "event_type": "lab",
+        "id": "event-alex-a1c",
+        "person_id": "person-alex",
+        "safety_label": "recorded_timeline_event",
+        "source_links": [
+          {
+            "note": "Timeline entry from synthetic lab panel.",
+            "source_id": "source-lab-panel-2026-02",
+            "source_title": "Synthetic lab panel, February 2026",
+            "source_type": "lab_report",
+            "strength": "source_backed"
+          }
+        ],
+        "title": "A1c lab result recorded"
+      },
+      {
+        "date": "2026-02-14",
+        "event_type": "lab",
+        "id": "event-jordan-vitamin-d",
+        "person_id": "person-jordan",
+        "safety_label": "recorded_timeline_event",
+        "source_links": [
+          {
+            "note": "Timeline entry from synthetic lab panel.",
+            "source_id": "source-lab-panel-2026-02",
+            "source_title": "Synthetic lab panel, February 2026",
+            "source_type": "lab_report",
+            "strength": "source_backed"
+          }
+        ],
+        "title": "Vitamin D lab result recorded"
+      },
+      {
+        "date": "2026-03-04",
+        "event_type": "visit",
+        "id": "event-sam-family-check-in",
+        "person_id": "person-sam",
+        "safety_label": "recorded_timeline_event",
+        "source_links": [
+          {
+            "note": "Timeline entry from synthetic visit note.",
+            "source_id": "source-primary-care-note-2026-01",
+            "source_title": "Synthetic primary care note, January 2026",
+            "source_type": "visit_note",
+            "strength": "source_backed"
+          }
+        ],
+        "title": "Family check-in recorded"
+      }
+    ]
+  },
+  "visits_by_person": {
+    "person-alex": [
+      {
+        "date": "2026-01-22",
+        "id": "visit-alex-primary-care",
+        "person_id": "person-alex",
+        "safety_label": "recorded_visit_context_not_medical_advice",
+        "source_links": [
+          {
+            "note": "Visit row created from the synthetic primary care note.",
+            "source_id": "source-primary-care-note-2026-01",
+            "source_title": "Synthetic primary care note, January 2026",
+            "source_type": "visit_note",
+            "strength": "source_backed"
+          }
+        ],
+        "summary": "Synthetic visit summary focused on organizing medication and sleep questions.",
+        "visit_type": "primary care"
+      }
+    ],
+    "person-jordan": [],
+    "person-sam": [
+      {
+        "date": "2026-03-04",
+        "id": "visit-sam-check-in",
+        "person_id": "person-sam",
+        "safety_label": "recorded_visit_context_not_medical_advice",
+        "source_links": [
+          {
+            "note": "Visit row created from the synthetic visit note.",
+            "source_id": "source-primary-care-note-2026-01",
+            "source_title": "Synthetic primary care note, January 2026",
+            "source_type": "visit_note",
+            "strength": "source_backed"
+          }
+        ],
+        "summary": "Synthetic family visit summary for vault timeline demonstration.",
+        "visit_type": "family check-in"
+      }
+    ]
+  }
+}

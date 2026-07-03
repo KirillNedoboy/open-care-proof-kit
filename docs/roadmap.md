@@ -19,6 +19,7 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - V1A Health/Family Vault Core schemas, validation, and synthetic family demo dataset.
 - V1B deterministic Health/Family Vault read-model builder with provenance coverage and safety notices.
 - V1C deterministic Health/Family Vault local artifact builder for JSON, Markdown, and manifest files.
+- V1D Health/Family Vault reviewer/demo packaging with committed synthetic artifacts and reviewer docs.
 
 ## Completed Vault Phase: V1A Health/Family Vault Core
 
@@ -49,7 +50,7 @@ Acceptance direction:
 - each record can carry provenance/source metadata;
 - the synthetic family dataset is clearly marked synthetic/demo-only.
 
-## Current Phase: V1B Vault Summary/Read-Model Builder
+## Completed Vault Phase: V1B Vault Summary/Read-Model Builder
 
 Goal:
 
@@ -69,7 +70,7 @@ Status:
 - V1B read-model builder and focused tests have been added.
 - The read model is not exposed through UI, API, CLI, or LLM summaries.
 
-## Current Phase: V1C Health/Family Vault Local Artifact Builder
+## Completed Vault Phase: V1C Health/Family Vault Local Artifact Builder
 
 Goal:
 
@@ -90,18 +91,41 @@ Status:
 - V1C local vault artifact builder has been added.
 - The artifact builder is not exposed through UI, API, CLI, or LLM summaries.
 
-## Immediate Next Phase: V1D Reviewer-Facing Vault Route Or Demo Packaging
+## Completed Vault Phase: V1D Health/Family Vault Reviewer/Demo Packaging
 
 Goal:
 
-- choose the next reviewer-facing surface after local artifacts;
-- either add a narrow reviewer route for vault artifacts or package the local artifact demo/docs;
+- make the Health/Family Vault layer visible to reviewers through committed synthetic artifacts and docs;
+- generate JSON, Markdown, and manifest demo artifacts from the V1C builder;
+- preserve local artifact-only boundaries;
 - keep Genome Expansion after vault foundations.
 
 Boundaries:
 
 - no diagnosis, treatment recommendation, dosage advice, medication selection advice, or start/stop medication advice;
 - no genetics or Genome Trust Console implementation.
+- no API routes, CLI commands, UI, templates, LLM generation, or dependencies.
+
+Status:
+
+- V1D reviewer/demo packaging has been added.
+- The committed artifacts are generated from the synthetic family vault dataset through the V1C builder.
+- README and reviewer quickstart now link the Health/Family Vault reviewer path.
+
+## Immediate Next Phase: V1E Minimal Reviewer UI Or Provenance Hardening
+
+Goal:
+
+- choose one small next surface after the committed artifact package;
+- either add a minimal reviewer UI over the existing artifacts/read model or harden provenance and threat-model documentation;
+- do not start Genome Expansion until vault foundations remain reviewable and safe.
+
+Boundaries:
+
+- no diagnosis, treatment recommendation, dosage advice, medication selection advice, or start/stop medication advice;
+- no real patient data or real genetic data;
+- no clinical decision support claims;
+- no Genome Trust Console implementation.
 
 ## Phase 2: Ingest And Provenance
 
