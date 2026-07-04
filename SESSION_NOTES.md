@@ -737,3 +737,31 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Existing PGx flow remains backward-compatible.
 - No safety boundary changed.
 - Next recommended phase: V1E minimal reviewer UI or provenance/threat-model hardening.
+
+## 2026-07-05 - V1E Health/Family Vault provenance and threat-model hardening
+
+### Changed
+- Added V1E provenance and threat-model hardening.
+- Added `docs/privacy_safety_threat_model.md`.
+- Added `docs/provenance_semantics.md`.
+- Added `docs/vault_artifact_guarantees.md`.
+- Linked the new docs from architecture, reviewer quickstart, Health/Family Vault demo docs, and roadmap.
+- Updated checkpoint and session notes for V1E status.
+
+### Product boundaries
+- No runtime behavior changed.
+- No API/CLI/UI added.
+- No LLM generation added.
+- No genetics support added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Next recommended phase: V1F minimal reviewer UI or CI/trust metrics.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 74 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 34 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+- Risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts.

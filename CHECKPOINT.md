@@ -10,11 +10,11 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-V1D Health/Family Vault reviewer/demo packaging
+V1E Health/Family Vault provenance and threat-model hardening
 
 ## Current status
 
-The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1D Health/Family Vault reviewer/demo packaging with committed synthetic artifacts generated from the V1C builder.
+The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1E Health/Family Vault provenance and threat-model hardening for the committed V1D synthetic artifacts.
 
 - Master Plan added as current product direction.
 - Implementation order corrected to vault-first.
@@ -26,17 +26,22 @@ The public default branch is `main`, created from `phase-1-github-grant-readines
 - New code creates deterministic local JSON/Markdown/manifest artifacts from validated synthetic vault read-model data.
 - V1D Health/Family Vault reviewer/demo packaging added.
 - Synthetic demo artifacts generated from the V1C builder.
+- V1E Health/Family Vault provenance and threat-model hardening added.
+- Privacy/safety threat model added.
+- Provenance semantics added.
+- Vault artifact guarantees added.
 - README/reviewer quickstart updated.
+- No runtime behavior changed.
 - No UI/API/CLI added.
 - No LLM generation added.
 - No genetics support added.
 - Existing PGx flow remains backward-compatible.
 - No safety boundaries changed.
-- Next recommended phase: V1E minimal reviewer UI or provenance/threat-model hardening.
+- Next recommended phase: V1F minimal reviewer UI or CI/trust metrics.
 
 ## Last validated state
 
-V1D Health/Family Vault reviewer/demo packaging validation baseline:
+V1E Health/Family Vault provenance and threat-model hardening validation baseline:
 
 - pytest: 74 passed;
 - ruff: passed;
@@ -46,7 +51,7 @@ V1D Health/Family Vault reviewer/demo packaging validation baseline:
 - Health/Family Vault Core focused tests: 16 passed;
 - Health/Family Vault read-model focused tests: 16 passed;
 - Health/Family Vault artifact focused tests: 7 passed;
-- generated Health/Family Vault reviewer artifacts passed safety boundary scan;
+- V1E risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts;
 - existing PGx briefing regression still passed through `build_demo_briefing("sertraline")`;
 - no API, CLI, UI, LLM generation, genetics, PGx behavior, safety-policy, or eval behavior changes were added.
 
@@ -169,4 +174,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase is V1E minimal reviewer UI or provenance/threat-model hardening.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1E validation is V1F minimal reviewer UI or CI/trust metrics.

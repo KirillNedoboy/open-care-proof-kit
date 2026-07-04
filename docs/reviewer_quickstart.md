@@ -151,6 +151,15 @@ Interpretation:
 
 The Health/Family Vault layer is packaged as committed synthetic reviewer artifacts. It does not add a new API route, CLI command, UI, LLM generation, genetics support, or medical advice.
 
+Recommended reviewer path:
+
+1. Inspect the committed demo artifacts under `docs/assets/health_vault/`.
+2. Inspect manifest flags in `docs/assets/health_vault/family-vault-manifest.json`.
+3. Read `docs/provenance_semantics.md`.
+4. Read `docs/privacy_safety_threat_model.md`.
+5. Run the focused Health/Family Vault tests.
+6. Run the full validation sequence.
+
 Inspect the source dataset:
 
 ```txt
@@ -169,6 +178,14 @@ Read the reviewer guide:
 
 ```txt
 docs/health_family_vault_demo.md
+```
+
+Read the V1E provenance and artifact docs:
+
+```txt
+docs/provenance_semantics.md
+docs/privacy_safety_threat_model.md
+docs/vault_artifact_guarantees.md
 ```
 
 Run the focused Health/Family Vault tests:

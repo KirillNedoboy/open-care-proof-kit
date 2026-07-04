@@ -20,6 +20,7 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - V1B deterministic Health/Family Vault read-model builder with provenance coverage and safety notices.
 - V1C deterministic Health/Family Vault local artifact builder for JSON, Markdown, and manifest files.
 - V1D Health/Family Vault reviewer/demo packaging with committed synthetic artifacts and reviewer docs.
+- V1E Health/Family Vault provenance and threat-model hardening added as the current docs/spec phase.
 
 ## Completed Vault Phase: V1A Health/Family Vault Core
 
@@ -112,13 +113,15 @@ Status:
 - The committed artifacts are generated from the synthetic family vault dataset through the V1C builder.
 - README and reviewer quickstart now link the Health/Family Vault reviewer path.
 
-## Immediate Next Phase: V1E Minimal Reviewer UI Or Provenance Hardening
+## Current Vault Phase: V1E Provenance And Threat-Model Hardening
 
 Goal:
 
-- choose one small next surface after the committed artifact package;
-- either add a minimal reviewer UI over the existing artifacts/read model or harden provenance and threat-model documentation;
-- do not start Genome Expansion until vault foundations remain reviewable and safe.
+- document the Health/Family Vault privacy and safety threat model;
+- define provenance semantics for `DocumentSource`, `EvidenceLink`, source-backed context, and user/demo-recorded context;
+- document what the V1C/V1D vault artifacts guarantee and do not guarantee;
+- make the committed artifacts easier to review without adding product surface area;
+- keep Genome Expansion after vault foundations remain reviewable and safe.
 
 Boundaries:
 
@@ -126,6 +129,21 @@ Boundaries:
 - no real patient data or real genetic data;
 - no clinical decision support claims;
 - no Genome Trust Console implementation.
+- no API routes, CLI commands, UI/templates, LLM generation, genetics support, dependencies, or PGx behavior changes.
+
+Status:
+
+- V1E provenance and threat-model hardening is added/in progress.
+- The phase is docs/spec hardening only.
+- New docs cover threat model, provenance semantics, and artifact guarantees.
+- No runtime behavior is changed.
+
+Recommended next phase after V1E:
+
+- V1F minimal local reviewer UI for Health/Family Vault, if a small UI review surface is the highest-value next step; or
+- V1F CI/trust metrics, if validation and artifact hygiene need stronger automation first.
+
+Do not start V1F until V1E has been validated and reviewed.
 
 ## Phase 2: Ingest And Provenance
 

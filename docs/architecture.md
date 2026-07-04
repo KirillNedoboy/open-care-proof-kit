@@ -76,6 +76,20 @@ data/demo_patients/demo_family_vault.json
 
 V1D still adds no LLM generation, genetics, API routes, CLI commands, UI, or templates. The committed artifacts are reviewer demo assets, not real user output and not a real-patient export path.
 
+## Provenance and Threat Model Layer
+
+V1E documents the Health/Family Vault provenance and threat-model layer without
+changing runtime behavior. It makes the current guarantees explicit: the vault
+artifacts are synthetic/demo-only, deterministic reorganizations of recorded
+context; every important surfaced item must keep source/provenance references;
+and provenance means traceability, not clinical truth.
+
+Review these V1E docs with the committed Health/Family Vault artifacts:
+
+- [docs/privacy_safety_threat_model.md](privacy_safety_threat_model.md)
+- [docs/provenance_semantics.md](provenance_semantics.md)
+- [docs/vault_artifact_guarantees.md](vault_artifact_guarantees.md)
+
 ## Risk controls
 
 - No real patient data in repo.
