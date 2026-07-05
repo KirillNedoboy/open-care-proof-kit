@@ -10,11 +10,11 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-V1E Health/Family Vault provenance and threat-model hardening
+V1F CI and trust metrics hardening
 
 ## Current status
 
-The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1E Health/Family Vault provenance and threat-model hardening for the committed V1D synthetic artifacts.
+The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1F CI and trust metrics hardening for automated demo/reviewer trust checks.
 
 - Master Plan added as current product direction.
 - Implementation order corrected to vault-first.
@@ -30,6 +30,9 @@ The public default branch is `main`, created from `phase-1-github-grant-readines
 - Privacy/safety threat model added.
 - Provenance semantics added.
 - Vault artifact guarantees added.
+- V1F CI and trust metrics hardening added.
+- GitHub Actions CI added for tests, lint, type checks, evals, and trust metrics.
+- Deterministic local trust metrics report added.
 - README/reviewer quickstart updated.
 - No runtime behavior changed.
 - No UI/API/CLI added.
@@ -37,21 +40,22 @@ The public default branch is `main`, created from `phase-1-github-grant-readines
 - No genetics support added.
 - Existing PGx flow remains backward-compatible.
 - No safety boundaries changed.
-- Next recommended phase: V1F minimal reviewer UI or CI/trust metrics.
+- Next recommended phase: V1G minimal reviewer UI or claim/provenance graph.
 
 ## Last validated state
 
-V1E Health/Family Vault provenance and threat-model hardening validation baseline:
+V1F CI and trust metrics hardening validation baseline:
 
-- pytest: 74 passed;
+- pytest: 79 passed;
 - ruff: passed;
-- mypy: passed with no issues in 34 source files;
+- mypy: passed with no issues in 35 source files;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
+- trust metrics: printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks;
 - Health/Family Vault Core focused tests: 16 passed;
 - Health/Family Vault read-model focused tests: 16 passed;
 - Health/Family Vault artifact focused tests: 7 passed;
-- V1E risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts;
+- V1F risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts;
 - existing PGx briefing regression still passed through `build_demo_briefing("sertraline")`;
 - no API, CLI, UI, LLM generation, genetics, PGx behavior, safety-policy, or eval behavior changes were added.
 
@@ -97,6 +101,7 @@ Positioning:
 - Build deterministic Health/Family Vault read models with family/person summaries, per-person record groups, sorted timeline, question threads, provenance coverage, and safety boundary notices.
 - Build deterministic Health/Family Vault local artifacts with JSON read-model output, Markdown summary output, and manifest metadata.
 - Provide committed synthetic Health/Family Vault reviewer artifacts and documentation under `docs/assets/health_vault/` and `docs/health_family_vault_demo.md`.
+- Run deterministic local trust metrics for eval totals, Health/Family Vault manifest safety flags, generated-report ignore expectation, and residual risks.
 
 ## Hard boundaries
 
@@ -138,6 +143,7 @@ pytest
 ruff check app tests evals
 mypy app evals
 python -m evals.runner
+python -m evals.trust_metrics
 python -m app.cli demo-report --drug sertraline --out-dir reports
 python -m app.cli demo-report --drug aspirin --out-dir reports
 uvicorn app.main:app --reload
@@ -174,4 +180,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1E validation is V1F minimal reviewer UI or CI/trust metrics.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1F validation is V1G minimal reviewer UI or claim/provenance graph for vault artifacts.

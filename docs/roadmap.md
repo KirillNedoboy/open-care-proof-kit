@@ -20,7 +20,8 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - V1B deterministic Health/Family Vault read-model builder with provenance coverage and safety notices.
 - V1C deterministic Health/Family Vault local artifact builder for JSON, Markdown, and manifest files.
 - V1D Health/Family Vault reviewer/demo packaging with committed synthetic artifacts and reviewer docs.
-- V1E Health/Family Vault provenance and threat-model hardening added as the current docs/spec phase.
+- V1E Health/Family Vault provenance and threat-model hardening.
+- V1F CI/trust metrics hardening added as the current automation/reporting phase.
 
 ## Completed Vault Phase: V1A Health/Family Vault Core
 
@@ -113,7 +114,7 @@ Status:
 - The committed artifacts are generated from the synthetic family vault dataset through the V1C builder.
 - README and reviewer quickstart now link the Health/Family Vault reviewer path.
 
-## Current Vault Phase: V1E Provenance And Threat-Model Hardening
+## Completed Vault Phase: V1E Provenance And Threat-Model Hardening
 
 Goal:
 
@@ -133,17 +134,40 @@ Boundaries:
 
 Status:
 
-- V1E provenance and threat-model hardening is added/in progress.
+- V1E provenance and threat-model hardening has been added.
 - The phase is docs/spec hardening only.
 - New docs cover threat model, provenance semantics, and artifact guarantees.
 - No runtime behavior is changed.
 
-Recommended next phase after V1E:
+## Current Vault Phase: V1F CI And Trust Metrics Hardening
 
-- V1F minimal local reviewer UI for Health/Family Vault, if a small UI review surface is the highest-value next step; or
-- V1F CI/trust metrics, if validation and artifact hygiene need stronger automation first.
+Goal:
 
-Do not start V1F until V1E has been validated and reviewed.
+- add GitHub Actions CI for portable validation on push and pull request;
+- add a deterministic local trust metrics report;
+- make eval totals, artifact manifest safety flags, and generated-report ignore expectations easier to inspect;
+- keep the phase automation/reporting-only.
+
+Boundaries:
+
+- no diagnosis, treatment recommendation, dosage advice, medication selection advice, or start/stop medication advice;
+- no real patient data or real genetic data;
+- no clinical decision support claims;
+- no API routes, CLI commands, UI/templates, LLM generation, genetics support, dependencies, or PGx behavior changes.
+
+Status:
+
+- V1F CI/trust metrics hardening is added/in progress.
+- GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics.
+- `python -m evals.trust_metrics` prints automated demo/reviewer trust checks.
+- Trust metrics are not clinical validation.
+
+Recommended next phase after V1F:
+
+- V1G minimal local reviewer UI for Health/Family Vault; or
+- V1G claim/provenance graph for vault artifacts.
+
+Do not start V1G until V1F has been validated and reviewed.
 
 ## Phase 2: Ingest And Provenance
 

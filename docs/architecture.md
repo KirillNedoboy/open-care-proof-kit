@@ -90,6 +90,22 @@ Review these V1E docs with the committed Health/Family Vault artifacts:
 - [docs/provenance_semantics.md](provenance_semantics.md)
 - [docs/vault_artifact_guarantees.md](vault_artifact_guarantees.md)
 
+## CI and Trust Metrics Layer
+
+V1F adds automated review checks without changing product runtime behavior.
+GitHub Actions runs the portable validation sequence on `push` and
+`pull_request`: tests, ruff, mypy, deterministic evals, and local trust metrics.
+
+The trust metrics module in `evals/trust_metrics.py` reuses
+`evals.runner.run_evals()` for eval totals and reads
+`docs/assets/health_vault/family-vault-manifest.json` for synthetic/demo
+artifact safety flags. It also checks the repository ignore convention for
+generated `reports/` demo outputs.
+
+The output is a deterministic local Markdown report for automated
+demo/reviewer trust checks. It is not clinical validation and does not claim the
+project is clinically correct.
+
 ## Risk controls
 
 - No real patient data in repo.

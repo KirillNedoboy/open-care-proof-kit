@@ -765,3 +765,32 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
 - Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
 - Risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts.
+
+## 2026-07-05 - V1F CI and trust metrics hardening
+
+### Changed
+- Added V1F CI and trust metrics hardening.
+- Added `.github/workflows/ci.yml`.
+- Added deterministic local trust metrics report in `evals/trust_metrics.py`.
+- Added focused trust metrics tests in `tests/test_trust_metrics.py`.
+- Updated README, reviewer quickstart, architecture, roadmap, vault artifact guarantees, checkpoint, and session notes for V1F.
+
+### Product boundaries
+- No runtime product behavior changed.
+- No API/UI/LLM/genetics added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- No dependencies added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Trust metrics are automated demo/reviewer trust checks, not clinical validation.
+- Next recommended phase: V1G minimal reviewer UI or claim/provenance graph for vault artifacts.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_trust_metrics.py -q` failed with `ModuleNotFoundError: No module named 'evals.trust_metrics'`.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests\test_trust_metrics.py -q` - 5 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 79 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 35 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.

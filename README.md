@@ -12,11 +12,11 @@ This project is not an AI doctor, not a diagnostic system, not a medication reco
 
 ## Current Status
 
-- Phase: final submission-ready packaging.
+- Phase: V1F CI/trust metrics hardening.
 - Public default branch: `main`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
-- Validation baseline: 35 tests, ruff, mypy, and evals runner with 12 passed cases / 0 failed cases.
+- Validation baseline: 79 tests, ruff, mypy, evals runner with 12 passed cases / 0 failed cases, and local trust metrics.
 
 See [docs/project_status.md](docs/project_status.md) for the current capability and validation snapshot.
 
@@ -111,6 +111,7 @@ pytest
 ruff check app tests evals
 mypy app evals
 python -m evals.runner
+python -m evals.trust_metrics
 ```
 
 Windows PowerShell without activating:
@@ -120,7 +121,29 @@ Windows PowerShell without activating:
 .\.venv\Scripts\python.exe -m ruff check app tests evals
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
+.\.venv\Scripts\python.exe -m evals.trust_metrics
 ```
+
+## Trust Checks
+
+GitHub Actions CI runs the portable validation sequence on `push` and
+`pull_request`:
+
+- `python -m pytest`
+- `python -m ruff check app tests evals`
+- `python -m mypy app evals`
+- `python -m evals.runner`
+- `python -m evals.trust_metrics`
+
+Run local trust metrics:
+
+```bash
+python -m evals.trust_metrics
+```
+
+The trust metrics report combines eval totals with synthetic/demo Health/Family
+Vault artifact safety flags from the committed manifest. These are automated
+demo/reviewer trust checks, not clinical validation.
 
 ## Demo Commands
 

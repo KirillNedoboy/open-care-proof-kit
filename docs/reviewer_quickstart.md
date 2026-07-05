@@ -147,6 +147,35 @@ Interpretation:
 - pipeline evals execute the real local demo pipeline for supported and unsupported drug paths;
 - neither mode is clinical validation.
 
+## 6. Run Trust Metrics
+
+```bash
+python -m evals.trust_metrics
+```
+
+Windows PowerShell without activating:
+
+```powershell
+.\.venv\Scripts\python.exe -m evals.trust_metrics
+```
+
+Expected sections:
+
+- `Trust Metrics`
+- `Eval Metrics`
+- `Health/Family Vault Artifact Safety`
+- `Safety Boundary Checks`
+- `Residual Risks`
+
+Interpretation:
+
+- trust metrics are automated demo/reviewer trust checks;
+- eval metrics come from the existing deterministic eval runner;
+- Health/Family Vault safety flags come from the committed synthetic artifact manifest;
+- `provenance_complete: true` means the demo manifest reports no missing provenance;
+- `generated_reports_ignored: true` means generated `reports/` demo outputs are configured as ignored artifacts;
+- the report is not clinical validation and does not prove clinical correctness.
+
 ## Health/Family Vault Reviewer Path
 
 The Health/Family Vault layer is packaged as committed synthetic reviewer artifacts. It does not add a new API route, CLI command, UI, LLM generation, genetics support, or medical advice.
@@ -207,6 +236,7 @@ pytest
 ruff check app tests evals
 mypy app evals
 python -m evals.runner
+python -m evals.trust_metrics
 ```
 
 ## Expected Success Summary
@@ -218,6 +248,7 @@ The project is running correctly when:
 - mypy passes;
 - eval runner reports 12 passed cases and 0 failed cases;
 - eval runner reports 7 static-text cases and 5 pipeline-backed cases;
+- trust metrics prints eval metrics, Health/Family Vault manifest safety flags, and residual risks;
 - CLI writes Markdown and audit JSON;
 - API endpoints return report and audit data;
 - audit has `policy_passed=true`;

@@ -111,7 +111,19 @@ pytest
 ruff check app tests evals
 mypy app evals
 python -m evals.runner
+python -m evals.trust_metrics
 ```
+
+Trust metrics:
+
+```bash
+python -m evals.trust_metrics
+```
+
+The trust metrics report reads the committed manifest, reports synthetic/demo
+artifact safety flags, checks the generated-report ignore expectation, and
+includes eval totals from the existing eval runner. It is an automated
+demo/reviewer trust check, not clinical validation.
 
 ## Difference From Generated Reports Under `reports/`
 
