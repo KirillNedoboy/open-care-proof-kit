@@ -1,110 +1,129 @@
 # Grant Submission Answers
 
-Copy these answers into a Sentient Open Source AGI Grant or public-goods grant application. Keep the wording conservative: this is open-source trust infrastructure for private personal-agent workflows, with health as the reference workflow. It is not a clinical product.
+Copy these answers into a Sentient Open Source AGI Grant or similar public-goods application. Keep the wording conservative. This repo is private, local-first trust infrastructure with health as the stress-test domain. It is not a clinical product.
+
+Character counts:
+
+- Short summary: 634
+- Long summary: 1243
+- Final blurb: 489
 
 ## A. Project Title
 
-OpenCare Proof Kit: Local-first trust, evidence, safety, audit, and eval infrastructure for private personal agents.
+OpenCare Proof Kit: privacy-first personal/family medical workspace infrastructure with deterministic trust, provenance, safety, audit, and evals.
 
 ## B. One-Sentence Pitch
 
-OpenCare Proof Kit is an open-source, local-first proof kit for private, inspectable, fail-closed agent workflows, demonstrated through a clinician-reviewable health briefing pipeline with audit trails and executable safety evals.
+OpenCare Proof Kit is an open-source, local-first foundation for a privacy-first personal/family medical workspace, demonstrated today with a synthetic Health/Family Vault, reviewer artifacts, a read-only reviewer UI, deterministic trust checks, and a narrow clinician-reviewable PGx briefing demo.
 
 ## C. Short Summary
 
-OpenCare Proof Kit is open-source trust infrastructure for private personal agents. It runs a local Medication-to-Doctor Briefing reference workflow from synthetic health and genotype-like data, local demo evidence packs, deterministic PGx rules, safety policy checks, Markdown reports, JSON audit trails, and executable evals. It is not medical advice, diagnosis, dosage guidance, or a medication recommendation engine.
+OpenCare Proof Kit is an open-source, local-first foundation for a privacy-first personal/family medical workspace. The repo now implements a synthetic Health/Family Vault with deterministic schemas, validation, read model, reviewer artifacts, a read-only `/demo/health-vault` page, a provenance trace graph, CI, and trust metrics. The existing Medication-to-Doctor Briefing / PGx demo remains intact as a reference workflow. Genetics and LLM layers are future extensions. The project is synthetic/demo-only and does not provide diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support.
 
 ## D. Longer Summary
 
-OpenCare Proof Kit is a local-first, open-source trust/evidence/safety kit for private personal-agent workflows. The current reference workflow is Medication-to-Doctor Briefing: synthetic/demo health vault data and genotype-like data flow through a local evidence pack, deterministic PGx rule matcher, demo evidence-pack coverage summary, safety policy, report writer, Markdown briefing, JSON audit, and static-text plus pipeline-backed evals.
+OpenCare Proof Kit is a local-first, open-source foundation for a privacy-first personal/family medical workspace. The current repo is vault-first: it implements a synthetic Health/Family Vault with deterministic schemas, loader/validation, a provenance-preserving read model, local JSON/Markdown/manifest reviewer artifacts, a read-only `/demo/health-vault` reviewer page, a deterministic context/provenance trace graph, GitHub Actions CI, and a local trust metrics report.
 
-The core invariant is deterministic tools before LLM. The LLM/report writer explains deterministic findings, sources, limitations, uncertainty, and clinician-review questions; it does not create medical truth or override safety policy.
+The older Medication-to-Doctor Briefing / PGx demo still runs as a narrow reference workflow. Synthetic health vault data and demo genotype-like data go through local evidence packs, deterministic PGx rules, safety checks, Markdown reporting, JSON audit output, and executable evals.
 
-The project is designed as public-good infrastructure for sensitive personal AI. It helps users and builders inspect what data moved, what evidence was used, what safety checks ran, and whether outputs drift toward unsafe claims. The health reference workflow uses synthetic/demo data only, does not upload raw health or genetic data to the cloud by default, and explicitly avoids diagnosis, dosage guidance, start/stop medication advice, real patient data, WGS/FASTQ/BAM processing, and clinical deployment claims.
+The design rule is deterministic tools before LLM. The vault is the source of truth. Genetics is a future layer. Any future LLM remains an interface and explanation layer, not clinical authority. The repo is synthetic/demo-only, does not support real patient or real genetic data yet, is not in clinical deployment, and does not provide diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, clinical decision support, or clinical validation.
 
 ## E. Problem
 
-Personal AI agents will increasingly help people reason around sensitive context: medications, symptoms, labs, family history, genetics, financial records, legal documents, identity data, and private work. Generic LLM apps can blur evidence, hide uncertainty, omit sources, and produce unsafe or unsupported text. Closed cloud-first systems can also require users to surrender sensitive context before they can inspect what the system does.
+People and families already have useful health context before genetics enters the picture: medications, labs, visits, documents, timeline events, family relationships, and open questions. Today that context is usually scattered across PDFs, portals, notes, and memory. At the same time, generic LLM products can blur evidence, hide provenance, and produce unsafe or unsupported health language.
 
-The open-source ecosystem needs runnable trust patterns for private, evidence-grounded agents: local data handling, deterministic evidence tools, fail-closed safety checks, audit trails, and evals that fail when outputs drift toward unsafe claims.
+The open-source ecosystem needs a concrete pattern for handling sensitive personal context in a way that stays local, source-grounded, auditable, and fail-closed when support is missing.
 
 ## F. Solution
 
-OpenCare Proof Kit provides a concrete local reference implementation:
+OpenCare Proof Kit provides a working local reference implementation:
 
-- synthetic/demo health vault and genotype-like inputs;
-- local demo evidence packs;
-- deterministic parsers and PGx rule matching;
-- safe unsupported-drug no-claim behavior;
-- report generation with sources, limitations, safety note, and clinician-review language;
-- JSON audit metadata with policy status, evidence-pack version, coverage status, and raw-export status;
-- static-text and pipeline-backed evals that execute the real local demo pipeline.
+- a synthetic Health/Family Vault foundation that is useful without DNA;
+- deterministic loader and validation for person/family medical context;
+- a provenance-preserving read model;
+- committed reviewer artifacts plus a read-only reviewer page;
+- a deterministic context/provenance trace graph;
+- the existing Medication-to-Doctor Briefing / PGx demo for a narrow reference workflow;
+- JSON audit metadata, executable evals, CI, and deterministic trust metrics.
 
-The result is a reusable trust pattern for builders who want private, inspectable, source-grounded workflows before adding broader agent behavior. Health is the reference domain because it makes the privacy, evidence, safety, and audit requirements concrete.
+The result is not a medical chatbot. It is a reviewer-friendly trust and provenance substrate that other builders can inspect, fork, and reuse.
 
 ## G. Why This Should Be Open-Source
 
-Trust infrastructure for sensitive AI should be inspectable. Open source lets reviewers and downstream builders audit the data flow, evidence-pack schema, deterministic rules, safety policy, report structure, audit metadata, and eval cases.
+Trust infrastructure for sensitive AI should be inspectable. Open source lets reviewers and downstream builders audit:
 
-This project is not trying to own a closed patient workflow or become a broad healthcare platform. Its value is in reusable public-good components that others can fork, test, adapt, and improve for local-first sensitive-data agents.
+- data models;
+- provenance rules;
+- deterministic builders;
+- safety boundaries;
+- audit metadata;
+- eval cases;
+- CI and trust checks.
+
+The value is not a closed patient workflow. The value is a reusable public-good pattern for sensitive local agent systems.
 
 ## H. Why This Is Local-First / Private-By-Default
 
-Medication and genetic context are high-sensitivity data categories. OpenCare Proof Kit keeps the reference workflow local-first so users and reviewers can inspect the full path from demo input to generated report without a cloud dependency or hidden raw-data transfer.
+Medication, family, and genetic context are high-sensitivity data categories. OpenCare Proof Kit keeps the current repo local-first so a reviewer can inspect what was loaded, what was transformed, what evidence was used, what safety boundaries were applied, and what outputs were produced without requiring cloud upload.
 
-The current demo uses only synthetic/demo data. Audit metadata records `raw_health_or_genetic_data_exported=false`. Cloud raw genotype upload is not enabled by default and is outside the MVP boundary.
+The current repo uses synthetic/demo-only data. It does not claim real-patient support or real-genetic-data support. Generated `reports/` artifacts remain ignored by Git.
 
 ## I. Who Benefits
 
-- Users who need AI help around sensitive context without handing raw private data to a closed service.
-- Underserved users who benefit from open, locally runnable tools rather than paywalled or extractive health AI workflows.
-- Clinicians and reviewers who need outputs with visible sources, limitations, and audit metadata.
-- Open-source builders working on personal agents for sensitive domains, with health as a demanding reference case.
-- Grant reviewers and researchers looking for practical patterns for trustworthy private AI infrastructure.
+- people who want a private workspace for medical and family context;
+- families who need shared context and provenance before any genetics layer exists;
+- open-source builders working on sensitive local agents;
+- clinicians and reviewers who want visible sources, boundaries, and audit metadata;
+- grant reviewers looking for concrete trustworthy-AI infrastructure rather than a pitch deck.
 
 ## J. What Has Been Built So Far
 
 - Public GitHub repository: `https://github.com/KirillNedoboy/open-care-proof-kit`
-- Deterministic local demo pipeline.
-- CLI report and audit generation for `sertraline` and safe unsupported-drug `aspirin`.
-- FastAPI endpoints and server-rendered local web demo pages.
-- Strict local evidence-pack validation.
-- Demo evidence-pack coverage reporting.
-- Safe no-claim behavior for unsupported drugs.
-- Markdown clinician-reviewable briefing output.
-- JSON audit metadata.
-- Static-text and pipeline-backed evals.
-- GitHub/grant readiness docs, license, contribution guide, security policy, release checklist, screenshot guide, and reviewer quickstart.
-- Visual demo assets: local web screenshots and a 90-120 second demo video script using synthetic/demo data only.
+- Synthetic Health/Family Vault Core schemas and synthetic family dataset.
+- Deterministic Health/Family Vault loader and validation.
+- Deterministic Health/Family Vault read model.
+- Deterministic local reviewer artifacts: JSON read model, Markdown summary, manifest.
+- Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
+- Privacy/safety threat model, provenance semantics, and vault artifact guarantees docs.
+- Read-only local reviewer UI at `/demo/health-vault`.
+- Deterministic context/provenance trace graph in the reviewer UI.
+- GitHub Actions CI plus deterministic local trust metrics.
+- Existing Medication-to-Doctor Briefing / PGx demo, report output, audit output, and eval suite.
 
 ## K. Technical Architecture
 
 ```txt
-Synthetic demo health vault
-  -> Demo genotype parser
-  -> Local evidence pack loader
-  -> Deterministic PGx rule matcher
-  -> Demo evidence-pack coverage summary
-  -> Markdown report renderer
-  -> Safety policy checker
-  -> JSON audit builder
-  -> Static-text and pipeline-backed eval runner
+synthetic family vault dataset
+  -> deterministic loader / validation
+  -> deterministic read model
+  -> deterministic reviewer artifacts
+  -> read-only reviewer UI
+  -> context/provenance trace graph
+
+synthetic briefing inputs
+  -> demo genotype parser
+  -> local evidence pack loader
+  -> deterministic PGx rule matcher
+  -> safety policy
+  -> Markdown report
+  -> JSON audit
+  -> eval runner
 ```
 
-The LLM/report writer is an explanation layer only. It summarizes deterministic findings, limitations, sources, and clinician-review questions. It must not invent sources, infer clinical meaning from raw variants without evidence rules, recommend medication choice, recommend dosage, or override safety policy.
+The product rule is vault first, genetics second, LLM third as interface. The LLM/report writer is not the source of medical truth.
 
 ## L. Safety Model
 
 The safety model is explicit and fail-closed:
 
 - no source, no claim;
-- unsupported drugs return safe no-claim output;
-- demo evidence-pack coverage is labeled as demo-only and not clinical coverage;
-- every report includes safety note, clinician review note, evidence level, limitations, sources, and audit metadata;
-- safety policy checks run before output is treated as valid;
-- evals check unsafe wording, missing sources, missing uncertainty, audit presence, and real pipeline behavior.
+- unsupported flows must stay visibly unsupported;
+- the reviewer vault layer is recorded context only, not medical interpretation;
+- every surfaced reviewer artifact keeps provenance or fails closed;
+- the PGx briefing path still requires safety note, clinician-review note, limitations, sources, and audit metadata;
+- evals and trust metrics are engineering checks, not clinical validation.
 
-The system must not generate diagnosis, treatment plans, dosage adjustments, start/stop medication instructions, source-less medical claims, actionable VUS claims, AlphaMissense-only clinical interpretation, or hidden uncertainty.
+The repo must not provide diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop medication advice, clinical decision support, or clinical validation claims.
 
 ## M. Evaluation / Audit Model
 
@@ -123,63 +142,53 @@ audit_missing_rate: 0.0
 pipeline_failure_rate: 0.0
 ```
 
-Static-text evals check known safety and evidence wording. Pipeline evals execute the real local demo pipeline via `build_demo_briefing(...)` and validate report text plus nested audit fields such as `coverage.coverage_status`, `coverage.matched_findings`, `policy_passed`, and `raw_health_or_genetic_data_exported`.
-
-The audit trail records report ID, app version, pipeline steps, evidence-pack version, coverage status, safety policy status, and raw-export status.
+GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics. The trust metrics report reads eval totals plus committed Health/Family Vault manifest flags such as `demo_only`, `synthetic`, `no_llm_generation`, `no_genetics`, `no_medical_advice`, and `generated_reports_ignored`.
 
 ## N. Why Sentient / Grant Alignment
 
-OpenCare Proof Kit aligns with open-source public-good AI because it focuses on infrastructure that makes personal agents more trustworthy, inspectable, user-controlled, and fail-closed. It is local-first and private-by-default, uses deterministic tools before LLM explanations, exposes audit trails, and ships executable evals.
+This project fits an open-source public-goods grant because it focuses on infrastructure that makes personal agents more inspectable, private, and controllable. The repo is local-first, synthetic/demo-only, deterministic-first, and honest about what is not implemented.
 
-For a Sentient-style ecosystem, the project demonstrates a reusable pattern for personal AI agents that handle sensitive context without becoming extractive or opaque. The health workflow is a stress test for the trust layer, not a claim to solve broad healthcare. The work does not assume ownership, equity, closed deployment, or existing Sentient integration; it is designed to be forked, inspected, and reused.
+It does not assume closed deployment, platform lock-in, or current Sentient integration. It is the kind of substrate another builder can inspect and reuse.
 
 ## O. What Support Would Help
 
-Grant support would fund:
+Grant support would help fund:
 
-- evidence-pack authoring and validation tooling;
+- better ingest/provenance tooling for the vault-first layer;
+- more reviewer automation and artifact verification;
 - broader synthetic eval coverage;
-- CI and release automation;
-- clearer audit schema documentation;
-- demo video and reviewer assets;
-- improved local web review experience;
-- structured export for clinician-review handoff;
-- research into optional open-source local model or Sentient ecosystem adapters after official docs are stable.
+- stronger trust metrics and release hygiene;
+- clearer clinician-review handoff exports;
+- careful research on future genetics and interface layers after the vault foundation is stable.
 
 ## P. 30-Day Milestones
 
-- Add CI or a local `make check` equivalent.
-- Improve public repository hygiene and release checklist coverage.
-- Add evidence-pack authoring helpers and schema examples.
-- Expand pipeline-backed evals for no-source, unsupported, and coverage-limited paths.
-- Produce a short demo video using synthetic/demo data only.
+- Finish public reviewer packaging and GitHub spot-checks.
+- Tighten reviewer docs around the vault-first path and trust metrics.
+- Add artifact refresh and reviewer-pack maintenance instructions.
+- Expand wording scans and packaging checks for submission hygiene.
 
 ## Q. 60-Day Milestones
 
-- Add broader demo-only trust workflow examples that keep health safety boundaries intact.
-- Improve structured export for clinician-review handoff.
-- Improve audit visualization in the local web demo.
-- Document audit schema and evidence-pack lifecycle.
-- Add regression evals for report/audit presentation changes.
+- Add local ingest/provenance conventions for documents, labs, medications, visits, and notes.
+- Improve clinician-review handoff exports without adding clinical action.
+- Extend trust metrics and reviewer surfaces around provenance gaps and unsupported states.
 
 ## R. 90-Day Milestones
 
-- Research optional open-source local model adapters and Sentient ecosystem compatibility if official docs are stable.
-- Draft privacy/security design for any optional adapter before implementation.
-- Add adapter-facing eval and audit requirements.
-- Improve contributor docs for adding demo-only evidence packs safely.
-- Prepare a public v0.1 release tag after validation and review.
+- Research optional future genetics and interface layers without breaking the vault-first architecture.
+- Define privacy, provenance, and safety requirements before any real-data or adapter work.
+- Prepare a conservative public `v0.1` release after validation and reviewer feedback.
 
 ## S. Risks And Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Unsafe medical-advice drift | Safety policy, report constraints, and evals that fail on unsafe wording. |
-| Source-less claims | Strict evidence-pack validation and no-source no-claim behavior. |
-| Privacy leakage | Local-first default, synthetic demo data, ignored generated reports, and no cloud raw upload by default. |
-| Overclaiming clinical validity | Docs state evals are engineering guardrails, not clinical validation. |
-| Scope creep | Hard non-goals for diagnosis, dosage, WGS/FASTQ/BAM, SaaS, payments, bots, and blockchain. |
-| Weak future integrations | Optional adapters require official docs, current research review, and a privacy/security design first. |
+| Overclaiming clinical capability | Keep the repo synthetic/demo-only, deterministic-first, and explicit that it is not medical advice or clinical validation. |
+| Source-less or unsupported context being overstated | Fail-closed provenance rules, reviewer artifacts, and trust metrics. |
+| Privacy drift | Local-first defaults, ignored generated reports, and no real patient/genetic support claims. |
+| Scope creep into genetics or AI-doctor positioning | Product rule: vault first, genetics second, LLM third as interface. |
+| Reviewer confusion | Compact reviewer pack, visible safety boundary language, CI, and reproducible validation commands. |
 
 ## T. Non-Goals
 
@@ -189,16 +198,15 @@ OpenCare Proof Kit does not provide or promise:
 - treatment recommendation;
 - medication choice recommendation;
 - dosage guidance;
-- medication start/stop instructions;
-- real patient upload;
-- real genetic data processing in the demo;
-- FASTQ/BAM/WGS pipeline;
-- whole genome interpretation;
-- AlphaMissense clinical interpretation;
+- start/stop medication instructions;
 - clinical decision support;
+- clinical validation;
+- real patient support in the current repo;
+- real genetic data support in the current repo;
+- FASTQ/BAM/WGS pipeline;
+- production genome interpretation;
 - SaaS/auth/payments/Telegram/blockchain;
-- cloud raw genotype upload by default;
-- clinical validation or regulatory approval.
+- cloud raw genotype upload by default.
 
 ## U. Repository / Demo Instructions
 
@@ -210,53 +218,52 @@ https://github.com/KirillNedoboy/open-care-proof-kit
 
 Run locally:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-pytest
-ruff check app tests evals
-mypy app evals
-python -m evals.runner
-python -m app.cli demo-report --drug sertraline --out-dir reports
-python -m app.cli demo-report --drug aspirin --out-dir reports
-uvicorn app.main:app --reload
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check app tests evals
+.\.venv\Scripts\python.exe -m mypy app evals
+.\.venv\Scripts\python.exe -m evals.runner
+.\.venv\Scripts\python.exe -m evals.trust_metrics
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Open:
+Inspect first:
 
 ```txt
-http://127.0.0.1:8000/
-http://127.0.0.1:8000/demo
-http://127.0.0.1:8000/demo/report-view?drug=sertraline
-http://127.0.0.1:8000/demo/report-view?drug=aspirin
+http://127.0.0.1:8000/demo/health-vault
+docs/final_reviewer_pack.md
+docs/assets/health_vault/family-vault-summary.md
+docs/assets/health_vault/family-vault-manifest.json
 ```
 
-Expected signals: tests pass, evals report 12 passed and 0 failed, generated reports stay ignored, sertraline shows a matched demo rule, and aspirin shows safe unsupported-drug no-claim behavior.
+The existing PGx reference workflow remains available through the local demo pages and CLI.
 
 ## V. Final Short Application Blurb
 
-OpenCare Proof Kit is open-source local-first trust infrastructure for private personal agents: deterministic evidence tools before LLM explanations, fail-closed safety policy, clinician-reviewable health reference briefings, demo-only evidence-pack coverage, audit trails, and executable safety evals. It is not medical advice and uses synthetic/demo data only.
+OpenCare Proof Kit is an open-source, local-first foundation for a privacy-first personal/family medical workspace. The current repo implements a synthetic Health/Family Vault with deterministic provenance-preserving artifacts, a read-only reviewer UI, a context/provenance trace graph, CI, trust metrics, and a narrow clinician-reviewable PGx briefing demo. It is synthetic/demo-only and does not provide diagnosis, treatment recommendation, dosage guidance, or clinical decision support.
 
 ## Application Wording Guardrails
 
 Use:
 
-- "doctor briefing"
-- "clinician-reviewable"
-- "evidence-pack coverage"
-- "demo-only evidence"
-- "audit trail"
-- "private/local-first"
+- "personal/family medical workspace foundation"
+- "vault first"
+- "synthetic/demo-only"
+- "reviewer artifacts"
+- "read-only reviewer UI"
+- "provenance trace graph"
+- "trust metrics"
 - "not medical advice"
 
 Avoid:
 
+- "AI doctor"
 - "diagnosis"
 - "treatment recommendation"
-- "which medication should I take"
 - "dosage guidance"
 - "clinical decision support"
-- "genetic consultant"
 - "real patient upload"
+- "real genetic data support"
 - "whole genome interpretation"

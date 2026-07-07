@@ -1,92 +1,81 @@
 # Grant Milestones
 
-These milestones are conservative and infrastructure-focused. They do not promise clinical deployment, diagnosis, treatment, medication choice, dosage guidance, real patient upload, or whole genome interpretation.
+These milestones are conservative and vault-first. They do not promise diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, real patient support, real genetic data support, or clinical deployment.
 
-## Month 1: Public Repo Hardening And Evidence/Eval Depth
-
-Goals:
-
-- Add CI or a local `make check` equivalent for repeatable validation.
-- Improve evidence-pack authoring documentation and schema examples.
-- Add local validation helpers for evidence-pack contributors.
-- Expand pipeline-backed evals for no-source, unsupported-drug, coverage-limited, and report-safety paths.
-- Create a short demo video and screenshot set using synthetic/demo data only.
-- Keep generated reports ignored and public release hygiene documented.
-
-Acceptance signals:
-
-- Tests, ruff, mypy, and evals run from one documented command or CI workflow.
-- New evals preserve zero unsafe-advice, missing-source, uncertainty, audit, and pipeline failure rates.
-- Demo video and screenshots contain no real patient data, real genetic data, secrets, or private records.
-
-## Month 2: Broader Local Health-Agent Trust Workflows
+## Month 1: Public Reviewer Packaging And Hygiene
 
 Goals:
 
-- Add one or two adjacent demo-only trust workflows that reuse the same pattern: local inputs, explicit evidence, safety policy, report, audit, evals.
-- Improve structured export for clinician-review handoff.
-- Improve local audit visualization in the web demo.
-- Document audit schema fields and evidence-pack lifecycle.
-- Add regression evals for structured export and audit display behavior.
+- finish public reviewer-pack polish and GitHub spot-checks;
+- document how reviewer artifacts, trust metrics, and validation baselines are refreshed;
+- tighten release hygiene for docs-only packaging changes;
+- keep generated reports ignored and reviewer-facing boundaries visible.
 
 Acceptance signals:
 
-- New workflow examples remain demo-only and source-grounded.
-- Structured export is clearly labeled for clinician review, not automated action.
-- Audit display makes policy status, evidence-pack version, coverage status, and raw-export status easy to inspect.
+- reviewer pack, README, grant docs, and final submission docs tell the same story;
+- public README first screen matches the implemented V1H state;
+- generated `reports/` outputs remain ignored;
+- validation baseline and trust metrics commands are easy for reviewers to find.
 
-## Month 3: Optional Adapter Research
+## Month 2: Vault-First Ingest And Provenance Improvements
 
 Goals:
 
-- Review official docs and current research for open-source local models and Sentient ecosystem compatibility.
-- Identify whether an optional local model adapter can improve report-writing without changing deterministic-first architecture.
-- Draft privacy, safety, and audit requirements for any adapter before implementation.
-- Prototype only if official docs are stable and the adapter can preserve local/private defaults.
-- Add adapter-specific eval requirements before public use.
+- add local ingest/provenance conventions for documents, labs, medications, visits, and notes;
+- improve unsupported and missing-provenance handling for future imported data;
+- improve clinician-review handoff exports without automating clinical action.
 
 Acceptance signals:
 
-- Written adapter design exists before implementation.
-- No raw health or genetic data is uploaded to cloud services by default.
-- Deterministic evidence tools remain upstream of any model output.
-- The report writer remains an explanation layer only.
+- new ingest paths remain local-first and provenance-preserving;
+- unsupported states stay visible and fail closed;
+- exports remain clearly labeled for review, not treatment action.
+
+## Month 3: Future-Layer Research, Not Scope Jumping
+
+Goals:
+
+- research future genetics and interface layers without breaking the vault-first architecture;
+- define privacy, provenance, and safety requirements before any real-data or adapter work;
+- prepare a conservative public `v0.1` release after validation and reviewer feedback.
+
+Acceptance signals:
+
+- written requirements exist before implementation of any future genetics or interface layer;
+- deterministic vault and provenance infrastructure remains upstream of any model-generated text;
+- no new real-data or clinical claims are introduced by roadmap wording alone.
 
 ## Explicit Non-Promises
 
 The grant roadmap does not promise:
 
-- clinical deployment;
 - diagnosis;
 - treatment recommendation;
-- medication choice recommendation;
 - dosage guidance;
-- medication start/stop instruction;
-- real patient upload;
-- real genetic data processing in the demo;
+- medication selection advice;
+- start/stop medication instructions;
+- real patient support in the current repo;
+- real genetic data support in the current repo;
 - FASTQ/BAM/WGS pipeline;
-- whole genome interpretation;
-- AlphaMissense clinical interpretation.
+- clinical decision support;
+- clinical validation.
 
 ## Application Wording Guardrails
 
 Use:
 
-- "doctor briefing"
-- "clinician-reviewable"
-- "evidence-pack coverage"
-- "demo-only evidence"
-- "audit trail"
-- "private/local-first"
-- "not medical advice"
+- "vault first"
+- "privacy-first personal/family medical workspace"
+- "synthetic/demo-only"
+- "reviewer artifacts"
+- "trust metrics"
 
 Avoid:
 
+- "AI doctor"
 - "diagnosis"
 - "treatment recommendation"
-- "which medication should I take"
 - "dosage guidance"
 - "clinical decision support"
-- "genetic consultant"
 - "real patient upload"
-- "whole genome interpretation"

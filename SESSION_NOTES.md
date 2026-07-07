@@ -4,6 +4,36 @@ This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.
 
+## 2026-07-07 - V1I final grant/reviewer packaging refresh
+
+### Changed
+- Refreshed the public README to match the implemented V1A-V1H state instead of centering the older PGx demo alone.
+- Reframed the repo as a privacy-first personal/family medical workspace foundation with the product rule: vault first, genetics second, LLM third as interface.
+- Updated grant docs so they describe the implemented synthetic Health/Family Vault foundation, deterministic read model, reviewer artifacts, read-only reviewer UI, context/provenance trace graph, CI, and trust metrics.
+- Updated final submission docs to the current validation baseline:
+  - `pytest`: 87 passed;
+  - `evals.runner`: 12 passed / 0 failed;
+  - `mypy`: no issues in 36 source files;
+  - trust metrics: passed.
+- Added `docs/final_reviewer_pack.md` as a compact reviewer index.
+- Updated roadmap/checkpoint/status docs to record V1I as docs-only and to keep V1H as the latest implemented runtime phase.
+
+### Product boundaries
+- Docs-only packaging refresh.
+- No runtime code changes.
+- No route changes.
+- No test or eval behavior changes.
+- No upload or user-input surface added.
+- No LLM generation added.
+- No genetics support added.
+- No PGx behavior changes.
+- No safety boundary changes.
+
+### Next safe step
+- Push or merge the final branch.
+- Run one public GitHub spot-check for README/doc links and ignored generated artifacts.
+- Stop feature work before submission unless a real blocker is found.
+
 ## 2026-06-25 - Project bootstrap package
 
 ### Done

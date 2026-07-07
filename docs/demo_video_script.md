@@ -2,15 +2,15 @@
 
 Target length: 90-120 seconds.
 
-Use only the local demo server and synthetic/demo data. Do not show browser bookmarks, private desktop paths, terminals containing secrets, real patient data, real genetic data, or generated files outside the ignored `reports/` directory.
+Use only the local demo server and synthetic/demo data. Do not show bookmarks, secrets, private desktop paths, real patient data, real genetic data, or generated files outside the ignored `reports/` directory.
 
 ## Script
 
-### 0:00-0:15 - Opening
+### 0:00-0:12 - Opening
 
-"OpenCare Proof Kit is an open-source, local-first trust, evidence, safety, audit, and eval kit for private health AI agents. The reference workflow is Medication-to-Doctor Briefing: a clinician-reviewable report generated from synthetic demo data, local evidence rules, and safety checks."
+"OpenCare Proof Kit is not a medical chatbot. It is a privacy-first personal and family medical workspace foundation. The current rule is vault first, genetics second, LLM third as interface."
 
-### 0:15-0:30 - Landing Page
+### 0:12-0:25 - Landing Page
 
 Show:
 
@@ -20,25 +20,50 @@ http://127.0.0.1:8000/
 
 Talking points:
 
-- local-first health AI proof layer;
-- deterministic evidence and safety checks before report writing;
-- explicit non-goals: no diagnosis, no dosage recommendation, no start/stop medication advice.
+- synthetic/demo-only current repo;
+- Health/Family Vault is the main implemented foundation;
+- no diagnosis, no treatment recommendation, no dosage guidance, no clinical decision support.
 
-### 0:30-0:45 - Demo Patient And Pipeline
+### 0:25-0:55 - Health/Family Vault Reviewer Route
 
 Show:
 
 ```txt
-http://127.0.0.1:8000/demo
+http://127.0.0.1:8000/demo/health-vault
 ```
 
 Talking points:
 
-- synthetic demo patient only;
-- local health vault and demo genotype-like data;
-- local evidence pack, deterministic rule matching, safety policy, Markdown report, and JSON audit.
+- read-only reviewer page;
+- safety banner is visible at the top;
+- family overview and provenance coverage are shown directly;
+- committed manifest trust flags are used on purpose for reviewer trust checks.
 
-### 0:45-1:05 - Sertraline Report
+### 0:55-1:15 - Context / Provenance Trace Graph
+
+Keep showing `/demo/health-vault`.
+
+Talking points:
+
+- the `Context / Provenance Trace Graph` is deterministic;
+- it links recorded items to people, sources, safety boundaries, and reviewer artifacts;
+- it is provenance and traceability only, not medical interpretation and not clinical validation.
+
+### 1:15-1:30 - Trust Metrics
+
+Show terminal command:
+
+```powershell
+.\.venv\Scripts\python.exe -m evals.trust_metrics
+```
+
+Talking points:
+
+- trust metrics report eval totals plus Health/Family Vault manifest safety flags;
+- CI runs the same checks on `push` and `pull_request`;
+- these are engineering trust checks, not clinical validation.
+
+### 1:30-1:48 - Existing Medication-to-Doctor Briefing Reference Workflow
 
 Show:
 
@@ -48,61 +73,18 @@ http://127.0.0.1:8000/demo/report-view?drug=sertraline
 
 Talking points:
 
-- sertraline has a matched demo evidence-pack rule;
-- the report includes safety note, limitations, sources, clinician-review questions, and audit metadata;
-- audit records policy status and that raw health/genetic data was not exported.
+- the older Medication-to-Doctor Briefing / PGx path still works;
+- it remains the narrow reference workflow;
+- it includes sources, limitations, safety language, and audit metadata.
 
-### 1:05-1:25 - Aspirin Safe No-Claim Report
+### 1:48-2:00 - Closing
 
-Show:
-
-```txt
-http://127.0.0.1:8000/demo/report-view?drug=aspirin
-```
-
-Talking points:
-
-- aspirin is unsupported by the local demo evidence pack;
-- the system returns safe no-claim output instead of inventing a clinical claim;
-- coverage status explains that this is demo evidence-pack coverage, not clinical coverage.
-
-### 1:25-1:45 - Evals
-
-Show terminal command:
-
-```powershell
-.\.venv\Scripts\python.exe -m evals.runner
-```
-
-Expected metrics:
-
-```txt
-total_cases: 12
-static_text_cases: 7
-pipeline_cases: 5
-passed_cases: 12
-failed_cases: 0
-unsafe_advice_rate: 0.0
-missing_source_rate: 0.0
-uncertainty_missing_rate: 0.0
-audit_missing_rate: 0.0
-pipeline_failure_rate: 0.0
-```
-
-Talking points:
-
-- static-text evals catch unsafe wording patterns;
-- pipeline-backed evals execute the real local demo pipeline;
-- evals are engineering guardrails, not clinical validation.
-
-### 1:45-2:00 - Closing
-
-"This is not an AI doctor, diagnostic system, medication recommendation engine, or clinical decision-support product. It is a local-first proof kit for making sensitive health-agent workflows inspectable, source-grounded, safety-checked, and auditable."
+"Today the repo is synthetic/demo-only. It does not provide medical advice, diagnosis, treatment recommendation, dosage guidance, or clinical validation. What it does provide is an inspectable, local-first foundation for sensitive health-agent workflows."
 
 ## Capture Checklist
 
 - Use local pages only.
-- Keep address bar and private desktop paths out of frame where possible.
-- Show synthetic/demo data only.
-- Do not show secrets, tokens, `.env` files, private health records, or real genetic files.
+- Show synthetic/demo content only.
+- Keep private paths and secrets out of frame.
+- Do not imply real-patient support or real-genetic-data support.
 - Do not imply clinical validation or medical approval.

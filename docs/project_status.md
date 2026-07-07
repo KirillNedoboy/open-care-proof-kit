@@ -1,14 +1,12 @@
 # Project Status
 
-OpenCare Proof Kit is a local-first, synthetic-data-only proof kit for evidence-grounded health AI agents. The reference workflow remains Medication-to-Doctor Briefing: deterministic demo inputs, demo evidence-pack matching, safety policy enforcement, clinician-reviewable Markdown, and JSON audit output.
+OpenCare Proof Kit is a local-first, synthetic/demo-only foundation for a privacy-first personal/family medical workspace. The latest implemented runtime phase is V1H: a read-only Health/Family Vault reviewer UI with a deterministic context/provenance trace graph. The older Medication-to-Doctor Briefing / PGx path remains intact as the narrow reference workflow.
 
-## Current Branch
+## Current Branching State
 
-```txt
-main
-```
-
-Historical submission branch: `phase-1-github-grant-readiness`.
+- Public default branch: `main`
+- Historical submission branch: `phase-1-github-grant-readiness`
+- Local latest implementation commit: `546a1e5 feat: add health vault provenance trace graph`
 
 ## Public Repository
 
@@ -16,48 +14,39 @@ Historical submission branch: `phase-1-github-grant-readiness`.
 https://github.com/KirillNedoboy/open-care-proof-kit
 ```
 
-The public GitHub repository has been created and pushed.
+## Current State
 
-## Current Phase
-
-Final submission-ready packaging.
-
-The current public default branch packages the grant/reviewer docs, submission answers, visual demo assets, demo video script, and final submission checklist. It does not change runtime behavior, add medical functionality, add new clinical claims, introduce real patient data, introduce real genetic data, or enable cloud raw genotype upload.
-
-## Current Commits
-
-- `f380cd6 feat: prepare grant-ready local health agent proof kit`
-- `b46e336 feat: add minimal local web demo`
-- `dda7958 feat: harden evidence pack validation and coverage reporting`
-- `608fc11 feat: add pipeline-backed evals`
-- `8b2c2fb docs: prepare github and grant readiness pack`
-- `ed2ac9d docs: add grant submission answer pack`
-- `ba6b4f9 docs: add visual demo assets`
-- `53cb7f8 docs: add visual demo assets`
-- `97bb70f docs: add final submission checklist`
-- `2a1b539 docs: sync final submission status`
-- `0a74740 docs: polish final public submission state`
+- Latest implemented runtime phase: V1H Health/Family Vault context/provenance trace graph.
+- Current packaging phase: V1I final grant/reviewer packaging refresh.
+- V1I is docs-only. It does not change runtime code, tests, evals, routes, or product boundaries.
 
 ## Current Capabilities
 
-- Local CLI generation of Markdown briefings and JSON audits for the demo workflow.
-- FastAPI endpoints and server-rendered pages for landing, demo, report, and audit inspection.
-- Deterministic evidence-pack matching for the supported `sertraline` demo path.
-- Safe unsupported-drug behavior for queries such as `aspirin`, with no clinical claim and explicit demo-only coverage limits.
-- Strict evidence-pack validation for source domains, limitations, demo-only behavior, and no unauthorized clinical-action flags.
-- Static-text eval guardrails plus pipeline-backed evals that execute the real local demo pipeline.
-- GitHub/grant readiness docs: license, contribution policy, security policy, grant pack, roadmap, release checklist, and screenshot guide.
-- Grant submission docs: copy-paste application answers, short pitches, conservative milestones, and application wording guardrails.
-- Visual demo screenshots and a grant/reviewer demo video script.
+- Synthetic Health/Family Vault Core schemas and synthetic family dataset.
+- Deterministic loader/validation for the family vault.
+- Deterministic read model with provenance coverage and safety notices.
+- Deterministic local reviewer artifacts: JSON read model, Markdown summary, manifest.
+- Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
+- Read-only local reviewer route at `/demo/health-vault`.
+- Deterministic context/provenance trace graph in the reviewer UI.
+- Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
+- GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
+- Deterministic local trust metrics report.
+- Existing Medication-to-Doctor Briefing / PGx demo with Markdown report, JSON audit, and eval coverage.
 
-## Current Validation State
-
-Final submission validation:
+## Current Validation Baseline
 
 ```txt
-pytest: 35 passed
+pytest: 87 passed
 ruff: passed
-mypy: passed
+mypy: no issues in 36 source files
+evals.runner: 12 passed cases, 0 failed cases
+evals.trust_metrics: passed
+```
+
+Eval metrics:
+
+```txt
 total_cases: 12
 static_text_cases: 7
 pipeline_cases: 5
@@ -77,42 +66,48 @@ Validation commands:
 .\.venv\Scripts\python.exe -m ruff check app tests evals
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
+.\.venv\Scripts\python.exe -m evals.trust_metrics
 ```
+
+## Reviewer Surface
+
+- Primary local reviewer route: `/demo/health-vault`
+- Compact reviewer index: `docs/final_reviewer_pack.md`
+- Key synthetic reviewer artifacts:
+  - `docs/assets/health_vault/family-vault-read-model.json`
+  - `docs/assets/health_vault/family-vault-summary.md`
+  - `docs/assets/health_vault/family-vault-manifest.json`
+
+## Product Boundaries
+
+The current repo does not provide:
+
+- diagnosis;
+- treatment recommendation;
+- dosage guidance;
+- medication selection advice;
+- start/stop medication advice;
+- clinical decision support;
+- clinical validation;
+- real patient support;
+- real genetic data support;
+- FASTQ/BAM/WGS processing.
+
+The reviewer route is read-only, accepts no user input, accepts no upload, and renders synthetic/demo-only vault data only.
 
 ## Current Non-Goals
 
-- diagnosis
-- dosage recommendation
-- start/stop medication advice
 - real patient data
-- FASTQ/BAM/WGS pipeline
+- real genetic data
+- `genome_profile` implementation
+- VCF/raw genotype, FASTQ, BAM, or WGS support in the vault layer
 - SaaS/auth/payments
 - Telegram
 - blockchain
 - cloud raw genotype upload by default
-- clinical claims beyond the local demo evidence pack
 
-## Next Safe Roadmap
+## Next Safe Step
 
-- Add lightweight CI or a local `make check` equivalent for reviewer-visible repeatability.
-- Improve evidence-pack tooling without adding unsupported clinical claims.
-- Add more pipeline-backed eval cases when new demo drugs or evidence-pack states are introduced.
-- Improve clinician-review handoff and structured exports without automating clinical action.
-- Research optional confidential compute adapters only after official docs and current research review.
-
-## Visual Demo Asset Status
-
-- `docs/assets/screenshots/landing.png`
-- `docs/assets/screenshots/demo.png`
-- `docs/assets/screenshots/sertraline-report.png`
-- `docs/assets/screenshots/aspirin-safe-no-claim.png`
-- `docs/demo_video_script.md`
-
-Screenshots were captured from local pages under `http://127.0.0.1:8000/` with synthetic/demo data only. They are reviewer assets and do not add clinical functionality.
-
-## Grant Submission Pack Status
-
-- `docs/grant_submission_answers.md` provides copy-paste-ready long-form answers.
-- `docs/grant_short_pitch.md` provides short spoken/written pitch variants.
-- `docs/grant_milestones.md` provides conservative 30/60/90-day milestones.
-- Wording guardrails emphasize doctor briefing, clinician-reviewable outputs, demo-only evidence-pack coverage, audit trail, private/local-first design, and not-medical-advice boundaries.
+- push or merge the final branch;
+- run one public GitHub spot-check for README/doc link rendering and ignored generated artifacts;
+- then stop feature work before submission unless a real blocker is found.
