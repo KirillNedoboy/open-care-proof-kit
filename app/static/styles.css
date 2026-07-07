@@ -287,6 +287,42 @@ h2 {
   line-height: 1.6;
 }
 
+.trace-summary-grid {
+  margin: 1rem 0 1.25rem;
+}
+
+.trace-summary-value {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.trace-table-wrap {
+  overflow-x: auto;
+}
+
+.trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 250, 241, 0.82);
+}
+
+.trace-table th,
+.trace-table td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.trace-table th {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 900px) {
   .hero,
   .two-up,

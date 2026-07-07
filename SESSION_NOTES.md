@@ -783,7 +783,7 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Existing PGx flow remains backward-compatible.
 - No safety boundary changed.
 - Trust metrics are automated demo/reviewer trust checks, not clinical validation.
-- Next recommended phase: V1G minimal reviewer UI or claim/provenance graph for vault artifacts.
+- Next recommended phase: V1G minimal reviewer UI or context/provenance trace graph for vault artifacts.
 
 ### Validation
 - RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_trust_metrics.py -q` failed with `ModuleNotFoundError: No module named 'evals.trust_metrics'`.
@@ -840,4 +840,46 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
 
 ### Next safe step
-- Validate the local reviewer route over Uvicorn and then move to V1H claim/provenance graph or V1H final grant packaging refresh without changing the current safety boundaries.
+- Validate the local reviewer route over Uvicorn and then move to V1H context/provenance trace graph or V1H final grant packaging refresh without changing the current safety boundaries.
+
+## 2026-07-07 - V1H context/provenance trace graph
+
+### Changed
+- Added `app/health_vault/trace_graph.py`.
+- Added deterministic `TraceGraph`, `TraceNode`, `TraceEdge`, `TraceGraphRecordRow`, and `TraceGraphSummary` structures.
+- Added `build_vault_trace_graph(...)` over the validated Health/Family Vault read-model surface.
+- The builder connects recorded demo context to:
+  - people;
+  - document sources;
+  - safety boundary nodes;
+  - reviewer artifact nodes.
+- Added trace-graph integration to `/demo/health-vault`.
+- Added compact reviewer UI output for:
+  - graph summary counts;
+  - source-linked and missing-source record counts;
+  - per-record trace rows for recorded item, person, source, and safety label/category.
+- Added focused regression coverage in `tests/test_health_vault_trace_graph.py`.
+- Updated README, reviewer quickstart, Health/Family Vault demo docs, architecture, provenance semantics, roadmap, and checkpoint for V1H wording.
+
+### Product boundaries
+- No JSON API endpoint added.
+- No upload or user input path added.
+- No LLM generation added.
+- No genetics support added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- No diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice added.
+- Existing PGx flow remains backward-compatible.
+- Trace graph is deterministic traceability, not medical interpretation and not clinical validation.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_health_vault_trace_graph.py tests\test_api.py -v` failed with `ModuleNotFoundError: No module named 'app.health_vault.trace_graph'`.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests\test_health_vault_trace_graph.py tests\test_api.py -v` - 16 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 87 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 36 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+### Next safe step
+- Smoke-check the reviewer route over Uvicorn and then move to V1I final grant packaging refresh or deeper reviewer navigation without changing the current safety boundaries.

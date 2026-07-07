@@ -12,11 +12,11 @@ This project is not an AI doctor, not a diagnostic system, not a medication reco
 
 ## Current Status
 
-- Phase: V1G minimal local Health/Family Vault reviewer UI.
+- Phase: V1H Health/Family Vault context/provenance trace graph.
 - Public default branch: `main`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
-- Validation baseline: 80 tests, ruff, mypy, evals runner with 12 passed cases / 0 failed cases, and local trust metrics.
+- Validation baseline: 87 tests, ruff, mypy, evals runner with 12 passed cases / 0 failed cases, and local trust metrics.
 
 See [docs/project_status.md](docs/project_status.md) for the current capability and validation snapshot.
 
@@ -172,7 +172,7 @@ Generated report artifacts are ignored by Git.
 
 ## Health/Family Vault Demo
 
-The Health/Family Vault demo exposes a local read-only reviewer UI plus deterministic local demo artifacts for the vault-first layer. It uses a synthetic family vault, a source-preserving read model, and generated JSON/Markdown/manifest files.
+The Health/Family Vault demo exposes a local read-only reviewer UI plus deterministic local demo artifacts for the vault-first layer. It uses a synthetic family vault, a source-preserving read model, generated JSON/Markdown/manifest files, and a deterministic context/provenance trace graph.
 
 Review:
 
@@ -186,6 +186,8 @@ Local reviewer route:
 - `/demo/health-vault`
 
 This layer is local and read-only, uses synthetic/demo-only data, accepts no upload, uses no LLM generation, adds no genetics support, and provides no medical advice.
+
+The reviewer page now includes a compact `Context / Provenance Trace Graph` section that connects recorded demo context to people, sources, safety labels, and reviewer artifacts. It is deterministic traceability, not medical interpretation and not clinical validation.
 
 ## Web Demo Routes
 
@@ -208,7 +210,7 @@ http://127.0.0.1:8000/demo/report.md?drug=sertraline
 http://127.0.0.1:8000/demo/audit?drug=sertraline
 ```
 
-The local web demo is server-rendered with FastAPI and Jinja2. `/demo/health-vault` is a read-only reviewer page over the deterministic Health/Family Vault read model and committed manifest flags. It does not accept uploads, does not use an LLM, does not add genetics to this layer, and does not provide medical advice.
+The local web demo is server-rendered with FastAPI and Jinja2. `/demo/health-vault` is a read-only reviewer page over the deterministic Health/Family Vault read model, deterministic context/provenance trace graph, and committed manifest flags. It does not accept uploads, does not use an LLM, does not add genetics to this layer, and does not provide medical advice.
 
 ## Visual Demo
 

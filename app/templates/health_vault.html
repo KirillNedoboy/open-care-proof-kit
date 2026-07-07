@@ -218,6 +218,71 @@
       </section>
 
       <section class="panel">
+        <h2>Context / Provenance Trace Graph</h2>
+        <p class="record-note">
+          Deterministic trace of recorded demo context across people, sources, safety boundaries,
+          and reviewer artifacts. This section is not medical interpretation and not clinical
+          validation.
+        </p>
+
+        <div class="grid three-up trace-summary-grid">
+          <article class="subpanel">
+            <p class="record-label">Nodes</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.node_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Edges</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.edge_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Safety boundary nodes</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.safety_boundary_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Source-linked records</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.source_linked_record_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Missing source records</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.missing_source_record_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Artifact scope flags</p>
+            <p class="record-note">
+              demo_only={{ trace_graph.summary.demo_only }},
+              synthetic={{ trace_graph.summary.synthetic }},
+              no_llm_generation={{ trace_graph.summary.no_llm_generation }},
+              no_genetics={{ trace_graph.summary.no_genetics }},
+              no_medical_advice={{ trace_graph.summary.no_medical_advice }}
+            </p>
+          </article>
+        </div>
+
+        <div class="trace-table-wrap">
+          <table class="trace-table">
+            <thead>
+              <tr>
+                <th>Recorded item</th>
+                <th>Person</th>
+                <th>Source</th>
+                <th>Safety label / category</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in trace_graph.record_rows %}
+              <tr>
+                <td>{{ row.record_label }}</td>
+                <td>{{ row.person_label }}</td>
+                <td>{{ row.source_label }}</td>
+                <td>{{ row.safety_label }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>What This Page Does Not Do</h2>
         <ul class="record-list">
           {% for item in what_this_page_does_not_do %}

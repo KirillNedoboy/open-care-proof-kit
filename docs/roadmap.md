@@ -22,7 +22,8 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - V1D Health/Family Vault reviewer/demo packaging with committed synthetic artifacts and reviewer docs.
 - V1E Health/Family Vault provenance and threat-model hardening.
 - V1F CI/trust metrics hardening added.
-- V1G minimal local Health/Family Vault reviewer UI added as the current reviewer-facing phase.
+- V1G minimal local Health/Family Vault reviewer UI added.
+- V1H deterministic Health/Family Vault context/provenance trace graph added as the current reviewer-facing phase.
 
 ## Completed Vault Phase: V1A Health/Family Vault Core
 
@@ -163,7 +164,7 @@ Status:
 - `python -m evals.trust_metrics` prints automated demo/reviewer trust checks.
 - Trust metrics are not clinical validation.
 
-## Current Vault Phase: V1G Minimal Local Reviewer UI
+## Completed Vault Phase: V1G Minimal Local Reviewer UI
 
 Goal:
 
@@ -188,12 +189,36 @@ Status:
 - The page is local and read-only.
 - Existing PGx routes remain the same.
 
-Recommended next phase after V1G:
+## Current Vault Phase: V1H Context / Provenance Trace Graph
 
-- V1H claim/provenance graph for vault artifacts; or
-- V1H final grant packaging refresh.
+Goal:
 
-Do not start V1H until V1G has been validated and reviewed.
+- add a deterministic context/provenance trace graph over the synthetic Health/Family Vault reviewer surface;
+- connect recorded demo context to people, sources, safety boundary nodes, and reviewer artifact nodes;
+- keep the feature reviewer-focused, text/table based, and explicitly non-clinical;
+- preserve the existing Medication-to-Doctor Briefing and PGx flow unchanged.
+
+Boundaries:
+
+- no JSON API endpoints;
+- no upload forms or user input;
+- no LLM generation;
+- no genetics, `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support;
+- no diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice;
+- no dependencies or PGx behavior changes.
+
+Status:
+
+- V1H deterministic context/provenance trace graph is added/in progress.
+- `/demo/health-vault` renders graph summary counts and per-record trace rows.
+- The graph is deterministic traceability, not medical interpretation and not clinical validation.
+
+Recommended next phase after V1H:
+
+- V1I final grant packaging refresh; or
+- V1I deeper family-aware reviewer navigation without changing safety boundaries.
+
+Do not start V1I until V1H has been validated and reviewed.
 
 ## Phase 2: Ingest And Provenance
 

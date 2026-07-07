@@ -82,6 +82,12 @@ V1G adds one server-rendered local reviewer route at `/demo/health-vault`. The r
 
 The reviewer UI renders deterministic read-model data only. It accepts no user input, performs no upload, uses no LLM generation, adds no genetics support, and does not change the existing Medication-to-Doctor Briefing or PGx behavior.
 
+## Health/Family Vault Trace Graph
+
+V1H adds `app/health_vault/trace_graph.py` as a deterministic traceability layer over the validated vault/read-model surface. The builder connects recorded demo context nodes to people, document sources, safety boundary nodes, and reviewer artifact nodes.
+
+The trace graph renders in the existing reviewer route as compact text/table output. It does not add user input, JSON APIs, uploads, LLM generation, genetics support, or medical interpretation.
+
 ## Provenance and Threat Model Layer
 
 V1E documents the Health/Family Vault provenance and threat-model layer without

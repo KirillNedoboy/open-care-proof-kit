@@ -115,7 +115,7 @@ http://127.0.0.1:8000/demo/audit?drug=sertraline
 Expected success signals:
 
 - `/health` returns `{"status": "ok"}`;
-- `/demo/health-vault` renders a local read-only reviewer page for the synthetic family vault;
+- `/demo/health-vault` renders a local read-only reviewer page for the synthetic family vault plus context/provenance trace graph;
 - `/demo/report` returns report Markdown plus audit JSON;
 - `/demo/report.md` returns Markdown;
 - `/demo/audit` returns audit JSON only.
@@ -186,12 +186,14 @@ Recommended reviewer path:
 
 1. Start the app and open `/demo/health-vault`.
 2. Inspect the top safety banner.
-3. Inspect provenance coverage and artifact/trust flags.
-4. Inspect the committed demo artifacts under `docs/assets/health_vault/`.
-5. Read `docs/provenance_semantics.md`.
-6. Read `docs/privacy_safety_threat_model.md`.
-7. Run the focused Health/Family Vault tests.
-8. Run the full validation sequence and trust metrics.
+3. Inspect provenance coverage.
+4. Inspect the `Context / Provenance Trace Graph` section and source-linked counts.
+5. Inspect artifact/trust flags.
+6. Inspect the committed demo artifacts under `docs/assets/health_vault/`.
+7. Read `docs/provenance_semantics.md`.
+8. Read `docs/privacy_safety_threat_model.md`.
+9. Run the focused Health/Family Vault tests, including the trace graph test.
+10. Run the full validation sequence and trust metrics.
 
 Inspect the source dataset:
 
@@ -224,13 +226,13 @@ docs/vault_artifact_guarantees.md
 Run the focused Health/Family Vault tests:
 
 ```bash
-pytest tests/test_health_vault.py tests/test_health_vault_read_model.py tests/test_health_vault_artifacts.py
+pytest tests/test_health_vault.py tests/test_health_vault_read_model.py tests/test_health_vault_artifacts.py tests/test_health_vault_trace_graph.py
 ```
 
 Windows PowerShell without activating:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests\test_health_vault.py tests\test_health_vault_read_model.py tests\test_health_vault_artifacts.py
+.\.venv\Scripts\python.exe -m pytest tests\test_health_vault.py tests\test_health_vault_read_model.py tests\test_health_vault_artifacts.py tests\test_health_vault_trace_graph.py
 ```
 
 Run the full validation set if desired:
@@ -249,6 +251,7 @@ The reviewer page is local and read-only:
 - no upload;
 - no LLM;
 - no genetics in this layer;
+- deterministic context/provenance trace graph, not medical interpretation;
 - no diagnosis, treatment recommendation, dosage guidance, medication selection, or start/stop medication advice.
 
 ## Expected Success Summary

@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
 from app.health_vault.loader import load_demo_family_vault
 from app.health_vault.read_model import VaultReadModel, build_vault_read_model
+from app.health_vault.trace_graph import build_vault_trace_graph
 from app.reports.json_audit import PIPELINE_STEPS
 from app.vault.loader import load_health_vault
 from app.vault.schema import HealthVault
@@ -175,6 +176,7 @@ def _group_overviews_by_person(
 def _build_health_vault_page_context() -> dict[str, Any]:
     dataset = load_demo_family_vault()
     read_model = build_vault_read_model(dataset)
+    trace_graph = build_vault_trace_graph(read_model)
     manifest = _load_health_vault_manifest()
     people_lookup = {person.id: person.display_name for person in read_model.people}
 
@@ -234,6 +236,7 @@ def _build_health_vault_page_context() -> dict[str, Any]:
             for question in read_model.questions
         ],
         "provenance_coverage": read_model.provenance_coverage,
+        "trace_graph": trace_graph,
         "trust_flags": _trust_flags(manifest, read_model),
         "safety_banner_items": [
             "synthetic/demo-only",
@@ -253,6 +256,7 @@ def _build_health_vault_page_context() -> dict[str, Any]:
             "Does not add genetics, raw genotype, or genome_profile support.",
             "Does not use LLM generation.",
             "Does not accept uploads or user-entered data on this page.",
+            "Does not provide medical interpretation or clinical validation.",
         ],
     }
 

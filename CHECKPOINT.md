@@ -10,11 +10,11 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-V1G minimal local reviewer UI
+V1H context/provenance trace graph
 
 ## Current status
 
-The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1G minimal local reviewer UI for the synthetic Health/Family Vault layer.
+The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1H deterministic context/provenance trace graph for the synthetic Health/Family Vault layer.
 
 - Master Plan added as current product direction.
 - Implementation order corrected to vault-first.
@@ -35,21 +35,23 @@ The public default branch is `main`, created from `phase-1-github-grant-readines
 - Deterministic local trust metrics report added.
 - V1G minimal local reviewer UI added.
 - One read-only local route added for the Health/Family Vault reviewer page.
+- V1H deterministic context/provenance trace graph added.
+- New deterministic `app/health_vault/trace_graph.py` builder added.
 - README/reviewer quickstart updated.
 - No LLM generation added.
 - No genetics support added.
 - Existing PGx flow remains backward-compatible.
 - No safety boundaries changed.
 - No upload or JSON API surface added for the reviewer page.
-- Next recommended phase: V1H claim/provenance graph or V1H final grant packaging refresh.
+- Next recommended phase: V1I final grant packaging refresh or deeper reviewer navigation.
 
 ## Last validated state
 
-V1G minimal local reviewer UI validation baseline:
+V1H context/provenance trace graph validation baseline:
 
-- pytest: 80 passed;
+- pytest: 87 passed;
 - ruff: passed;
-- mypy: passed with no issues in 35 source files;
+- mypy: passed with no issues in 36 source files;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
 - trust metrics: printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks;
@@ -57,8 +59,9 @@ V1G minimal local reviewer UI validation baseline:
 - Health/Family Vault Core focused tests: 16 passed;
 - Health/Family Vault read-model focused tests: 16 passed;
 - Health/Family Vault artifact focused tests: 7 passed;
+- Health/Family Vault trace-graph focused tests: 7 passed;
 - existing PGx briefing regression still passed through `build_demo_briefing("sertraline")`;
-- no upload route, no new JSON API, no CLI, no LLM generation, and no genetics support were added for the reviewer page.
+- no upload route, no new JSON API, no CLI, no LLM generation, and no genetics support were added for the reviewer page or trace graph.
 
 ## Product definition
 
@@ -103,6 +106,7 @@ Positioning:
 - Build deterministic Health/Family Vault local artifacts with JSON read-model output, Markdown summary output, and manifest metadata.
 - Provide committed synthetic Health/Family Vault reviewer artifacts and documentation under `docs/assets/health_vault/` and `docs/health_family_vault_demo.md`.
 - Serve a local read-only Health/Family Vault reviewer page from FastAPI.
+- Build a deterministic context/provenance trace graph over Health/Family Vault reviewer data.
 - Run deterministic local trust metrics for eval totals, Health/Family Vault manifest safety flags, generated-report ignore expectation, and residual risks.
 
 ## Hard boundaries
@@ -182,4 +186,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1G validation is V1H claim/provenance graph for vault artifacts or V1H final grant packaging refresh.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1H validation is V1I final grant packaging refresh or deeper reviewer navigation without changing safety boundaries.

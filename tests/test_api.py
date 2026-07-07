@@ -68,6 +68,9 @@ def test_health_vault_reviewer_page_renders_synthetic_read_only_context() -> Non
     assert "no start/stop medication advice" in response.text
     assert "no genetics in this layer" in response.text
     assert "Provenance Coverage" in response.text
+    assert "Context / Provenance Trace Graph" in response.text
+    assert "not medical interpretation" in response.text
+    assert "Source-linked records" in response.text
     assert "Artifact / Trust Flags" in response.text
     assert "Demo Adult Alex" in response.text
     assert "Demo Adult Jordan" in response.text

@@ -80,6 +80,7 @@ The current Health/Family Vault flow is:
 synthetic dataset
   -> loader validation
   -> deterministic read model
+  -> deterministic context/provenance trace graph
   -> local artifacts
   -> reviewer docs
 ```
@@ -88,8 +89,9 @@ synthetic dataset
 2. `load_demo_family_vault()` loads it as a validated `VaultDataset`.
 3. Validation requires demo/synthetic flags, known person IDs, known source IDs, and provenance links for important records.
 4. `build_vault_read_model(...)` groups the validated context and preserves source links.
-5. `build_vault_artifacts(...)` writes JSON, Markdown, and manifest artifacts only after checking provenance coverage and safety notices.
-6. Reviewer docs explain the artifact chain and its boundaries.
+5. `build_vault_trace_graph(...)` connects important recorded items to people, sources, safety boundaries, and artifact nodes.
+6. `build_vault_artifacts(...)` writes JSON, Markdown, and manifest artifacts only after checking provenance coverage and safety notices.
+7. Reviewer docs explain the artifact chain and its boundaries.
 
 ## Missing Provenance Fails Closed
 
@@ -138,6 +140,7 @@ Future phases should preserve provenance by default:
 - derived summaries should keep source references near surfaced medical context;
 - unsupported or source-missing states should fail closed or be visibly labeled;
 - local artifacts should continue to report provenance coverage;
+- trace graph and reviewer surfaces should preserve the same source links and safety labels as the read model;
 - generated text must not invent facts, sources, or certainty;
 - UI, API, and agent surfaces should expose the same source references instead of hiding them.
 
