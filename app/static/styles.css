@@ -231,6 +231,98 @@ h2 {
   line-height: 1.7;
 }
 
+.safety-banner {
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(143, 60, 45, 0.2);
+  background: linear-gradient(180deg, rgba(143, 60, 45, 0.08), rgba(255, 252, 247, 0.92));
+}
+
+.pill-list,
+.record-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.pill-list li {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(143, 60, 45, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 250, 241, 0.88);
+  font-size: 0.95rem;
+}
+
+.subpanel {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(255, 250, 241, 0.88);
+}
+
+.group-block + .group-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.record-list li + li {
+  margin-top: 0.85rem;
+}
+
+.record-label,
+.record-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.record-note {
+  margin: 0.2rem 0;
+  line-height: 1.6;
+}
+
+.trace-summary-grid {
+  margin: 1rem 0 1.25rem;
+}
+
+.trace-summary-value {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.trace-table-wrap {
+  overflow-x: auto;
+}
+
+.trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 250, 241, 0.82);
+}
+
+.trace-table th,
+.trace-table td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.trace-table th {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 900px) {
   .hero,
   .two-up,

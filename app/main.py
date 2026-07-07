@@ -1,7 +1,8 @@
+import json
 import re
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
@@ -11,6 +12,9 @@ from fastapi.templating import Jinja2Templates
 from app import __version__
 from app.config import get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
+from app.health_vault.loader import load_demo_family_vault
+from app.health_vault.read_model import VaultReadModel, build_vault_read_model
+from app.health_vault.trace_graph import build_vault_trace_graph
 from app.reports.json_audit import PIPELINE_STEPS
 from app.vault.loader import load_health_vault
 from app.vault.schema import HealthVault
@@ -71,6 +75,12 @@ def _load_demo_vault() -> HealthVault:
 def _load_reviewer_quickstart() -> str:
     quickstart_path = Path("docs") / "reviewer_quickstart.md"
     return quickstart_path.read_text(encoding="utf-8")
+
+
+def _load_health_vault_manifest() -> dict[str, Any]:
+    manifest_path = Path("docs") / "assets" / "health_vault" / "family-vault-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], manifest)
 
 
 def _format_inline_markdown(text: str) -> str:
@@ -142,6 +152,152 @@ def demo_page(request: Request) -> HTMLResponse:
             "pipeline_steps": PIPELINE_STEPS,
             "question_drug": "sertraline",
         },
+    )
+
+
+def _group_overviews_by_person(
+    grouped: dict[str, list[Any]],
+    people_lookup: dict[str, str],
+) -> list[dict[str, Any]]:
+    sections: list[dict[str, Any]] = []
+    for person_id, items in grouped.items():
+        if not items:
+            continue
+        sections.append(
+            {
+                "person_id": person_id,
+                "person_name": people_lookup.get(person_id, person_id),
+                "records": items,
+            }
+        )
+    return sections
+
+
+def _build_health_vault_page_context() -> dict[str, Any]:
+    dataset = load_demo_family_vault()
+    read_model = build_vault_read_model(dataset)
+    trace_graph = build_vault_trace_graph(read_model)
+    manifest = _load_health_vault_manifest()
+    people_lookup = {person.id: person.display_name for person in read_model.people}
+
+    return {
+        "family": read_model.family,
+        "people": read_model.people,
+        "relationships": [
+            {
+                "person_name": people_lookup.get(item.person_id, item.person_id),
+                "related_person_name": people_lookup.get(
+                    item.related_person_id,
+                    item.related_person_id,
+                ),
+                "relationship_type": item.relationship_type,
+            }
+            for item in read_model.relationships
+        ],
+        "medication_sections": _group_overviews_by_person(
+            read_model.medications_by_person,
+            people_lookup,
+        ),
+        "condition_sections": _group_overviews_by_person(
+            read_model.conditions_by_person,
+            people_lookup,
+        ),
+        "lab_sections": _group_overviews_by_person(
+            read_model.labs_by_person,
+            people_lookup,
+        ),
+        "visit_sections": _group_overviews_by_person(
+            read_model.visits_by_person,
+            people_lookup,
+        ),
+        "timeline_events": [
+            {
+                "date": event.date,
+                "person_name": people_lookup.get(event.person_id, event.person_id),
+                "title": event.title,
+                "event_type": event.event_type,
+                "source_links": event.source_links,
+            }
+            for event in read_model.timeline.events
+        ],
+        "questions": [
+            {
+                "id": question.id,
+                "scope": question.scope,
+                "scope_label": (
+                    people_lookup.get(question.person_id, question.person_id)
+                    if question.person_id
+                    else "Family"
+                ),
+                "status": question.status,
+                "question": question.question,
+                "source_links": question.source_links,
+            }
+            for question in read_model.questions
+        ],
+        "provenance_coverage": read_model.provenance_coverage,
+        "trace_graph": trace_graph,
+        "trust_flags": _trust_flags(manifest, read_model),
+        "safety_banner_items": [
+            "synthetic/demo-only",
+            "deterministic summary of recorded context",
+            "not diagnosis",
+            "not treatment recommendation",
+            "not dosage guidance",
+            "not medication selection",
+            "no start/stop medication advice",
+            "no genetics in this layer",
+            "not clinical validation",
+        ],
+        "what_this_page_does_not_do": [
+            "Does not diagnose.",
+            "Does not recommend treatment or medication selection.",
+            "Does not provide dosage guidance or start/stop medication advice.",
+            "Does not add genetics, raw genotype, or genome_profile support.",
+            "Does not use LLM generation.",
+            "Does not accept uploads or user-entered data on this page.",
+            "Does not provide medical interpretation or clinical validation.",
+        ],
+    }
+
+
+def _trust_flags(manifest: dict[str, Any], read_model: VaultReadModel) -> list[dict[str, str]]:
+    coverage = read_model.provenance_coverage
+    return [
+        {"label": "Manifest demo_only", "value": str(manifest.get("demo_only", False)).lower()},
+        {"label": "Manifest synthetic", "value": str(manifest.get("synthetic", False)).lower()},
+        {
+            "label": "Manifest no_llm_generation",
+            "value": str(manifest.get("no_llm_generation", False)).lower(),
+        },
+        {
+            "label": "Manifest no_genetics",
+            "value": str(manifest.get("no_genetics", False)).lower(),
+        },
+        {
+            "label": "Manifest no_medical_advice",
+            "value": str(manifest.get("no_medical_advice", False)).lower(),
+        },
+        {
+            "label": "Provenance coverage",
+            "value": (
+                f"{coverage.records_with_source}/{coverage.total_important_records} "
+                "important records source-backed"
+            ),
+        },
+        {
+            "label": "Safety notice count",
+            "value": str(manifest.get("safety_boundary_notice_count", 0)),
+        },
+    ]
+
+
+@app.get("/demo/health-vault", response_class=HTMLResponse)
+def health_vault_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="health_vault.html",
+        context=_build_health_vault_page_context(),
     )
 
 

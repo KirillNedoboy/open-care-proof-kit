@@ -76,6 +76,48 @@ data/demo_patients/demo_family_vault.json
 
 V1D still adds no LLM generation, genetics, API routes, CLI commands, UI, or templates. The committed artifacts are reviewer demo assets, not real user output and not a real-patient export path.
 
+## Health/Family Vault Reviewer UI
+
+V1G adds one server-rendered local reviewer route at `/demo/health-vault`. The route loads the synthetic family vault dataset, validates it, builds the deterministic read model, reads committed manifest safety flags, and renders a read-only reviewer page through the existing Jinja/FastAPI pattern.
+
+The reviewer UI renders deterministic read-model data only. It accepts no user input, performs no upload, uses no LLM generation, adds no genetics support, and does not change the existing Medication-to-Doctor Briefing or PGx behavior.
+
+## Health/Family Vault Trace Graph
+
+V1H adds `app/health_vault/trace_graph.py` as a deterministic traceability layer over the validated vault/read-model surface. The builder connects recorded demo context nodes to people, document sources, safety boundary nodes, and reviewer artifact nodes.
+
+The trace graph renders in the existing reviewer route as compact text/table output. It does not add user input, JSON APIs, uploads, LLM generation, genetics support, or medical interpretation.
+
+## Provenance and Threat Model Layer
+
+V1E documents the Health/Family Vault provenance and threat-model layer without
+changing runtime behavior. It makes the current guarantees explicit: the vault
+artifacts are synthetic/demo-only, deterministic reorganizations of recorded
+context; every important surfaced item must keep source/provenance references;
+and provenance means traceability, not clinical truth.
+
+Review these V1E docs with the committed Health/Family Vault artifacts:
+
+- [docs/privacy_safety_threat_model.md](privacy_safety_threat_model.md)
+- [docs/provenance_semantics.md](provenance_semantics.md)
+- [docs/vault_artifact_guarantees.md](vault_artifact_guarantees.md)
+
+## CI and Trust Metrics Layer
+
+V1F adds automated review checks without changing product runtime behavior.
+GitHub Actions runs the portable validation sequence on `push` and
+`pull_request`: tests, ruff, mypy, deterministic evals, and local trust metrics.
+
+The trust metrics module in `evals/trust_metrics.py` reuses
+`evals.runner.run_evals()` for eval totals and reads
+`docs/assets/health_vault/family-vault-manifest.json` for synthetic/demo
+artifact safety flags. It also checks the repository ignore convention for
+generated `reports/` demo outputs.
+
+The output is a deterministic local Markdown report for automated
+demo/reviewer trust checks. It is not clinical validation and does not claim the
+project is clinically correct.
+
 ## Risk controls
 
 - No real patient data in repo.

@@ -4,6 +4,36 @@ This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.
 
+## 2026-07-07 - V1I final grant/reviewer packaging refresh
+
+### Changed
+- Refreshed the public README to match the implemented V1A-V1H state instead of centering the older PGx demo alone.
+- Reframed the repo as a privacy-first personal/family medical workspace foundation with the product rule: vault first, genetics second, LLM third as interface.
+- Updated grant docs so they describe the implemented synthetic Health/Family Vault foundation, deterministic read model, reviewer artifacts, read-only reviewer UI, context/provenance trace graph, CI, and trust metrics.
+- Updated final submission docs to the current validation baseline:
+  - `pytest`: 87 passed;
+  - `evals.runner`: 12 passed / 0 failed;
+  - `mypy`: no issues in 36 source files;
+  - trust metrics: passed.
+- Added `docs/final_reviewer_pack.md` as a compact reviewer index.
+- Updated roadmap/checkpoint/status docs to record V1I as docs-only and to keep V1H as the latest implemented runtime phase.
+
+### Product boundaries
+- Docs-only packaging refresh.
+- No runtime code changes.
+- No route changes.
+- No test or eval behavior changes.
+- No upload or user-input surface added.
+- No LLM generation added.
+- No genetics support added.
+- No PGx behavior changes.
+- No safety boundary changes.
+
+### Next safe step
+- Push or merge the final branch.
+- Run one public GitHub spot-check for README/doc links and ignored generated artifacts.
+- Stop feature work before submission unless a real blocker is found.
+
 ## 2026-06-25 - Project bootstrap package
 
 ### Done
@@ -737,3 +767,149 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - Existing PGx flow remains backward-compatible.
 - No safety boundary changed.
 - Next recommended phase: V1E minimal reviewer UI or provenance/threat-model hardening.
+
+## 2026-07-05 - V1E Health/Family Vault provenance and threat-model hardening
+
+### Changed
+- Added V1E provenance and threat-model hardening.
+- Added `docs/privacy_safety_threat_model.md`.
+- Added `docs/provenance_semantics.md`.
+- Added `docs/vault_artifact_guarantees.md`.
+- Linked the new docs from architecture, reviewer quickstart, Health/Family Vault demo docs, and roadmap.
+- Updated checkpoint and session notes for V1E status.
+
+### Product boundaries
+- No runtime behavior changed.
+- No API/CLI/UI added.
+- No LLM generation added.
+- No genetics support added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Next recommended phase: V1F minimal reviewer UI or CI/trust metrics.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 74 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 34 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+- Risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts.
+
+## 2026-07-05 - V1F CI and trust metrics hardening
+
+### Changed
+- Added V1F CI and trust metrics hardening.
+- Added `.github/workflows/ci.yml`.
+- Added deterministic local trust metrics report in `evals/trust_metrics.py`.
+- Added focused trust metrics tests in `tests/test_trust_metrics.py`.
+- Updated README, reviewer quickstart, architecture, roadmap, vault artifact guarantees, checkpoint, and session notes for V1F.
+
+### Product boundaries
+- No runtime product behavior changed.
+- No API/UI/LLM/genetics added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- No dependencies added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+- Trust metrics are automated demo/reviewer trust checks, not clinical validation.
+- Next recommended phase: V1G minimal reviewer UI or context/provenance trace graph for vault artifacts.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_trust_metrics.py -q` failed with `ModuleNotFoundError: No module named 'evals.trust_metrics'`.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests\test_trust_metrics.py -q` - 5 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 79 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 35 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+## 2026-07-07 - V1G minimal local reviewer UI
+
+### Changed
+- Added V1G minimal local reviewer UI.
+- Added one read-only FastAPI/Jinja route at `/demo/health-vault`.
+- The route loads the synthetic family vault through `load_demo_family_vault()`, builds the deterministic read model through `build_vault_read_model(...)`, reads committed manifest safety flags, and renders a reviewer-focused HTML page.
+- Added `app/templates/health_vault.html` for:
+  - safety banner;
+  - family overview;
+  - people;
+  - relationships;
+  - recorded medications;
+  - recorded conditions/concerns;
+  - recorded labs;
+  - visits/encounters;
+  - timeline;
+  - question workspace;
+  - provenance coverage;
+  - artifact/trust flags;
+  - explicit "What This Page Does Not Do" boundaries.
+- Extended `app/static/styles.css` within the existing style system for dense reviewer layout and mobile-safe section rendering.
+- Added focused API regression coverage for the reviewer route in `tests/test_api.py`.
+- Updated README, reviewer quickstart, architecture, roadmap, Health/Family Vault demo docs, and checkpoint for the new reviewer route and its boundaries.
+
+### Product boundaries
+- No upload or arbitrary file input path added.
+- No new JSON API endpoint added.
+- No CLI command added.
+- No LLM generation added.
+- No genetics support added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_api.py -k health_vault_reviewer_page -v` - failed with `404 == 200` before the route existed.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests\test_api.py -v` - 9 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 80 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 35 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+### Next safe step
+- Validate the local reviewer route over Uvicorn and then move to V1H context/provenance trace graph or V1H final grant packaging refresh without changing the current safety boundaries.
+
+## 2026-07-07 - V1H context/provenance trace graph
+
+### Changed
+- Added `app/health_vault/trace_graph.py`.
+- Added deterministic `TraceGraph`, `TraceNode`, `TraceEdge`, `TraceGraphRecordRow`, and `TraceGraphSummary` structures.
+- Added `build_vault_trace_graph(...)` over the validated Health/Family Vault read-model surface.
+- The builder connects recorded demo context to:
+  - people;
+  - document sources;
+  - safety boundary nodes;
+  - reviewer artifact nodes.
+- Added trace-graph integration to `/demo/health-vault`.
+- Added compact reviewer UI output for:
+  - graph summary counts;
+  - source-linked and missing-source record counts;
+  - per-record trace rows for recorded item, person, source, and safety label/category.
+- Added focused regression coverage in `tests/test_health_vault_trace_graph.py`.
+- Updated README, reviewer quickstart, Health/Family Vault demo docs, architecture, provenance semantics, roadmap, and checkpoint for V1H wording.
+
+### Product boundaries
+- No JSON API endpoint added.
+- No upload or user input path added.
+- No LLM generation added.
+- No genetics support added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- No diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice added.
+- Existing PGx flow remains backward-compatible.
+- Trace graph is deterministic traceability, not medical interpretation and not clinical validation.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_health_vault_trace_graph.py tests\test_api.py -v` failed with `ModuleNotFoundError: No module named 'app.health_vault.trace_graph'`.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests\test_health_vault_trace_graph.py tests\test_api.py -v` - 16 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 87 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 36 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+### Next safe step
+- Smoke-check the reviewer route over Uvicorn and then move to V1I final grant packaging refresh or deeper reviewer navigation without changing the current safety boundaries.

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Health/Family Vault Reviewer | OpenCare Proof Kit</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="page-header">
+        <p class="eyebrow">Local reviewer UI</p>
+        <h1>Health/Family Vault Reviewer</h1>
+        <p class="lede">
+          Read-only reviewer page for the synthetic family vault, deterministic read model,
+          provenance coverage, and visible safety boundaries.
+        </p>
+      </header>
+
+      <section class="panel safety-banner">
+        <h2>Safety Boundary</h2>
+        <ul class="pill-list">
+          {% for item in safety_banner_items %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="grid two-up">
+        <article class="panel">
+          <h2>Family Overview</h2>
+          <dl class="meta-grid">
+            <div>
+              <dt>Family</dt>
+              <dd>{{ family.display_name }}</dd>
+            </div>
+            <div>
+              <dt>Dataset</dt>
+              <dd>{{ family.id }}</dd>
+            </div>
+            <div>
+              <dt>People</dt>
+              <dd>{{ family.people_count }}</dd>
+            </div>
+            <div>
+              <dt>Relationships</dt>
+              <dd>{{ family.relationship_count }}</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="panel">
+          <h2>Provenance Coverage</h2>
+          <dl class="audit-list">
+            <div>
+              <dt>Total important records</dt>
+              <dd>{{ provenance_coverage.total_important_records }}</dd>
+            </div>
+            <div>
+              <dt>Records with source</dt>
+              <dd>{{ provenance_coverage.records_with_source }}</dd>
+            </div>
+            <div>
+              <dt>Records missing source</dt>
+              <dd>{{ provenance_coverage.records_missing_source }}</dd>
+            </div>
+            <div>
+              <dt>Missing source item IDs</dt>
+              <dd>
+                {% if provenance_coverage.missing_source_item_ids %}
+                {{ provenance_coverage.missing_source_item_ids | join(", ") }}
+                {% else %}
+                none
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>People</h2>
+        <div class="grid three-up">
+          {% for person in people %}
+          <article class="subpanel">
+            <h3>{{ person.display_name }}</h3>
+            <p class="record-label">Role: {{ person.role }}</p>
+            <p class="record-note">Synthetic person record for reviewer inspection only.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Relationships</h2>
+        <ul class="record-list">
+          {% for relationship in relationships %}
+          <li>
+            <strong>{{ relationship.person_name }}</strong> -> {{ relationship.related_person_name }}
+            ({{ relationship.relationship_type }})
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Recorded Medications</h2>
+        {% for section in medication_sections %}
+        <div class="group-block">
+          <h3>{{ section.person_name }}</h3>
+          <ul class="record-list">
+            {% for item in section.records %}
+            <li>
+              <strong>{{ item.name }}</strong> ({{ item.status }})<br />
+              <span class="record-label">Recorded medication context, not recommendation.</span><br />
+              <span class="record-note">{{ item.reason_context }}</span><br />
+              <span class="record-meta">Sources: {% for link in item.source_links %}{{ link.source_title }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </section>
+
+      <section class="panel">
+        <h2>Recorded Conditions / Concerns</h2>
+        {% for section in condition_sections %}
+        <div class="group-block">
+          <h3>{{ section.person_name }}</h3>
+          <ul class="record-list">
+            {% for item in section.records %}
+            <li>
+              <strong>{{ item.name }}</strong> ({{ item.status }})<br />
+              <span class="record-label">Recorded context, not OpenCare diagnosis.</span><br />
+              <span class="record-note">{{ item.description }}</span><br />
+              <span class="record-meta">Sources: {% for link in item.source_links %}{{ link.source_title }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </section>
+
+      <section class="panel">
+        <h2>Recorded Labs</h2>
+        {% for section in lab_sections %}
+        <div class="group-block">
+          <h3>{{ section.person_name }}</h3>
+          <ul class="record-list">
+            {% for item in section.records %}
+            <li>
+              <strong>{{ item.name }}</strong> ({{ item.collected_on }})<br />
+              <span class="record-label">Recorded lab value/context, not interpretation.</span><br />
+              <span class="record-note">{{ item.result_text }}</span><br />
+              <span class="record-meta">Sources: {% for link in item.source_links %}{{ link.source_title }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </section>
+
+      <section class="panel">
+        <h2>Visits / Encounters</h2>
+        {% for section in visit_sections %}
+        <div class="group-block">
+          <h3>{{ section.person_name }}</h3>
+          <ul class="record-list">
+            {% for item in section.records %}
+            <li>
+              <strong>{{ item.visit_type }}</strong> ({{ item.date }})<br />
+              <span class="record-note">{{ item.summary }}</span><br />
+              <span class="record-meta">Sources: {% for link in item.source_links %}{{ link.source_title }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </section>
+
+      <section class="panel">
+        <h2>Timeline</h2>
+        <ul class="record-list">
+          {% for event in timeline_events %}
+          <li>
+            <strong>{{ event.date }}</strong> - {{ event.person_name }} - {{ event.title }}
+            ({{ event.event_type }})<br />
+            <span class="record-meta">Sources: {% for link in event.source_links %}{{ link.source_title }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Question Workspace</h2>
+        <ul class="record-list">
+          {% for item in questions %}
+          <li>
+            <strong>{{ item.scope_label }}</strong> ({{ item.scope }}, {{ item.status }})<br />
+            <span class="record-label">Question for reviewer/clinician discussion, not answer.</span><br />
+            <span class="record-note">{{ item.question }}</span><br />
+            <span class="record-meta">Sources: {% for link in item.source_links %}{{ link.source_title }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Artifact / Trust Flags</h2>
+        <dl class="audit-list">
+          {% for flag in trust_flags %}
+          <div>
+            <dt>{{ flag.label }}</dt>
+            <dd>{{ flag.value }}</dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </section>
+
+      <section class="panel">
+        <h2>Context / Provenance Trace Graph</h2>
+        <p class="record-note">
+          Deterministic trace of recorded demo context across people, sources, safety boundaries,
+          and reviewer artifacts. This section is not medical interpretation and not clinical
+          validation.
+        </p>
+
+        <div class="grid three-up trace-summary-grid">
+          <article class="subpanel">
+            <p class="record-label">Nodes</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.node_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Edges</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.edge_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Safety boundary nodes</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.safety_boundary_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Source-linked records</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.source_linked_record_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Missing source records</p>
+            <p class="trace-summary-value">{{ trace_graph.summary.missing_source_record_count }}</p>
+          </article>
+          <article class="subpanel">
+            <p class="record-label">Artifact scope flags</p>
+            <p class="record-note">
+              demo_only={{ trace_graph.summary.demo_only }},
+              synthetic={{ trace_graph.summary.synthetic }},
+              no_llm_generation={{ trace_graph.summary.no_llm_generation }},
+              no_genetics={{ trace_graph.summary.no_genetics }},
+              no_medical_advice={{ trace_graph.summary.no_medical_advice }}
+            </p>
+          </article>
+        </div>
+
+        <div class="trace-table-wrap">
+          <table class="trace-table">
+            <thead>
+              <tr>
+                <th>Recorded item</th>
+                <th>Person</th>
+                <th>Source</th>
+                <th>Safety label / category</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in trace_graph.record_rows %}
+              <tr>
+                <td>{{ row.record_label }}</td>
+                <td>{{ row.person_label }}</td>
+                <td>{{ row.source_label }}</td>
+                <td>{{ row.safety_label }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>What This Page Does Not Do</h2>
+        <ul class="record-list">
+          {% for item in what_this_page_does_not_do %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
