@@ -21,7 +21,8 @@ The current validated runtime remains Medication-to-Doctor Briefing until new ph
 - V1C deterministic Health/Family Vault local artifact builder for JSON, Markdown, and manifest files.
 - V1D Health/Family Vault reviewer/demo packaging with committed synthetic artifacts and reviewer docs.
 - V1E Health/Family Vault provenance and threat-model hardening.
-- V1F CI/trust metrics hardening added as the current automation/reporting phase.
+- V1F CI/trust metrics hardening added.
+- V1G minimal local Health/Family Vault reviewer UI added as the current reviewer-facing phase.
 
 ## Completed Vault Phase: V1A Health/Family Vault Core
 
@@ -139,7 +140,7 @@ Status:
 - New docs cover threat model, provenance semantics, and artifact guarantees.
 - No runtime behavior is changed.
 
-## Current Vault Phase: V1F CI And Trust Metrics Hardening
+## Completed Vault Phase: V1F CI And Trust Metrics Hardening
 
 Goal:
 
@@ -157,17 +158,42 @@ Boundaries:
 
 Status:
 
-- V1F CI/trust metrics hardening is added/in progress.
+- V1F CI/trust metrics hardening is added.
 - GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics.
 - `python -m evals.trust_metrics` prints automated demo/reviewer trust checks.
 - Trust metrics are not clinical validation.
 
-Recommended next phase after V1F:
+## Current Vault Phase: V1G Minimal Local Reviewer UI
 
-- V1G minimal local reviewer UI for Health/Family Vault; or
-- V1G claim/provenance graph for vault artifacts.
+Goal:
 
-Do not start V1G until V1F has been validated and reviewed.
+- add one local read-only reviewer page for the synthetic Health/Family Vault layer;
+- render the deterministic read model, provenance coverage, and manifest/trust flags;
+- keep the page reviewer-focused and explicit about safety boundaries;
+- preserve the existing Medication-to-Doctor Briefing and PGx flow unchanged.
+
+Boundaries:
+
+- no JSON API endpoints;
+- no upload forms or arbitrary file input;
+- no LLM generation;
+- no genetics, `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support;
+- no diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice;
+- no dependencies or PGx behavior changes.
+
+Status:
+
+- V1G minimal local reviewer UI is added and validated.
+- `/demo/health-vault` renders the synthetic family vault through the validated deterministic read model.
+- The page is local and read-only.
+- Existing PGx routes remain the same.
+
+Recommended next phase after V1G:
+
+- V1H claim/provenance graph for vault artifacts; or
+- V1H final grant packaging refresh.
+
+Do not start V1H until V1G has been validated and reviewed.
 
 ## Phase 2: Ingest And Provenance
 

@@ -76,6 +76,12 @@ data/demo_patients/demo_family_vault.json
 
 V1D still adds no LLM generation, genetics, API routes, CLI commands, UI, or templates. The committed artifacts are reviewer demo assets, not real user output and not a real-patient export path.
 
+## Health/Family Vault Reviewer UI
+
+V1G adds one server-rendered local reviewer route at `/demo/health-vault`. The route loads the synthetic family vault dataset, validates it, builds the deterministic read model, reads committed manifest safety flags, and renders a read-only reviewer page through the existing Jinja/FastAPI pattern.
+
+The reviewer UI renders deterministic read-model data only. It accepts no user input, performs no upload, uses no LLM generation, adds no genetics support, and does not change the existing Medication-to-Doctor Briefing or PGx behavior.
+
 ## Provenance and Threat Model Layer
 
 V1E documents the Health/Family Vault provenance and threat-model layer without

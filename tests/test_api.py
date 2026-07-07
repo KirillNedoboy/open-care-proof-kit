@@ -55,6 +55,26 @@ def test_demo_page_renders_synthetic_demo_patient() -> None:
     assert "Synthetic Demo Patient" in response.text
 
 
+def test_health_vault_reviewer_page_renders_synthetic_read_only_context() -> None:
+    response = get("/demo/health-vault")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "synthetic/demo-only" in response.text
+    assert "not diagnosis" in response.text
+    assert "not treatment recommendation" in response.text
+    assert "not dosage guidance" in response.text
+    assert "not medication selection" in response.text
+    assert "no start/stop medication advice" in response.text
+    assert "no genetics in this layer" in response.text
+    assert "Provenance Coverage" in response.text
+    assert "Artifact / Trust Flags" in response.text
+    assert "Demo Adult Alex" in response.text
+    assert "Demo Adult Jordan" in response.text
+    assert "Demo Teen Sam" in response.text
+    assert "clinical decision support" not in response.text.lower()
+
+
 def test_demo_report_view_renders_briefing() -> None:
     response = get("/demo/report-view?drug=sertraline")
 

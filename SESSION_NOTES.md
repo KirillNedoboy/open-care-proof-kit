@@ -794,3 +794,50 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 - `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
 - `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
 - Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+## 2026-07-07 - V1G minimal local reviewer UI
+
+### Changed
+- Added V1G minimal local reviewer UI.
+- Added one read-only FastAPI/Jinja route at `/demo/health-vault`.
+- The route loads the synthetic family vault through `load_demo_family_vault()`, builds the deterministic read model through `build_vault_read_model(...)`, reads committed manifest safety flags, and renders a reviewer-focused HTML page.
+- Added `app/templates/health_vault.html` for:
+  - safety banner;
+  - family overview;
+  - people;
+  - relationships;
+  - recorded medications;
+  - recorded conditions/concerns;
+  - recorded labs;
+  - visits/encounters;
+  - timeline;
+  - question workspace;
+  - provenance coverage;
+  - artifact/trust flags;
+  - explicit "What This Page Does Not Do" boundaries.
+- Extended `app/static/styles.css` within the existing style system for dense reviewer layout and mobile-safe section rendering.
+- Added focused API regression coverage for the reviewer route in `tests/test_api.py`.
+- Updated README, reviewer quickstart, architecture, roadmap, Health/Family Vault demo docs, and checkpoint for the new reviewer route and its boundaries.
+
+### Product boundaries
+- No upload or arbitrary file input path added.
+- No new JSON API endpoint added.
+- No CLI command added.
+- No LLM generation added.
+- No genetics support added.
+- No `genome_profile`, VCF/raw genotype, FASTQ, BAM, or WGS support added.
+- Existing PGx flow remains backward-compatible.
+- No safety boundary changed.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests\test_api.py -k health_vault_reviewer_page -v` - failed with `404 == 200` before the route existed.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests\test_api.py -v` - 9 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 80 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 35 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks.
+- Eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `unsafe_advice_rate=0.0`, `missing_source_rate=0.0`, `uncertainty_missing_rate=0.0`, `audit_missing_rate=0.0`, `pipeline_failure_rate=0.0`.
+
+### Next safe step
+- Validate the local reviewer route over Uvicorn and then move to V1H claim/provenance graph or V1H final grant packaging refresh without changing the current safety boundaries.

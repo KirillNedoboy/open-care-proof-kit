@@ -12,11 +12,11 @@ This project is not an AI doctor, not a diagnostic system, not a medication reco
 
 ## Current Status
 
-- Phase: V1F CI/trust metrics hardening.
+- Phase: V1G minimal local Health/Family Vault reviewer UI.
 - Public default branch: `main`.
 - Demo data: synthetic/demo-only.
 - Runtime model: local-first by default.
-- Validation baseline: 79 tests, ruff, mypy, evals runner with 12 passed cases / 0 failed cases, and local trust metrics.
+- Validation baseline: 80 tests, ruff, mypy, evals runner with 12 passed cases / 0 failed cases, and local trust metrics.
 
 See [docs/project_status.md](docs/project_status.md) for the current capability and validation snapshot.
 
@@ -172,7 +172,7 @@ Generated report artifacts are ignored by Git.
 
 ## Health/Family Vault Demo
 
-The Health/Family Vault demo exposes deterministic local demo artifacts for the new vault-first layer. It uses a synthetic family vault, a source-preserving read model, and generated JSON/Markdown/manifest files.
+The Health/Family Vault demo exposes a local read-only reviewer UI plus deterministic local demo artifacts for the vault-first layer. It uses a synthetic family vault, a source-preserving read model, and generated JSON/Markdown/manifest files.
 
 Review:
 
@@ -181,7 +181,11 @@ Review:
 - [JSON read-model artifact](docs/assets/health_vault/family-vault-read-model.json)
 - [Artifact manifest](docs/assets/health_vault/family-vault-manifest.json)
 
-This layer uses no LLM generation, adds no genetics support, and provides no medical advice.
+Local reviewer route:
+
+- `/demo/health-vault`
+
+This layer is local and read-only, uses synthetic/demo-only data, accepts no upload, uses no LLM generation, adds no genetics support, and provides no medical advice.
 
 ## Web Demo Routes
 
@@ -196,6 +200,7 @@ Open:
 ```txt
 http://127.0.0.1:8000/
 http://127.0.0.1:8000/demo
+http://127.0.0.1:8000/demo/health-vault
 http://127.0.0.1:8000/demo/report-view?drug=sertraline
 http://127.0.0.1:8000/demo/report-view?drug=aspirin
 http://127.0.0.1:8000/demo/report?drug=sertraline
@@ -203,7 +208,7 @@ http://127.0.0.1:8000/demo/report.md?drug=sertraline
 http://127.0.0.1:8000/demo/audit?drug=sertraline
 ```
 
-The local web demo is server-rendered with FastAPI and Jinja2. It is a presentation layer over the same deterministic briefing pipeline used by the CLI and JSON/Markdown API endpoints.
+The local web demo is server-rendered with FastAPI and Jinja2. `/demo/health-vault` is a read-only reviewer page over the deterministic Health/Family Vault read model and committed manifest flags. It does not accept uploads, does not use an LLM, does not add genetics to this layer, and does not provide medical advice.
 
 ## Visual Demo
 

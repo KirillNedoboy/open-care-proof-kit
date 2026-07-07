@@ -1,6 +1,6 @@
 # Reviewer Quickstart
 
-Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generated report, audit JSON, API endpoints, and evals.
+Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generated report, audit JSON, Health/Family Vault reviewer UI, API endpoints, and evals.
 
 ## Prerequisites
 
@@ -106,6 +106,7 @@ Open:
 
 ```txt
 http://127.0.0.1:8000/
+http://127.0.0.1:8000/demo/health-vault
 http://127.0.0.1:8000/demo/report?drug=sertraline
 http://127.0.0.1:8000/demo/report.md?drug=sertraline
 http://127.0.0.1:8000/demo/audit?drug=sertraline
@@ -114,6 +115,7 @@ http://127.0.0.1:8000/demo/audit?drug=sertraline
 Expected success signals:
 
 - `/health` returns `{"status": "ok"}`;
+- `/demo/health-vault` renders a local read-only reviewer page for the synthetic family vault;
 - `/demo/report` returns report Markdown plus audit JSON;
 - `/demo/report.md` returns Markdown;
 - `/demo/audit` returns audit JSON only.
@@ -178,16 +180,18 @@ Interpretation:
 
 ## Health/Family Vault Reviewer Path
 
-The Health/Family Vault layer is packaged as committed synthetic reviewer artifacts. It does not add a new API route, CLI command, UI, LLM generation, genetics support, or medical advice.
+The Health/Family Vault layer now includes one local read-only reviewer UI route plus committed synthetic reviewer artifacts. It adds no JSON API surface, no upload path, no LLM generation, no genetics support, and no medical advice.
 
 Recommended reviewer path:
 
-1. Inspect the committed demo artifacts under `docs/assets/health_vault/`.
-2. Inspect manifest flags in `docs/assets/health_vault/family-vault-manifest.json`.
-3. Read `docs/provenance_semantics.md`.
-4. Read `docs/privacy_safety_threat_model.md`.
-5. Run the focused Health/Family Vault tests.
-6. Run the full validation sequence.
+1. Start the app and open `/demo/health-vault`.
+2. Inspect the top safety banner.
+3. Inspect provenance coverage and artifact/trust flags.
+4. Inspect the committed demo artifacts under `docs/assets/health_vault/`.
+5. Read `docs/provenance_semantics.md`.
+6. Read `docs/privacy_safety_threat_model.md`.
+7. Run the focused Health/Family Vault tests.
+8. Run the full validation sequence and trust metrics.
 
 Inspect the source dataset:
 
@@ -238,6 +242,14 @@ mypy app evals
 python -m evals.runner
 python -m evals.trust_metrics
 ```
+
+The reviewer page is local and read-only:
+
+- synthetic/demo-only;
+- no upload;
+- no LLM;
+- no genetics in this layer;
+- no diagnosis, treatment recommendation, dosage guidance, medication selection, or start/stop medication advice.
 
 ## Expected Success Summary
 

@@ -10,11 +10,11 @@ v0.1 bootstrap / Codex-ready starter repo.
 
 ## Current phase
 
-V1F CI and trust metrics hardening
+V1G minimal local reviewer UI
 
 ## Current status
 
-The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1F CI and trust metrics hardening for automated demo/reviewer trust checks.
+The public default branch is `main`, created from `phase-1-github-grant-readiness`. The historical submission branch remains pushed. The current implementation step adds V1G minimal local reviewer UI for the synthetic Health/Family Vault layer.
 
 - Master Plan added as current product direction.
 - Implementation order corrected to vault-first.
@@ -33,31 +33,32 @@ The public default branch is `main`, created from `phase-1-github-grant-readines
 - V1F CI and trust metrics hardening added.
 - GitHub Actions CI added for tests, lint, type checks, evals, and trust metrics.
 - Deterministic local trust metrics report added.
+- V1G minimal local reviewer UI added.
+- One read-only local route added for the Health/Family Vault reviewer page.
 - README/reviewer quickstart updated.
-- No runtime behavior changed.
-- No UI/API/CLI added.
 - No LLM generation added.
 - No genetics support added.
 - Existing PGx flow remains backward-compatible.
 - No safety boundaries changed.
-- Next recommended phase: V1G minimal reviewer UI or claim/provenance graph.
+- No upload or JSON API surface added for the reviewer page.
+- Next recommended phase: V1H claim/provenance graph or V1H final grant packaging refresh.
 
 ## Last validated state
 
-V1F CI and trust metrics hardening validation baseline:
+V1G minimal local reviewer UI validation baseline:
 
-- pytest: 79 passed;
+- pytest: 80 passed;
 - ruff: passed;
 - mypy: passed with no issues in 35 source files;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
 - trust metrics: printed eval metrics, Health/Family Vault artifact safety flags, safety boundaries, and residual risks;
+- Health/Family Vault reviewer route test: passed through `GET /demo/health-vault`;
 - Health/Family Vault Core focused tests: 16 passed;
 - Health/Family Vault read-model focused tests: 16 passed;
 - Health/Family Vault artifact focused tests: 7 passed;
-- V1F risky-wording scan found risky terms only in boundary, threat, non-goal, disclaimer, or residual-risk contexts;
 - existing PGx briefing regression still passed through `build_demo_briefing("sertraline")`;
-- no API, CLI, UI, LLM generation, genetics, PGx behavior, safety-policy, or eval behavior changes were added.
+- no upload route, no new JSON API, no CLI, no LLM generation, and no genetics support were added for the reviewer page.
 
 ## Product definition
 
@@ -101,6 +102,7 @@ Positioning:
 - Build deterministic Health/Family Vault read models with family/person summaries, per-person record groups, sorted timeline, question threads, provenance coverage, and safety boundary notices.
 - Build deterministic Health/Family Vault local artifacts with JSON read-model output, Markdown summary output, and manifest metadata.
 - Provide committed synthetic Health/Family Vault reviewer artifacts and documentation under `docs/assets/health_vault/` and `docs/health_family_vault_demo.md`.
+- Serve a local read-only Health/Family Vault reviewer page from FastAPI.
 - Run deterministic local trust metrics for eval totals, Health/Family Vault manifest safety flags, generated-report ignore expectation, and residual risks.
 
 ## Hard boundaries
@@ -180,4 +182,4 @@ Expected:
 
 ## Current next step
 
-Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1F validation is V1G minimal reviewer UI or claim/provenance graph for vault artifacts.
+Keep `main` as the public reviewer branch. Do not delete old branches or force-push. The next recommended implementation phase after V1G validation is V1H claim/provenance graph for vault artifacts or V1H final grant packaging refresh.
