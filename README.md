@@ -151,6 +151,7 @@ OpenCare now includes a minimal self-hosted deployment foundation.
 - Production mode requires `OPENCARE_SECRET_KEY`.
 - Private production mode also requires `OPENCARE_ACCESS_PASSWORD`.
 - Non-health routes can be password-gated when `OPENCARE_DEMO_MODE=false`.
+- The private password form is served at `/access`.
 - Health checks stay public at `/health`, `/healthz`, and `/readyz`.
 
 See [docs/deployment.md](docs/deployment.md) for:

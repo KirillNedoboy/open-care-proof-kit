@@ -109,6 +109,7 @@ The compose service exposes port `8000` and mounts `./reports` to `/app/reports`
 When `OPENCARE_ENV=production` and `OPENCARE_DEMO_MODE=false`:
 
 - `/health`, `/healthz`, and `/readyz` stay public;
+- `/access` serves the password form;
 - non-health routes require the configured access password;
 - successful login sets a signed `HttpOnly` cookie;
 - this is a minimal single-password gate, not a multi-user auth system.

@@ -17,3 +17,4 @@ reports/private/
 evals/results/*.json
 !evals/results/.gitkeep
 .DS_Store
+output/
