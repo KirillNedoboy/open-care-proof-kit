@@ -1,3 +1,5 @@
+name: opencare-proof-kit
+
 services:
   opencare:
     build: .
