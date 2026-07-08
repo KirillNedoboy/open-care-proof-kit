@@ -197,7 +197,7 @@ def build_vault_read_model(dataset: VaultDataset) -> VaultReadModel:
             for question in sorted(dataset.question_threads, key=lambda item: item.id)
         ],
         provenance_coverage=_source_coverage(dataset),
-        safety_notices=_safety_notices(),
+        safety_notices=_safety_notices(dataset),
     )
     _assert_all_summary_items_have_sources(read_model)
     _assert_safe_text(read_model.model_dump())
@@ -205,20 +205,10 @@ def build_vault_read_model(dataset: VaultDataset) -> VaultReadModel:
 
 
 def _validate_dataset_boundary(dataset: VaultDataset) -> None:
-    if not dataset.demo_only:
-        raise ValueError("Read model requires demo_only datasets.")
-    if not dataset.synthetic:
-        raise ValueError("Read model requires synthetic datasets.")
-    if not dataset.family.synthetic:
-        raise ValueError("Read model requires a synthetic family.")
-    for person in dataset.people:
-        if not person.synthetic:
-            raise ValueError(f"Read model requires synthetic people: {person.id}")
-    for source in dataset.document_sources:
-        if not source.demo_only:
-            raise ValueError(f"Read model requires demo_only sources: {source.id}")
-        if not source.synthetic:
-            raise ValueError(f"Read model requires synthetic sources: {source.id}")
+    if not dataset.people:
+        raise ValueError("Read model requires at least one person.")
+    if not dataset.document_sources:
+        raise ValueError("Read model requires at least one source document.")
 
 
 def _relationship_overview(relationship: Relationship) -> RelationshipOverview:
@@ -403,8 +393,8 @@ def _source_coverage(dataset: VaultDataset) -> SourceCoverage:
     )
 
 
-def _safety_notices() -> list[SafetyBoundaryNotice]:
-    return [
+def _safety_notices(dataset: VaultDataset) -> list[SafetyBoundaryNotice]:
+    notices = [
         SafetyBoundaryNotice(code="no_diagnosis", message="OpenCare does not diagnose."),
         SafetyBoundaryNotice(
             code="no_treatment_recommendation",
@@ -419,14 +409,25 @@ def _safety_notices() -> list[SafetyBoundaryNotice]:
             message="OpenCare does not tell users to start or stop medication.",
         ),
         SafetyBoundaryNotice(
-            code="synthetic_demo_only",
-            message="This dataset is synthetic/demo-only.",
-        ),
-        SafetyBoundaryNotice(
             code="deterministic_reorganization",
-            message="Summaries are deterministic reorganizations of recorded demo data.",
+            message="Summaries are deterministic reorganizations of recorded vault data.",
         ),
     ]
+    if dataset.demo_only and dataset.synthetic:
+        notices.append(
+            SafetyBoundaryNotice(
+                code="synthetic_demo_only",
+                message="This dataset is synthetic/demo-only.",
+            )
+        )
+    else:
+        notices.append(
+            SafetyBoundaryNotice(
+                code="local_operator_supplied_data",
+                message="This dataset comes from an operator-supplied local vault file.",
+            )
+        )
+    return notices
 
 
 def _assert_all_summary_items_have_sources(read_model: VaultReadModel) -> None:

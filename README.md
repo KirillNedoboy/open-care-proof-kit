@@ -8,11 +8,11 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 
 ## Current Status
 
-- Latest implemented runtime phase: V2A self-hosted vault foundation.
-- Current deployment pass: production config validation, health/readiness endpoints, and a minimal private gate.
+- Latest implemented runtime phase: V2B local user-owned vault file mode.
+- Current deployment pass: self-hosted vault foundation plus local user-owned vault file mode.
 - Public default branch: `main`.
-- Data scope: synthetic/demo-only.
-- Validation baseline: `pytest` 103 passed, `ruff` passed, `mypy` passed with no issues in 36 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
+- Data scope: shipped repo data is synthetic/demo-only; runtime can mount an operator-supplied local vault JSON file.
+- Validation baseline: `pytest` 116 passed, `ruff` passed, `mypy` passed with no issues in 37 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
 
 See [docs/project_status.md](docs/project_status.md) for the current repo snapshot.
 
@@ -36,6 +36,7 @@ See [docs/project_status.md](docs/project_status.md) for the current repo snapsh
 - Deterministic local reviewer artifacts: JSON read model, Markdown summary, manifest.
 - Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
 - Read-only local reviewer page at `/demo/health-vault`.
+- Read-only active vault page at `/vault`.
 - Deterministic `Context / Provenance Trace Graph` on the reviewer page.
 - Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
 - GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
@@ -43,6 +44,8 @@ See [docs/project_status.md](docs/project_status.md) for the current repo snapsh
 - Production config validation with fail-closed checks for secrets and private mode.
 - Public `/health`, `/healthz`, and `/readyz` endpoints for self-hosted checks.
 - Minimal password-gated private deployment mode for non-health routes.
+- Configurable runtime vault source through `OPENCARE_VAULT_SOURCE=demo|local_file`.
+- Mounted local vault file support through `OPENCARE_VAULT_FILE=/path/to/vault.json`.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
 
@@ -87,6 +90,16 @@ http://127.0.0.1:8000/demo/health-vault
 ```
 
 It is local and read-only. It accepts no user input, no upload, and no arbitrary file path. It renders synthetic/demo-only vault data, provenance coverage, safety boundaries, manifest trust flags, and the deterministic context/provenance trace graph.
+
+### Active vault path
+
+The runtime vault route is:
+
+```txt
+http://127.0.0.1:8000/vault
+```
+
+It is local and read-only. In the default `demo` source it renders the synthetic family vault. In `local_file` mode it renders the mounted local JSON file through the same deterministic loader and read-model path. The page labels the source, shows provenance coverage, keeps the safety boundary notices, and does not expose secret environment variables or the full mounted file path.
 
 ### Medication-to-Doctor Briefing reference workflow
 
@@ -137,6 +150,7 @@ Open:
 http://127.0.0.1:8000/
 http://127.0.0.1:8000/demo
 http://127.0.0.1:8000/demo/health-vault
+http://127.0.0.1:8000/vault
 http://127.0.0.1:8000/healthz
 http://127.0.0.1:8000/readyz
 http://127.0.0.1:8000/demo/report-view?drug=sertraline
@@ -151,6 +165,8 @@ OpenCare now includes a minimal self-hosted deployment foundation.
 - Production mode requires `OPENCARE_SECRET_KEY`.
 - Private production mode also requires `OPENCARE_ACCESS_PASSWORD`.
 - Non-health routes can be password-gated when `OPENCARE_DEMO_MODE=false`.
+- Vault runtime source is selected with `OPENCARE_VAULT_SOURCE=demo|local_file`.
+- Local-file mode requires `OPENCARE_VAULT_FILE` and should use a read-only host mount.
 - The private password form is served at `/access`.
 - Health checks stay public at `/health`, `/healthz`, and `/readyz`.
 
@@ -159,8 +175,10 @@ See [docs/deployment.md](docs/deployment.md) for:
 - local run;
 - Docker run;
 - `docker compose` run;
+- demo source vs local-file source;
 - production env vars;
 - private gate behavior;
+- local vault template and mount pattern;
 - security boundaries for this self-hosted MVP.
 
 ## Validation And Trust Metrics
@@ -205,12 +223,13 @@ The current repo must not generate:
 
 The Health/Family Vault layer must remain:
 
-- synthetic/demo-only;
 - deterministic;
 - provenance-preserving;
 - read-only in the reviewer UI;
 - not medical interpretation;
 - not clinical validation.
+
+The shipped repository remains synthetic/demo-only. If you run local-file mode, keep private health data outside Git and mount it at runtime. Do not commit private vault files.
 
 Generated files under `reports/` remain ignored by Git.
 

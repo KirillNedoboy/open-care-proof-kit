@@ -87,7 +87,7 @@ def valid_family_vault() -> dict[str, object]:
                 "person_id": "person-a",
                 "name": "Sleep concern recorded by demo user",
                 "status": "active",
-                "description": "User-recorded context only; not an OpenCare diagnosis.",
+                "description": "User-recorded context only; not medical interpretation.",
                 "evidence": [
                     {
                         "source_id": "source-visit",
@@ -101,7 +101,7 @@ def valid_family_vault() -> dict[str, object]:
                 "person_id": "person-c",
                 "name": "Seasonal allergy history recorded by demo user",
                 "status": "historical",
-                "description": "Demo-recorded context only; not an OpenCare diagnosis.",
+                "description": "Demo-recorded context only; not medical interpretation.",
                 "evidence": [
                     {
                         "source_id": "source-visit",

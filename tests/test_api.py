@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -118,6 +119,102 @@ def test_health_vault_reviewer_page_renders_synthetic_read_only_context() -> Non
     assert "Demo Adult Jordan" in response.text
     assert "Demo Teen Sam" in response.text
     assert "clinical decision support" not in response.text.lower()
+
+
+def local_file_payload() -> dict[str, object]:
+    return {
+        "dataset_id": "local-family-vault-v1",
+        "version": "0.1.0",
+        "demo_only": False,
+        "synthetic": False,
+        "family": {
+            "id": "family-local-01",
+            "display_name": "Local Family Vault",
+            "synthetic": False,
+        },
+        "people": [
+            {
+                "id": "person-owner",
+                "display_name": "Local Adult One",
+                "role": "self",
+                "synthetic": False,
+                "notes": "Locally mounted read-only vault record.",
+            }
+        ],
+        "relationships": [],
+        "document_sources": [
+            {
+                "id": "source-local-note",
+                "title": "Local mounted note",
+                "source_type": "visit_note",
+                "synthetic": False,
+                "demo_only": False,
+                "description": "Local operator-mounted vault source.",
+            }
+        ],
+        "conditions": [
+            {
+                "id": "condition-local",
+                "person_id": "person-owner",
+                "name": "Recorded local concern",
+                "status": "active",
+                "description": "Recorded context only; clinician review required.",
+                "evidence": [
+                    {
+                        "source_id": "source-local-note",
+                        "strength": "source_backed",
+                        "note": "Recorded in the mounted local note.",
+                    }
+                ],
+            }
+        ],
+        "medications": [],
+        "lab_results": [],
+        "visits": [],
+        "timeline_events": [],
+        "question_threads": [],
+    }
+
+
+def test_vault_page_renders_demo_source_by_default() -> None:
+    response = get("/vault")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Source: demo" in response.text
+    assert "read-only" in response.text.lower()
+    assert "Demo Adult Alex" in response.text
+
+
+def test_vault_page_renders_local_file_source_without_leaking_full_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vault_path = tmp_path / "local-family-vault.json"
+    vault_path.write_text(json.dumps(local_file_payload()), encoding="utf-8")
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            env="development",
+            demo_mode=True,
+            data_dir=Path("data"),
+            reports_dir=Path("reports"),
+            allow_cloud_llm=False,
+            secret_key=None,
+            access_password=None,
+            vault_source="local_file",
+            vault_file=vault_path,
+        ),
+    )
+
+    response = get("/vault")
+
+    assert response.status_code == 200
+    assert "Source: local file" in response.text
+    assert "local-family-vault.json" in response.text
+    assert str(vault_path) not in response.text
+    assert "Local Family Vault" in response.text
+    assert "Local Adult One" in response.text
 
 
 def test_demo_report_view_renders_briefing() -> None:
@@ -262,6 +359,17 @@ def test_private_production_redirects_protected_html_route_without_access(
     assert response.headers["location"] == "/access?next=%2Fdemo%2Fhealth-vault"
 
 
+def test_private_production_redirects_vault_route_without_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.main.get_settings", private_production_settings)
+
+    response = get("/vault", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/access?next=%2Fvault"
+
+
 def test_access_page_renders_in_private_production(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.main.get_settings", private_production_settings)
 
@@ -332,3 +440,23 @@ def test_demo_mode_keeps_protected_route_public(monkeypatch: pytest.MonkeyPatch)
 
     assert response.status_code == 200
     assert "Health/Family Vault Reviewer" in response.text
+
+
+def test_demo_mode_keeps_vault_route_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            env="production",
+            demo_mode=True,
+            data_dir=Path("data"),
+            reports_dir=Path("reports"),
+            allow_cloud_llm=False,
+            secret_key="s" * 32,
+            access_password=None,
+        ),
+    )
+
+    response = get("/vault")
+
+    assert response.status_code == 200
+    assert "Source: demo" in response.text

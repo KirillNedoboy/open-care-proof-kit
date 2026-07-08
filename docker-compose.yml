@@ -8,6 +8,8 @@ services:
     environment:
       OPENCARE_ENV: ${OPENCARE_ENV:-development}
       OPENCARE_DEMO_MODE: ${OPENCARE_DEMO_MODE:-true}
+      OPENCARE_VAULT_SOURCE: ${OPENCARE_VAULT_SOURCE:-demo}
+      OPENCARE_VAULT_FILE: ${OPENCARE_VAULT_FILE:-}
       OPENCARE_DATA_DIR: ${OPENCARE_DATA_DIR:-data}
       OPENCARE_REPORTS_DIR: ${OPENCARE_REPORTS_DIR:-reports}
       OPENCARE_ALLOW_CLOUD_LLM: ${OPENCARE_ALLOW_CLOUD_LLM:-false}
@@ -15,3 +17,5 @@ services:
       OPENCARE_ACCESS_PASSWORD: ${OPENCARE_ACCESS_PASSWORD:-}
     volumes:
       - ./reports:/app/reports
+      # Local vault file mode example (read-only, synthetic/template-only sample):
+      # - ./docs/examples/local-family-vault.template.json:/vault/local-family-vault.json:ro

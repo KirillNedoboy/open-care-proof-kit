@@ -113,18 +113,24 @@ def test_missing_provenance_causes_failure() -> None:
         build_vault_read_model(invalid_dataset)
 
 
-def test_non_demo_dataset_fails() -> None:
+def test_non_demo_dataset_can_build_for_local_file_mode() -> None:
     dataset = load_demo_family_vault().model_copy(update={"demo_only": False})
 
-    with pytest.raises(ValueError, match="demo_only"):
-        build_vault_read_model(dataset)
+    read_model = build_vault_read_model(dataset)
+
+    assert read_model.family.demo_only is False
+    notices = {notice.code: notice.message for notice in read_model.safety_notices}
+    assert notices["local_operator_supplied_data"] == (
+        "This dataset comes from an operator-supplied local vault file."
+    )
 
 
-def test_non_synthetic_dataset_fails() -> None:
+def test_non_synthetic_dataset_can_build_for_local_file_mode() -> None:
     dataset = load_demo_family_vault().model_copy(update={"synthetic": False})
 
-    with pytest.raises(ValueError, match="synthetic"):
-        build_vault_read_model(dataset)
+    read_model = build_vault_read_model(dataset)
+
+    assert read_model.family.synthetic is False
 
 
 def test_unsafe_text_in_surfaced_fields_fails() -> None:
@@ -152,7 +158,7 @@ def test_read_model_includes_safety_boundary_notices() -> None:
     )
     assert notices["synthetic_demo_only"] == "This dataset is synthetic/demo-only."
     assert notices["deterministic_reorganization"] == (
-        "Summaries are deterministic reorganizations of recorded demo data."
+        "Summaries are deterministic reorganizations of recorded vault data."
     )
 
 

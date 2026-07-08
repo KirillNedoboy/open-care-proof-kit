@@ -10,39 +10,44 @@ v0.1 vault-first proof kit.
 
 ## Current phase
 
-V2A deployable self-hosted vault foundation
+V2B local user-owned vault file mode
 
 ## Current status
 
-The latest implemented runtime phase is V2A deployable self-hosted vault foundation. This phase keeps the synthetic/demo reviewer surfaces and the narrow PGx reference workflow intact while adding production config validation, public health/readiness checks, a minimal private gate, and self-hosted deployment documentation.
+The latest implemented runtime phase is V2B local user-owned vault file mode. This phase keeps the synthetic/demo reviewer surfaces and the narrow PGx reference workflow intact while adding a read-only runtime vault route, mounted local JSON file support, and operator-facing deployment/docs updates on top of the V2A self-hosted foundation.
 
 - Health/Family Vault remains the main implemented foundation.
 - The repo remains useful without DNA.
 - Genetics remains a later layer.
 - The LLM remains an interface/explanation layer, not the source of truth.
 - The read-only reviewer route remains `/demo/health-vault`.
+- The active runtime vault route is `/vault`.
 - The deterministic context/provenance trace graph remains part of that reviewer route.
 - Public health endpoints now include `/health`, `/healthz`, and `/readyz`.
 - Production mode now validates `OPENCARE_SECRET_KEY` and private-mode password requirements.
 - Private self-hosted mode can password-gate non-health routes with a signed cookie.
+- Runtime vault source is configurable through `OPENCARE_VAULT_SOURCE=demo|local_file`.
+- Local-file mode requires `OPENCARE_VAULT_FILE` and is intended for read-only operator-mounted JSON files.
 - Dockerfile, `.dockerignore`, `docker-compose.yml`, and `docs/deployment.md` now exist for self-hosted MVP deployment.
 - Existing Medication-to-Doctor Briefing / PGx behavior remains unchanged.
-- Docker runtime validation is still blocked locally until the Docker daemon is running.
+- Docker/runtime validation passed for demo mode and private local-file mode in this session.
 
 ## Last validated state
 
-V2A runtime baseline:
+V2B code baseline:
 
-- pytest: 103 passed;
+- pytest: 116 passed;
 - ruff: passed;
-- mypy: passed with no issues in 36 source files;
+- mypy: passed with no issues in 37 source files;
 - eval runner: 12 passed cases, 0 failed cases;
 - eval runner metrics: `total_cases=12`, `static_text_cases=7`, `pipeline_cases=5`, `pipeline_failure_rate=0.0`;
 - trust metrics: passed and reported eval metrics plus Health/Family Vault artifact safety flags;
 - reviewer route baseline: `/demo/health-vault`;
+- active vault route baseline: `/vault`;
 - health endpoints baseline: `/health`, `/healthz`, `/readyz`;
 - private gate baseline: `/access` plus signed cookie on successful unlock;
-- Docker CLI available but daemon unavailable during this session, so image/container smoke checks are unverified;
+- Docker demo-mode checks: `docker build`, `docker compose up -d`, `/healthz`, `/readyz`, `/demo/health-vault`, and `/vault` passed;
+- Docker private local-file checks: `docker run` with mounted synthetic JSON, public `/healthz`, public `/readyz`, `/vault` redirect without cookie, `401` on invalid `/access`, `303` plus cookie on valid `/access`, and unlocked `/vault` passed;
 - generated `reports/` artifacts remain ignored.
 
 ## Product definition
@@ -74,7 +79,9 @@ Positioning:
 - Build a deterministic Health/Family Vault read model.
 - Build deterministic local reviewer artifacts.
 - Serve a read-only local reviewer page at `/demo/health-vault`.
+- Serve a read-only active vault page at `/vault`.
 - Build a deterministic context/provenance trace graph over the reviewer surface.
+- Load a mounted local vault JSON file in read-only mode when configured.
 - Validate deployment configuration for development vs production mode.
 - Serve public liveness/readiness endpoints for self-hosted checks.
 - Run a minimal password-gated private deployment mode for non-health routes.
@@ -115,4 +122,4 @@ Do not implement without explicit approval:
 
 ## Current next step
 
-Start the Docker daemon, run the blocked Docker build/compose smoke checks, then choose the next conservative MVP phase without changing genetics, LLM, PGx, or medical-safety boundaries.
+Inspect the final diff, commit V2B if it stays minimal, and then choose the next conservative vault-first step without changing genetics, LLM, PGx, or medical-safety boundaries.

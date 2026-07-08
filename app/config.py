@@ -20,6 +20,8 @@ class Settings:
     allow_cloud_llm: bool
     secret_key: str | None
     access_password: str | None
+    vault_source: str = "demo"
+    vault_file: Path | None = None
 
     @property
     def is_production(self) -> bool:
@@ -69,8 +71,17 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         values.get("OPENCARE_ALLOW_CLOUD_LLM", "false"),
         var_name="OPENCARE_ALLOW_CLOUD_LLM",
     )
+    vault_source = values.get("OPENCARE_VAULT_SOURCE", "demo").strip().lower()
+    if vault_source not in {"demo", "local_file"}:
+        raise ConfigError("OPENCARE_VAULT_SOURCE must be demo or local_file.")
     secret_key = _read_optional_secret(values, "OPENCARE_SECRET_KEY")
     access_password = _read_optional_secret(values, "OPENCARE_ACCESS_PASSWORD")
+    vault_file_raw = values.get("OPENCARE_VAULT_FILE")
+    vault_file = (
+        None
+        if vault_file_raw is None or not vault_file_raw.strip()
+        else Path(vault_file_raw)
+    )
 
     settings = Settings(
         env=app_env,
@@ -80,12 +91,29 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         allow_cloud_llm=allow_cloud_llm,
         secret_key=secret_key,
         access_password=access_password,
+        vault_source=vault_source,
+        vault_file=vault_file,
     )
     _validate_settings(settings)
     return settings
 
 
 def _validate_settings(settings: Settings) -> None:
+    if settings.vault_source == "local_file":
+        if settings.vault_file is None:
+            raise ConfigError(
+                "OPENCARE_VAULT_FILE is required when OPENCARE_VAULT_SOURCE=local_file."
+            )
+        if not settings.vault_file.is_file():
+            raise ConfigError("OPENCARE_VAULT_FILE must point to an existing file.")
+        try:
+            with settings.vault_file.open("r", encoding="utf-8") as vault_file_handle:
+                vault_file_handle.read(1)
+        except OSError as exc:
+            raise ConfigError(
+                f"OPENCARE_VAULT_FILE is not readable: {settings.vault_file.name}"
+            ) from exc
+
     if not settings.is_production:
         return
 
@@ -100,6 +128,11 @@ def _validate_settings(settings: Settings) -> None:
         raise ConfigError(
             "OPENCARE_ACCESS_PASSWORD is required when production runs with "
             "OPENCARE_DEMO_MODE=false."
+        )
+    if settings.vault_source == "local_file" and settings.demo_mode:
+        raise ConfigError(
+            "OPENCARE_DEMO_MODE must be false when production runs with "
+            "OPENCARE_VAULT_SOURCE=local_file."
         )
 
 

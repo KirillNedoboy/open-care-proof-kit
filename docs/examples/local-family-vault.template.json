@@ -1,0 +1,97 @@
+{
+  "dataset_id": "local-family-vault-template",
+  "version": "0.1.0",
+  "demo_only": true,
+  "synthetic": true,
+  "family": {
+    "id": "family-template-01",
+    "display_name": "Synthetic Local Family Template",
+    "synthetic": true
+  },
+  "people": [
+    {
+      "id": "person-template-01",
+      "display_name": "Template Adult One",
+      "role": "self",
+      "synthetic": true,
+      "notes": "Template-only local vault person record."
+    }
+  ],
+  "relationships": [],
+  "document_sources": [
+    {
+      "id": "source-template-01",
+      "title": "Synthetic local template note",
+      "source_type": "visit_note",
+      "synthetic": true,
+      "demo_only": true,
+      "description": "Template-only source document for local file mode."
+    }
+  ],
+  "conditions": [
+    {
+      "id": "condition-template-01",
+      "person_id": "person-template-01",
+      "name": "Recorded template concern",
+      "status": "active",
+      "description": "Recorded context only; not medical interpretation.",
+      "evidence": [
+        {
+          "source_id": "source-template-01",
+          "strength": "source_backed",
+          "note": "Recorded in the synthetic local template note."
+        }
+      ]
+    }
+  ],
+  "medications": [],
+  "lab_results": [],
+  "visits": [
+    {
+      "id": "visit-template-01",
+      "person_id": "person-template-01",
+      "visit_type": "template review visit",
+      "date": "2026-01-10",
+      "summary": "Template-only visit summary for local vault file mode.",
+      "evidence": [
+        {
+          "source_id": "source-template-01",
+          "strength": "source_backed",
+          "note": "Template visit summary from the synthetic local note."
+        }
+      ]
+    }
+  ],
+  "timeline_events": [
+    {
+      "id": "event-template-01",
+      "person_id": "person-template-01",
+      "event_type": "visit",
+      "date": "2026-01-10",
+      "title": "Template vault review recorded",
+      "evidence": [
+        {
+          "source_id": "source-template-01",
+          "strength": "source_backed",
+          "note": "Template timeline event from the synthetic local note."
+        }
+      ]
+    }
+  ],
+  "question_threads": [
+    {
+      "id": "question-template-01",
+      "scope": "person",
+      "person_id": "person-template-01",
+      "status": "open",
+      "question": "Which recorded template items should be reviewed next?",
+      "evidence": [
+        {
+          "source_id": "source-template-01",
+          "strength": "source_backed",
+          "note": "Template question grounded in the synthetic local note."
+        }
+      ]
+    }
+  ]
+}

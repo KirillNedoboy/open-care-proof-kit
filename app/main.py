@@ -18,6 +18,7 @@ from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
 from app.health_vault.loader import load_demo_family_vault
 from app.health_vault.read_model import VaultReadModel, build_vault_read_model
+from app.health_vault.runtime_loader import ActiveVault, load_active_vault
 from app.health_vault.trace_graph import build_vault_trace_graph
 from app.reports.json_audit import PIPELINE_STEPS
 from app.vault.loader import load_health_vault
@@ -135,7 +136,7 @@ def index(request: Request) -> HTMLResponse:
 
 
 def get_required_asset_paths(settings: Settings) -> list[Path]:
-    return [
+    required_paths = [
         settings.data_dir / "demo_patients" / "demo_patient_a.json",
         settings.data_dir / "demo_patients" / "demo_family_vault.json",
         Path("docs") / "reviewer_quickstart.md",
@@ -143,6 +144,9 @@ def get_required_asset_paths(settings: Settings) -> list[Path]:
         APP_DIR / "templates",
         APP_DIR / "static",
     ]
+    if settings.vault_source == "local_file" and settings.vault_file is not None:
+        required_paths.append(settings.vault_file)
+    return required_paths
 
 
 @app.get("/health")
@@ -365,14 +369,33 @@ def _group_overviews_by_person(
     return sections
 
 
-def _build_health_vault_page_context() -> dict[str, Any]:
-    dataset = load_demo_family_vault()
-    read_model = build_vault_read_model(dataset)
-    trace_graph = build_vault_trace_graph(read_model)
-    manifest = _load_health_vault_manifest()
+def _build_vault_page_context(
+    active_vault: ActiveVault,
+    *,
+    include_trace_graph: bool,
+    include_trust_flags: bool,
+    page_eyebrow: str,
+    page_title: str,
+    page_lede: str,
+) -> dict[str, Any]:
+    read_model = active_vault.read_model
     people_lookup = {person.id: person.display_name for person in read_model.people}
+    trace_graph = build_vault_trace_graph(read_model) if include_trace_graph else None
+    manifest = _load_health_vault_manifest() if include_trust_flags else None
+    source_name = (
+        active_vault.source_basename
+        if active_vault.source_basename is not None
+        else "demo"
+    )
 
     return {
+        "page_eyebrow": page_eyebrow,
+        "page_title": page_title,
+        "page_lede": page_lede,
+        "vault_source_label": active_vault.source_label,
+        "vault_source_name": source_name,
+        "show_trace_graph": trace_graph is not None,
+        "show_trust_flags": include_trust_flags,
         "family": read_model.family,
         "people": read_model.people,
         "relationships": [
@@ -429,9 +452,30 @@ def _build_health_vault_page_context() -> dict[str, Any]:
         ],
         "provenance_coverage": read_model.provenance_coverage,
         "trace_graph": trace_graph,
-        "trust_flags": _trust_flags(manifest, read_model),
+        "trust_flags": (
+            _trust_flags(manifest, read_model)
+            if manifest is not None
+            else [
+                {"label": "Vault source", "value": active_vault.source_label},
+                {"label": "Mounted file", "value": source_name},
+                {
+                    "label": "Provenance coverage",
+                    "value": (
+                        f"{read_model.provenance_coverage.records_with_source}/"
+                        f"{read_model.provenance_coverage.total_important_records} "
+                        "important records source-backed"
+                    ),
+                },
+            ]
+        ),
         "safety_banner_items": [
-            "synthetic/demo-only",
+            "read-only",
+            f"source: {active_vault.source_label}",
+            *(
+                ["synthetic/demo-only"]
+                if read_model.family.demo_only and read_model.family.synthetic
+                else ["operator-supplied local file"]
+            ),
             "deterministic summary of recorded context",
             "not diagnosis",
             "not treatment recommendation",
@@ -441,6 +485,11 @@ def _build_health_vault_page_context() -> dict[str, Any]:
             "no genetics in this layer",
             "not clinical validation",
         ],
+        "person_record_note": (
+            "Synthetic person record for reviewer inspection only."
+            if active_vault.source_kind == "demo"
+            else "Read-only vault person record for viewer inspection only."
+        ),
         "what_this_page_does_not_do": [
             "Does not diagnose.",
             "Does not recommend treatment or medication selection.",
@@ -451,6 +500,28 @@ def _build_health_vault_page_context() -> dict[str, Any]:
             "Does not provide medical interpretation or clinical validation.",
         ],
     }
+
+
+def _build_health_vault_page_context() -> dict[str, Any]:
+    dataset = load_demo_family_vault()
+    read_model = build_vault_read_model(dataset)
+    return _build_vault_page_context(
+        ActiveVault(
+            dataset=dataset,
+            read_model=read_model,
+            source_kind="demo",
+            source_label="demo",
+            source_basename=None,
+        ),
+        include_trace_graph=True,
+        include_trust_flags=True,
+        page_eyebrow="Local reviewer UI",
+        page_title="Health/Family Vault Reviewer",
+        page_lede=(
+            "Read-only reviewer page for the synthetic family vault, deterministic read model, "
+            "provenance coverage, and visible safety boundaries."
+        ),
+    )
 
 
 def _trust_flags(manifest: dict[str, Any], read_model: VaultReadModel) -> list[dict[str, str]]:
@@ -490,6 +561,27 @@ def health_vault_page(request: Request) -> HTMLResponse:
         request=request,
         name="health_vault.html",
         context=_build_health_vault_page_context(),
+    )
+
+
+@app.get("/vault", response_class=HTMLResponse)
+def vault_page(request: Request) -> HTMLResponse:
+    settings = get_settings()
+    active_vault = load_active_vault(settings)
+    return templates.TemplateResponse(
+        request=request,
+        name="health_vault.html",
+        context=_build_vault_page_context(
+            active_vault,
+            include_trace_graph=False,
+            include_trust_flags=False,
+            page_eyebrow="Local vault UI",
+            page_title="Health/Family Vault",
+            page_lede=(
+                "Read-only vault page for the active configured source, with deterministic "
+                "provenance coverage and visible safety boundaries."
+            ),
+        ),
     )
 
 

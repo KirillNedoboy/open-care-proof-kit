@@ -4,6 +4,72 @@ This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.
 
+## 2026-07-08 - V2B local user-owned vault file mode
+
+### Changed
+- Added runtime vault source config in `app/config.py`:
+  - `OPENCARE_VAULT_SOURCE=demo|local_file`;
+  - `OPENCARE_VAULT_FILE`;
+  - validation for invalid source, missing file, unreadable file, and production local-file private-mode requirements.
+- Split Health/Family Vault validation between:
+  - generic schema validation for operator-supplied local files;
+  - retained demo-only constraints for the shipped synthetic demo loader path.
+- Added `app/health_vault/runtime_loader.py`:
+  - `ActiveVault`;
+  - `load_active_vault(settings)` for demo or mounted local-file source.
+- Added `GET /vault` in `app/main.py`:
+  - renders the active configured vault source;
+  - keeps the page read-only;
+  - shows source labeling and provenance coverage;
+  - avoids exposing full mounted file paths in HTML.
+- Kept `/demo/health-vault` unchanged as the reviewer/demo route with trace graph and committed trust flags.
+- Updated `app/templates/health_vault.html` so it can render either:
+  - the reviewer/demo view with trace graph and trust flags;
+  - the runtime vault view without those demo-only sections.
+- Added `docs/examples/local-family-vault.template.json` as a synthetic/template-only mounted-file example.
+- Updated ignore and deploy artifacts:
+  - `.gitignore` ignores `private/` and `vault.local.json`;
+  - `.dockerignore` ignores `private` and `vault.local.json`;
+  - `docker-compose.yml` documents local-file env vars and a read-only bind-mount example;
+  - `.env.example` documents `OPENCARE_VAULT_SOURCE` and `OPENCARE_VAULT_FILE`.
+- Updated `README.md`, `docs/deployment.md`, and `CHECKPOINT.md` for V2B runtime behavior and deployment flow.
+
+### Validation
+- `.\.venv\Scripts\python.exe -m pytest` - 116 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 37 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - passed.
+- Focused runtime-loader/config/API subsets also passed during implementation before the final full-suite run.
+
+### Docker
+- `docker build -t opencare-proof-kit:local .` - passed.
+- `docker compose up -d --build` - passed in default demo source mode.
+- Demo-mode smoke checks passed:
+  - `GET /healthz` returned healthy JSON;
+  - `GET /readyz` returned ready JSON;
+  - `GET /demo/health-vault` returned `200`;
+  - `GET /vault` returned `200` and rendered demo source labeling.
+- Private production local-file smoke checks passed with disposable local test values and a read-only mount of `docs/examples/local-family-vault.template.json`:
+  - `GET /healthz` stayed public;
+  - `GET /readyz` stayed ready;
+  - `GET /vault` without cookie redirected to `/access`;
+  - invalid `POST /access` returned `401`;
+  - valid `POST /access` returned `303`, set the signed cookie, and unlocked `/vault`;
+  - unlocked `/vault` rendered local-file source labeling and template data;
+  - no secret or full mounted path leakage was found in the HTML or container logs.
+- `docker compose down` and temporary private-mode container cleanup completed.
+
+### Product boundaries
+- No uploads, database persistence, accounts, LLM generation, genetics support, payments, or clinical workflows were added.
+- No diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice were added.
+- Existing PGx behavior and `build_demo_briefing("sertraline")` remained unchanged.
+- Safety/evals were preserved.
+- No private health data was committed; only a synthetic/template local-vault example was added.
+
+### Next safe step
+- Inspect the final diff, commit V2B on the feature branch, and stop unless a narrowly scoped next vault-first task is explicitly approved.
+
 ## 2026-07-08 - V2A deployable self-hosted vault foundation
 
 ### Changed

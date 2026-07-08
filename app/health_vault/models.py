@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 RelationshipType = Literal["self", "spouse", "parent", "child", "sibling", "other"]
 RecordStatus = Literal["active", "resolved", "historical", "suspected", "ruled_out", "unknown"]
@@ -72,25 +72,11 @@ class Person(BaseModel):
     synthetic: bool = True
     notes: str = Field(default="")
 
-    @field_validator("synthetic")
-    @classmethod
-    def person_must_be_synthetic(cls, value: bool) -> bool:
-        if not value:
-            raise ValueError("Every person must be synthetic in the demo vault.")
-        return value
-
 
 class Family(BaseModel):
     id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
     synthetic: bool = True
-
-    @field_validator("synthetic")
-    @classmethod
-    def family_must_be_synthetic(cls, value: bool) -> bool:
-        if not value:
-            raise ValueError("Family record must be synthetic in the demo vault.")
-        return value
 
 
 class Relationship(BaseModel):
@@ -107,14 +93,6 @@ class DocumentSource(BaseModel):
     synthetic: bool = True
     demo_only: bool = True
     description: str = Field(default="")
-
-    @model_validator(mode="after")
-    def source_must_be_demo_synthetic(self) -> "DocumentSource":
-        if not self.synthetic:
-            raise ValueError("Document sources must be synthetic.")
-        if not self.demo_only:
-            raise ValueError("Document sources must be demo_only.")
-        return self
 
 
 class Condition(BaseModel):
@@ -189,11 +167,6 @@ class VaultDataset(BaseModel):
 
     @model_validator(mode="after")
     def validate_dataset(self) -> "VaultDataset":
-        if not self.demo_only:
-            raise ValueError("Health/Family Vault V1A requires demo_only datasets.")
-        if not self.synthetic:
-            raise ValueError("Health/Family Vault V1A requires synthetic datasets.")
-
         people_ids = [person.id for person in self.people]
         source_ids = [source.id for source in self.document_sources]
         self._assert_unique_ids("person", people_ids)
@@ -331,3 +304,21 @@ class VaultDataset(BaseModel):
                 strings.extend(cls._walk_strings(nested_value))
             return strings
         return []
+
+
+def validate_demo_dataset(dataset: VaultDataset) -> VaultDataset:
+    if not dataset.demo_only:
+        raise ValueError("Health/Family Vault V1A requires demo_only datasets.")
+    if not dataset.synthetic:
+        raise ValueError("Health/Family Vault V1A requires synthetic datasets.")
+    if not dataset.family.synthetic:
+        raise ValueError("Family record must be synthetic in the demo vault.")
+    for person in dataset.people:
+        if not person.synthetic:
+            raise ValueError("Every person must be synthetic in the demo vault.")
+    for source in dataset.document_sources:
+        if not source.synthetic:
+            raise ValueError("Document sources must be synthetic.")
+        if not source.demo_only:
+            raise ValueError("Document sources must be demo_only.")
+    return dataset
