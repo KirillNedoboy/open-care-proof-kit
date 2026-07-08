@@ -8,11 +8,11 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 
 ## Current Status
 
-- Latest implemented runtime phase: V1H Health/Family Vault context/provenance trace graph.
-- Current packaging pass: V1I final grant/reviewer packaging refresh, docs-only.
+- Latest implemented runtime phase: V2A self-hosted vault foundation.
+- Current deployment pass: production config validation, health/readiness endpoints, and a minimal private gate.
 - Public default branch: `main`.
 - Data scope: synthetic/demo-only.
-- Validation baseline: `pytest` 87 passed, `ruff` passed, `mypy` passed with no issues in 36 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
+- Validation baseline: `pytest` 103 passed, `ruff` passed, `mypy` passed with no issues in 36 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
 
 See [docs/project_status.md](docs/project_status.md) for the current repo snapshot.
 
@@ -40,6 +40,10 @@ See [docs/project_status.md](docs/project_status.md) for the current repo snapsh
 - Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
 - GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
 - Deterministic local trust metrics report for reviewer/demo trust checks.
+- Production config validation with fail-closed checks for secrets and private mode.
+- Public `/health`, `/healthz`, and `/readyz` endpoints for self-hosted checks.
+- Minimal password-gated private deployment mode for non-health routes.
+- Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
 
 ## What OpenCare Is
@@ -133,9 +137,30 @@ Open:
 http://127.0.0.1:8000/
 http://127.0.0.1:8000/demo
 http://127.0.0.1:8000/demo/health-vault
+http://127.0.0.1:8000/healthz
+http://127.0.0.1:8000/readyz
 http://127.0.0.1:8000/demo/report-view?drug=sertraline
 http://127.0.0.1:8000/demo/report-view?drug=aspirin
 ```
+
+## Deployment
+
+OpenCare now includes a minimal self-hosted deployment foundation.
+
+- Development mode stays easy with `OPENCARE_ENV=development`.
+- Production mode requires `OPENCARE_SECRET_KEY`.
+- Private production mode also requires `OPENCARE_ACCESS_PASSWORD`.
+- Non-health routes can be password-gated when `OPENCARE_DEMO_MODE=false`.
+- Health checks stay public at `/health`, `/healthz`, and `/readyz`.
+
+See [docs/deployment.md](docs/deployment.md) for:
+
+- local run;
+- Docker run;
+- `docker compose` run;
+- production env vars;
+- private gate behavior;
+- security boundaries for this self-hosted MVP.
 
 ## Validation And Trust Metrics
 

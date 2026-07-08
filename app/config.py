@@ -1,20 +1,112 @@
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+
+SECRET_KEY_MIN_LENGTH = 32
+
+
+class ConfigError(ValueError):
+    pass
 
 
 @dataclass(frozen=True)
 class Settings:
     env: str
+    demo_mode: bool
     data_dir: Path
     reports_dir: Path
     allow_cloud_llm: bool
+    secret_key: str | None
+    access_password: str | None
+
+    @property
+    def is_production(self) -> bool:
+        return self.env == "production"
+
+    @property
+    def private_mode_enabled(self) -> bool:
+        return self.is_production and not self.demo_mode
 
 
-def get_settings() -> Settings:
-    return Settings(
-        env=os.getenv("OPENCARE_ENV", "local"),
-        data_dir=Path(os.getenv("OPENCARE_DATA_DIR", "data")),
-        reports_dir=Path(os.getenv("OPENCARE_REPORTS_DIR", "reports")),
-        allow_cloud_llm=os.getenv("OPENCARE_ALLOW_CLOUD_LLM", "false").lower() == "true",
+def _read_env(env: Mapping[str, str] | None = None) -> Mapping[str, str]:
+    if env is None:
+        return os.environ
+    return env
+
+
+def _parse_bool(raw: str, *, var_name: str) -> bool:
+    normalized = raw.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise ConfigError(f"{var_name} must be true or false.")
+
+
+def _read_optional_secret(values: Mapping[str, str], key: str) -> str | None:
+    raw = values.get(key)
+    if raw is None:
+        return None
+    cleaned = raw.strip()
+    if not cleaned:
+        return None
+    return cleaned
+
+
+def load_settings(env: Mapping[str, str] | None = None) -> Settings:
+    values = _read_env(env)
+    app_env = values.get("OPENCARE_ENV", "development").strip().lower()
+    if app_env not in {"development", "production"}:
+        raise ConfigError("OPENCARE_ENV must be development or production.")
+
+    demo_mode = _parse_bool(
+        values.get("OPENCARE_DEMO_MODE", "true"),
+        var_name="OPENCARE_DEMO_MODE",
     )
+    allow_cloud_llm = _parse_bool(
+        values.get("OPENCARE_ALLOW_CLOUD_LLM", "false"),
+        var_name="OPENCARE_ALLOW_CLOUD_LLM",
+    )
+    secret_key = _read_optional_secret(values, "OPENCARE_SECRET_KEY")
+    access_password = _read_optional_secret(values, "OPENCARE_ACCESS_PASSWORD")
+
+    settings = Settings(
+        env=app_env,
+        demo_mode=demo_mode,
+        data_dir=Path(values.get("OPENCARE_DATA_DIR", "data")),
+        reports_dir=Path(values.get("OPENCARE_REPORTS_DIR", "reports")),
+        allow_cloud_llm=allow_cloud_llm,
+        secret_key=secret_key,
+        access_password=access_password,
+    )
+    _validate_settings(settings)
+    return settings
+
+
+def _validate_settings(settings: Settings) -> None:
+    if not settings.is_production:
+        return
+
+    if settings.secret_key is None:
+        raise ConfigError("OPENCARE_SECRET_KEY is required in production.")
+    if len(settings.secret_key) < SECRET_KEY_MIN_LENGTH:
+        raise ConfigError(
+            "OPENCARE_SECRET_KEY must be at least "
+            f"{SECRET_KEY_MIN_LENGTH} characters in production."
+        )
+    if settings.private_mode_enabled and settings.access_password is None:
+        raise ConfigError(
+            "OPENCARE_ACCESS_PASSWORD is required when production runs with "
+            "OPENCARE_DEMO_MODE=false."
+        )
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return load_settings()
+
+
+def clear_settings_cache() -> None:
+    get_settings.cache_clear()

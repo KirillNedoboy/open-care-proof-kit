@@ -1,20 +1,62 @@
 import asyncio
+from pathlib import Path
+from typing import Any
 
 import httpx
+import pytest
 
+from app.config import Settings
 from app.main import app
 
 
-def get(path: str) -> httpx.Response:
-    async def request() -> httpx.Response:
+def request(
+    method: str,
+    path: str,
+    *,
+    data: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = True,
+) -> httpx.Response:
+    async def send() -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(
             transport=transport,
             base_url="http://testserver",
+            follow_redirects=follow_redirects,
         ) as client:
-            return await client.get(path)
+            return await client.request(method, path, data=data, headers=headers)
 
-    return asyncio.run(request())
+    return asyncio.run(send())
+
+
+def get(
+    path: str,
+    *,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = True,
+) -> httpx.Response:
+    return request(
+        "GET",
+        path,
+        headers=headers,
+        follow_redirects=follow_redirects,
+    )
+
+
+def post(
+    path: str,
+    *,
+    data: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = True,
+) -> httpx.Response:
+    return request(
+        "POST",
+        path,
+        data=data,
+        headers=headers,
+        follow_redirects=follow_redirects,
+    )
 
 
 def test_demo_report_markdown_endpoint_returns_markdown() -> None:
@@ -111,3 +153,182 @@ def test_reviewer_quickstart_endpoint_returns_markdown() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
     assert "Reviewer Quickstart" in response.text
+
+
+def test_health_endpoint_remains_backwards_compatible() -> None:
+    response = get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_healthz_endpoint_returns_liveness_status() -> None:
+    response = get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "service": "opencare-proof-kit"}
+
+
+def test_readyz_endpoint_returns_ready_when_required_assets_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.main.get_required_asset_paths",
+        lambda settings: [Path("README.md")],
+    )
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            env="development",
+            demo_mode=True,
+            data_dir=Path("data"),
+            reports_dir=Path("reports"),
+            allow_cloud_llm=False,
+            secret_key=None,
+            access_password=None,
+        ),
+    )
+
+    response = get("/readyz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "service": "opencare-proof-kit"}
+
+
+def test_readyz_endpoint_fails_closed_when_required_asset_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.main.get_required_asset_paths",
+        lambda settings: [Path("missing.file")],
+    )
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            env="development",
+            demo_mode=True,
+            data_dir=Path("data"),
+            reports_dir=Path("reports"),
+            allow_cloud_llm=False,
+            secret_key=None,
+            access_password=None,
+        ),
+    )
+
+    response = get("/readyz")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "service": "opencare-proof-kit",
+        "missing_assets": ["missing.file"],
+    }
+
+
+def private_production_settings() -> Settings:
+    return Settings(
+        env="production",
+        demo_mode=False,
+        data_dir=Path("data"),
+        reports_dir=Path("reports"),
+        allow_cloud_llm=False,
+        secret_key="s" * 32,
+        access_password="vault-password",
+    )
+
+
+def test_private_production_keeps_health_endpoints_public(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.main.get_settings", private_production_settings)
+
+    health_response = get("/health")
+    healthz_response = get("/healthz")
+    readyz_response = get("/readyz")
+
+    assert health_response.status_code == 200
+    assert healthz_response.status_code == 200
+    assert readyz_response.status_code == 200
+
+
+def test_private_production_redirects_protected_html_route_without_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.main.get_settings", private_production_settings)
+
+    response = get("/demo/health-vault", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/access?next=%2Fdemo%2Fhealth-vault"
+
+
+def test_access_page_renders_in_private_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.main.get_settings", private_production_settings)
+
+    response = get("/access")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Private Access" in response.text
+
+
+def test_private_production_rejects_invalid_password(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.main.get_settings", private_production_settings)
+
+    response = post(
+        "/access",
+        data={"password": "wrong-password", "next": "/demo/health-vault"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+    assert "Invalid password" in response.text
+    assert "set-cookie" not in response.headers
+
+
+def test_private_production_allows_access_after_valid_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.main.get_settings", private_production_settings)
+
+    login_response = post(
+        "/access",
+        data={"password": "vault-password", "next": "/demo/health-vault"},
+        follow_redirects=False,
+    )
+
+    assert login_response.status_code == 303
+    assert login_response.headers["location"] == "/demo/health-vault"
+    cookie_header = login_response.headers["set-cookie"]
+    assert "opencare_access=" in cookie_header
+    assert "HttpOnly" in cookie_header
+    assert "SameSite=lax" in cookie_header
+
+    cookie = cookie_header.split(";", 1)[0]
+    protected_response = get(
+        "/demo/health-vault",
+        headers={"cookie": cookie},
+    )
+
+    assert protected_response.status_code == 200
+    assert "Health/Family Vault Reviewer" in protected_response.text
+
+
+def test_demo_mode_keeps_protected_route_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            env="production",
+            demo_mode=True,
+            data_dir=Path("data"),
+            reports_dir=Path("reports"),
+            allow_cloud_llm=False,
+            secret_key="s" * 32,
+            access_password=None,
+        ),
+    )
+
+    response = get("/demo/health-vault")
+
+    assert response.status_code == 200
+    assert "Health/Family Vault Reviewer" in response.text

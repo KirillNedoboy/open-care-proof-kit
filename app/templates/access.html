@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Private Access | OpenCare Proof Kit</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <p class="eyebrow">Self-hosted private mode</p>
+        <h1>Private Access</h1>
+        <p class="lede">
+          This OpenCare MVP instance is running in private mode. Enter the access password to
+          continue.
+        </p>
+        {% if error_message %}
+        <p class="record-note">{{ error_message }}</p>
+        {% endif %}
+        <form method="post" action="/access">
+          <input type="hidden" name="next" value="{{ next_path }}" />
+          <label for="password">Access password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" />
+          <div class="cta-row">
+            <button class="button button-primary" type="submit">Unlock</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

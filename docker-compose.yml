@@ -4,9 +4,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      OPENCARE_ENV: local
-      OPENCARE_DATA_DIR: data
-      OPENCARE_REPORTS_DIR: reports
-      OPENCARE_ALLOW_CLOUD_LLM: "false"
+      OPENCARE_ENV: ${OPENCARE_ENV:-development}
+      OPENCARE_DEMO_MODE: ${OPENCARE_DEMO_MODE:-true}
+      OPENCARE_DATA_DIR: ${OPENCARE_DATA_DIR:-data}
+      OPENCARE_REPORTS_DIR: ${OPENCARE_REPORTS_DIR:-reports}
+      OPENCARE_ALLOW_CLOUD_LLM: ${OPENCARE_ALLOW_CLOUD_LLM:-false}
+      OPENCARE_SECRET_KEY: ${OPENCARE_SECRET_KEY:-}
+      OPENCARE_ACCESS_PASSWORD: ${OPENCARE_ACCESS_PASSWORD:-}
     volumes:
       - ./reports:/app/reports

@@ -1,16 +1,20 @@
+import hashlib
+import hmac
 import json
 import re
 from html import escape
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import parse_qs, quote, urlsplit
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
-from app.config import get_settings
+from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
 from app.health_vault.loader import load_demo_family_vault
 from app.health_vault.read_model import VaultReadModel, build_vault_read_model
@@ -21,8 +25,94 @@ from app.vault.schema import HealthVault
 
 app = FastAPI(title="OpenCare Proof Kit", version=__version__)
 APP_DIR = Path(__file__).resolve().parent
+SERVICE_NAME = "opencare-proof-kit"
+ACCESS_COOKIE_NAME = "opencare_access"
+ACCESS_COOKIE_VALUE = "private-access"
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
+
+
+def _is_public_path(path: str) -> bool:
+    return (
+        path in {"/health", "/healthz", "/readyz", "/access"}
+        or path.startswith("/static/")
+    )
+
+
+def _normalize_next_path(next_path: str | None) -> str:
+    if next_path is None or not next_path.strip():
+        return "/"
+
+    parsed = urlsplit(next_path)
+    if parsed.scheme or parsed.netloc:
+        return "/"
+    if not parsed.path.startswith("/"):
+        return "/"
+    if parsed.path.startswith("/access"):
+        return "/"
+
+    normalized = parsed.path
+    if parsed.query:
+        normalized = f"{normalized}?{parsed.query}"
+    return normalized
+
+
+def _build_access_cookie(secret_key: str) -> str:
+    signature = hmac.new(
+        secret_key.encode("utf-8"),
+        ACCESS_COOKIE_VALUE.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{ACCESS_COOKIE_VALUE}.{signature}"
+
+
+def _has_valid_access_cookie(request: Request, settings: Settings) -> bool:
+    if settings.secret_key is None:
+        return False
+
+    cookie = request.cookies.get(ACCESS_COOKIE_NAME)
+    if cookie is None:
+        return False
+    return hmac.compare_digest(cookie, _build_access_cookie(settings.secret_key))
+
+
+def _redirect_to_access(request: Request) -> RedirectResponse:
+    next_path = request.url.path
+    if request.url.query:
+        next_path = f"{next_path}?{request.url.query}"
+    return RedirectResponse(
+        url=f"/access?next={quote(next_path, safe='')}",
+        status_code=307,
+    )
+
+
+@app.middleware("http")
+async def enforce_private_access(
+    request: Request,
+    call_next: RequestResponseEndpoint,
+) -> Response:
+    if _is_public_path(request.url.path):
+        return await call_next(request)
+
+    try:
+        settings = get_settings()
+    except ConfigError:
+        return JSONResponse(
+            {
+                "status": "not_ready",
+                "service": SERVICE_NAME,
+                "reason": "invalid_configuration",
+            },
+            status_code=503,
+        )
+
+    if not settings.private_mode_enabled or _has_valid_access_cookie(request, settings):
+        return await call_next(request)
+
+    if request.method == "GET":
+        return _redirect_to_access(request)
+
+    return JSONResponse({"detail": "Private access required."}, status_code=401)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -44,9 +134,57 @@ def index(request: Request) -> HTMLResponse:
     )
 
 
+def get_required_asset_paths(settings: Settings) -> list[Path]:
+    return [
+        settings.data_dir / "demo_patients" / "demo_patient_a.json",
+        settings.data_dir / "demo_patients" / "demo_family_vault.json",
+        Path("docs") / "reviewer_quickstart.md",
+        Path("docs") / "assets" / "health_vault" / "family-vault-manifest.json",
+        APP_DIR / "templates",
+        APP_DIR / "static",
+    ]
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/healthz")
+def healthz() -> dict[str, str]:
+    return {"status": "ok", "service": SERVICE_NAME}
+
+
+@app.get("/readyz")
+def readyz() -> Response:
+    try:
+        settings = get_settings()
+    except ConfigError:
+        return JSONResponse(
+            {
+                "status": "not_ready",
+                "service": SERVICE_NAME,
+                "reason": "invalid_configuration",
+            },
+            status_code=503,
+        )
+
+    missing_assets = [
+        str(path).replace("\\", "/")
+        for path in get_required_asset_paths(settings)
+        if not path.exists()
+    ]
+    if missing_assets:
+        return JSONResponse(
+            {
+                "status": "not_ready",
+                "service": SERVICE_NAME,
+                "missing_assets": missing_assets,
+            },
+            status_code=503,
+        )
+
+    return JSONResponse({"status": "ready", "service": SERVICE_NAME})
 
 
 def _build_checked_demo_briefing(drug: str) -> DemoBriefingResult:
@@ -139,6 +277,60 @@ def _render_report_markdown_as_html(report_markdown: str) -> str:
 
     close_list()
     return "\n".join(html_parts)
+
+
+@app.get("/access", response_class=HTMLResponse)
+def access_page(request: Request, next: str = "/") -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="access.html",
+        context={
+            "next_path": _normalize_next_path(next),
+            "error_message": None,
+        },
+    )
+
+
+@app.post("/access", response_class=HTMLResponse)
+async def access_submit(request: Request) -> Response:
+    try:
+        settings = get_settings()
+    except ConfigError:
+        return JSONResponse(
+            {
+                "status": "not_ready",
+                "service": SERVICE_NAME,
+                "reason": "invalid_configuration",
+            },
+            status_code=503,
+        )
+
+    form_data = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True)
+    next_path = _normalize_next_path(form_data.get("next", ["/"])[0])
+    password = form_data.get("password", [""])[0]
+
+    if settings.access_password is None or not hmac.compare_digest(
+        password,
+        settings.access_password,
+    ):
+        return templates.TemplateResponse(
+            request=request,
+            name="access.html",
+            context={
+                "next_path": next_path,
+                "error_message": "Invalid password.",
+            },
+            status_code=401,
+        )
+
+    response = RedirectResponse(url=next_path, status_code=303)
+    response.set_cookie(
+        key=ACCESS_COOKIE_NAME,
+        value=_build_access_cookie(settings.secret_key or ""),
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 @app.get("/demo", response_class=HTMLResponse)

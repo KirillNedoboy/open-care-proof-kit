@@ -4,6 +4,55 @@ This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.
 
+## 2026-07-08 - V2A deployable self-hosted vault foundation
+
+### Changed
+- Added typed deployment config validation in `app/config.py`:
+  - `OPENCARE_ENV=development|production`;
+  - `OPENCARE_DEMO_MODE=true|false`;
+  - production requires `OPENCARE_SECRET_KEY`;
+  - production private mode also requires `OPENCARE_ACCESS_PASSWORD`.
+- Added public health endpoints in `app/main.py`:
+  - `GET /health` kept as compatibility route;
+  - `GET /healthz` for liveness;
+  - `GET /readyz` for config/asset readiness.
+- Added a minimal private deployment gate:
+  - `GET /access`;
+  - `POST /access`;
+  - signed `HttpOnly` cookie for successful unlock;
+  - public allowlist for `/health`, `/healthz`, `/readyz`, `/access`, and `/static/*`.
+- Kept existing reviewer and PGx routes intact in development/demo mode.
+- Added focused config and API regression tests for deployment behavior.
+- Reworked deploy artifacts:
+  - runtime-focused `Dockerfile`;
+  - `.dockerignore`;
+  - updated `docker-compose.yml`;
+  - updated `.env.example`.
+- Added `docs/deployment.md`.
+- Updated `README.md` and `CHECKPOINT.md` for the self-hosted MVP foundation.
+
+### Validation
+- `.venv\Scripts\python.exe -m pytest` - 103 passed.
+- `.venv\Scripts\python.exe -m ruff check app tests evals` - passed.
+- `.venv\Scripts\python.exe -m mypy app evals` - passed.
+- `.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.venv\Scripts\python.exe -m evals.trust_metrics` - passed.
+
+### Docker
+- `docker build -t opencare-proof-kit:local .` could not run to completion because the local Docker daemon was unavailable:
+  - `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`
+- Docker compose smoke checks were not run for the same reason.
+
+### Product boundaries
+- No diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop advice added.
+- No LLM generation added.
+- No real genetics, VCF/raw genotype, FASTQ/BAM/WGS, or upload flow added.
+- Existing PGx behavior and eval/safety expectations were preserved.
+
+### Next safe step
+- Start the Docker daemon and re-run the blocked Docker build/compose smoke checks.
+- If Docker validation passes, the next conservative phase can focus on minimal vault usability without adding uploads, accounts, databases, or clinical workflows.
+
 ## 2026-07-07 - V1I final grant/reviewer packaging refresh
 
 ### Changed
