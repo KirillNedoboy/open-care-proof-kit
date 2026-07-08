@@ -18,3 +18,5 @@ vault.local.json
 .env
 .env.*
 !.env.example
+deploy/env.production
+deploy/Caddyfile

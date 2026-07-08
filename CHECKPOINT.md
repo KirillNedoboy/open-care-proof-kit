@@ -10,11 +10,11 @@ v0.1 vault-first proof kit.
 
 ## Current phase
 
-V2B local user-owned vault file mode
+V2C production/VPS deployment pack
 
 ## Current status
 
-The latest implemented runtime phase is V2B local user-owned vault file mode. This phase keeps the synthetic/demo reviewer surfaces and the narrow PGx reference workflow intact while adding a read-only runtime vault route, mounted local JSON file support, and operator-facing deployment/docs updates on top of the V2A self-hosted foundation.
+The latest implemented phase is V2C production/VPS deployment pack. This phase keeps the synthetic/demo reviewer surfaces, the narrow PGx reference workflow, the private gate, and the read-only local-file runtime intact while adding a single validated operator deployment path for one VPS behind Caddy with Docker Compose, example env/proxy assets, a smoke-check script, and production safety guidance.
 
 - Health/Family Vault remains the main implemented foundation.
 - The repo remains useful without DNA.
@@ -28,15 +28,22 @@ The latest implemented runtime phase is V2B local user-owned vault file mode. Th
 - Private self-hosted mode can password-gate non-health routes with a signed cookie.
 - Runtime vault source is configurable through `OPENCARE_VAULT_SOURCE=demo|local_file`.
 - Local-file mode requires `OPENCARE_VAULT_FILE` and is intended for read-only operator-mounted JSON files.
-- Dockerfile, `.dockerignore`, `docker-compose.yml`, and `docs/deployment.md` now exist for self-hosted MVP deployment.
+- Self-hosted deployment artifacts now include:
+  - `docker-compose.yml` for local/demo workflows;
+  - `docker-compose.prod.yml` for the single-node VPS path;
+  - `deploy/Caddyfile.example`;
+  - `deploy/env.production.example`;
+  - `docs/production_deployment.md`;
+  - `scripts/smoke_check.py`.
+- `.gitignore` and `.dockerignore` now ignore uncommitted operator files at `deploy/env.production` and `deploy/Caddyfile`.
 - Existing Medication-to-Doctor Briefing / PGx behavior remains unchanged.
-- Docker/runtime validation passed for demo mode and private local-file mode in this session.
+- Docker/runtime validation passed for demo mode and for a safe production-compose app-service check with disposable secrets and the synthetic template vault in this session.
 
 ## Last validated state
 
-V2B code baseline:
+V2C code baseline:
 
-- pytest: 116 passed;
+- pytest: 124 passed;
 - ruff: passed;
 - mypy: passed with no issues in 37 source files;
 - eval runner: 12 passed cases, 0 failed cases;
@@ -47,7 +54,14 @@ V2B code baseline:
 - health endpoints baseline: `/health`, `/healthz`, `/readyz`;
 - private gate baseline: `/access` plus signed cookie on successful unlock;
 - Docker demo-mode checks: `docker build`, `docker compose up -d`, `/healthz`, `/readyz`, `/demo/health-vault`, and `/vault` passed;
-- Docker private local-file checks: `docker run` with mounted synthetic JSON, public `/healthz`, public `/readyz`, `/vault` redirect without cookie, `401` on invalid `/access`, `303` plus cookie on valid `/access`, and unlocked `/vault` passed;
+- Docker production-compose checks:
+  - `docker compose -f docker-compose.prod.yml config` passed with disposable local env values;
+  - `docker compose --env-file deploy/env.production -f docker-compose.prod.yml up -d --build opencare` passed;
+  - internal `GET /healthz` and `GET /readyz` returned `200`;
+  - internal `/vault` redirected to `/access` before login;
+  - internal valid `/access` returned `303` plus cookie and unlocked `/vault`;
+  - unlocked `/vault` rendered the synthetic template data without mounted path leakage;
+  - `docker compose ... logs opencare` showed no secret or full mounted path leakage;
 - generated `reports/` artifacts remain ignored.
 
 ## Product definition
@@ -86,6 +100,8 @@ Positioning:
 - Serve public liveness/readiness endpoints for self-hosted checks.
 - Run a minimal password-gated private deployment mode for non-health routes.
 - Provide Docker and compose deployment artifacts plus a deployment guide.
+- Provide a single validated VPS deployment pack for Docker Compose plus Caddy.
+- Provide a standard-library smoke-check script for self-hosted verification.
 - Run deterministic local trust metrics.
 - Run GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
 - Keep the existing Medication-to-Doctor Briefing / PGx demo path intact.
@@ -113,7 +129,7 @@ Do not implement without explicit approval:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
-.\.venv\Scripts\python.exe -m ruff check app tests evals
+.\.venv\Scripts\python.exe -m ruff check app tests evals scripts
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
 .\.venv\Scripts\python.exe -m evals.trust_metrics
@@ -122,4 +138,4 @@ Do not implement without explicit approval:
 
 ## Current next step
 
-Inspect the final diff, commit V2B if it stays minimal, and then choose the next conservative vault-first step without changing genetics, LLM, PGx, or medical-safety boundaries.
+Inspect the final diff, commit V2C if it stays minimal, and stop unless a new narrowly scoped vault-first task is explicitly approved.

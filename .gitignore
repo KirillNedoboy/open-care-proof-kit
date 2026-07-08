@@ -10,6 +10,8 @@ build/
 .env
 .env.*
 !.env.example
+deploy/env.production
+deploy/Caddyfile
 data/private/
 private/
 vault.local.json

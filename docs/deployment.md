@@ -1,8 +1,17 @@
 # Deployment
 
-OpenCare Proof Kit V2B is a self-hosted read-only MVP for a private personal/family medical workspace.
+OpenCare Proof Kit V2C is a self-hosted read-only MVP for a private personal/family medical workspace.
 
 This is not clinical software. It does not provide diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice. It does not support real genetics, raw genotype, VCF, FASTQ, BAM, or WGS uploads in this phase.
+
+This document covers:
+
+- local run and local demo mode;
+- private local-file mode;
+- Docker development/demo usage;
+- the handoff to the single validated VPS production path.
+
+For the full remote deployment flow, use [docs/production_deployment.md](production_deployment.md).
 
 ## Runtime Modes
 
@@ -184,6 +193,30 @@ volumes:
 
 For real private data, replace the example file with your own local file in an ignored host path. Do not commit it.
 
+## Single-VPS Production Path
+
+The validated remote deployment path in V2C is:
+
+- one VPS;
+- `docker-compose.prod.yml`;
+- Caddy reverse proxy on `80/443`;
+- TLS at the proxy;
+- app container on an internal compose network;
+- `OPENCARE_DEMO_MODE=false`;
+- `OPENCARE_VAULT_SOURCE=local_file`;
+- read-only mounted vault JSON file.
+
+Use [docs/production_deployment.md](production_deployment.md) for the complete operator flow. That document includes:
+
+- `deploy/env.production.example`;
+- `deploy/Caddyfile.example`;
+- DNS/firewall expectations;
+- the `scripts/smoke_check.py` command;
+- backup guidance for the mounted local vault JSON;
+- the production security checklist.
+
+Do not expose the app container directly without the reverse proxy.
+
 ## Private Access Gate
 
 When `OPENCARE_ENV=production` and `OPENCARE_DEMO_MODE=false`:
@@ -215,6 +248,8 @@ If any of these are missing, readiness fails closed.
 - Self-hosted MVP only.
 - Synthetic/demo-only data in the shipped repo.
 - Operator-mounted local file mode is read-only and private-by-operator, not a sharing or upload feature.
+- The documented remote production path is Caddy plus Docker Compose on one VPS.
+- TLS is strongly recommended for any remote deployment and handled at the reverse proxy.
 - No real genetics support in this phase.
 - No upload support in this phase.
 - No medical advice.
@@ -224,3 +259,20 @@ If any of these are missing, readiness fails closed.
 - No secrets committed to source control.
 
 For broader product and safety context, also read [README.md](../README.md) and [privacy_safety_threat_model.md](privacy_safety_threat_model.md).
+
+## Smoke Check
+
+Use the standard-library smoke-check script after local or remote deployment:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/smoke_check.py --base-url http://127.0.0.1:8000
+.\.venv\Scripts\python.exe scripts/smoke_check.py --base-url https://opencare.example.com --password "<your access password>"
+```
+
+The script checks:
+
+- `/healthz`;
+- `/readyz`;
+- `/vault` public behavior in demo/public mode;
+- `/vault` private redirect behavior;
+- `/access` login flow and unlocked `/vault` when a password is provided.

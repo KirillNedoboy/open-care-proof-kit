@@ -8,11 +8,11 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 
 ## Current Status
 
-- Latest implemented runtime phase: V2B local user-owned vault file mode.
-- Current deployment pass: self-hosted vault foundation plus local user-owned vault file mode.
+- Latest implemented phase: V2C production/VPS deployment pack.
+- Current deployment pass: self-hosted vault foundation plus local user-owned vault file mode and a single-node VPS deployment path.
 - Public default branch: `main`.
 - Data scope: shipped repo data is synthetic/demo-only; runtime can mount an operator-supplied local vault JSON file.
-- Validation baseline: `pytest` 116 passed, `ruff` passed, `mypy` passed with no issues in 37 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
+- Validation baseline: `pytest` 124 passed, `ruff` passed, `mypy` passed with no issues in 37 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
 
 See [docs/project_status.md](docs/project_status.md) for the current repo snapshot.
 
@@ -47,6 +47,7 @@ See [docs/project_status.md](docs/project_status.md) for the current repo snapsh
 - Configurable runtime vault source through `OPENCARE_VAULT_SOURCE=demo|local_file`.
 - Mounted local vault file support through `OPENCARE_VAULT_FILE=/path/to/vault.json`.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
+- Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
 
 ## What OpenCare Is
@@ -159,7 +160,7 @@ http://127.0.0.1:8000/demo/report-view?drug=aspirin
 
 ## Deployment
 
-OpenCare now includes a minimal self-hosted deployment foundation.
+OpenCare now includes a minimal self-hosted deployment foundation plus one documented production path.
 
 - Development mode stays easy with `OPENCARE_ENV=development`.
 - Production mode requires `OPENCARE_SECRET_KEY`.
@@ -169,6 +170,8 @@ OpenCare now includes a minimal self-hosted deployment foundation.
 - Local-file mode requires `OPENCARE_VAULT_FILE` and should use a read-only host mount.
 - The private password form is served at `/access`.
 - Health checks stay public at `/health`, `/healthz`, and `/readyz`.
+- The validated remote deployment path is single-node VPS + Docker Compose + Caddy + TLS.
+- The deployment smoke check script is `scripts/smoke_check.py`.
 
 See [docs/deployment.md](docs/deployment.md) for:
 
@@ -180,6 +183,15 @@ See [docs/deployment.md](docs/deployment.md) for:
 - private gate behavior;
 - local vault template and mount pattern;
 - security boundaries for this self-hosted MVP.
+
+See [docs/production_deployment.md](docs/production_deployment.md) for the validated single-node VPS path:
+
+- `docker-compose.prod.yml`;
+- `deploy/Caddyfile.example`;
+- `deploy/env.production.example`;
+- Caddy reverse proxy/TLS flow;
+- `scripts/smoke_check.py`;
+- operator backup guidance for the mounted local vault JSON.
 
 ## Validation And Trust Metrics
 

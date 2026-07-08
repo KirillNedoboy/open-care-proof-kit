@@ -4,6 +4,86 @@ This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.
 
+## 2026-07-08 - V2C production/VPS deployment pack
+
+### Changed
+- Added `docker-compose.prod.yml` for the single validated VPS deployment path:
+  - app service stays on an internal compose network;
+  - Caddy is the only public-facing service on `80/443`;
+  - app runtime is fixed to `OPENCARE_ENV=production`, `OPENCARE_DEMO_MODE=false`, `OPENCARE_VAULT_SOURCE=local_file`, and `OPENCARE_VAULT_FILE=/vault/local-family-vault.json`;
+  - the vault file mount is read-only;
+  - restart policy and container healthcheck are included.
+- Added `deploy/Caddyfile.example`:
+  - placeholder domain `opencare.example.com`;
+  - HTTPS/TLS termination at Caddy;
+  - reverse proxy to `opencare:8000`.
+- Added `deploy/env.production.example`:
+  - `OPENCARE_SECRET_KEY`;
+  - `OPENCARE_ACCESS_PASSWORD`;
+  - `OPENCARE_LOCAL_VAULT_PATH`.
+- Added `scripts/smoke_check.py` using Python standard library only:
+  - checks `/healthz` and `/readyz`;
+  - checks `/vault` public behavior in demo/public mode;
+  - checks `/vault` redirect behavior in private mode;
+  - when a password is supplied, verifies the `/access` login flow and unlocked `/vault`;
+  - exits non-zero on failure without printing the password.
+- Added `tests/test_smoke_check.py` with RED->GREEN coverage for:
+  - base URL normalization;
+  - public `/vault` acceptance;
+  - private redirect detection;
+  - private login-flow validation.
+- Updated docs for the new deployment pack:
+  - `README.md`;
+  - `docs/deployment.md`;
+  - `docs/production_deployment.md`;
+  - `CHECKPOINT.md`.
+- Updated ignore rules:
+  - `.gitignore` ignores uncommitted `deploy/env.production` and `deploy/Caddyfile`;
+  - `.dockerignore` excludes those operator files from build context.
+
+### Validation
+- RED phase: `.\.venv\Scripts\python.exe -m pytest tests/test_smoke_check.py -q` failed with `ModuleNotFoundError: No module named 'scripts'`.
+- GREEN phase: `.\.venv\Scripts\python.exe -m pytest tests/test_smoke_check.py -q` - 8 passed.
+- `.\.venv\Scripts\python.exe -m pytest` - 124 passed.
+- `.\.venv\Scripts\python.exe -m ruff check app tests evals scripts` - passed.
+- `.\.venv\Scripts\python.exe -m mypy app evals` - passed with no issues in 37 source files.
+- `.\.venv\Scripts\python.exe -m evals.runner` - 12 passed cases, 0 failed cases.
+- `.\.venv\Scripts\python.exe -m evals.trust_metrics` - passed.
+
+### Docker
+- `docker build -t opencare-proof-kit:local .` - passed.
+- `docker compose up -d --build` - passed in demo mode.
+- Demo-mode checks passed:
+  - `GET /healthz` returned `200`;
+  - `GET /readyz` returned `200`;
+  - `GET /demo/health-vault` returned `200`;
+  - `GET /vault` returned `200`.
+- `docker compose down` - completed cleanly.
+- Safe production-compose validation passed with disposable local values and the synthetic template vault:
+  - copied `deploy/env.production.example` to ignored `deploy/env.production`;
+  - copied `deploy/Caddyfile.example` to ignored `deploy/Caddyfile`;
+  - `docker compose -f docker-compose.prod.yml config` passed after loading disposable env values;
+  - `docker compose --env-file deploy/env.production -f docker-compose.prod.yml up -d --build opencare` passed;
+  - `docker compose ... ps` reported the `opencare` service healthy;
+  - internal `GET /healthz` and `GET /readyz` returned `200`;
+  - internal `GET /vault` redirected to `/access`;
+  - valid `POST /access` returned `303`, set the signed cookie, and unlocked `/vault`;
+  - unlocked `/vault` rendered the synthetic template data and did not expose `/vault/local-family-vault.json`;
+  - service logs did not expose secrets or full mounted paths;
+  - `docker compose --env-file deploy/env.production -f docker-compose.prod.yml down` completed cleanly.
+- The full local Caddy/TLS path was not started in this session because the documented production path depends on a real public domain and DNS, which is not appropriate for local disposable validation.
+
+### Product boundaries
+- No product/runtime behavior changed.
+- No diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice were added.
+- No upload support, database persistence, accounts, payments, LLM generation, or genetics support were added.
+- Existing PGx behavior and `build_demo_briefing("sertraline")` remained unchanged.
+- Safety/evals were preserved.
+- No real personal/patient data was committed.
+
+### Next safe step
+- Inspect the final diff, commit V2C on the feature branch if it stays minimal, and stop unless a new narrowly scoped deployment or vault-first task is explicitly approved.
+
 ## 2026-07-08 - V2B local user-owned vault file mode
 
 ### Changed
