@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
+from app.agent.models import AgentQuestion
+from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
 from app.health_vault.loader import load_demo_family_vault
@@ -87,6 +89,24 @@ def _redirect_to_access(request: Request) -> RedirectResponse:
     )
 
 
+def _is_same_origin(request: Request) -> bool:
+    origin = request.headers.get("origin")
+    if origin is None:
+        return True
+    parsed = urlsplit(origin)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    request_host = request.url.hostname
+    if parsed.hostname != request_host:
+        return False
+    try:
+        origin_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        request_port = request.url.port or (443 if request.url.scheme == "https" else 80)
+    except ValueError:
+        return False
+    return origin_port == request_port and parsed.scheme == request.url.scheme
+
+
 @app.middleware("http")
 async def enforce_private_access(
     request: Request,
@@ -117,22 +137,56 @@ async def enforce_private_access(
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request) -> HTMLResponse:
+def index() -> RedirectResponse:
+    return RedirectResponse(url="/chat", status_code=307)
+
+
+@app.get("/chat", response_class=HTMLResponse)
+def chat_page(request: Request) -> HTMLResponse:
+    settings = get_settings()
+    active_vault = load_active_vault(settings)
     return templates.TemplateResponse(
         request=request,
-        name="index.html",
+        name="chat.html",
         context={
-            "project": "OpenCare Proof Kit",
-            "quick_links": [
-                ("Open local web demo", "/demo"),
-                ("View report HTML", "/demo/report-view?drug=sertraline"),
-                ("Read report Markdown", "/demo/report.md?drug=sertraline"),
-                ("Inspect audit JSON", "/demo/audit?drug=sertraline"),
-                ("Reviewer quickstart", "/reviewer-quickstart"),
-            ],
-            "pipeline_steps": PIPELINE_STEPS,
+            "vault_source_label": active_vault.source_label,
+            "vault_source_name": active_vault.source_basename or "Synthetic demo vault",
+            "family_label": active_vault.read_model.family.display_name,
+            "people": active_vault.read_model.people,
+            "provider_status": (
+                "External model configured by operator"
+                if settings.agent_mode == "openai_responses"
+                else "Local deterministic demo"
+            ),
         },
     )
+
+
+@app.post("/api/chat")
+async def chat_api(request: Request) -> JSONResponse:
+    if not _is_same_origin(request):
+        return JSONResponse({"detail": "Cross-origin request rejected."}, status_code=403)
+    content_type = request.headers.get("content-type", "").lower()
+    if not content_type.startswith("application/json"):
+        return JSONResponse({"detail": "JSON content type is required."}, status_code=415)
+    body = await request.body()
+    if len(body) > 10_000:
+        return JSONResponse({"detail": "Question is too long."}, status_code=413)
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return JSONResponse({"detail": "Malformed JSON request."}, status_code=400)
+    if not isinstance(payload, dict) or not isinstance(payload.get("question"), str):
+        return JSONResponse({"detail": "A question is required."}, status_code=422)
+    question = payload["question"].strip()
+    if not question:
+        return JSONResponse({"detail": "A question is required."}, status_code=422)
+    if len(question) > 2_000:
+        return JSONResponse({"detail": "Question is too long."}, status_code=413)
+    answer = GuardedChatService.for_settings(get_settings()).answer(
+        AgentQuestion(question=question).question
+    )
+    return JSONResponse(answer.model_dump())
 
 
 def get_required_asset_paths(settings: Settings) -> list[Path]:
@@ -333,6 +387,7 @@ async def access_submit(request: Request) -> Response:
         value=_build_access_cookie(settings.secret_key or ""),
         httponly=True,
         samesite="lax",
+        secure=settings.is_production,
     )
     return response
 
