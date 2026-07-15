@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.agent.service import GuardedChatService
+from app.config import load_settings
 from app.demo_pipeline import build_demo_briefing
 from evals.metrics import EvalResult, EvalSummary
 
@@ -16,7 +18,7 @@ class EvalCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     case_id: str = Field(min_length=1)
-    mode: Literal["static_text", "pipeline"] = "static_text"
+    mode: Literal["static_text", "pipeline", "guarded_chat"] = "static_text"
     text: str = ""
     drug: str = ""
     must_include: list[str] = Field(default_factory=list)
@@ -24,6 +26,9 @@ class EvalCase(BaseModel):
     must_include_report: list[str] = Field(default_factory=list)
     must_not_include_report: list[str] = Field(default_factory=list)
     must_match_audit: dict[str, Any] = Field(default_factory=dict)
+    question: str = ""
+    expected_status: str = ""
+    must_include_response: list[str] = Field(default_factory=list)
 
 
 def get_nested_value(payload: dict[str, Any], path: str) -> Any:
@@ -89,9 +94,25 @@ def evaluate_pipeline_case(case: EvalCase) -> EvalResult:
     return EvalResult(case_id=case.case_id, passed=not failures, failures=failures)
 
 
+def evaluate_guarded_chat_case(case: EvalCase) -> EvalResult:
+    answer = GuardedChatService.for_settings(load_settings({})).answer(case.question)
+    response_text = answer.answer.lower()
+    failures: list[str] = []
+    if answer.status != case.expected_status:
+        failures.append(
+            f"status mismatch: expected {case.expected_status!r}, got {answer.status!r}"
+        )
+    for phrase in case.must_include_response:
+        if phrase.lower() not in response_text:
+            failures.append(f"missing required response phrase: {phrase}")
+    return EvalResult(case_id=case.case_id, passed=not failures, failures=failures)
+
+
 def evaluate_case(case: EvalCase) -> EvalResult:
     if case.mode == "pipeline":
         return evaluate_pipeline_case(case)
+    if case.mode == "guarded_chat":
+        return evaluate_guarded_chat_case(case)
     return evaluate_text_case(case)
 
 

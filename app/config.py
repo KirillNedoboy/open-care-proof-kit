@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 SECRET_KEY_MIN_LENGTH = 32
 
@@ -22,6 +23,11 @@ class Settings:
     access_password: str | None
     vault_source: str = "demo"
     vault_file: Path | None = None
+    agent_mode: str = "demo"
+    agent_allow_external_llm: bool = False
+    llm_responses_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str | None = None
 
     @property
     def is_production(self) -> bool:
@@ -71,6 +77,13 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         values.get("OPENCARE_ALLOW_CLOUD_LLM", "false"),
         var_name="OPENCARE_ALLOW_CLOUD_LLM",
     )
+    agent_mode = values.get("OPENCARE_AGENT_MODE", "demo").strip().lower()
+    if agent_mode not in {"demo", "openai_responses"}:
+        raise ConfigError("OPENCARE_AGENT_MODE must be demo or openai_responses.")
+    agent_allow_external_llm = _parse_bool(
+        values.get("OPENCARE_AGENT_ALLOW_EXTERNAL_LLM", "false"),
+        var_name="OPENCARE_AGENT_ALLOW_EXTERNAL_LLM",
+    )
     vault_source = values.get("OPENCARE_VAULT_SOURCE", "demo").strip().lower()
     if vault_source not in {"demo", "local_file"}:
         raise ConfigError("OPENCARE_VAULT_SOURCE must be demo or local_file.")
@@ -81,6 +94,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         None
         if vault_file_raw is None or not vault_file_raw.strip()
         else Path(vault_file_raw)
+    )
+    responses_url_raw = values.get("OPENCARE_LLM_RESPONSES_URL")
+    responses_url = (
+        None if responses_url_raw is None or not responses_url_raw.strip() else responses_url_raw
     )
 
     settings = Settings(
@@ -93,12 +110,29 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         access_password=access_password,
         vault_source=vault_source,
         vault_file=vault_file,
+        agent_mode=agent_mode,
+        agent_allow_external_llm=agent_allow_external_llm,
+        llm_responses_url=responses_url,
+        llm_api_key=_read_optional_secret(values, "OPENCARE_LLM_API_KEY"),
+        llm_model=_read_optional_secret(values, "OPENCARE_LLM_MODEL"),
     )
     _validate_settings(settings)
     return settings
 
 
 def _validate_settings(settings: Settings) -> None:
+    if settings.agent_mode == "openai_responses":
+        if not settings.agent_allow_external_llm:
+            raise ConfigError("OPENCARE_AGENT_ALLOW_EXTERNAL_LLM must be true for external mode.")
+        if (
+            settings.llm_responses_url is None
+            or not _is_valid_responses_url(settings.llm_responses_url)
+        ):
+            raise ConfigError("OPENCARE_LLM_RESPONSES_URL must be a complete safe HTTP(S) URL.")
+        if settings.llm_api_key is None or settings.llm_model is None:
+            raise ConfigError(
+                "OPENCARE_LLM_API_KEY and OPENCARE_LLM_MODEL are required for external mode."
+            )
     if settings.vault_source == "local_file":
         if settings.vault_file is None:
             raise ConfigError(
@@ -134,6 +168,24 @@ def _validate_settings(settings: Settings) -> None:
             "OPENCARE_DEMO_MODE must be false when production runs with "
             "OPENCARE_VAULT_SOURCE=local_file."
         )
+
+
+def _is_valid_responses_url(value: str) -> bool:
+    if any(ord(character) < 32 for character in value):
+        return False
+    try:
+        parsed = urlsplit(value)
+        _ = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme in {"http", "https"}
+        and parsed.hostname is not None
+        and parsed.username is None
+        and parsed.password is None
+        and not parsed.query
+        and not parsed.fragment
+    )
 
 
 @lru_cache(maxsize=1)

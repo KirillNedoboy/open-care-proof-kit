@@ -119,3 +119,51 @@ def test_load_settings_accepts_local_file_mode_with_existing_file(tmp_path: Path
 
     assert settings.vault_source == "local_file"
     assert settings.vault_file == vault_path
+
+
+def test_load_settings_accepts_only_complete_safe_external_responses_url() -> None:
+    settings = load_settings(
+        {
+            "OPENCARE_AGENT_MODE": "openai_responses",
+            "OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true",
+            "OPENCARE_LLM_RESPONSES_URL": "https://example.test/v1/responses",
+            "OPENCARE_LLM_API_KEY": "test-key",
+            "OPENCARE_LLM_MODEL": "test-model",
+        }
+    )
+
+    assert settings.llm_responses_url == "https://example.test/v1/responses"
+
+
+def test_load_settings_rejects_incomplete_external_provider_configuration() -> None:
+    with pytest.raises(ConfigError, match="OPENCARE_LLM"):
+        load_settings(
+            {
+                "OPENCARE_AGENT_MODE": "openai_responses",
+                "OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true",
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "ftp://example.test/v1/responses",
+        "https://user:pass@example.test/v1/responses",
+        "https://example.test/v1/responses?secret=yes",
+        "https://example.test/v1/responses#fragment",
+        "https://example.test:bad/v1/responses",
+        "https://example.test/v1/responses\n",
+    ],
+)
+def test_load_settings_rejects_unsafe_external_responses_url(url: str) -> None:
+    with pytest.raises(ConfigError, match="OPENCARE_LLM_RESPONSES_URL"):
+        load_settings(
+            {
+                "OPENCARE_AGENT_MODE": "openai_responses",
+                "OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true",
+                "OPENCARE_LLM_RESPONSES_URL": url,
+                "OPENCARE_LLM_API_KEY": "test-key",
+                "OPENCARE_LLM_MODEL": "test-model",
+            }
+        )

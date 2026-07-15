@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenCare chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}" />
+    <script defer src="{{ url_for('static', path='/chat.js') }}"></script>
+  </head>
+  <body class="chat-body">
+    <main class="chat-workspace">
+      <aside class="chat-sidebar" id="chat-sidebar" aria-label="Vault context">
+        <div class="brand-row"><span class="brand-mark">O</span><strong>OpenCare</strong></div>
+        <button class="new-chat" type="button" id="new-chat">New conversation</button>
+        <section class="context-block"><span>Active vault</span><strong>{{ vault_source_label }}</strong><small>{{ vault_source_name }}</small></section>
+        <section class="context-block"><span>Family context</span><strong>{{ family_label }}</strong><small>{% for person in people %}{{ person.display_name }}{% if not loop.last %} · {% endif %}{% endfor %}</small></section>
+        <section class="context-block"><span>Suggested safe questions</span><button class="prompt-button" type="button">Prepare questions for my doctor</button><button class="prompt-button" type="button">What changed since the latest recorded visit?</button><button class="prompt-button" type="button">Which information is source-backed?</button></section>
+        <a class="source-link" href="/vault">Evidence &amp; sources</a>
+        <div class="sidebar-boundaries"><span>Read-only</span><span>Not medical advice</span></div>
+      </aside>
+      <section class="chat-panel">
+        <header class="chat-header"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-expanded="false">Context</button><div><h1>OpenCare chat</h1><p>{{ family_label }} · source-constrained answers</p></div><span class="provider-status">{{ provider_status }}</span></header>
+        <div class="message-stream" id="message-stream" aria-live="polite">
+          <section class="empty-state" id="empty-state"><h2>Ask about your recorded vault</h2><p>OpenCare summarizes source-backed records, helps identify unknown information, and prepares clinician discussion questions.</p><p>Answers are policy-checked and validated before display. Validation reduces unsupported output but cannot guarantee medical correctness.</p></section>
+        </div>
+        <form class="composer" id="chat-form"><label class="sr-only" for="chat-question">Ask a question about this vault</label><textarea id="chat-question" maxlength="2000" placeholder="Ask about recorded information and sources…" rows="1"></textarea><div class="composer-actions"><span id="chat-status" role="status"></span><button id="send-button" type="submit">Send</button></div></form>
+      </section>
+    </main>
+  </body>
+</html>

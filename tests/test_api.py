@@ -81,13 +81,13 @@ def test_demo_audit_endpoint_returns_audit_only() -> None:
     assert "report_markdown" not in payload
 
 
-def test_index_page_renders_html_landing_page() -> None:
+def test_index_page_opens_chat_workspace() -> None:
     response = get("/")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "OpenCare Proof Kit" in response.text
-    assert "/reviewer-quickstart" in response.text
+    assert "OpenCare chat" in response.text
+    assert "Ask about your recorded vault" in response.text
 
 
 def test_demo_page_renders_synthetic_demo_patient() -> None:

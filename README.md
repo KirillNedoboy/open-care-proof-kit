@@ -8,11 +8,11 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 
 ## Current Status
 
-- Latest implemented phase: V2C production/VPS deployment pack.
+- Latest implemented phase: V3 guarded chat workspace.
 - Current deployment pass: self-hosted vault foundation plus local user-owned vault file mode and a single-node VPS deployment path.
 - Public default branch: `main`.
 - Data scope: shipped repo data is synthetic/demo-only; runtime can mount an operator-supplied local vault JSON file.
-- Validation baseline: `pytest` 124 passed, `ruff` passed, `mypy` passed with no issues in 37 source files, `evals.runner` 12 passed / 0 failed, `evals.trust_metrics` passed.
+- Validation baseline: `pytest` 161 passed, `ruff` passed, `mypy` passed with no issues in 45 source files, `evals.runner` 14 passed / 0 failed, `evals.trust_metrics` passed.
 
 See [docs/project_status.md](docs/project_status.md) for the current repo snapshot.
 
@@ -37,6 +37,7 @@ See [docs/project_status.md](docs/project_status.md) for the current repo snapsh
 - Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
 - Read-only local reviewer page at `/demo/health-vault`.
 - Read-only active vault page at `/vault`.
+- Guarded chat workspace at `/` and `/chat`, with validated `POST /api/chat` answers.
 - Deterministic `Context / Provenance Trace Graph` on the reviewer page.
 - Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
 - GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
@@ -81,6 +82,16 @@ Genetics is still intentionally second. The current repo keeps the older Medicat
 The LLM is intentionally third. Deterministic loaders, read models, rules, provenance checks, and safety checks come first. Any future model layer should explain or navigate that structure, not replace it.
 
 ## Implemented Surfaces
+
+### Guarded chat workspace
+
+`/` opens `/chat`, the product entry point for questions about the active vault. The browser sends a question only; OpenCare applies an intent policy, prepares compact provenance-aware context, obtains either a deterministic demo response or an optional external response, and validates the completed structure before display. Chat messages stay in page memory and are not persisted.
+
+The default is `OPENCARE_AGENT_MODE=demo`. It supports questions about clinician preparation, changes in the recorded timeline, source-backed information, and missing information. It does not diagnose, recommend treatment, select medication, calculate or modify a dose, or interpret genetics. Recorded medication or dosage context may be shown only when it is already source-backed in the vault.
+
+Set `OPENCARE_AGENT_MODE=openai_responses` only with `OPENCARE_AGENT_ALLOW_EXTERNAL_LLM=true`, `OPENCARE_LLM_RESPONSES_URL`, `OPENCARE_LLM_API_KEY`, and `OPENCARE_LLM_MODEL`. `OPENCARE_LLM_RESPONSES_URL` is the complete HTTP(S) endpoint, such as `https://api.example.com/v1/responses`; it must not include credentials, a query string, or a fragment. Production operators should use HTTPS. In this mode, compact vault context leaves the OpenCare server for the operator-configured external endpoint. The UI does not reveal the endpoint, key, or model details.
+
+Responses are buffered, policy-checked, source-validated, and fail closed when validation fails. This reduces unsupported output, but it cannot guarantee medical correctness or clinical safety.
 
 ### Health/Family Vault reviewer path
 

@@ -6,15 +6,15 @@ OpenCare Proof Kit
 
 ## Current product version
 
-v0.1 vault-first proof kit.
+v0.1 vault-first proof kit with guarded chat.
 
 ## Current phase
 
-V2C production/VPS deployment pack
+V3 guarded chat workspace
 
 ## Current status
 
-The latest implemented phase is V2C production/VPS deployment pack. This phase keeps the synthetic/demo reviewer surfaces, the narrow PGx reference workflow, the private gate, and the read-only local-file runtime intact while adding a single validated operator deployment path for one VPS behind Caddy with Docker Compose, example env/proxy assets, a smoke-check script, and production safety guidance.
+The current phase adds a clean-room guarded chat workspace over the active vault. It keeps the synthetic/demo reviewer surfaces, private gate, local-file runtime, and narrow PGx reference workflow intact.
 
 - Health/Family Vault remains the main implemented foundation.
 - The repo remains useful without DNA.
@@ -22,6 +22,9 @@ The latest implemented phase is V2C production/VPS deployment pack. This phase k
 - The LLM remains an interface/explanation layer, not the source of truth.
 - The read-only reviewer route remains `/demo/health-vault`.
 - The active runtime vault route is `/vault`.
+- The product entry points are `/` and `/chat`; `POST /api/chat` returns buffered, source-validated structured answers.
+- Conversations and provider payloads are not persisted or included in metadata-only audit logs.
+- External Responses mode is opt-in and sends compact vault context to the operator-configured endpoint.
 - The deterministic context/provenance trace graph remains part of that reviewer route.
 - Public health endpoints now include `/health`, `/healthz`, and `/readyz`.
 - Production mode now validates `OPENCARE_SECRET_KEY` and private-mode password requirements.
@@ -63,6 +66,16 @@ V2C code baseline:
   - unlocked `/vault` rendered the synthetic template data without mounted path leakage;
   - `docker compose ... logs opencare` showed no secret or full mounted path leakage;
 - generated `reports/` artifacts remain ignored.
+
+V3 guarded-chat local baseline:
+
+- pytest: 161 passed;
+- ruff: passed;
+- mypy: passed with no issues in 45 source files;
+- eval runner: 14 passed cases, 0 failed cases, including blocked medication-change and source-backed guarded-chat cases;
+- trust metrics: passed;
+- screenshots reviewed: `output/playwright/chat-empty.png`, `output/playwright/chat-answer.png`, `output/playwright/chat-refusal.png`, and `output/playwright/chat-mobile.png`;
+- Docker build and public/private compose smoke checks passed after Docker Desktop started.
 
 ## Product definition
 

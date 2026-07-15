@@ -4,6 +4,32 @@ This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.
 
+## 2026-07-15 - V3 guarded chat workspace
+
+### Changed
+- Added `/chat`, `POST /api/chat`, and a `/` redirect to the source-constrained chat workspace.
+- Added the guarded agent pipeline: intent policy, compact provenance-aware context, deterministic demo provider, optional complete-endpoint Responses adapter, contextual validation, and metadata-only audit logging.
+- Added same-origin checks for the cookie-authenticated API and kept unauthenticated private API requests as JSON `401` responses.
+- Added clean-room sidebar, composer, source cards, safe DOM rendering, responsive mobile context drawer, and in-memory-only conversation state.
+- Added URL validation for `OPENCARE_LLM_RESPONSES_URL`: HTTP(S), hostname, no embedded credentials, query, fragment, malformed port, or control characters. The adapter uses one request with a 15-second timeout and a 1,000,000-byte response limit.
+- Added external-mode disclosure in README, `.env.example`, reviewer docs, and the compact chat provider-status label. External mode is disabled by default and sends compact vault context only when the operator enables it.
+- Added `docs/darktech_chat_ui_reference.md` after an ignored shallow inspection of the upstream repository. No upstream source, CSS, JavaScript, HTML, assets, icons, text, or branding was copied.
+
+### Validation
+- `pytest`: 161 passed.
+- `ruff check app tests evals scripts`: passed.
+- `mypy app evals`: passed with no issues in 45 source files.
+- `evals.runner`: 14 passed cases, 0 failed cases.
+- `evals.trust_metrics`: passed.
+- Playwright screenshots reviewed: empty, answer, refusal, and 380px mobile states.
+
+### Docker
+- Docker Desktop started after the initial daemon check found no `dockerDesktopLinuxEngine` pipe.
+- `docker build -t opencare-proof-kit:local .` and `docker compose up -d --build` passed.
+- Public smoke checks passed for `/`, `/chat`, `/vault`, `/demo/health-vault`, `/healthz`, `/readyz`, allowed/blocked chat requests, cross-origin rejection, and safe malformed/empty/oversized request handling.
+- Private production smoke checks passed with disposable process-local secrets: page redirect, API JSON `401`, signed cookie access, same-origin API success, cross-origin JSON `403`, and public health endpoints.
+- `docker compose down` completed after both validation modes.
+
 ## 2026-07-08 - V2C production/VPS deployment pack
 
 ### Changed

@@ -46,6 +46,12 @@ The page is read-only and renders:
 - artifact/trust flags;
 - explicit "What This Page Does Not Do" boundaries.
 
+## Guarded chat companion
+
+The product entry point is now `/` and `/chat`. It uses the same active-vault loader and read model, but accepts a narrow set of safe questions through `POST /api/chat`. The deterministic demo provider summarizes source-backed records, recorded timeline changes, missing information, and clinician discussion questions. It does not persist conversations.
+
+External mode is optional and disabled by default. When an operator enables `OPENCARE_AGENT_MODE=openai_responses`, compact vault context is sent to the configured external Responses endpoint. This is not enabled in the public synthetic demo. Answers are buffered and validated before display; validation reduces unsupported output but cannot guarantee medical correctness.
+
 ## What files are included
 
 - `docs/assets/health_vault/family-vault-read-model.json`

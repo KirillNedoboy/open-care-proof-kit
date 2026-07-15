@@ -1,0 +1,7 @@
+{
+  "case_id": "guarded_chat_source_backed",
+  "mode": "guarded_chat",
+  "question": "Which information is source-backed?",
+  "expected_status": "answered",
+  "must_include_response": ["source-backed"]
+}
