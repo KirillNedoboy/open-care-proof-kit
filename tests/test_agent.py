@@ -59,6 +59,20 @@ def test_context_contains_sources_without_paths_or_environment_values(
     assert "notes" not in dumped
 
 
+def test_context_preserves_medication_source_provenance() -> None:
+    from app.agent.context import build_agent_context
+
+    context = build_agent_context(load_active_vault(load_settings({})))
+    medication_items = [item for item in context.items if item.kind == "medication"]
+
+    assert medication_items
+    assert all(item.provenance_status == "source_backed" for item in medication_items)
+    assert {
+        source_id for item in medication_items for source_id in item.source_ids
+    } == {"source-medication-list-2026-03"}
+    assert not [item for item in context.items if item.kind == "dosage"]
+
+
 def test_validation_accepts_safe_boundary_language_and_rejects_unsafe_recommendation() -> None:
     from app.agent.context import build_agent_context
     from app.agent.models import AgentAnswer, Citation
@@ -227,16 +241,80 @@ def test_demo_service_supports_timeline_sources_and_missing_information_question
     assert service.answer("What information is missing?").unknowns
 
 
-def test_demo_service_handles_recorded_dosage_without_recommendation() -> None:
+def test_demo_service_returns_source_backed_recorded_medications() -> None:
+    from app.agent.context import build_agent_context
     from app.agent.service import GuardedChatService
 
+    context = build_agent_context(load_active_vault(load_settings({})))
     answer = GuardedChatService.for_settings(load_settings({})).answer(
+        "Which medications are recorded in this vault?"
+    )
+    medication_source_ids = {
+        source_id
+        for item in context.items
+        if item.kind == "medication"
+        for source_id in item.source_ids
+    }
+
+    assert answer.status == "answered"
+    assert answer.citations
+    assert {citation.source_id for citation in answer.citations} == medication_source_ids
+    assert "sertraline" in answer.answer.lower()
+    assert "loratadine" in answer.answer.lower()
+    assert "recommend" not in answer.answer.lower()
+
+
+def test_demo_service_handles_recorded_dosage_without_recommendation() -> None:
+    from app.agent.context import build_agent_context
+    from app.agent.service import DemoProvider, GuardedChatService
+
+    context = build_agent_context(load_active_vault(load_settings({})))
+    answer = GuardedChatService(
+        context=context,
+        provider=DemoProvider(),
+        provider_mode="demo",
+    ).answer(
         "What dosage is recorded in the source?"
     )
 
     assert answer.status == "answered"
     assert "no recorded source-backed dosage" in answer.answer.lower()
+    assert answer.citations
+    assert {citation.source_id for citation in answer.citations} == {
+        source_id
+        for item in context.items
+        if item.kind == "medication"
+        for source_id in item.source_ids
+    }
+    assert answer.unknowns
+    assert not any(character.isdigit() for character in answer.answer)
+    assert "recommend" not in answer.answer.lower()
+
+
+def test_demo_provider_keeps_missing_dosage_unknown_without_medication_provenance() -> None:
+    from app.agent.models import AgentContext, ContextSource
+    from app.agent.service import DemoProvider
+
+    answer = DemoProvider().answer(
+        AgentContext(
+            source_kind="demo",
+            family_label="Synthetic family",
+            sources=[
+                ContextSource(
+                    source_id="source-unrelated",
+                    title="Unrelated synthetic source",
+                    source_type="visit_note",
+                )
+            ],
+        ),
+        "What dosage is recorded in the source?",
+    )
+
+    assert answer.status == "answered"
     assert not answer.citations
+    assert answer.unknowns
+    assert "no medication record" in answer.unknowns[0].lower()
+    assert not any(character.isdigit() for character in answer.answer)
 
 
 def test_blocked_question_never_calls_provider() -> None:

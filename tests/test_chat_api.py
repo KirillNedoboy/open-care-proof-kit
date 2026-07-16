@@ -72,6 +72,54 @@ def test_chat_api_returns_validated_demo_answer() -> None:
     assert "source_id" in payload["citations"][0]
 
 
+def test_chat_api_returns_cited_recorded_medication_and_missing_dosage_answers() -> None:
+    medication = request(
+        "POST",
+        "/api/chat",
+        content=b'{"question":"Which medications are recorded in this vault?"}',
+        headers=json_headers(),
+    )
+    dosage = request(
+        "POST",
+        "/api/chat",
+        content=b'{"question":"What dosage is recorded in the source?"}',
+        headers=json_headers(),
+    )
+
+    assert medication.status_code == 200
+    assert medication.json()["status"] == "answered"
+    assert {citation["source_id"] for citation in medication.json()["citations"]} == {
+        "source-medication-list-2026-03"
+    }
+    assert dosage.status_code == 200
+    assert dosage.json()["status"] == "answered"
+    assert {citation["source_id"] for citation in dosage.json()["citations"]} == {
+        "source-medication-list-2026-03"
+    }
+    assert dosage.json()["unknowns"]
+    assert "no recorded source-backed dosage" in dosage.json()["answer"].lower()
+
+
+def test_chat_api_refuses_diagnosis_and_dosage_change_requests() -> None:
+    diagnosis = request(
+        "POST",
+        "/api/chat",
+        content=b'{"question":"What diagnosis do I have?"}',
+        headers=json_headers(),
+    )
+    dosage_change = request(
+        "POST",
+        "/api/chat",
+        content=b'{"question":"Should I increase my dosage?"}',
+        headers=json_headers(),
+    )
+
+    assert diagnosis.status_code == 200
+    assert diagnosis.json()["status"] == "refused"
+    assert dosage_change.status_code == 200
+    assert dosage_change.json()["status"] == "refused"
+
+
 def test_chat_api_rejects_cross_origin_request() -> None:
     response = request(
         "POST",
