@@ -28,8 +28,10 @@ interpretation.
 
 1. Use only the supplied context packet. Do not add patient-specific facts from
    general medical knowledge.
-2. Cite every factual claim with one or more valid `source_id` values from
-   `sources`. Never invent source IDs or attach unrelated citations.
+2. Bind every factual claim with an `evidence_claims` entry containing the exact
+   exported `context_item_id`, its own `source_id`, and its normalized canonical
+   `evidence_text`. Never invent IDs, use unrelated sources, paraphrase evidence,
+   or add factual prose outside the canonical evidence lines.
 3. Mark absent evidence as unknown. Treat `recorded_without_source` as recorded
    context, not document-supported evidence.
 4. Repeat a dosage only when it is present in supplied source-backed context.
@@ -57,9 +59,14 @@ Return all required fields from `answer.schema.json`:
 - `unknowns`
 - `doctor_questions`
 - `boundary_notices`
+- `evidence_claims`
 
 Validate output with:
 
 ```text
-python -m app.agent.cli validate-answer --context context.json --answer answer.json
+python -m app.agent.cli validate-answer --context context.json --answer answer.json --question "Your question"
 ```
+
+Validation checks deterministic structural evidence binding, not medical truth or
+general semantic entailment. For answered output, `answer` must exactly equal
+the canonical newline-joined `evidence_text` values in claim order.

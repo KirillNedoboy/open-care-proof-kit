@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate_answer = subparsers.add_parser("validate-answer")
     validate_answer.add_argument("--context", type=Path, required=True)
     validate_answer.add_argument("--answer", type=Path, required=True)
+    validate_answer.add_argument("--question", required=True)
 
     demo_ask = subparsers.add_parser("demo-ask")
     demo_ask.add_argument("--vault-source", choices=("demo", "local_file"), default="demo")
@@ -43,7 +44,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "export-context":
         return _export_context(args.vault_source, args.output)
     if args.command == "validate-answer":
-        return _validate_answer(args.context, args.answer)
+        return _validate_answer(args.context, args.answer, args.question)
     if args.command == "demo-ask":
         return _demo_ask(args.vault_source, args.question)
     return 2
@@ -63,7 +64,7 @@ def _export_context(vault_source: str, output: Path | None) -> int:
     return 0
 
 
-def _validate_answer(context_path: Path, answer_path: Path) -> int:
+def _validate_answer(context_path: Path, answer_path: Path, question: str) -> int:
     try:
         context = PortableHealthContext.model_validate_json(
             context_path.read_text(encoding="utf-8-sig")
@@ -73,7 +74,7 @@ def _validate_answer(context_path: Path, answer_path: Path) -> int:
     try:
         answer_payload: Any = json.loads(answer_path.read_text(encoding="utf-8-sig"))
         answer = parse_portable_answer(answer_payload)
-        result = validate_portable_answer(context, answer.model_dump(mode="json"))
+        result = validate_portable_answer(context, answer.model_dump(mode="json"), question)
     except (OSError, ValidationError, ValueError, json.JSONDecodeError):
         return _print_result(False, ["invalid_answer_schema"])
     if not result.valid:

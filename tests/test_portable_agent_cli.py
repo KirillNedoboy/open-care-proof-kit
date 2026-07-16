@@ -22,18 +22,28 @@ def demo_portable_context() -> PortableHealthContext:
 
 
 def valid_answer() -> dict[str, object]:
+    evidence_text = (
+        "sertraline | current | Medication question recorded for clinician-review preparation."
+    )
     return {
         "status": "answered",
-        "answer": "Recorded medication context is available.",
+        "answer": evidence_text,
         "citations": [
             {
                 "source_id": "source-medication-list-2026-03",
-                "claim": "This source records the referenced medication context.",
+                "claim": evidence_text,
             }
         ],
         "unknowns": [],
         "doctor_questions": [],
         "boundary_notices": ["This is not a treatment recommendation."],
+        "evidence_claims": [
+            {
+                "context_item_id": "medication-alex-sertraline",
+                "source_id": "source-medication-list-2026-03",
+                "evidence_text": evidence_text,
+            }
+        ],
     }
 
 
@@ -76,7 +86,7 @@ def test_answer_contract_rejects_unknown_fields_and_unknown_citations() -> None:
     context = demo_portable_context()
     answer = valid_answer()
 
-    assert validate_portable_answer(context, answer).valid is True
+    assert validate_portable_answer(context, answer, "Which medications are recorded?").valid is True
     with_extra = {**answer, "extra": "not allowed"}
     try:
         parse_portable_answer(with_extra)
@@ -86,7 +96,10 @@ def test_answer_contract_rejects_unknown_fields_and_unknown_citations() -> None:
         raise AssertionError("unknown answer fields must be rejected")
 
     answer["citations"] = [{"source_id": "not-in-context", "claim": "Unsupported."}]
-    assert validate_portable_answer(context, answer).reason_code == "unknown_citation"
+    assert (
+        validate_portable_answer(context, answer, "Which medications are recorded?").reason_code
+        == "answer_not_canonical"
+    )
 
 
 def test_portable_validation_rejects_diagnosis_treatment_and_dosage_change_advice() -> None:
@@ -99,7 +112,10 @@ def test_portable_validation_rejects_diagnosis_treatment_and_dosage_change_advic
     ]:
         answer = valid_answer()
         answer["answer"] = unsafe_text
-        assert validate_portable_answer(context, answer).reason_code == "unsafe_prescriptive_claim"
+        assert (
+            validate_portable_answer(context, answer, "Which medications are recorded?").reason_code
+            == "answer_not_canonical"
+        )
 
 
 def test_cli_exports_and_validates_portable_answers(
@@ -121,7 +137,15 @@ def test_cli_exports_and_validates_portable_answers(
     assert PortableHealthContext.model_validate_json(context_path.read_text(encoding="utf-8"))
     assert (
         cli.main(
-            ["validate-answer", "--context", str(context_path), "--answer", str(answer_path)]
+            [
+                "validate-answer",
+                "--context",
+                str(context_path),
+                "--answer",
+                str(answer_path),
+                "--question",
+                "Which medications are recorded?",
+            ]
         )
         == 0
     )
@@ -129,16 +153,35 @@ def test_cli_exports_and_validates_portable_answers(
 
     invalid_path = tmp_path / "invalid.json"
     invalid_path.write_text(
-        json.dumps({**valid_answer(), "citations": [{"source_id": "bad", "claim": "bad"}]}),
+        json.dumps(
+            {
+                **valid_answer(),
+                "citations": [{"source_id": "bad", "claim": "bad"}],
+                "evidence_claims": [
+                    {
+                        **valid_answer()["evidence_claims"][0],
+                        "source_id": "bad",
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     assert (
         cli.main(
-            ["validate-answer", "--context", str(context_path), "--answer", str(invalid_path)]
+            [
+                "validate-answer",
+                "--context",
+                str(context_path),
+                "--answer",
+                str(invalid_path),
+                "--question",
+                "Which medications are recorded?",
+            ]
         )
         == 1
     )
-    assert json.loads(capsys.readouterr().out)["reason_codes"] == ["unknown_citation"]
+    assert json.loads(capsys.readouterr().out)["reason_codes"] == ["invalid_evidence_binding"]
 
 
 def test_cli_rejects_unsafe_answer_and_demo_ask_preserves_guardrails(capsys) -> None:
