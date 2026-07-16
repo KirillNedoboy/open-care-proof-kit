@@ -3,7 +3,7 @@ from typing import Any, Protocol
 
 from app.agent.audit import emit_audit
 from app.agent.context import build_agent_context
-from app.agent.models import AgentAnswer, AgentContext, Citation
+from app.agent.models import AgentAnswer, AgentContext, Citation, ContextItem
 from app.agent.policy import classify_question
 from app.agent.provider import OpenAIResponsesProvider, ProviderUnavailableError
 from app.agent.validation import validate_answer
@@ -31,7 +31,9 @@ class DemoProvider:
         ):
             return _sources_answer(context)
         if "dosage" in normalized or "dose" in normalized:
-            return _recorded_dosage_answer()
+            return _recorded_dosage_answer(context)
+        if "medication" in normalized or "medications" in normalized:
+            return _recorded_medications_answer(context)
         if "missing" in normalized:
             return _missing_answer(context)
         return AgentAnswer(
@@ -200,13 +202,64 @@ def _sources_answer(context: AgentContext) -> AgentAnswer:
     )
 
 
-def _recorded_dosage_answer() -> AgentAnswer:
+def _recorded_medications_answer(context: AgentContext) -> AgentAnswer:
+    medications = [item for item in context.items if item.kind == "medication"]
+    citations = _citations_for_items(medications)
+    if not citations:
+        return AgentAnswer(
+            status="answered",
+            answer=(
+                "No source-backed medication records are available in the current vault context."
+            ),
+            unknowns=["Medication records are missing a document source in this vault context."],
+            boundary_notices=["OpenCare does not recommend, select, or change medications."],
+        )
+    return AgentAnswer(
+        status="answered",
+        answer=f"Recorded medications: {'; '.join(item.text for item in medications)}.",
+        citations=citations,
+        boundary_notices=[
+            "This is recorded medication context, not a recommendation or treatment instruction."
+        ],
+    )
+
+
+def _recorded_dosage_answer(context: AgentContext) -> AgentAnswer:
+    medications = [item for item in context.items if item.kind == "medication"]
+    citations = _citations_for_items(medications)
+    if not citations:
+        return AgentAnswer(
+            status="answered",
+            answer="No source-backed medication record is available in the current vault context.",
+            unknowns=[
+                "No medication record is available to establish a source-backed dosage."
+            ],
+            boundary_notices=["OpenCare does not calculate, recommend, or modify a dosage."],
+        )
     return AgentAnswer(
         status="answered",
         answer="No recorded source-backed dosage is available in the current vault context.",
-        unknowns=["OpenCare does not calculate, recommend, or modify a dosage."],
-        boundary_notices=["Ask a licensed clinician about any medication or dosage changes."],
+        citations=citations,
+        unknowns=[
+            "No recorded source-backed dosage is available for the recorded medication context."
+        ],
+        boundary_notices=["OpenCare does not calculate, recommend, or modify a dosage."],
     )
+
+
+def _citations_for_items(items: list[ContextItem]) -> list[Citation]:
+    source_ids = {
+        source_id
+        for item in items
+        for source_id in item.source_ids
+    }
+    return [
+        Citation(
+            source_id=source_id,
+            claim="This source records the referenced medication context.",
+        )
+        for source_id in sorted(source_ids)
+    ]
 
 
 def _missing_answer(context: AgentContext) -> AgentAnswer:
