@@ -22,6 +22,8 @@ This is the fastest path for a reviewer who wants to inspect the current repo st
 ## Key Docs
 
 - [README.md](../README.md)
+- [Portable health-agent skill](../skills/opencare-health-agent/README.md)
+- [Portable skill reference notes](portable_skill_reference_notes.md)
 - [docs/reviewer_quickstart.md](reviewer_quickstart.md)
 - [docs/health_family_vault_demo.md](health_family_vault_demo.md)
 - [docs/project_status.md](project_status.md)
@@ -69,6 +71,20 @@ evals.trust_metrics: passed
 - deterministic local trust metrics
 - existing Medication-to-Doctor Briefing / PGx reference workflow
 - guarded chat with deterministic demo answers and optional operator-configured Responses adapter
+- portable OpenCare health-agent skill with context export and answer validation CLI
+
+## Portable Skill Commands
+
+```powershell
+.\.venv\Scripts\python.exe -m app.agent.cli export-context --vault-source demo --output context.json
+.\.venv\Scripts\python.exe -m app.agent.cli validate-answer --context context.json --answer answer.json
+.\.venv\Scripts\python.exe -m app.agent.cli demo-ask --vault-source demo --question "Which medications are recorded?"
+```
+
+The skill is manually copied into another agent workspace. OpenCare does not
+perform universal installation, provide MCP, ingest documents, support genetics,
+or provide diagnosis, treatment, or dosage-change advice. Validation reduces
+unsupported output but cannot guarantee medical correctness.
 
 ## What Is Explicitly Not Implemented
 

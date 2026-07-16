@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenCare guarded answer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "answer", "citations", "unknowns", "doctor_questions", "boundary_notices"],
+  "properties": {
+    "status": {"enum": ["answered", "refused", "validation_failed"]},
+    "answer": {"type": "string"},
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "claim"],
+        "properties": {
+          "source_id": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "unknowns": {"type": "array", "items": {"type": "string"}},
+    "doctor_questions": {"type": "array", "items": {"type": "string"}},
+    "boundary_notices": {"type": "array", "items": {"type": "string"}}
+  }
+}

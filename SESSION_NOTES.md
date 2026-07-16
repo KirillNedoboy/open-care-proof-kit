@@ -1134,3 +1134,18 @@ It is not a roadmap. It is the operational memory for future Codex sessions.
 
 ### Next safe step
 - Smoke-check the reviewer route over Uvicorn and then move to V1I final grant packaging refresh or deeper reviewer navigation without changing the current safety boundaries.
+
+## 2026-07-16 - V4 portable health-agent skill
+
+### Changed
+- Added the canonical `skills/opencare-health-agent/` package.
+- Added redacted portable context export, structured answer validation, and
+  deterministic `python -m app.agent.cli` commands.
+- Added regression coverage for schema compatibility, safe context export,
+  citations, unsafe-output rejection, and deterministic demo asks.
+
+### Boundaries
+- Manual workspace installation only, with no global agent installation or MCP.
+- No deployment, provider, UI, persistence, ingestion, genetics, or vault-schema change.
+- The skill reuses existing OpenCare policy, context, service, and validation
+  logic and does not claim clinical correctness.

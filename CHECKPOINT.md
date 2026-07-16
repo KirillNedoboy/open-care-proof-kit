@@ -10,11 +10,17 @@ v0.1 vault-first proof kit with guarded chat.
 
 ## Current phase
 
-V3 guarded chat workspace
+V4 portable health-agent skill
 
 ## Current status
 
 The current phase adds a clean-room guarded chat workspace over the active vault. It keeps the synthetic/demo reviewer surfaces, private gate, local-file runtime, and narrow PGx reference workflow intact.
+
+The V4 portable skill adds `skills/opencare-health-agent/`, a redacted context
+export, structured answer validation, and deterministic `demo-ask` CLI. It is
+manually installed into another workspace and reuses the guarded chat policy,
+context, service, and validation code. It adds no MCP, ingestion, genetics,
+provider, persistence, UI, or deployment behavior.
 
 - Health/Family Vault remains the main implemented foundation.
 - The repo remains useful without DNA.

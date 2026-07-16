@@ -16,6 +16,26 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 
 See [docs/project_status.md](docs/project_status.md) for the current repo snapshot.
 
+## Portable Health-Agent Skill
+
+OpenCare now has two guarded surfaces: the hosted/self-hosted web chat and the
+portable skill at [skills/opencare-health-agent](skills/opencare-health-agent/).
+The portable skill accepts a redacted context packet, requires structured
+source-backed answers, and uses the existing policy and validation rules.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.agent.cli export-context --vault-source demo --output context.json
+.\.venv\Scripts\python.exe -m app.agent.cli validate-answer --context context.json --answer answer.json
+.\.venv\Scripts\python.exe -m app.agent.cli demo-ask --vault-source demo --question "Which medications are recorded?"
+```
+
+Installation is manual and workspace-scoped. OpenCare does not automatically
+modify agent instruction files or install global skills. There is no MCP,
+document ingestion, genetics support, diagnosis, treatment advice, or
+dosage-change advice in this phase. External agents remain responsible for
+their own model and provider security. OpenCare validates output but cannot
+guarantee medical correctness.
+
 ## Reviewer Quick Links
 
 - Local reviewer route: `/demo/health-vault`
