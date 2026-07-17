@@ -138,14 +138,29 @@ def parse_portable_answer(payload: Any) -> PortableAnswer:
 def validate_portable_answer(
     context: PortableHealthContext,
     answer_payload: Any,
-    question: str,
+    question: str | None,
 ) -> ValidationResult:
     submitted = parse_portable_answer(answer_payload)
+    if not isinstance(question, str) or not question.strip():
+        return ValidationResult(False, "question_required")
     policy = classify_question(question)
     if policy.decision != "allowed":
-        if submitted.status != "refused" or submitted.evidence_claims:
-            return ValidationResult(False, "policy_response_required")
-        return ValidationResult(True)
+        if submitted.status != "refused":
+            return ValidationResult(False, "policy_status_mismatch")
+        if submitted.evidence_claims or submitted.citations:
+            return ValidationResult(False, _policy_reason_code(policy.decision))
+        if submitted.answer != policy.response_text:
+            return ValidationResult(False, _policy_reason_code(policy.decision))
+        return validate_answer(
+            AgentAnswer(
+                status="refused",
+                answer=submitted.answer,
+                unknowns=submitted.unknowns,
+                doctor_questions=submitted.doctor_questions,
+                boundary_notices=submitted.boundary_notices,
+            ),
+            context_to_agent_context(context),
+        )
     if submitted.status != "answered":
         return ValidationResult(False, "unexpected_answer_status")
     items = {item.item_id: item for item in context.context_items}
@@ -154,13 +169,14 @@ def validate_portable_answer(
         return ValidationResult(False, "duplicate_evidence_claim")
     for claim in claims:
         item = items.get(claim.context_item_id)
-        if (
-            item is None
-            or item.evidence_status != "source_backed"
-            or claim.source_id not in item.source_ids
-            or claim.evidence_text != _normalize_text(item.text)
-        ):
-            return ValidationResult(False, "invalid_evidence_binding")
+        if item is None:
+            return ValidationResult(False, "context_item_not_found")
+        if item.evidence_status != "source_backed":
+            return ValidationResult(False, "evidence_not_source_backed")
+        if claim.source_id not in item.source_ids:
+            return ValidationResult(False, "source_not_linked_to_context_item")
+        if claim.evidence_text != _normalize_text(item.text):
+            return ValidationResult(False, "evidence_text_mismatch")
     if not claims:
         expected_answer = "No source-backed information is available in the supplied context."
         if not submitted.unknowns or submitted.answer != expected_answer or submitted.citations:
@@ -196,6 +212,12 @@ def validate_portable_answer(
 
 def _normalize_text(value: str) -> str:
     return value.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _policy_reason_code(decision: str) -> str:
+    if decision == "urgent":
+        return "urgent_response_mismatch"
+    return "policy_response_mismatch"
 
 
 def _portable_item(item: ContextItem) -> PortableContextItem:
