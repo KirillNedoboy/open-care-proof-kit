@@ -4,21 +4,26 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from app.product_core.errors import (
+    CandidateNotFoundError,
     IntegrityStorageError,
     InvalidTransitionError,
-    NotFoundError,
+    PersonMismatchError,
     SourceCorruptionError,
+    SourceNotFoundError,
     SourcePublicationError,
     UnsafeSourcePathError,
 )
 from app.product_core.models import (
     CandidateFact,
+    CandidateStatus,
     CanonicalMedicationRecord,
     MedicationCandidateInput,
     Source,
@@ -31,6 +36,12 @@ from app.product_core.sqlite import SQLiteDatabase
 
 Clock = Callable[[], datetime]
 IdFactory = Callable[[], str]
+
+
+@dataclass(frozen=True)
+class SourceRegistrationResult:
+    source: Source
+    created: bool
 
 
 def default_clock() -> datetime:
@@ -130,6 +141,23 @@ class SourceService:
         note: str | None = None,
         provenance: dict[str, str] | None = None,
     ) -> Source:
+        return self.register_manual_entry_result(
+            person_id,
+            name,
+            schedule_text=schedule_text,
+            note=note,
+            provenance=provenance,
+        ).source
+
+    def register_manual_entry_result(
+        self,
+        person_id: str,
+        name: str,
+        *,
+        schedule_text: str | None = None,
+        note: str | None = None,
+        provenance: dict[str, str] | None = None,
+    ) -> SourceRegistrationResult:
         display_name = name.strip()
         if not person_id.strip() or not display_name:
             raise ValueError("person_id and name must not be empty")
@@ -163,6 +191,19 @@ class SourceService:
         *,
         provenance: dict[str, str] | None = None,
     ) -> Source:
+        return self.register_plain_text_result(
+            person_id,
+            content,
+            provenance=provenance,
+        ).source
+
+    def register_plain_text_result(
+        self,
+        person_id: str,
+        content: str,
+        *,
+        provenance: dict[str, str] | None = None,
+    ) -> SourceRegistrationResult:
         if not person_id.strip():
             raise ValueError("person_id must not be empty")
         payload = content.encode("utf-8")
@@ -179,7 +220,7 @@ class SourceService:
         with self.database.uow() as uow:
             source = uow.sources.get(source_id)
         if source is None:
-            raise NotFoundError(f"source not found: {source_id}")
+            raise SourceNotFoundError(f"source not found: {source_id}")
         return source
 
     def read(self, source_id: str) -> bytes:
@@ -195,45 +236,53 @@ class SourceService:
         media_type: str,
         suffix: str,
         provenance: dict[str, str],
-    ) -> Source:
+    ) -> SourceRegistrationResult:
         content_hash = hashlib.sha256(payload).hexdigest()
-        with self.database.uow() as uow:
-            existing = uow.sources.find_by_deduplication(
-                person_id, source_type, content_hash
-            )
-        if existing is not None:
-            self.store.read(existing)
-            return existing
-
-        source_id = self._safe_generated_id(self.id_factory())
-        relative_path = f"{source_id}.{suffix}"
-        self.store.publish(relative_path, payload)
+        relative_path: str | None = None
         try:
-            source = Source(
-                id=source_id,
-                person_id=person_id,
-                source_type=source_type,
-                relative_path=relative_path,
-                content_hash=content_hash,
-                size_bytes=len(payload),
-                media_type=media_type,
-                created_at=ensure_utc_datetime(self.clock()),
-                provenance=provenance,
-            )
-            with self.database.uow() as uow:
+            with self.database.uow(begin_mode="IMMEDIATE") as uow:
+                existing = uow.sources.find_by_deduplication(
+                    person_id, source_type, content_hash
+                )
+                if existing is not None:
+                    self.store.read(existing)
+                    return SourceRegistrationResult(existing, False)
+
+                source_id = self._safe_generated_id(self.id_factory())
+                relative_path = f"{source_id}.{suffix}"
+                self.store.publish(relative_path, payload)
+                source = Source(
+                    id=source_id,
+                    person_id=person_id,
+                    source_type=source_type,
+                    relative_path=relative_path,
+                    content_hash=content_hash,
+                    size_bytes=len(payload),
+                    media_type=media_type,
+                    created_at=ensure_utc_datetime(self.clock()),
+                    provenance=provenance,
+                )
                 uow.sources.insert(source)
-        except BaseException:
-            if not self._path_is_referenced(relative_path):
-                self.store._resolve_relative_path(relative_path).unlink(missing_ok=True)
+                return SourceRegistrationResult(source, True)
+        except sqlite3.IntegrityError:
+            if relative_path is not None:
+                self._remove_unreferenced(relative_path)
             with self.database.uow() as uow:
                 existing = uow.sources.find_by_deduplication(
                     person_id, source_type, content_hash
                 )
             if existing is not None:
                 self.store.read(existing)
-                return existing
+                return SourceRegistrationResult(existing, False)
             raise
-        return source
+        except BaseException:
+            if relative_path is not None:
+                self._remove_unreferenced(relative_path)
+            raise
+
+    def _remove_unreferenced(self, relative_path: str) -> None:
+        if not self._path_is_referenced(relative_path):
+            self.store._resolve_relative_path(relative_path).unlink(missing_ok=True)
 
     def _path_is_referenced(self, relative_path: str) -> bool:
         with self.database.uow() as uow:
@@ -276,9 +325,9 @@ class MedicationLifecycleService:
         with self.database.uow() as uow:
             source = uow.sources.get(source_id)
             if source is None:
-                raise NotFoundError(f"source not found: {source_id}")
+                raise SourceNotFoundError(f"source not found: {source_id}")
             if source.person_id != person_id:
-                raise ValueError("source belongs to another person")
+                raise PersonMismatchError("source belongs to another person")
             candidate = CandidateFact(
                 id=self.id_factory(),
                 person_id=person_id,
@@ -296,14 +345,22 @@ class MedicationLifecycleService:
         with self.database.uow() as uow:
             candidate = uow.candidates.get(candidate_id)
         if candidate is None:
-            raise NotFoundError(f"candidate not found: {candidate_id}")
+            raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
         return candidate
+
+    def list_candidates(
+        self,
+        person_id: str,
+        status: CandidateStatus | None = None,
+    ) -> list[CandidateFact]:
+        with self.database.uow() as uow:
+            return uow.candidates.list_for_person(person_id, status)
 
     def confirm(self, candidate_id: str) -> CanonicalMedicationRecord:
         with self.database.uow() as uow:
             candidate = uow.candidates.get(candidate_id)
             if candidate is None:
-                raise NotFoundError(f"candidate not found: {candidate_id}")
+                raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
             if candidate.status == "confirmed":
                 existing = uow.canonical_records.get_by_candidate(candidate_id)
                 if existing is None:
@@ -364,7 +421,7 @@ class MedicationLifecycleService:
         with self.database.uow() as uow:
             original = uow.candidates.get(candidate_id)
             if original is None:
-                raise NotFoundError(f"candidate not found: {candidate_id}")
+                raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
             if original.status != "pending":
                 raise InvalidTransitionError(
                     f"candidate {candidate_id} cannot be corrected from {original.status}"
@@ -372,9 +429,9 @@ class MedicationLifecycleService:
             replacement_source_id = source_id or original.source_id
             source = uow.sources.get(replacement_source_id)
             if source is None:
-                raise NotFoundError(f"source not found: {replacement_source_id}")
+                raise SourceNotFoundError(f"source not found: {replacement_source_id}")
             if source.person_id != original.person_id:
-                raise ValueError("replacement source belongs to another person")
+                raise PersonMismatchError("replacement source belongs to another person")
             reviewed_at = ensure_utc_datetime(self.clock())
             replacement = CandidateFact(
                 id=self.id_factory(),
@@ -395,7 +452,7 @@ class MedicationLifecycleService:
         with self.database.uow() as uow:
             candidate = uow.candidates.get(candidate_id)
             if candidate is None:
-                raise NotFoundError(f"candidate not found: {candidate_id}")
+                raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
             if candidate.status != "pending":
                 raise InvalidTransitionError(
                     f"candidate {candidate_id} cannot be rejected from {candidate.status}"
@@ -409,3 +466,16 @@ class MedicationLifecycleService:
     def list_active(self, person_id: str) -> list[CanonicalMedicationRecord]:
         with self.database.uow() as uow:
             return uow.canonical_records.list_active_for_person(person_id)
+
+    def list_canonical(
+        self,
+        person_id: str,
+        *,
+        include_inactive: bool = False,
+    ) -> list[CanonicalMedicationRecord]:
+        with self.database.uow() as uow:
+            return uow.canonical_records.list_for_person(person_id, include_inactive)
+
+    def list_timeline(self, person_id: str) -> list[TimelineEvent]:
+        with self.database.uow() as uow:
+            return uow.timeline_events.list_for_person(person_id)

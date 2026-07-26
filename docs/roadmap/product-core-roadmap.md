@@ -64,6 +64,18 @@ corruption detection, and Visit Brief selection rules are covered by focused
 tests. Deactivation, HTTP routes, UI, people, and non-medication fact types
 remain deferred.
 
+### Phase 1B status
+
+The medication-only lifecycle is exposed through the versioned
+`/api/product-core/v1` JSON API. The adapter provides source registration,
+candidate detail/list/review, canonical medication and timeline reads, and
+deterministic Visit Brief generation. Startup migrations run through the
+existing FastAPI lifespan; public schemas hide storage paths and normalized
+comparison values; review timestamps are controlled by the server clock; and
+Product Core errors use a scoped stable JSON envelope. The API has no UI,
+people table, per-person authorization, source download, extraction, or
+provider/model calls.
+
 ### Validation requirements
 
 - focused unit tests for each state transition;
@@ -80,6 +92,22 @@ remain deferred.
 - losing source identity during correction;
 - creating a persistence abstraction that bypasses future SQLite ownership;
 - making the Visit Brief appear clinical or prescriptive.
+
+## Phase 1C: Visit Preparation UI
+
+### Objective
+
+Expose the validated medication lifecycle and deterministic Visit Brief API
+through a minimal Visit Preparation UI without moving lifecycle authority out
+of Product Core services.
+
+### Non-goals
+
+- broader fact types;
+- document upload or extraction;
+- family permissions;
+- clinical advice or provider calls;
+- deployment changes.
 
 ## Phase 2: broader workspace
 

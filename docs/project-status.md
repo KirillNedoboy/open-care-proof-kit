@@ -6,8 +6,8 @@ This is the canonical description of the repository as inspected on
 
 ## Repository snapshot
 
-- Branch: `codex/opencare-product-core-phase-1a`
-- Inspected starting commit: `5ef17015d421bf6d95bd6086dbd5d7bf86751807`
+- Branch: `codex/opencare-product-core-phase-1b`
+- Inspected starting commit: `352f4e24150a27fe3f895307c0009228edac83ad`
 - Inspection date: 2026-07-26
 - Starting working tree: clean
 - Current repository: OpenCare foundation with demo/reference and trust
@@ -45,6 +45,9 @@ Verified in `app/main.py`:
 - UI-free Product Core medication lifecycle in `app/product_core/`: SQLite
   migrations, immutable source storage, candidate review, canonical records,
   timeline events, and deterministic Visit Brief output.
+- Versioned Product Core JSON API under `/api/product-core/v1`, wired through
+  the existing FastAPI application with startup migrations and stable scoped
+  error responses.
 - Existing synthetic PGx briefing reference workflow in `app/demo_pipeline.py`,
   `app/pgx/`, `app/genetics/`, and `data/evidence_packs/`.
 
@@ -58,8 +61,8 @@ repository evidence paths.
   editable persistence layer.
 - External Responses mode exists behind explicit configuration and provider
   validation, but it is optional and not required by the default demo path.
-- Product Core Phase 1A is persistent and test-covered, but it has no HTTP
-  route, UI, people table, or non-medication fact types.
+- Product Core Phase 1B exposes the medication lifecycle over HTTP, but has no
+  UI, people table, per-person authorization, or non-medication fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is
@@ -78,7 +81,8 @@ support.
 
 ## Known gaps
 
-- No general editable vault, HTTP Product Core API, or canonical lifecycle UI.
+- No canonical lifecycle UI or general editable vault beyond the medication
+  API.
 - No document upload, extraction, OCR, or general review inbox.
 - No non-medication candidate-fact lifecycle.
 - No Product Core timeline rebuild command; Phase 1A creates events atomically
@@ -102,7 +106,8 @@ The current demo runtime reads structured data from JSON through
 `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, and
 `app/vault/loader.py`. Product Core Phase 1A adds standard-library SQLite
 metadata and immutable local source files configured through
-`OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Chat content is not
+`OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`; Phase 1B starts
+migrations through the existing FastAPI lifespan. Chat content is not
 persisted. Generated files under `reports/` remain ignored.
 
 ## Deployment model
@@ -114,9 +119,10 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Validation executed on 2026-07-26
 
-- `.\.venv\Scripts\python.exe -m pytest` -> `200 passed` in 2.58s.
+- `.\.venv\Scripts\python.exe -m pytest` -> `221 passed`.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` -> passed.
-- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `55 source files`.
+- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `59 source files`.
+- Focused Product Core API tests -> `27 passed`.
 - Focused Product Core/config tests -> `42 passed`.
 - Fresh temporary-database migration smoke -> passed; repeated migration
   remained at version `1` with `PRAGMA foreign_keys=1`.
@@ -131,8 +137,8 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Deferred work
 
-The next implementation task is a minimal Product Core API and Visit
-Preparation UI. Uploads, OCR, genetics expansion, new providers, family
+The next implementation task is the Visit Preparation UI over the validated
+Product Core API. Uploads, OCR, genetics expansion, new providers, family
 permissions, multi-user SaaS, and deployment changes remain deferred.
 
 ## Canonical references

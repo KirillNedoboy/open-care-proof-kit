@@ -34,6 +34,12 @@ class SourceRepository(Protocol):
 class CandidateRepository(Protocol):
     def get(self, candidate_id: str) -> CandidateFact | None: ...
 
+    def list_for_person(
+        self,
+        person_id: str,
+        status: CandidateStatus | None = None,
+    ) -> list[CandidateFact]: ...
+
     def insert(self, candidate: CandidateFact) -> None: ...
 
     def update_status(
@@ -53,9 +59,17 @@ class CanonicalRepository(Protocol):
 
     def list_active_for_person(self, person_id: str) -> list[CanonicalMedicationRecord]: ...
 
+    def list_for_person(
+        self,
+        person_id: str,
+        include_inactive: bool = False,
+    ) -> list[CanonicalMedicationRecord]: ...
+
 
 class TimelineRepository(Protocol):
     def insert(self, event: TimelineEvent) -> None: ...
+
+    def list_for_person(self, person_id: str) -> list[TimelineEvent]: ...
 
 
 class SQLiteSourceRepository:
@@ -123,6 +137,20 @@ class SQLiteCandidateRepository:
             "SELECT * FROM candidate_facts WHERE id = ?", (candidate_id,)
         ).fetchone()
         return None if row is None else _candidate_from_row(row)
+
+    def list_for_person(
+        self,
+        person_id: str,
+        status: CandidateStatus | None = None,
+    ) -> list[CandidateFact]:
+        query = "SELECT * FROM candidate_facts WHERE person_id = ?"
+        parameters: tuple[str, ...] = (person_id,)
+        if status is not None:
+            query += " AND status = ?"
+            parameters += (status,)
+        query += " ORDER BY created_at DESC, id ASC"
+        rows = self.connection.execute(query, parameters).fetchall()
+        return [_candidate_from_row(row) for row in rows]
 
     def insert(self, candidate: CandidateFact) -> None:
         self.connection.execute(
@@ -205,13 +233,21 @@ class SQLiteCanonicalRepository:
         )
 
     def list_active_for_person(self, person_id: str) -> list[CanonicalMedicationRecord]:
+        return self.list_for_person(person_id)
+
+    def list_for_person(
+        self,
+        person_id: str,
+        include_inactive: bool = False,
+    ) -> list[CanonicalMedicationRecord]:
+        query = "SELECT * FROM canonical_medication_records WHERE person_id = ?"
+        parameters: tuple[str, ...] = (person_id,)
+        if not include_inactive:
+            query += " AND is_active = 1"
+        query += " ORDER BY confirmed_at ASC, id ASC"
         rows = self.connection.execute(
-            """
-            SELECT * FROM canonical_medication_records
-            WHERE person_id = ? AND is_active = 1
-            ORDER BY confirmed_at ASC, id ASC
-            """,
-            (person_id,),
+            query,
+            parameters,
         ).fetchall()
         return [_canonical_from_row(row) for row in rows]
 
@@ -238,6 +274,17 @@ class SQLiteTimelineRepository:
                 event.title,
             ),
         )
+
+    def list_for_person(self, person_id: str) -> list[TimelineEvent]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM timeline_events
+            WHERE person_id = ?
+            ORDER BY event_at ASC, id ASC
+            """,
+            (person_id,),
+        ).fetchall()
+        return [_timeline_from_row(row) for row in rows]
 
 
 def _source_from_row(row: sqlite3.Row) -> Source:
@@ -285,4 +332,16 @@ def _canonical_from_row(row: sqlite3.Row) -> CanonicalMedicationRecord:
         note=row["note"],
         confirmed_at=parse_utc_datetime(row["confirmed_at"]),
         is_active=bool(row["is_active"]),
+    )
+
+
+def _timeline_from_row(row: sqlite3.Row) -> TimelineEvent:
+    return TimelineEvent(
+        id=row["id"],
+        person_id=row["person_id"],
+        canonical_record_id=row["canonical_record_id"],
+        source_id=row["source_id"],
+        event_type=row["event_type"],
+        event_at=parse_utc_datetime(row["event_at"]),
+        title=row["title"],
     )

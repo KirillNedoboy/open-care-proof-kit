@@ -9,11 +9,11 @@ status is about the current implementation, not the approved future direction.
 | Family relationships | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/templates/health_vault.html` |
 | Health vault entities | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/loader.py`, `app/health_vault/read_model.py` |
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
-| Persistent editable vault | `PARTIAL` | Medication-only UI-free lifecycle in `app/product_core/`; no HTTP API, UI, people table, or broader fact types |
+| Persistent editable vault | `PARTIAL` | Medication-only lifecycle and JSON API in `app/product_core/`; no UI, people table, per-person authorization, or broader fact types |
 | Document upload | `OUT_OF_SCOPE` | No upload route or handler in `app/main.py`; reviewer UI explicitly rejects this scope |
 | Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests |
 | Extraction | `PARTIAL` | Explicit plain-text source registration exists; no document extraction, OCR, or model extraction |
-| Review inbox | `PARTIAL` | Candidate review service exists without a route or UI in `app/product_core/services.py` |
+| Review inbox | `PARTIAL` | Candidate review service and API routes exist without a UI in `app/product_core/` |
 | Canonical confirmed records | `PARTIAL` | Medication-only confirmation is transactional and active-state backed in `app/product_core/` |
 | Timeline | `PARTIAL` | Medication confirmation creates one deterministic timeline event atomically; demo read model remains separate |
 | Medications | `PARTIAL` | Product Core medication candidate/canonical lifecycle in `app/product_core/`; synthetic Health/Family Vault remains demo-only |
@@ -21,7 +21,7 @@ status is about the current implementation, not the approved future direction.
 | Labs | `DEMO_ONLY` | `LabResult` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
 | Encounters / visits | `DEMO_ONLY` | `Visit` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
 | Questions | `DEMO_ONLY` | `QuestionThread` model, read model, page rendering, and guarded question response in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/agent/service.py` |
-| Visit preparation | `PLANNED` | The current PGx report is a separate reference workflow; no Product Core Visit Brief exists |
+| Visit preparation | `PARTIAL` | Deterministic Product Core Visit Brief service and API exist; UI and broader visit workflow remain deferred |
 | Guarded chat | `IMPLEMENTED` | Routes in `app/main.py`; policy, service, validation, and audit in `app/agent/`; coverage in `tests/test_agent.py`, `tests/test_chat_api.py`, `tests/test_api.py` |
 | External LLM provider | `PARTIAL` | Opt-in `OpenAIResponsesProvider` in `app/agent/provider.py`, configuration gates in `app/config.py`, tests in `tests/test_agent.py`; not required by default |
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |

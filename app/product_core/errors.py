@@ -28,3 +28,23 @@ class SelectionError(ProductCoreError):
 
 class NotFoundError(ProductCoreError):
     """Raised when a requested Product Core record does not exist."""
+
+
+class SourceNotFoundError(NotFoundError):
+    """Raised when a requested source does not exist."""
+
+
+class CandidateNotFoundError(NotFoundError):
+    """Raised when a requested candidate does not exist."""
+
+
+class CanonicalRecordNotFoundError(NotFoundError):
+    """Raised when a requested canonical record does not exist."""
+
+
+class PersonMismatchError(ProductCoreError):
+    """Raised when related Product Core records belong to different people."""
+
+
+class RuntimeNotReadyError(ProductCoreError):
+    """Raised when the application runtime was not initialized at startup."""

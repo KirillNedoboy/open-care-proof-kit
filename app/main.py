@@ -1,7 +1,10 @@
 import hashlib
 import hmac
 import json
+import logging
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from html import escape
 from pathlib import Path
 from typing import Any, cast
@@ -22,17 +25,45 @@ from app.health_vault.loader import load_demo_family_vault
 from app.health_vault.read_model import VaultReadModel, build_vault_read_model
 from app.health_vault.runtime_loader import ActiveVault, load_active_vault
 from app.health_vault.trace_graph import build_vault_trace_graph
+from app.http_security import is_same_origin
+from app.product_core.api import router as product_core_router
+from app.product_core.runtime import create_product_core_runtime
 from app.reports.json_audit import PIPELINE_STEPS
 from app.vault.loader import load_health_vault
 from app.vault.schema import HealthVault
 
-app = FastAPI(title="OpenCare Proof Kit", version=__version__)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
+    runtime_factory = getattr(application.state, "product_core_runtime_factory", None)
+    try:
+        if runtime_factory is None:
+            runtime = create_product_core_runtime(get_settings())
+        else:
+            runtime = runtime_factory(get_settings())
+        runtime.database.migrate()
+    except Exception:
+        logger.error("Product Core startup failed", exc_info=False)
+        raise
+
+    application.state.product_core_runtime = runtime
+    try:
+        yield
+    finally:
+        if hasattr(application.state, "product_core_runtime"):
+            del application.state.product_core_runtime
+
+
+app = FastAPI(title="OpenCare Proof Kit", version=__version__, lifespan=product_core_lifespan)
 APP_DIR = Path(__file__).resolve().parent
 SERVICE_NAME = "opencare-proof-kit"
 ACCESS_COOKIE_NAME = "opencare_access"
 ACCESS_COOKIE_VALUE = "private-access"
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
+app.include_router(product_core_router)
 
 
 def _is_public_path(path: str) -> bool:
@@ -87,24 +118,6 @@ def _redirect_to_access(request: Request) -> RedirectResponse:
         url=f"/access?next={quote(next_path, safe='')}",
         status_code=307,
     )
-
-
-def _is_same_origin(request: Request) -> bool:
-    origin = request.headers.get("origin")
-    if origin is None:
-        return True
-    parsed = urlsplit(origin)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        return False
-    request_host = request.url.hostname
-    if parsed.hostname != request_host:
-        return False
-    try:
-        origin_port = parsed.port or (443 if parsed.scheme == "https" else 80)
-        request_port = request.url.port or (443 if request.url.scheme == "https" else 80)
-    except ValueError:
-        return False
-    return origin_port == request_port and parsed.scheme == request.url.scheme
 
 
 @app.middleware("http")
@@ -164,7 +177,7 @@ def chat_page(request: Request) -> HTMLResponse:
 
 @app.post("/api/chat")
 async def chat_api(request: Request) -> JSONResponse:
-    if not _is_same_origin(request):
+    if not is_same_origin(request):
         return JSONResponse({"detail": "Cross-origin request rejected."}, status_code=403)
     content_type = request.headers.get("content-type", "").lower()
     if not content_type.startswith("application/json"):

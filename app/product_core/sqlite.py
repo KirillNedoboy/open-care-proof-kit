@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 from types import TracebackType
-from typing import Self
+from typing import Literal, Self
 
 from app.product_core.migrations import MigrationRunner
 from app.product_core.repositories import (
@@ -29,13 +29,19 @@ class SQLiteDatabase:
     def migrate(self) -> None:
         MigrationRunner(self.connect).migrate()
 
-    def uow(self) -> UnitOfWork:
-        return UnitOfWork(self)
+    def uow(self, *, begin_mode: Literal["DEFERRED", "IMMEDIATE"] = "DEFERRED") -> UnitOfWork:
+        return UnitOfWork(self, begin_mode=begin_mode)
 
 
 class UnitOfWork:
-    def __init__(self, database: SQLiteDatabase) -> None:
+    def __init__(
+        self,
+        database: SQLiteDatabase,
+        *,
+        begin_mode: Literal["DEFERRED", "IMMEDIATE"] = "DEFERRED",
+    ) -> None:
         self.database = database
+        self.begin_mode = begin_mode
         self.connection: sqlite3.Connection | None = None
         self.sources: SQLiteSourceRepository
         self.candidates: SQLiteCandidateRepository
@@ -44,7 +50,12 @@ class UnitOfWork:
 
     def __enter__(self) -> Self:
         self.connection = self.database.connect()
-        self.connection.execute("BEGIN")
+        try:
+            self.connection.execute(f"BEGIN {self.begin_mode}")
+        except BaseException:
+            self.connection.close()
+            self.connection = None
+            raise
         self.sources = SQLiteSourceRepository(self.connection)
         self.candidates = SQLiteCandidateRepository(self.connection)
         self.canonical_records = SQLiteCanonicalRepository(self.connection)

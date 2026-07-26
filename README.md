@@ -79,6 +79,9 @@ guarantee medical correctness.
 - Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
 - Deterministic medication lifecycle and Visit Brief services under
   `app/product_core/`.
+- Versioned Product Core JSON API under `/api/product-core/v1` for source
+  registration, candidate review, canonical medications, timeline, and Visit
+  Brief generation.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
@@ -195,9 +198,31 @@ Product Core migration smoke test:
 .\.venv\Scripts\python.exe -c "from app.config import get_settings; from app.product_core.sqlite import SQLiteDatabase; s=get_settings(); SQLiteDatabase(s.product_db_path).migrate()"
 ```
 
-Phase 1A is UI-free. Product Core stores SQLite metadata in
-`OPENCARE_PRODUCT_DB_PATH` and immutable UTF-8 source payloads under
-`OPENCARE_SOURCE_DIR`; it does not add HTTP routes or a people table.
+Product Core is still UI-free and medication-only. The Phase 1B API uses the
+same SQLite metadata and immutable UTF-8 source payloads configured through
+`OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
+application startup. The API has no people table or per-person authorization;
+the existing instance password gate applies, while `person_id` filtering is
+not an ownership boundary.
+
+Product Core API lifecycle endpoints include:
+
+```txt
+POST /api/product-core/v1/sources/manual-medication
+POST /api/product-core/v1/sources/plain-text
+POST /api/product-core/v1/candidates/medications
+POST /api/product-core/v1/candidates/{candidate_id}/confirm
+POST /api/product-core/v1/candidates/{candidate_id}/correct
+POST /api/product-core/v1/candidates/{candidate_id}/reject
+GET  /api/product-core/v1/people/{person_id}/medications
+GET  /api/product-core/v1/people/{person_id}/timeline
+POST /api/product-core/v1/people/{person_id}/visit-briefs:generate
+```
+
+The API returns stable safe error envelopes for Product Core routes only.
+Review timestamps are server-controlled; `VisitBrief.generated_at` is the
+only client-supplied generation timestamp. No source-content download,
+extraction, provider call, or clinical/advisory behavior is exposed.
 
 Start the local app:
 

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -77,6 +78,35 @@ def test_manual_source_is_canonical_utf8_json_and_deduplicates(tmp_path: Path) -
         separators=(",", ":"),
     ).encode("utf-8")
     assert first.content_hash == hashlib.sha256(payload).hexdigest()
+    assert len(list((tmp_path / "sources").iterdir())) == 1
+
+
+def test_concurrent_source_registration_returns_one_created_result(tmp_path: Path) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    database.migrate()
+    first_service = SourceService(
+        database,
+        tmp_path / "sources",
+        clock=FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC)),
+        id_factory=SequenceIds("source-1"),
+    )
+    second_service = SourceService(
+        database,
+        tmp_path / "sources",
+        clock=FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC)),
+        id_factory=SequenceIds("source-2"),
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(
+            executor.map(
+                lambda service: service.register_plain_text_result("person-1", "same"),
+                [first_service, second_service],
+            )
+        )
+
+    assert sorted(result.created for result in results) == [False, True]
+    assert results[0].source.id == results[1].source.id
     assert len(list((tmp_path / "sources").iterdir())) == 1
 
 

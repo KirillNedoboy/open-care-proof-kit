@@ -26,8 +26,10 @@ and deterministic artifact generation.
 Phase 1A implements the medication-only persistence boundary in
 `app/product_core/` with standard-library `sqlite3`, explicit migrations,
 transaction-bound repositories, immutable source files, and deterministic
-Visit Brief generation. It deliberately does not add routes, UI, a people
-table, extraction, or external model calls.
+Visit Brief generation. Phase 1B adds a thin router/runtime adapter in the
+same package. Handlers map validated HTTP payloads to application services;
+they do not own lifecycle transitions or SQL. It deliberately does not add
+UI, a people table, extraction, or external model calls.
 
 ## Trust Foundation
 
@@ -85,6 +87,12 @@ truth.
 12. Immutable source publication uses a same-directory temporary file,
     flush/fsync, and `os.link` no-overwrite publication; this is the selected
     same-filesystem strategy for Windows and Linux. `os.replace` is prohibited.
+13. Product Core API startup migrations are composed through the existing
+    FastAPI application lifespan; runtime state contains no live SQLite
+    connection or request-reused Unit of Work.
+14. The existing password gate provides shared-instance protection only. A
+    `person_id` route filter is not per-person authorization; family and
+    multi-user authorization remain deferred.
 
 ## Current-to-intended mapping
 
