@@ -6,8 +6,8 @@ This is the canonical description of the repository as inspected on
 
 ## Repository snapshot
 
-- Branch: `codex/opencare-portable-agent-skill`
-- Inspected starting commit: `496117fa5b97a7bedb8ce1b1d71750af27523a0a`
+- Branch: `codex/opencare-product-core-phase-1a`
+- Inspected starting commit: `5ef17015d421bf6d95bd6086dbd5d7bf86751807`
 - Inspection date: 2026-07-26
 - Starting working tree: clean
 - Current repository: OpenCare foundation with demo/reference and trust
@@ -42,6 +42,9 @@ Verified in `app/main.py`:
   `app/agent/`.
 - Deterministic citation, safety, report, audit, evaluation, and trust-check
   components in `app/agent/`, `app/safety/`, `app/reports/`, and `evals/`.
+- UI-free Product Core medication lifecycle in `app/product_core/`: SQLite
+  migrations, immutable source storage, candidate review, canonical records,
+  timeline events, and deterministic Visit Brief output.
 - Existing synthetic PGx briefing reference workflow in `app/demo_pipeline.py`,
   `app/pgx/`, `app/genetics/`, and `data/evidence_packs/`.
 
@@ -55,6 +58,8 @@ repository evidence paths.
   editable persistence layer.
 - External Responses mode exists behind explicit configuration and provider
   validation, but it is optional and not required by the default demo path.
+- Product Core Phase 1A is persistent and test-covered, but it has no HTTP
+  route, UI, people table, or non-medication fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is
@@ -73,13 +78,11 @@ support.
 
 ## Known gaps
 
-- No SQLite persistence or migration layer.
-- No editable vault or canonical-record workflow.
-- No source-file storage for uploaded originals.
-- No document upload, extraction, OCR, or review inbox.
-- No candidate-fact, correction, confirmation, or rejection lifecycle.
-- No Product Core timeline rebuild from canonical records.
-- No deterministic Product Core Visit Brief.
+- No general editable vault, HTTP Product Core API, or canonical lifecycle UI.
+- No document upload, extraction, OCR, or general review inbox.
+- No non-medication candidate-fact lifecycle.
+- No Product Core timeline rebuild command; Phase 1A creates events atomically
+  with confirmation.
 - No vault backup/export workflow.
 - No family permissions or caregiver authorization.
 - No query-scoped AI consent and context preview workflow.
@@ -95,13 +98,12 @@ mode accepts operator-supplied JSON but remains read-only in the UI.
 
 ## Storage model
 
-The current runtime reads structured data from JSON through
+The current demo runtime reads structured data from JSON through
 `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, and
-`app/vault/loader.py`. There is no SQLite database, ORM, migration, or editable
-application persistence. Chat content is not persisted. Generated files under
-`reports/` remain ignored. The approved future direction is SQLite plus
-immutable local source files, with JSON retained for fixtures, import, export,
-backup, and migration.
+`app/vault/loader.py`. Product Core Phase 1A adds standard-library SQLite
+metadata and immutable local source files configured through
+`OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Chat content is not
+persisted. Generated files under `reports/` remain ignored.
 
 ## Deployment model
 
@@ -112,9 +114,12 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Validation executed on 2026-07-26
 
-- `.\.venv\Scripts\python.exe -m pytest` -> `178 passed` in 2.32s.
+- `.\.venv\Scripts\python.exe -m pytest` -> `200 passed` in 2.58s.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` -> passed.
-- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `47 source files`.
+- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `55 source files`.
+- Focused Product Core/config tests -> `42 passed`.
+- Fresh temporary-database migration smoke -> passed; repeated migration
+  remained at version `1` with `PRAGMA foreign_keys=1`.
 - `.\.venv\Scripts\python.exe -m evals.runner` -> `14 total, 14 passed, 0 failed`;
   `9` static-text cases and `5` pipeline cases.
 - `.\.venv\Scripts\python.exe -m evals.trust_metrics` -> passed; all reported
@@ -126,10 +131,9 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Deferred work
 
-The next implementation task is the medication-only vertical slice in
-[the Product Core roadmap](roadmap/product-core-roadmap.md). SQLite, uploads,
-OCR, genetics expansion, new providers, family permissions, multi-user SaaS,
-and deployment changes remain deferred.
+The next implementation task is a minimal Product Core API and Visit
+Preparation UI. Uploads, OCR, genetics expansion, new providers, family
+permissions, multi-user SaaS, and deployment changes remain deferred.
 
 ## Canonical references
 

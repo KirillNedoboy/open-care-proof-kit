@@ -1,0 +1,179 @@
+import hashlib
+import json
+import sqlite3
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+from app.product_core.errors import (
+    SourceCorruptionError,
+    SourcePublicationError,
+    UnsafeSourcePathError,
+)
+from app.product_core.models import Source
+from app.product_core.services import SourceService
+from app.product_core.sqlite import SQLiteDatabase
+
+
+class FixedClock:
+    def __init__(self, value: datetime) -> None:
+        self.value = value
+
+    def __call__(self) -> datetime:
+        return self.value
+
+
+class SequenceIds:
+    def __init__(self, *values: str) -> None:
+        self.values = iter(values)
+
+    def __call__(self) -> str:
+        return next(self.values)
+
+
+def make_source_service(tmp_path: Path, ids: SequenceIds | None = None) -> SourceService:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    database.migrate()
+    return SourceService(
+        database,
+        tmp_path / "sources",
+        clock=FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC)),
+        id_factory=ids or SequenceIds("source-1", "source-2"),
+    )
+
+
+def test_manual_source_is_canonical_utf8_json_and_deduplicates(tmp_path: Path) -> None:
+    service = make_source_service(tmp_path, SequenceIds("source-1", "unused"))
+
+    first = service.register_manual_entry(
+        "person-1",
+        name="  Aspirin  ",
+        schedule_text="  Morning  ",
+        note="User entered",
+    )
+    second = service.register_manual_entry(
+        "person-1",
+        name="  Aspirin  ",
+        schedule_text="  Morning  ",
+        note="User entered",
+    )
+
+    assert first.id == second.id
+    assert first.size_bytes == second.size_bytes
+    payload = (tmp_path / "sources" / first.relative_path).read_bytes()
+    assert payload == json.dumps(
+        {
+            "medication": {
+                "name": "Aspirin",
+                "note": "User entered",
+                "schedule_text": "  Morning  ",
+            },
+            "schema_version": 1,
+            "source_type": "manual_entry",
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    assert first.content_hash == hashlib.sha256(payload).hexdigest()
+    assert len(list((tmp_path / "sources").iterdir())) == 1
+
+
+def test_plain_text_preserves_exact_utf8_content(tmp_path: Path) -> None:
+    service = make_source_service(tmp_path)
+    content = "  Aspirin\tвечером\n"
+
+    source = service.register_plain_text("person-1", content)
+
+    assert (tmp_path / "sources" / source.relative_path).read_text(encoding="utf-8") == content
+    assert source.media_type == "text/plain"
+
+
+def test_source_read_detects_missing_and_altered_payloads(tmp_path: Path) -> None:
+    service = make_source_service(tmp_path)
+    source = service.register_plain_text("person-1", "original")
+    path = tmp_path / "sources" / source.relative_path
+
+    path.write_text("altered", encoding="utf-8")
+    with pytest.raises(SourceCorruptionError):
+        service.read(source.id)
+
+    path.unlink()
+    with pytest.raises(SourceCorruptionError):
+        service.read(source.id)
+
+
+def test_source_read_rejects_traversal_path(tmp_path: Path) -> None:
+    service = make_source_service(tmp_path)
+    source = service.register_plain_text("person-1", "original")
+    database_path = tmp_path / "product.sqlite3"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "UPDATE sources SET relative_path = ? WHERE id = ?",
+            ("../outside.txt", source.id),
+        )
+
+    with pytest.raises(UnsafeSourcePathError):
+        service.read(source.id)
+
+
+def test_publication_collision_fails_without_overwriting_existing_file(tmp_path: Path) -> None:
+    service = make_source_service(tmp_path, SequenceIds("same-id", "same-id"))
+    first = service.register_plain_text("person-1", "first")
+
+    with pytest.raises(SourcePublicationError):
+        service.register_plain_text("person-1", "different")
+
+    assert (tmp_path / "sources" / first.relative_path).read_text(encoding="utf-8") == "first"
+
+
+def test_failed_database_insert_compensates_newly_published_file(tmp_path: Path) -> None:
+    service = make_source_service(tmp_path)
+    database_path = tmp_path / "product.sqlite3"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TRIGGER fail_source_insert
+            BEFORE INSERT ON sources
+            BEGIN
+                SELECT RAISE(ABORT, 'forced source insert failure');
+            END
+            """
+        )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        service.register_plain_text("person-1", "new")
+
+    assert not list((tmp_path / "sources").iterdir())
+
+
+def test_invalid_timestamp_compensates_newly_published_file(tmp_path: Path) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    database.migrate()
+    service = SourceService(
+        database,
+        tmp_path / "sources",
+        clock=FixedClock(datetime(2026, 7, 26, 10)),
+        id_factory=SequenceIds("source-1"),
+    )
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        service.register_plain_text("person-1", "new")
+
+    assert not list((tmp_path / "sources").iterdir())
+
+
+def test_source_model_rejects_naive_created_at() -> None:
+    with pytest.raises(ValueError, match="timezone-aware"):
+        Source(
+            id="source-1",
+            person_id="person-1",
+            source_type="plain_text",
+            relative_path="source-1.txt",
+            content_hash="a" * 64,
+            size_bytes=1,
+            media_type="text/plain",
+            created_at=datetime(2026, 7, 26, 10),
+            provenance={},
+        )

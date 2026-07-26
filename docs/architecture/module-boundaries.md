@@ -23,6 +23,12 @@ Product Core owns user intent and record lifecycle. It may call Trust
 Foundation interfaces for provenance, policy, validation, audit, evaluations,
 and deterministic artifact generation.
 
+Phase 1A implements the medication-only persistence boundary in
+`app/product_core/` with standard-library `sqlite3`, explicit migrations,
+transaction-bound repositories, immutable source files, and deterministic
+Visit Brief generation. It deliberately does not add routes, UI, a people
+table, extraction, or external model calls.
+
 ## Trust Foundation
 
 Trust Foundation owns reusable guarantees:
@@ -74,6 +80,11 @@ truth.
 8. Derived views must be rebuildable from raw sources and canonical records.
 9. Unknown, rejected, and unsupported states must remain explicit.
 10. A reviewer artifact must not be treated as user-owned canonical data.
+11. SQLite metadata and source publication use compensation because the
+    filesystem and database cannot share one atomic transaction.
+12. Immutable source publication uses a same-directory temporary file,
+    flush/fsync, and `os.link` no-overwrite publication; this is the selected
+    same-filesystem strategy for Windows and Linux. `os.replace` is prohibited.
 
 ## Current-to-intended mapping
 

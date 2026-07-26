@@ -9,14 +9,14 @@ status is about the current implementation, not the approved future direction.
 | Family relationships | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/templates/health_vault.html` |
 | Health vault entities | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/loader.py`, `app/health_vault/read_model.py` |
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
-| Persistent editable vault | `PLANNED` | No runtime persistence or editing path; future direction is recorded in `docs/adr/0001-opencare-product-direction.md` |
+| Persistent editable vault | `PARTIAL` | Medication-only UI-free lifecycle in `app/product_core/`; no HTTP API, UI, people table, or broader fact types |
 | Document upload | `OUT_OF_SCOPE` | No upload route or handler in `app/main.py`; reviewer UI explicitly rejects this scope |
-| Immutable source storage | `PLANNED` | Current `DocumentSource` metadata is in JSON models; immutable original-file storage is not implemented |
-| Extraction | `PLANNED` | No extraction pipeline; the next roadmap permits only an optional text-based source |
-| Review inbox | `PLANNED` | No candidate-fact review route, model, or handler |
-| Canonical confirmed records | `PLANNED` | Current records are loaded/read-only context; no confirmation state or editable canonical store |
-| Timeline | `DEMO_ONLY` | `TimelineEvent` and deterministic read model in `app/health_vault/models.py` and `app/health_vault/read_model.py`; rendered by `app/main.py` |
-| Medications | `DEMO_ONLY` | `Medication` model, demo dataset, read model, and guarded demo answers in `app/health_vault/models.py`, `data/demo_patients/demo_family_vault.json`, `app/agent/service.py` |
+| Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests |
+| Extraction | `PARTIAL` | Explicit plain-text source registration exists; no document extraction, OCR, or model extraction |
+| Review inbox | `PARTIAL` | Candidate review service exists without a route or UI in `app/product_core/services.py` |
+| Canonical confirmed records | `PARTIAL` | Medication-only confirmation is transactional and active-state backed in `app/product_core/` |
+| Timeline | `PARTIAL` | Medication confirmation creates one deterministic timeline event atomically; demo read model remains separate |
+| Medications | `PARTIAL` | Product Core medication candidate/canonical lifecycle in `app/product_core/`; synthetic Health/Family Vault remains demo-only |
 | Conditions | `DEMO_ONLY` | `Condition` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
 | Labs | `DEMO_ONLY` | `LabResult` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
 | Encounters / visits | `DEMO_ONLY` | `Visit` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |

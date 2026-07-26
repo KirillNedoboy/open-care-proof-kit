@@ -1,10 +1,11 @@
 # OpenCare Proof Kit
 
 OpenCare is an open-source, self-hosted Personal and Family Health Workspace.
-This repository is the main OpenCare foundation: it currently contains a
-synthetic/demo Health/Family Vault, reusable trust components, a guarded
-Question Workspace precursor, a frozen PGx reference workflow, and reviewer
-artifacts. It is not yet a complete editable user workspace.
+This repository is the main OpenCare foundation: it contains a
+synthetic/demo Health/Family Vault, the first persistent Product Core
+medication lifecycle, reusable trust components, a guarded Question Workspace
+precursor, a frozen PGx reference workflow, and reviewer artifacts. It is not
+yet a complete editable user workspace.
 
 The product rule is simple: vault first, genetics second, LLM third as interface. OpenCare should be useful without DNA. The current implementation is not an AI doctor, not diagnosis, not treatment recommendation, not dosage guidance, and not clinical decision support.
 
@@ -74,6 +75,10 @@ guarantee medical correctness.
 - Minimal password-gated private deployment mode for non-health routes.
 - Configurable runtime vault source through `OPENCARE_VAULT_SOURCE=demo|local_file`.
 - Mounted local vault file support through `OPENCARE_VAULT_FILE=/path/to/vault.json`.
+- Product Core SQLite persistence through `OPENCARE_PRODUCT_DB_PATH`.
+- Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
+- Deterministic medication lifecycle and Visit Brief services under
+  `app/product_core/`.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
@@ -181,7 +186,18 @@ Core validation:
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
 .\.venv\Scripts\python.exe -m evals.trust_metrics
+git diff --check
 ```
+
+Product Core migration smoke test:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from app.config import get_settings; from app.product_core.sqlite import SQLiteDatabase; s=get_settings(); SQLiteDatabase(s.product_db_path).migrate()"
+```
+
+Phase 1A is UI-free. Product Core stores SQLite metadata in
+`OPENCARE_PRODUCT_DB_PATH` and immutable UTF-8 source payloads under
+`OPENCARE_SOURCE_DIR`; it does not add HTTP routes or a people table.
 
 Start the local app:
 

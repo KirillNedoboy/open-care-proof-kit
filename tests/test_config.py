@@ -13,10 +13,24 @@ def test_load_settings_defaults_to_easy_development_mode() -> None:
     assert settings.vault_source == "demo"
     assert settings.vault_file is None
     assert settings.data_dir == Path("data")
+    assert settings.product_db_path == Path("data/opencare.sqlite3")
+    assert settings.source_dir == Path("data/sources")
     assert settings.reports_dir == Path("reports")
     assert settings.allow_cloud_llm is False
     assert settings.secret_key is None
     assert settings.access_password is None
+
+
+def test_load_settings_accepts_product_core_storage_paths() -> None:
+    settings = load_settings(
+        {
+            "OPENCARE_PRODUCT_DB_PATH": "var/product.sqlite3",
+            "OPENCARE_SOURCE_DIR": "var/sources",
+        }
+    )
+
+    assert settings.product_db_path == Path("var/product.sqlite3")
+    assert settings.source_dir == Path("var/sources")
 
 
 def test_load_settings_rejects_unknown_environment() -> None:

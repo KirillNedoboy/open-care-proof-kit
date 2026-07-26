@@ -28,6 +28,8 @@ class Settings:
     llm_responses_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+    product_db_path: Path = Path("data/opencare.sqlite3")
+    source_dir: Path = Path("data/sources")
 
     @property
     def is_production(self) -> bool:
@@ -104,6 +106,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         env=app_env,
         demo_mode=demo_mode,
         data_dir=Path(values.get("OPENCARE_DATA_DIR", "data")),
+        product_db_path=Path(
+            values.get("OPENCARE_PRODUCT_DB_PATH", "data/opencare.sqlite3")
+        ),
+        source_dir=Path(values.get("OPENCARE_SOURCE_DIR", "data/sources")),
         reports_dir=Path(values.get("OPENCARE_REPORTS_DIR", "reports")),
         allow_cloud_llm=allow_cloud_llm,
         secret_key=secret_key,

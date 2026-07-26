@@ -25,6 +25,8 @@ Prove the core user-owned lifecycle for one non-genetic fact type:
 - deterministic Visit Brief generation;
 - source references in every brief claim;
 - repository interfaces that preserve a later SQLite boundary;
+- standard-library SQLite persistence with explicit migration bootstrap;
+- immutable local source publication and corruption checks;
 - tests for lifecycle, provenance, correction, rejection, and rebuild behavior.
 
 ### Non-goals
@@ -49,6 +51,18 @@ Prove the core user-owned lifecycle for one non-genetic fact type:
 - The Visit Brief is deterministic and source-linked.
 - Rebuilding derived views does not change canonical records.
 - No external provider is required.
+- `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR` configure the local
+  persistence boundary.
+
+### Phase 1A status
+
+The medication-only UI-free foundation is implemented under
+`app/product_core/`. Confirmation creates the canonical medication record and
+its `medication_confirmed` timeline event in one Unit of Work transaction.
+Correction, rejection, idempotent confirmation, source deduplication, source
+corruption detection, and Visit Brief selection rules are covered by focused
+tests. Deactivation, HTTP routes, UI, people, and non-medication fact types
+remain deferred.
 
 ### Validation requirements
 
