@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import unicodedata
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -25,12 +26,18 @@ class APIModel(BaseModel):
 def _validate_identifier(value: str) -> str:
     if not value.strip():
         raise ValueError("identifier must not be blank")
-    if any(ord(character) < 32 or ord(character) == 127 for character in value):
-        raise ValueError("identifier must not contain control characters")
+    _reject_control_characters(value, "identifier")
+    return value
+
+
+def _reject_control_characters(value: str, field_name: str) -> str:
+    if any(unicodedata.category(character) == "Cc" for character in value):
+        raise ValueError(f"{field_name} must not contain control characters")
     return value
 
 
 def _validate_display_name(value: str) -> str:
+    _reject_control_characters(value, "display_name")
     cleaned = value.strip()
     if not cleaned:
         raise ValueError("display_name must not be blank")
@@ -48,6 +55,11 @@ class ManualMedicationRequest(APIModel):
     @classmethod
     def validate_display_name(cls, value: str) -> str:
         return _validate_display_name(value)
+
+    @field_validator("schedule_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
 
 
 class ManualSourceRequest(APIModel):
@@ -94,6 +106,11 @@ class MedicationCandidateRequest(APIModel):
     def validate_display_name(cls, value: str) -> str:
         return _validate_display_name(value)
 
+    @field_validator("schedule_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
 
 class EmptyActionRequest(APIModel):
     pass
@@ -109,13 +126,20 @@ class CorrectCandidateRequest(APIModel):
     def validate_display_name(cls, value: str) -> str:
         return _validate_display_name(value)
 
+    @field_validator("schedule_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
 
 class VisitBriefGenerateRequest(APIModel):
     visit_title: str = Field(min_length=1, max_length=MAX_VISIT_TITLE_LENGTH)
     visit_purpose: str | None = Field(default=None, max_length=MAX_VISIT_TITLE_LENGTH)
-    scheduled_date: str | None = None
+    scheduled_date: str | None = Field(default=None, max_length=MAX_VISIT_TITLE_LENGTH)
     generated_at: datetime
-    selected_record_ids: list[str] | None = Field(
+    selected_record_ids: list[
+        Annotated[str, Field(min_length=1, max_length=MAX_ID_LENGTH)]
+    ] | None = Field(
         default=None,
         max_length=MAX_SELECTED_RECORDS,
     )
@@ -123,6 +147,7 @@ class VisitBriefGenerateRequest(APIModel):
     @field_validator("visit_title")
     @classmethod
     def validate_visit_title(cls, value: str) -> str:
+        _reject_control_characters(value, "visit_title")
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("visit_title must not be blank")
@@ -133,6 +158,7 @@ class VisitBriefGenerateRequest(APIModel):
     def validate_visit_purpose(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        _reject_control_characters(value, "visit_purpose")
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("visit_purpose must not be blank")
@@ -148,6 +174,11 @@ class VisitBriefGenerateRequest(APIModel):
         if len(values) != len(set(values)):
             raise ValueError("selected_record_ids must be unique")
         return values
+
+    @field_validator("scheduled_date")
+    @classmethod
+    def validate_scheduled_date(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "scheduled_date")
 
     @field_validator("generated_at")
     @classmethod

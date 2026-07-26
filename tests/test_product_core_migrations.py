@@ -1,4 +1,7 @@
 import sqlite3
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -85,3 +88,74 @@ def test_product_migration_does_not_own_schema_migrations_bootstrap(
             "SELECT sql FROM sqlite_master WHERE name='schema_migrations'"
         ).fetchone()[0]
     assert "CREATE TABLE schema_migrations" in migration_sql
+
+
+def test_concurrent_migrations_are_idempotent(tmp_path: Path) -> None:
+    database_path = tmp_path / "product.sqlite3"
+    go_path = tmp_path / "go"
+    child_code = """
+import sys
+import time
+from pathlib import Path
+
+from app.product_core.migrations import MigrationRunner
+from app.product_core.sqlite import SQLiteDatabase
+
+database = SQLiteDatabase(Path(sys.argv[1]))
+runner = MigrationRunner(database.connect)
+connection = database.connect()
+try:
+    runner._bootstrap(connection)
+    applied_versions = {
+        row[0]
+        for row in connection.execute("SELECT version FROM schema_migrations").fetchall()
+    }
+    Path(sys.argv[2]).write_text("ready", encoding="utf-8")
+    while not Path(sys.argv[3]).exists():
+        time.sleep(0.01)
+    for migration in runner.migrations:
+        if migration.version not in applied_versions:
+            runner._apply_migration(connection, migration)
+finally:
+    connection.close()
+"""
+    processes = [
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                child_code,
+                str(database_path),
+                str(tmp_path / f"ready-{index}"),
+                str(go_path),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for index in range(2)
+    ]
+    deadline = time.monotonic() + 10
+    while not all((tmp_path / f"ready-{index}").exists() for index in range(2)):
+        assert time.monotonic() < deadline
+        assert all(process.poll() is None for process in processes)
+        time.sleep(0.01)
+    go_path.write_text("go", encoding="utf-8")
+    results = [process.communicate(timeout=10) for process in processes]
+
+    assert [process.returncode for process in processes] == [0, 0], results
+    database = SQLiteDatabase(database_path)
+    connection = database.connect()
+    try:
+        versions = [
+            row[0]
+            for row in connection.execute(
+                "SELECT version FROM schema_migrations ORDER BY version"
+            ).fetchall()
+        ]
+        assert versions == [1]
+        assert connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
+        ).fetchone() is not None
+    finally:
+        connection.close()

@@ -98,3 +98,30 @@ def test_empty_visit_brief_is_explicit(product_core_client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["records"] == []
     assert "No active medication records are available." in response.json()["markdown"]
+
+
+def test_visit_brief_rejects_control_text_and_oversized_record_ids(
+    product_core_client: TestClient,
+) -> None:
+    control_text = product_core_client.post(
+        "/api/product-core/v1/people/person-1/visit-briefs:generate",
+        json={
+            "visit_title": "Review\nInjected heading",
+            "generated_at": "2026-07-26T12:00:00Z",
+        },
+        headers=json_headers(),
+    )
+    oversized_id = product_core_client.post(
+        "/api/product-core/v1/people/person-1/visit-briefs:generate",
+        json={
+            "visit_title": "Review",
+            "generated_at": "2026-07-26T12:00:00Z",
+            "selected_record_ids": ["x" * 129],
+        },
+        headers=json_headers(),
+    )
+
+    assert control_text.status_code == 422
+    assert control_text.json()["error"]["code"] == "request_validation_failed"
+    assert oversized_id.status_code == 422
+    assert oversized_id.json()["error"]["code"] == "request_validation_failed"

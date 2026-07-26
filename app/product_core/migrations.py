@@ -148,8 +148,15 @@ class MigrationRunner:
             raise
 
     def _apply_migration(self, connection: sqlite3.Connection, migration: Migration) -> None:
-        connection.execute("BEGIN")
+        connection.execute("BEGIN IMMEDIATE")
         try:
+            already_applied = connection.execute(
+                "SELECT 1 FROM schema_migrations WHERE version = ?",
+                (migration.version,),
+            ).fetchone()
+            if already_applied is not None:
+                connection.commit()
+                return
             for statement in migration.statements:
                 connection.execute(statement)
             applied_at = isoformat_utc(ensure_utc_datetime(self.clock()))
