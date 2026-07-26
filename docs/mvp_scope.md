@@ -1,4 +1,8 @@
-# MVP Scope
+# MVP Scope (Historical)
+
+> Historical MVP scope. Current capability is defined by
+> [the capability matrix](capability-matrix.md); approved product direction is
+> defined by [ADR 0001](adr/0001-opencare-product-direction.md).
 
 ## In scope
 

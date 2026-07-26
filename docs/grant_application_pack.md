@@ -1,4 +1,9 @@
-# Grant Application Pack
+# Grant Application Pack (Supporting Grant Artifact)
+
+> Grant and reviewer materials describe verified evidence and intended public
+> framing. They do not define the current product roadmap or runtime status.
+> See [ADR 0001](adr/0001-opencare-product-direction.md),
+> [project status](project-status.md), and [capability matrix](capability-matrix.md).
 
 ## Project Title
 
@@ -117,29 +122,9 @@ The reviewer vault layer is provenance/traceability only, not medical interpreta
 
 ## Evals And Trust Checks
 
-Current validation baseline:
-
-```txt
-pytest: 87 passed
-mypy: no issues in 36 source files
-evals.runner: 12 passed cases, 0 failed cases
-trust metrics: passed
-```
-
-Current eval metrics:
-
-```txt
-total_cases: 12
-static_text_cases: 7
-pipeline_cases: 5
-passed_cases: 12
-failed_cases: 0
-unsafe_advice_rate: 0.0
-missing_source_rate: 0.0
-uncertainty_missing_rate: 0.0
-audit_missing_rate: 0.0
-pipeline_failure_rate: 0.0
-```
+Fresh validation results are maintained in
+[docs/project-status.md](project-status.md). Counts in earlier grant
+snapshots are historical and must not be treated as the current baseline.
 
 GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics on `push` and `pull_request`.
 

@@ -1,11 +1,16 @@
-# Final Reviewer Pack
+# Final Reviewer Pack (Supporting Evidence)
+
+> This pack helps reviewers inspect verified runtime surfaces. It is not the
+> canonical product roadmap or current status. Use [the Direction ADR](adr/0001-opencare-product-direction.md),
+> [project status](project-status.md), and [the capability matrix](capability-matrix.md)
+> for those questions.
 
 This is the fastest path for a reviewer who wants to inspect the current repo state without guessing where to start.
 
 ## What To Inspect First
 
 1. Open the local reviewer route: `http://127.0.0.1:8000/demo/health-vault`
-2. Open the guarded chat product: `http://127.0.0.1:8000/chat`
+2. Open the guarded chat runtime surface: `http://127.0.0.1:8000/chat`
 3. Read [docs/health_family_vault_demo.md](health_family_vault_demo.md)
 4. Read [docs/privacy_safety_threat_model.md](privacy_safety_threat_model.md)
 5. Read [docs/provenance_semantics.md](provenance_semantics.md)
@@ -46,15 +51,11 @@ This is the fastest path for a reviewer who wants to inspect the current repo st
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-## Current Validation Baseline
+## Validation
 
-```txt
-pytest: 161 passed
-ruff: passed
-mypy: no issues in 45 source files
-evals.runner: 14 passed cases, 0 failed cases
-evals.trust_metrics: passed
-```
+Use the commands above and record the fresh results in
+[docs/project-status.md](project-status.md). Counts in older reviewer
+snapshots are historical and are not a current baseline.
 
 ## What Is Implemented
 

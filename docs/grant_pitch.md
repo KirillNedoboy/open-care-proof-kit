@@ -1,4 +1,8 @@
-# Grant Pitch
+# Grant Pitch (Supporting Grant Artifact)
+
+> Supporting grant language only. Current product direction and runtime facts
+> are maintained in [ADR 0001](adr/0001-opencare-product-direction.md) and
+> [project status](project-status.md).
 
 ## One-Liner
 

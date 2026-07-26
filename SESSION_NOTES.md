@@ -1,5 +1,12 @@
 # SESSION_NOTES.md
 
+> Historical chronological record, not current status. Current product
+> direction and repository truth are maintained in
+> [docs/adr/0001-opencare-product-direction.md](docs/adr/0001-opencare-product-direction.md),
+> [docs/project-status.md](docs/project-status.md), and
+> [docs/capability-matrix.md](docs/capability-matrix.md). Counts and phase
+> labels in this file are historical session results.
+
 This file records what actually happened in each work session.
 
 It is not a roadmap. It is the operational memory for future Codex sessions.

@@ -1,4 +1,9 @@
-# Project Status
+# Project Status (Historical)
+
+> This legacy underscore-named document is retained for chronology only. The
+> canonical current status is [docs/project-status.md](project-status.md).
+> Historical phase labels and validation counts below must not be used as the
+> current repository baseline.
 
 OpenCare Proof Kit is a local-first, synthetic/demo-only foundation for a privacy-first personal/family medical workspace. The latest implemented runtime phase is V1H: a read-only Health/Family Vault reviewer UI with a deterministic context/provenance trace graph. The older Medication-to-Doctor Briefing / PGx path remains intact as the narrow reference workflow.
 

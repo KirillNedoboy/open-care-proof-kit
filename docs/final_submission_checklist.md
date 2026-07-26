@@ -1,4 +1,8 @@
-# Final Submission Checklist
+# Final Submission Checklist (Supporting Submission Artifact)
+
+> Submission packaging is not the canonical product roadmap or current status.
+> See [ADR 0001](adr/0001-opencare-product-direction.md),
+> [project status](project-status.md), and [capability matrix](capability-matrix.md).
 
 Use this checklist before submitting OpenCare Proof Kit for grant or reviewer evaluation.
 
@@ -7,7 +11,7 @@ Use this checklist before submitting OpenCare Proof Kit for grant or reviewer ev
 - [ ] Repository is public: `https://github.com/KirillNedoboy/open-care-proof-kit`
 - [ ] Public default branch is `main`
 - [ ] Historical submission branch `phase-1-github-grant-readiness` remains pushed
-- [ ] Latest implemented runtime state is V1H trace graph, not an earlier packaging-only snapshot
+- [ ] README links to the canonical Direction ADR, project status, capability matrix, and Product Core roadmap
 
 ## README First Screen
 
@@ -43,30 +47,8 @@ Run from repo root:
 .\.venv\Scripts\python.exe -m evals.trust_metrics
 ```
 
-Expected baseline:
-
-```txt
-pytest: 87 passed
-ruff: all checks passed
-mypy: no issues in 36 source files
-evals.runner: 12 passed cases, 0 failed cases
-evals.trust_metrics: passed
-```
-
-Expected eval metrics:
-
-```txt
-total_cases: 12
-static_text_cases: 7
-pipeline_cases: 5
-passed_cases: 12
-failed_cases: 0
-unsafe_advice_rate: 0.0
-missing_source_rate: 0.0
-uncertainty_missing_rate: 0.0
-audit_missing_rate: 0.0
-pipeline_failure_rate: 0.0
-```
+Do not copy a historical count into this checklist. Record the fresh command
+results in [docs/project-status.md](project-status.md).
 
 ## Grant Docs
 

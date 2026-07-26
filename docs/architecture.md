@@ -1,4 +1,9 @@
-# Architecture
+# Architecture (Historical Overview)
+
+> This is a historical implementation overview. Intended ownership and
+> dependency rules are canonical in
+> [docs/architecture/module-boundaries.md](architecture/module-boundaries.md).
+> Current runtime facts are in [docs/project-status.md](project-status.md).
 
 ## Pipeline
 

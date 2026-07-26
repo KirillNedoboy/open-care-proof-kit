@@ -1,24 +1,31 @@
 # OpenCare Proof Kit
 
-OpenCare Proof Kit is a privacy-first personal/family medical workspace foundation. The current repo proves that foundation with synthetic/demo-only Health/Family Vault data, deterministic provenance-preserving builders, reviewer artifacts, a read-only reviewer UI, CI, and trust metrics.
+OpenCare is an open-source, self-hosted Personal and Family Health Workspace.
+This repository is the main OpenCare foundation: it currently contains a
+synthetic/demo Health/Family Vault, reusable trust components, a guarded
+Question Workspace precursor, a frozen PGx reference workflow, and reviewer
+artifacts. It is not yet a complete editable user workspace.
 
 The product rule is simple: vault first, genetics second, LLM third as interface. OpenCare should be useful without DNA. The current implementation is not an AI doctor, not diagnosis, not treatment recommendation, not dosage guidance, and not clinical decision support.
 
 The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narrow reference workflow. Genetics remains a future layer. The LLM remains an interface/explanation layer, not the source of truth.
 
-## Current Status
+## Canonical Documents
 
-- Latest implemented phase: V3 guarded chat workspace.
-- Current deployment pass: self-hosted vault foundation plus local user-owned vault file mode and a single-node VPS deployment path.
-- Public default branch: `main`.
-- Data scope: shipped repo data is synthetic/demo-only; runtime can mount an operator-supplied local vault JSON file.
-- Validation baseline: `pytest` 161 passed, `ruff` passed, `mypy` passed with no issues in 45 source files, `evals.runner` 14 passed / 0 failed, `evals.trust_metrics` passed.
+- [Product direction ADR](docs/adr/0001-opencare-product-direction.md)
+- [Current project status](docs/project-status.md)
+- [Capability matrix](docs/capability-matrix.md)
+- [Product Core roadmap](docs/roadmap/product-core-roadmap.md)
+- [Module boundaries](docs/architecture/module-boundaries.md)
+- [Agent direction summary](AGENTS.product-direction.md)
 
-See [docs/project_status.md](docs/project_status.md) for the current repo snapshot.
+`CHECKPOINT.md` and `SESSION_NOTES.md` are historical chronology, not current
+status sources. Grant and reviewer documents are supporting evidence, not the
+product roadmap.
 
 ## Portable Health-Agent Skill
 
-OpenCare now has two guarded surfaces: the hosted/self-hosted web chat and the
+The current runtime includes two guarded surfaces: the hosted/self-hosted web chat and the
 portable skill at [skills/opencare-health-agent](skills/opencare-health-agent/).
 The portable skill accepts a redacted context packet, requires structured
 source-backed answers, and uses the existing policy and validation rules.
@@ -105,7 +112,13 @@ The LLM is intentionally third. Deterministic loaders, read models, rules, prove
 
 ### Guarded chat workspace
 
-`/` opens `/chat`, the product entry point for questions about the active vault. The browser sends a question only; OpenCare applies an intent policy, prepares compact provenance-aware context, obtains either a deterministic demo response or an optional external response, and validates the completed structure before display. Chat messages stay in page memory and are not persisted.
+The current `/` route opens `/chat`, a guarded Question Workspace precursor for
+questions about the active vault. This is a runtime fact, not the canonical
+product identity. The browser sends a question only; OpenCare applies an intent
+policy, prepares compact provenance-aware context, obtains either a
+deterministic demo response or an optional external response, and validates the
+completed structure before display. Chat messages stay in page memory and are
+not persisted.
 
 The default is `OPENCARE_AGENT_MODE=demo`. It supports questions about clinician preparation, changes in the recorded timeline, source-backed information, and missing information. It does not diagnose, recommend treatment, select medication, calculate or modify a dose, or interpret genetics. Recorded medication or dosage context may be shown only when it is already source-backed in the vault.
 
@@ -236,20 +249,9 @@ GitHub Actions CI runs:
 
 Local trust metrics combine eval totals with Health/Family Vault manifest safety flags and the generated-report ignore check. They are automated reviewer/demo trust checks, not clinical validation.
 
-Current eval metrics:
-
-```txt
-total_cases: 12
-static_text_cases: 7
-pipeline_cases: 5
-passed_cases: 12
-failed_cases: 0
-unsafe_advice_rate: 0.0
-missing_source_rate: 0.0
-uncertainty_missing_rate: 0.0
-audit_missing_rate: 0.0
-pipeline_failure_rate: 0.0
-```
+The current command results are recorded in
+[docs/project-status.md](docs/project-status.md) and must be refreshed by
+running the commands rather than copied as permanent version claims.
 
 ## Safety Boundaries
 
@@ -312,4 +314,6 @@ Near-term work should stay conservative:
 - clearer clinician-review handoff exports;
 - genetics only after the vault foundation stays safe and inspectable.
 
-See [docs/roadmap.md](docs/roadmap.md) for the full conservative roadmap.
+See [docs/roadmap/product-core-roadmap.md](docs/roadmap/product-core-roadmap.md)
+for the canonical next-phase roadmap. The older
+[docs/roadmap.md](docs/roadmap.md) is historical.

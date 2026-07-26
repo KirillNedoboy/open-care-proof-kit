@@ -1,4 +1,9 @@
-# Roadmap
+# Roadmap (Historical)
+
+> This document preserves the earlier roadmap chronology. The canonical next
+> implementation sequence is
+> [docs/roadmap/product-core-roadmap.md](roadmap/product-core-roadmap.md),
+> governed by [ADR 0001](adr/0001-opencare-product-direction.md).
 
 This roadmap is conservative. It moves OpenCare toward a privacy-first, agent-ready personal/family medical workspace without expanding the current validated repo into diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, clinical decision support, real-patient handling, or real-genetic-data handling.
 

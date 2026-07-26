@@ -1,4 +1,8 @@
-# Open Care Master Plan
+# Open Care Master Plan (Historical)
+
+> Historical planning document. Use [ADR 0001](adr/0001-opencare-product-direction.md)
+> and [the Product Core roadmap](roadmap/product-core-roadmap.md) for approved
+> current direction and next work.
 
 ## What We Are Building
 

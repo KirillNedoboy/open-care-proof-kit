@@ -1,4 +1,9 @@
-# Product Brief
+# Product Brief (Historical Product Intent)
+
+> This document records earlier product intent. The approved product direction
+> is [ADR 0001](adr/0001-opencare-product-direction.md); current repository
+> capability is in [project status](project-status.md). This file is not the
+> current roadmap.
 
 ## Product
 

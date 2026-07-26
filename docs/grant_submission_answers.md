@@ -1,4 +1,8 @@
-# Grant Submission Answers
+# Grant Submission Answers (Supporting Grant Artifact)
+
+> This copy is for grant context and is not the canonical product roadmap or
+> current repository status. See [ADR 0001](adr/0001-opencare-product-direction.md)
+> and [project status](project-status.md).
 
 Copy these answers into a Sentient Open Source AGI Grant or similar public-goods application. Keep the wording conservative. This repo is private, local-first trust infrastructure with health as the stress-test domain. It is not a clinical product.
 
@@ -127,20 +131,9 @@ The repo must not provide diagnosis, treatment recommendation, dosage guidance, 
 
 ## M. Evaluation / Audit Model
 
-The current eval suite reports:
-
-```txt
-total_cases: 12
-static_text_cases: 7
-pipeline_cases: 5
-passed_cases: 12
-failed_cases: 0
-unsafe_advice_rate: 0.0
-missing_source_rate: 0.0
-uncertainty_missing_rate: 0.0
-audit_missing_rate: 0.0
-pipeline_failure_rate: 0.0
-```
+The current validation commands and fresh results are maintained in
+[docs/project-status.md](project-status.md). Counts in this submission
+document are not a current baseline and must be refreshed before reuse.
 
 GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics. The trust metrics report reads eval totals plus committed Health/Family Vault manifest flags such as `demo_only`, `synthetic`, `no_llm_generation`, `no_genetics`, `no_medical_advice`, and `generated_reports_ignored`.
 

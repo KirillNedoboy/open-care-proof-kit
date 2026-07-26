@@ -1,4 +1,8 @@
-# Grant Milestones
+# Grant Milestones (Historical / Supporting Grant Artifact)
+
+> These milestones are supporting grant context, not the canonical product
+> roadmap. Use [the Product Core roadmap](roadmap/product-core-roadmap.md) for
+> approved next work.
 
 These milestones are conservative and vault-first. They do not promise diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, real patient support, real genetic data support, or clinical deployment.
 

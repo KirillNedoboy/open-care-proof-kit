@@ -1,4 +1,8 @@
-# Sentient Alignment
+# Sentient Alignment (Supporting Grant Context)
+
+> Supporting grant/context document, not the product roadmap or current
+> implementation status. See [ADR 0001](adr/0001-opencare-product-direction.md)
+> and [project status](project-status.md).
 
 ## Positioning
 

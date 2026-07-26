@@ -1,4 +1,10 @@
-# Health/Family Vault demo
+# Health/Family Vault Demo (Supporting Demonstration)
+
+> This document describes the historical V1H synthetic/read-only demonstration.
+> It is not a
+> claim that the current repository is a complete Personal and Family Health
+> Workspace. See [the capability matrix](capability-matrix.md) and
+> [project status](project-status.md).
 
 This page documents the V1H local reviewer UI plus the committed Health/Family Vault reviewer artifacts. The UI and artifacts are generated from the same synthetic dataset path rooted at `data/demo_patients/demo_family_vault.json`.
 
@@ -48,7 +54,12 @@ The page is read-only and renders:
 
 ## Guarded chat companion
 
-The product entry point is now `/` and `/chat`. It uses the same active-vault loader and read model, but accepts a narrow set of safe questions through `POST /api/chat`. The deterministic demo provider summarizes source-backed records, recorded timeline changes, missing information, and clinician discussion questions. It does not persist conversations.
+The current runtime root route is `/` and currently redirects to `/chat`. This
+is a runtime fact, not the canonical product identity. It uses the same
+active-vault loader and read model, but accepts a narrow set of safe questions
+through `POST /api/chat`. The deterministic demo provider summarizes
+source-backed records, recorded timeline changes, missing information, and
+clinician discussion questions. It does not persist conversations.
 
 External mode is optional and disabled by default. When an operator enables `OPENCARE_AGENT_MODE=openai_responses`, compact vault context is sent to the configured external Responses endpoint. This is not enabled in the public synthetic demo. Answers are buffered and validated before display; validation reduces unsupported output but cannot guarantee medical correctness.
 

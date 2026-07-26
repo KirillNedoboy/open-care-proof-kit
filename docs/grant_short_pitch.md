@@ -1,4 +1,8 @@
-# Grant Short Pitch
+# Grant Short Pitch (Supporting Grant Artifact)
+
+> Supporting grant language only. It must not be used as the canonical product
+> roadmap or current implementation status. See [ADR 0001](adr/0001-opencare-product-direction.md)
+> and [project status](project-status.md).
 
 ## 15-Second Pitch
 
