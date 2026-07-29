@@ -101,6 +101,9 @@ Expose the validated medication lifecycle and deterministic Visit Brief API
 through a minimal Visit Preparation UI without moving lifecycle authority out
 of Product Core services.
 
+Phase 1C serves `/workspace` as the primary entry point through external static
+assets that call only the versioned Product Core API; `/chat` remains supporting.
+
 ### Non-goals
 
 - broader fact types;

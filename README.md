@@ -358,3 +358,11 @@ Near-term work should stay conservative:
 See [docs/roadmap/product-core-roadmap.md](docs/roadmap/product-core-roadmap.md)
 for the canonical next-phase roadmap. The older
 [docs/roadmap.md](docs/roadmap.md) is historical.
+# Visit Preparation Workspace
+
+`/workspace` is the primary OpenCare entry point and `/` redirects there. It uses the
+versioned Product Core API for manual medication entry, review, confirmed records,
+the Product Core timeline, and deterministic Visit Brief generation with Markdown
+copy/download. `/chat` remains a supporting feature. Browser state is not persisted;
+the shared password gate is not per-person authorization. Upload, extraction,
+deactivation, deletion, family permissions, and real-data production readiness remain out of scope.

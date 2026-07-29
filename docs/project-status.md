@@ -135,6 +135,13 @@ non-health routes. No deployment or infrastructure was changed in this phase.
   Markdown content and documentation terms.
 - `git diff --check` -> passed after documentation edits.
 
+## Visit Preparation Workspace
+
+Phase 1C provides `/workspace` as the product entry point for the medication-only
+Product Core flow: manual entry, review (confirm/correct/reject), confirmed records,
+timeline, and deterministic Visit Brief. It stores no Product Core data in the browser.
+The shared password gate protects an installation, not individual people.
+
 ## Deferred work
 
 The next implementation task is the Visit Preparation UI over the validated

@@ -21,6 +21,12 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "insertAdjacentHTML" not in script
     assert "document.write" not in script
     assert "console." not in script
+    assert "window.prompt" not in script
+    assert "Correct medication entry" in script
+    assert "Save correction" in script
+    assert "Cancel" in script
+    assert "name.focus()" in script
+    assert "trigger.focus()" in script
 
 
 def test_workspace_static_assets_exist() -> None:

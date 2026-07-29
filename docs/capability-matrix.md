@@ -13,7 +13,7 @@ status is about the current implementation, not the approved future direction.
 | Document upload | `OUT_OF_SCOPE` | No upload route or handler in `app/main.py`; reviewer UI explicitly rejects this scope |
 | Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests |
 | Extraction | `PARTIAL` | Explicit plain-text source registration exists; no document extraction, OCR, or model extraction |
-| Review inbox | `PARTIAL` | Candidate review service and API routes exist without a UI in `app/product_core/` |
+| Review inbox | `PARTIAL` | Medication review UI at `/workspace`; broader review remains unsupported |
 | Canonical confirmed records | `PARTIAL` | Medication-only confirmation is transactional and active-state backed in `app/product_core/` |
 | Timeline | `PARTIAL` | Medication confirmation creates one deterministic timeline event atomically; demo read model remains separate |
 | Medications | `PARTIAL` | Product Core medication candidate/canonical lifecycle in `app/product_core/`; synthetic Health/Family Vault remains demo-only |
