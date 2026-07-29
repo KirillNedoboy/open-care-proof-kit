@@ -112,6 +112,13 @@ assets that call only the versioned Product Core API; `/chat` remains supporting
 - clinical advice or provider calls;
 - deployment changes.
 
+## Phase 1D: persistent people profiles
+
+Phase 1D adds active people profiles, explicit workspace selection, and a migration
+that backfills existing opaque IDs as non-medical `Imported profile` records before
+foreign keys are enforced. The shared password gate remains installation-wide, so this
+does not add accounts, family relationships, or authorization.
+
 ## Phase 2: broader workspace
 
 ### Objective

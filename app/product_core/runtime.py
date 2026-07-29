@@ -8,6 +8,7 @@ from app.product_core.services import (
     Clock,
     IdFactory,
     MedicationLifecycleService,
+    PeopleService,
     SourceService,
     default_clock,
     default_id_factory,
@@ -20,6 +21,7 @@ from app.product_core.visit_brief import VisitBriefService
 class ProductCoreRuntime:
     database: SQLiteDatabase
     sources: SourceService
+    people: PeopleService
     lifecycle: MedicationLifecycleService
     visit_briefs: VisitBriefService
     clock: Clock
@@ -41,6 +43,7 @@ def create_product_core_runtime(
             clock=clock,
             id_factory=id_factory,
         ),
+        people=PeopleService(database, clock=clock, id_factory=id_factory),
         lifecycle=MedicationLifecycleService(
             database,
             clock=clock,

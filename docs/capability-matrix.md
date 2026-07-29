@@ -9,7 +9,7 @@ status is about the current implementation, not the approved future direction.
 | Family relationships | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/templates/health_vault.html` |
 | Health vault entities | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/loader.py`, `app/health_vault/read_model.py` |
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
-| Persistent editable vault | `PARTIAL` | Medication-only lifecycle and JSON API in `app/product_core/`; no UI, people table, per-person authorization, or broader fact types |
+| Persistent editable vault | `PARTIAL` | Medication-only lifecycle, persisted active profiles, and JSON API in `app/product_core/`; no family permissions or broader fact types |
 | Document upload | `OUT_OF_SCOPE` | No upload route or handler in `app/main.py`; reviewer UI explicitly rejects this scope |
 | Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests |
 | Extraction | `PARTIAL` | Explicit plain-text source registration exists; no document extraction, OCR, or model extraction |

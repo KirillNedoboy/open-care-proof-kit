@@ -9,6 +9,7 @@ from app.product_core.migrations import MigrationRunner
 from app.product_core.repositories import (
     SQLiteCandidateRepository,
     SQLiteCanonicalRepository,
+    SQLitePersonRepository,
     SQLiteSourceRepository,
     SQLiteTimelineRepository,
 )
@@ -44,6 +45,7 @@ class UnitOfWork:
         self.begin_mode = begin_mode
         self.connection: sqlite3.Connection | None = None
         self.sources: SQLiteSourceRepository
+        self.people: SQLitePersonRepository
         self.candidates: SQLiteCandidateRepository
         self.canonical_records: SQLiteCanonicalRepository
         self.timeline_events: SQLiteTimelineRepository
@@ -57,6 +59,7 @@ class UnitOfWork:
             self.connection = None
             raise
         self.sources = SQLiteSourceRepository(self.connection)
+        self.people = SQLitePersonRepository(self.connection)
         self.candidates = SQLiteCandidateRepository(self.connection)
         self.canonical_records = SQLiteCanonicalRepository(self.connection)
         self.timeline_events = SQLiteTimelineRepository(self.connection)

@@ -8,7 +8,7 @@ import sqlite3
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from app.product_core.errors import (
@@ -16,6 +16,8 @@ from app.product_core.errors import (
     IntegrityStorageError,
     InvalidTransitionError,
     PersonMismatchError,
+    PersonNotFoundError,
+    PersonValidationError,
     SourceCorruptionError,
     SourceNotFoundError,
     SourcePublicationError,
@@ -26,6 +28,7 @@ from app.product_core.models import (
     CandidateStatus,
     CanonicalMedicationRecord,
     MedicationCandidateInput,
+    Person,
     Source,
     SourceType,
     TimelineEvent,
@@ -50,6 +53,79 @@ def default_clock() -> datetime:
 
 def default_id_factory() -> str:
     return str(uuid.uuid4())
+
+
+class PeopleService:
+    def __init__(
+        self,
+        database: SQLiteDatabase,
+        *,
+        clock: Clock = default_clock,
+        id_factory: IdFactory = default_id_factory,
+    ) -> None:
+        self.database = database
+        self.clock = clock
+        self.id_factory = id_factory
+
+    def create(self, display_name: str, *, date_of_birth: date | None = None) -> Person:
+        now = ensure_utc_datetime(self.clock())
+        self._validate_date_of_birth(date_of_birth, now)
+        person = Person(
+            person_id=self.id_factory(),
+            display_name=display_name,
+            date_of_birth=date_of_birth,
+            created_at=now,
+            updated_at=now,
+            is_active=True,
+        )
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            uow.people.insert(person)
+        return person
+
+    def get(self, person_id: str) -> Person:
+        with self.database.uow() as uow:
+            person = uow.people.get(person_id)
+        if person is None:
+            raise PersonNotFoundError(f"person not found: {person_id}")
+        return person
+
+    def list_active(self) -> list[Person]:
+        with self.database.uow() as uow:
+            return uow.people.list_active()
+
+    def update(
+        self,
+        person_id: str,
+        *,
+        display_name: str | None = None,
+        date_of_birth: date | None = None,
+        update_date_of_birth: bool = False,
+    ) -> Person:
+        if display_name is None and not update_date_of_birth:
+            raise ValueError("an update field is required")
+        now = ensure_utc_datetime(self.clock())
+        self._validate_date_of_birth(date_of_birth, now)
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            existing = uow.people.get(person_id)
+            if existing is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
+            person = Person(
+                person_id=existing.person_id,
+                display_name=existing.display_name if display_name is None else display_name,
+                date_of_birth=(
+                    existing.date_of_birth if not update_date_of_birth else date_of_birth
+                ),
+                created_at=existing.created_at,
+                updated_at=now,
+                is_active=existing.is_active,
+            )
+            uow.people.update(person)
+        return person
+
+    @staticmethod
+    def _validate_date_of_birth(value: date | None, now: datetime) -> None:
+        if value is not None and value > now.date():
+            raise PersonValidationError("date_of_birth cannot be in the future")
 
 
 class ImmutableSourceStore:
@@ -241,6 +317,8 @@ class SourceService:
         relative_path: str | None = None
         try:
             with self.database.uow(begin_mode="IMMEDIATE") as uow:
+                if uow.people.get(person_id) is None:
+                    raise PersonNotFoundError(f"person not found: {person_id}")
                 existing = uow.sources.find_by_deduplication(
                     person_id, source_type, content_hash
                 )
@@ -323,6 +401,8 @@ class MedicationLifecycleService:
         )
         created_at = ensure_utc_datetime(self.clock())
         with self.database.uow() as uow:
+            if uow.people.get(person_id) is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
             source = uow.sources.get(source_id)
             if source is None:
                 raise SourceNotFoundError(f"source not found: {source_id}")
@@ -354,6 +434,8 @@ class MedicationLifecycleService:
         status: CandidateStatus | None = None,
     ) -> list[CandidateFact]:
         with self.database.uow() as uow:
+            if uow.people.get(person_id) is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
             return uow.candidates.list_for_person(person_id, status)
 
     def confirm(self, candidate_id: str) -> CanonicalMedicationRecord:
@@ -465,6 +547,8 @@ class MedicationLifecycleService:
 
     def list_active(self, person_id: str) -> list[CanonicalMedicationRecord]:
         with self.database.uow() as uow:
+            if uow.people.get(person_id) is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
             return uow.canonical_records.list_active_for_person(person_id)
 
     def list_canonical(
@@ -474,8 +558,12 @@ class MedicationLifecycleService:
         include_inactive: bool = False,
     ) -> list[CanonicalMedicationRecord]:
         with self.database.uow() as uow:
+            if uow.people.get(person_id) is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
             return uow.canonical_records.list_for_person(person_id, include_inactive)
 
     def list_timeline(self, person_id: str) -> list[TimelineEvent]:
         with self.database.uow() as uow:
+            if uow.people.get(person_id) is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
             return uow.timeline_events.list_for_person(person_id)

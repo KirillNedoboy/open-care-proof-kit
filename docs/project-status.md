@@ -61,8 +61,8 @@ repository evidence paths.
   editable persistence layer.
 - External Responses mode exists behind explicit configuration and provider
   validation, but it is optional and not required by the default demo path.
-- Product Core Phase 1B exposes the medication lifecycle over HTTP, but has no
-  UI, people table, per-person authorization, or non-medication fact types.
+- Product Core has a medication-only UI and persisted active people profiles,
+  but no per-person authorization or non-medication fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is
@@ -137,16 +137,18 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Visit Preparation Workspace
 
-Phase 1C provides `/workspace` as the product entry point for the medication-only
-Product Core flow: manual entry, review (confirm/correct/reject), confirmed records,
-timeline, and deterministic Visit Brief. It stores no Product Core data in the browser.
-The shared password gate protects an installation, not individual people.
+`/workspace` is the product entry point for the medication-only Product Core flow:
+manual entry, review (confirm/correct/reject), confirmed records, timeline, and a
+deterministic Visit Brief. Phase 1D adds persisted active profiles and explicit
+selection before health records load. Existing opaque person IDs migrate to active
+`Imported profile` placeholders with no inferred name or date of birth. Browser state
+is not persisted. The shared password gate protects an installation, not individuals.
 
 ## Deferred work
 
-The next implementation task is the Visit Preparation UI over the validated
-Product Core API. Uploads, OCR, genetics expansion, new providers, family
-permissions, multi-user SaaS, and deployment changes remain deferred.
+Family relationships and explicit caregiver permissions are the next Product Core
+boundary. Uploads, OCR, genetics expansion, new providers, multi-user SaaS, and
+deployment changes remain deferred.
 
 ## Canonical references
 

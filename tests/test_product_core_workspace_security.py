@@ -22,6 +22,12 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "document.write" not in script
     assert "console." not in script
     assert "window.prompt" not in script
+    assert "person-id" not in template
+    assert "person-selector" in template
+    assert "create-profile-form" in template
+    assert "edit-profile" in template
+    assert "window.location" not in script
+    assert "URLSearchParams" not in script
     assert "Correct medication entry" in script
     assert "Save correction" in script
     assert "Cancel" in script

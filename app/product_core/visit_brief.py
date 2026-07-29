@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.product_core.errors import SelectionError
+from app.product_core.errors import PersonNotFoundError, SelectionError
 from app.product_core.models import (
     CanonicalMedicationRecord,
     VisitBrief,
@@ -21,6 +21,8 @@ class VisitBriefService:
             raise SelectionError("selected canonical record IDs must be unique")
 
         with self.database.uow() as uow:
+            if uow.people.get(request.person_id) is None:
+                raise PersonNotFoundError(f"person not found: {request.person_id}")
             if selected_ids:
                 records = []
                 for record_id in selected_ids:

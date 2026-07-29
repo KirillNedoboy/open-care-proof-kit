@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 import app.main as main_module
 from app.config import clear_settings_cache
+from app.product_core.models import Person
 from app.product_core.runtime import create_product_core_runtime
 
 
@@ -51,6 +52,19 @@ def product_core_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iter
     main_module.app.state.product_core_runtime_factory = runtime_factory
     try:
         with TestClient(main_module.app) as client:
+            runtime = main_module.app.state.product_core_runtime
+            now = clock()
+            with runtime.database.uow() as uow:
+                for person_id in ("person-1", "person-2"):
+                    uow.people.insert(
+                        Person(
+                            person_id=person_id,
+                            display_name=f"Profile {person_id}",
+                            created_at=now,
+                            updated_at=now,
+                            is_active=True,
+                        )
+                    )
             yield client
     finally:
         if hasattr(main_module.app.state, "product_core_runtime_factory"):

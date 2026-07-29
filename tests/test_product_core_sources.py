@@ -12,7 +12,7 @@ from app.product_core.errors import (
     SourcePublicationError,
     UnsafeSourcePathError,
 )
-from app.product_core.models import Source
+from app.product_core.models import Person, Source
 from app.product_core.services import SourceService
 from app.product_core.sqlite import SQLiteDatabase
 
@@ -36,12 +36,28 @@ class SequenceIds:
 def make_source_service(tmp_path: Path, ids: SequenceIds | None = None) -> SourceService:
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
+    seed_people(database, "person-1")
     return SourceService(
         database,
         tmp_path / "sources",
         clock=FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC)),
         id_factory=ids or SequenceIds("source-1", "source-2"),
     )
+
+
+def seed_people(database: SQLiteDatabase, *person_ids: str) -> None:
+    now = datetime(2026, 7, 26, 10, tzinfo=UTC)
+    with database.uow() as uow:
+        for person_id in person_ids:
+            uow.people.insert(
+                Person(
+                    person_id=person_id,
+                    display_name=f"Profile {person_id}",
+                    created_at=now,
+                    updated_at=now,
+                    is_active=True,
+                )
+            )
 
 
 def test_manual_source_is_canonical_utf8_json_and_deduplicates(tmp_path: Path) -> None:
@@ -84,6 +100,7 @@ def test_manual_source_is_canonical_utf8_json_and_deduplicates(tmp_path: Path) -
 def test_concurrent_source_registration_returns_one_created_result(tmp_path: Path) -> None:
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
+    seed_people(database, "person-1")
     first_service = SourceService(
         database,
         tmp_path / "sources",
@@ -181,6 +198,7 @@ def test_failed_database_insert_compensates_newly_published_file(tmp_path: Path)
 def test_invalid_timestamp_compensates_newly_published_file(tmp_path: Path) -> None:
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
+    seed_people(database, "person-1")
     service = SourceService(
         database,
         tmp_path / "sources",

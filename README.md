@@ -65,7 +65,7 @@ guarantee medical correctness.
 - Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
 - Read-only local reviewer page at `/demo/health-vault`.
 - Read-only active vault page at `/vault`.
-- Guarded chat workspace at `/` and `/chat`, with validated `POST /api/chat` answers.
+- Guarded chat workspace at `/chat`, with validated `POST /api/chat` answers.
 - Deterministic `Context / Provenance Trace Graph` on the reviewer page.
 - Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
 - GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
@@ -120,7 +120,7 @@ The LLM is intentionally third. Deterministic loaders, read models, rules, prove
 
 ### Guarded chat workspace
 
-The current `/` route opens `/chat`, a guarded Question Workspace precursor for
+The `/chat` route remains a guarded Question Workspace precursor for
 questions about the active vault. This is a runtime fact, not the canonical
 product identity. The browser sends a question only; OpenCare applies an intent
 policy, prepares compact provenance-aware context, obtains either a
@@ -201,9 +201,9 @@ Product Core migration smoke test:
 Product Core is still UI-free and medication-only. The Phase 1B API uses the
 same SQLite metadata and immutable UTF-8 source payloads configured through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
-application startup. The API has no people table or per-person authorization;
-the existing instance password gate applies, while `person_id` filtering is
-not an ownership boundary.
+application startup. The API has persisted active people profiles; legacy opaque
+person IDs are retained through non-medical `Imported profile` placeholders during
+migration. The shared instance password gate is not per-person authorization.
 
 Product Core API lifecycle endpoints include:
 
@@ -214,6 +214,10 @@ POST /api/product-core/v1/candidates/medications
 POST /api/product-core/v1/candidates/{candidate_id}/confirm
 POST /api/product-core/v1/candidates/{candidate_id}/correct
 POST /api/product-core/v1/candidates/{candidate_id}/reject
+POST /api/product-core/v1/people
+GET  /api/product-core/v1/people
+GET  /api/product-core/v1/people/{person_id}
+PATCH /api/product-core/v1/people/{person_id}
 GET  /api/product-core/v1/people/{person_id}/medications
 GET  /api/product-core/v1/people/{person_id}/timeline
 POST /api/product-core/v1/people/{person_id}/visit-briefs:generate
@@ -363,6 +367,8 @@ for the canonical next-phase roadmap. The older
 `/workspace` is the primary OpenCare entry point and `/` redirects there. It uses the
 versioned Product Core API for manual medication entry, review, confirmed records,
 the Product Core timeline, and deterministic Visit Brief generation with Markdown
-copy/download. `/chat` remains a supporting feature. Browser state is not persisted;
-the shared password gate is not per-person authorization. Upload, extraction,
-deactivation, deletion, family permissions, and real-data production readiness remain out of scope.
+copy/download. Profiles are selected explicitly and remain only in page memory.
+Legacy opaque person IDs migrate to `Imported profile` records without inferred data.
+`/chat` remains a supporting feature; the shared password gate is not per-person
+authorization. Family relationships, permissions, deactivation, deletion, uploads,
+and extraction remain out of scope.

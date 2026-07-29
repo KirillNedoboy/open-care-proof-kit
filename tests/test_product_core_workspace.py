@@ -32,7 +32,10 @@ def test_workspace_renders_a_static_product_shell() -> None:
 
     assert response.status_code == 200
     assert "Visit Preparation Workspace" in response.text
-    assert 'id="person-id"' in response.text
+    assert 'id="person-selector"' in response.text
+    assert 'id="create-profile-form"' in response.text
+    assert 'id="edit-profile"' in response.text
+    assert 'id="person-id"' not in response.text
     assert 'id="medication-form"' in response.text
     assert 'id="review-inbox"' in response.text
     assert 'id="candidate-history"' in response.text

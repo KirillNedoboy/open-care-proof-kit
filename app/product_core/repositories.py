@@ -2,18 +2,29 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 from app.product_core.models import (
     CandidateFact,
     CandidateStatus,
     CanonicalMedicationRecord,
+    Person,
     Source,
     SourceType,
     TimelineEvent,
     parse_utc_datetime,
 )
+
+
+class PersonRepository(Protocol):
+    def get(self, person_id: str) -> Person | None: ...
+
+    def list_active(self) -> list[Person]: ...
+
+    def insert(self, person: Person) -> None: ...
+
+    def update(self, person: Person) -> None: ...
 
 
 class SourceRepository(Protocol):
@@ -29,6 +40,57 @@ class SourceRepository(Protocol):
     def insert(self, source: Source) -> None: ...
 
     def path_referenced(self, relative_path: str) -> bool: ...
+
+
+class SQLitePersonRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get(self, person_id: str) -> Person | None:
+        row = self.connection.execute(
+            "SELECT * FROM people WHERE person_id = ?", (person_id,)
+        ).fetchone()
+        return None if row is None else _person_from_row(row)
+
+    def list_active(self) -> list[Person]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM people WHERE is_active = 1
+            ORDER BY display_name COLLATE NOCASE ASC, person_id ASC
+            """
+        ).fetchall()
+        return [_person_from_row(row) for row in rows]
+
+    def insert(self, person: Person) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO people (
+                person_id, display_name, date_of_birth, created_at, updated_at, is_active
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                person.person_id,
+                person.display_name,
+                None if person.date_of_birth is None else person.date_of_birth.isoformat(),
+                person.created_at.isoformat(),
+                person.updated_at.isoformat(),
+                int(person.is_active),
+            ),
+        )
+
+    def update(self, person: Person) -> None:
+        self.connection.execute(
+            """
+            UPDATE people SET display_name = ?, date_of_birth = ?, updated_at = ?
+            WHERE person_id = ?
+            """,
+            (
+                person.display_name,
+                None if person.date_of_birth is None else person.date_of_birth.isoformat(),
+                person.updated_at.isoformat(),
+                person.person_id,
+            ),
+        )
 
 
 class CandidateRepository(Protocol):
@@ -298,6 +360,19 @@ def _source_from_row(row: sqlite3.Row) -> Source:
         media_type=row["media_type"],
         created_at=parse_utc_datetime(row["created_at"]),
         provenance=json.loads(row["provenance_json"]),
+    )
+
+
+def _person_from_row(row: sqlite3.Row) -> Person:
+    return Person(
+        person_id=row["person_id"],
+        display_name=row["display_name"],
+        date_of_birth=(
+            None if row["date_of_birth"] is None else date.fromisoformat(row["date_of_birth"])
+        ),
+        created_at=parse_utc_datetime(row["created_at"]),
+        updated_at=parse_utc_datetime(row["updated_at"]),
+        is_active=bool(row["is_active"]),
     )
 
 

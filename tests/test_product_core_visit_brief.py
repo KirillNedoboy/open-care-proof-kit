@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from app.product_core.errors import SelectionError
-from app.product_core.models import VisitBriefRequest
+from app.product_core.models import Person, VisitBriefRequest
 from app.product_core.services import MedicationLifecycleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visit_brief import VisitBriefService
@@ -32,6 +32,17 @@ def setup_records(
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
     clock = FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC))
+    with database.uow() as uow:
+        for person_id in ("person-1", "person-2"):
+            uow.people.insert(
+                Person(
+                    person_id=person_id,
+                    display_name=f"Profile {person_id}",
+                    created_at=clock(),
+                    updated_at=clock(),
+                    is_active=True,
+                )
+            )
     ids = SequenceIds(
         "source-1",
         "candidate-1",

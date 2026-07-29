@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.product_core.models import ensure_utc_datetime
 
@@ -87,6 +87,32 @@ class PlainTextSourceRequest(APIModel):
         if len(value.encode("utf-8")) > MAX_SOURCE_CONTENT_BYTES:
             raise ValueError("source content is too large")
         return value
+
+
+class PersonCreateRequest(APIModel):
+    display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    date_of_birth: date | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+
+class PersonUpdateRequest(APIModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    date_of_birth: date | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_display_name(value)
+
+    @model_validator(mode="after")
+    def require_change(self) -> PersonUpdateRequest:
+        if not self.model_fields_set & {"display_name", "date_of_birth"}:
+            raise ValueError("an update field is required")
+        return self
 
 
 class MedicationCandidateRequest(APIModel):
@@ -194,6 +220,19 @@ class SourceResponse(APIModel):
     size_bytes: int
     media_type: str
     created_at: datetime
+
+
+class PersonResponse(APIModel):
+    person_id: str
+    display_name: str
+    date_of_birth: date | None
+    created_at: datetime
+    updated_at: datetime
+    is_active: bool
+
+
+class PeopleListResponse(APIModel):
+    people: list[PersonResponse]
 
 
 class SourceRegistrationResponse(APIModel):

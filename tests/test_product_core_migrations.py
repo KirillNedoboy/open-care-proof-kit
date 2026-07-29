@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.product_core.migrations import Migration, MigrationRunner
+from app.product_core.migrations import PRODUCT_MIGRATIONS, Migration, MigrationRunner
 from app.product_core.sqlite import SQLiteDatabase
 
 
@@ -24,7 +24,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1]
+        ] == [1, 2]
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         table_names = {
             row[0]
@@ -34,11 +34,80 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
         }
     assert {
         "schema_migrations",
+        "people",
         "sources",
         "candidate_facts",
         "canonical_medication_records",
         "timeline_events",
     }.issubset(table_names)
+
+
+def test_phase_1c_upgrade_backfills_people_and_preserves_records(tmp_path: Path) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    MigrationRunner(database.connect, migrations=PRODUCT_MIGRATIONS[:1]).migrate()
+    with database.connect() as connection:
+        connection.execute("BEGIN")
+        connection.execute(
+            """INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("source-1", "legacy-one", "manual_entry", "source-1.json", "a" * 64, 1,
+             "application/json", "2026-01-01T00:00:00+00:00", "{}"),
+        )
+        connection.execute(
+            """INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("candidate-1", "legacy-two", "source-1", "medication", "confirmed", "Aspirin",
+             "aspirin", None, None, "2026-01-01T00:00:00+00:00", "2026-01-02T00:00:00+00:00", None),
+        )
+        connection.execute(
+            """INSERT INTO canonical_medication_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("record-1", "legacy-three", "candidate-1", "source-1", "Aspirin", "aspirin",
+             None, None, "2026-01-02T00:00:00+00:00", 1),
+        )
+        connection.execute(
+            """INSERT INTO timeline_events VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            ("event-1", "legacy-four", "record-1", "source-1", "medication_confirmed",
+             "2026-01-02T00:00:00+00:00", "Medication confirmed: Aspirin"),
+        )
+        connection.commit()
+
+    database.migrate()
+
+    with database.connect() as connection:
+        people = [
+            tuple(row)
+            for row in connection.execute(
+                "SELECT person_id, display_name, date_of_birth, is_active "
+                "FROM people ORDER BY person_id"
+            ).fetchall()
+        ]
+        assert people == [
+            ("legacy-four", "Imported profile", None, 1),
+            ("legacy-one", "Imported profile", None, 1),
+            ("legacy-three", "Imported profile", None, 1),
+            ("legacy-two", "Imported profile", None, 1),
+        ]
+        source_people = [
+            tuple(row)
+            for row in connection.execute("SELECT person_id FROM sources").fetchall()
+        ]
+        candidate_people = [
+            tuple(row)
+            for row in connection.execute("SELECT person_id FROM candidate_facts").fetchall()
+        ]
+        assert source_people == [("legacy-one",)]
+        assert candidate_people == [("legacy-two",)]
+        assert [tuple(row) for row in connection.execute(
+            "SELECT person_id FROM canonical_medication_records"
+        ).fetchall()] == [("legacy-three",)]
+        assert [tuple(row) for row in connection.execute(
+            "SELECT person_id FROM timeline_events"
+        ).fetchall()] == [("legacy-four",)]
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("bad", "unknown", "manual_entry", "bad.json", "b" * 64, 1,
+                 "application/json", "2026-01-01T00:00:00+00:00", "{}"),
+            )
 
 
 def test_failed_migration_is_rolled_back_and_not_recorded(tmp_path: Path) -> None:
@@ -153,7 +222,7 @@ finally:
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
         ]
-        assert versions == [1]
+        assert versions == [1, 2]
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
         ).fetchone() is not None

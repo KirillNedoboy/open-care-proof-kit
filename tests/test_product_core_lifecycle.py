@@ -8,6 +8,7 @@ from app.product_core.errors import (
     IntegrityStorageError,
     InvalidTransitionError,
 )
+from app.product_core.models import Person
 from app.product_core.services import MedicationLifecycleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 
@@ -34,6 +35,7 @@ def make_services(
 ) -> tuple[SQLiteDatabase, SourceService, MedicationLifecycleService]:
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
+    seed_people(database, "person-1", "person-2")
     clock = FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC))
     source_service = SourceService(
         database,
@@ -43,6 +45,21 @@ def make_services(
     )
     lifecycle = MedicationLifecycleService(database, clock=clock, id_factory=ids)
     return database, source_service, lifecycle
+
+
+def seed_people(database: SQLiteDatabase, *person_ids: str) -> None:
+    now = datetime(2026, 7, 26, 10, tzinfo=UTC)
+    with database.uow() as uow:
+        for person_id in person_ids:
+            uow.people.insert(
+                Person(
+                    person_id=person_id,
+                    display_name=f"Profile {person_id}",
+                    created_at=now,
+                    updated_at=now,
+                    is_active=True,
+                )
+            )
 
 
 def create_pending(
@@ -158,6 +175,7 @@ def test_correction_marks_original_and_links_replacement_atomically(tmp_path: Pa
 def test_failed_correction_leaves_original_pending(tmp_path: Path) -> None:
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
+    seed_people(database, "person-1")
     clock = FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC))
     ids = SequenceIds("source-1", "candidate-1", "candidate-2", "candidate-2")
     sources = SourceService(database, tmp_path / "sources", clock=clock, id_factory=ids)
@@ -215,6 +233,7 @@ def test_confirmation_rolls_back_when_timeline_insert_fails(tmp_path: Path) -> N
 def test_person_isolation_and_deterministic_canonical_ordering(tmp_path: Path) -> None:
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
     database.migrate()
+    seed_people(database, "person-1", "person-2")
     clock = FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC))
     ids = SequenceIds(
         "source-1",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -45,6 +45,30 @@ class Source(BaseModel):
     @field_validator("created_at")
     @classmethod
     def validate_created_at(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
+class Person(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    person_id: str = Field(min_length=1)
+    display_name: str = Field(min_length=1)
+    date_of_birth: date | None = None
+    created_at: datetime
+    updated_at: datetime
+    is_active: bool
+
+    @field_validator("display_name")
+    @classmethod
+    def trim_display_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("display_name must not be empty")
+        return cleaned
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def validate_timestamps(cls, value: datetime) -> datetime:
         return ensure_utc_datetime(value)
 
 

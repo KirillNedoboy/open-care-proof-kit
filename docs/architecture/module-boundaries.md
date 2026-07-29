@@ -38,7 +38,10 @@ The Product Core API remains the adapter between the UI and application
 services, which retain lifecycle authority. Workspace state is kept only in
 page memory, with no Product Core browser persistence. `/chat` remains a
 separate supporting feature. The shared password gate protects an installation,
-not an individual person; people profiles and family permissions remain deferred.
+not an individual person. Phase 1D adds persisted active people profiles and explicit
+workspace selection. The migration preserves legacy opaque person IDs with an
+`Imported profile` placeholder and does not infer medical data. Profiles do not create
+family relationships, permissions, or per-person authorization.
 
 ## Trust Foundation
 

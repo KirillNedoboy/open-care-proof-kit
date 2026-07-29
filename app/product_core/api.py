@@ -22,6 +22,10 @@ from app.product_core.api_models import (
     ErrorResponse,
     ManualSourceRequest,
     MedicationCandidateRequest,
+    PeopleListResponse,
+    PersonCreateRequest,
+    PersonResponse,
+    PersonUpdateRequest,
     PlainTextSourceRequest,
     SourceRegistrationResponse,
     SourceResponse,
@@ -38,6 +42,8 @@ from app.product_core.errors import (
     InvalidTransitionError,
     NotFoundError,
     PersonMismatchError,
+    PersonNotFoundError,
+    PersonValidationError,
     ProductCoreError,
     RuntimeNotReadyError,
     SelectionError,
@@ -81,6 +87,10 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, Any]]:
 
 
 def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
+    if isinstance(exc, PersonValidationError):
+        return _error_response(422, "request_validation_failed", "The request is invalid.")
+    if isinstance(exc, PersonNotFoundError):
+        return _error_response(404, "person_not_found", "Person was not found.")
     if isinstance(exc, SourceNotFoundError):
         return _error_response(404, "source_not_found", "Source was not found.")
     if isinstance(exc, CandidateNotFoundError):
@@ -210,6 +220,17 @@ def _source_response(source: Any) -> SourceResponse:
     )
 
 
+def _person_response(person: Any) -> PersonResponse:
+    return PersonResponse(
+        person_id=person.person_id,
+        display_name=person.display_name,
+        date_of_birth=person.date_of_birth,
+        created_at=person.created_at,
+        updated_at=person.updated_at,
+        is_active=person.is_active,
+    )
+
+
 def _candidate_response(candidate: Any) -> CandidateResponse:
     return CandidateResponse(
         id=candidate.id,
@@ -249,6 +270,64 @@ def _timeline_response(event: Any) -> TimelineEventResponse:
         event_type=event.event_type,
         event_at=event.event_at,
         title=event.title,
+    )
+
+
+@router.post(
+    "/people",
+    response_model=PersonResponse,
+    responses={422: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_create_person",
+)
+def create_person(
+    payload: PersonCreateRequest,
+    runtime: RuntimeDependency,
+) -> PersonResponse:
+    return _person_response(
+        runtime.people.create(payload.display_name, date_of_birth=payload.date_of_birth)
+    )
+
+
+@router.get(
+    "/people",
+    response_model=PeopleListResponse,
+    operation_id="product_core_list_people",
+)
+def list_people(runtime: RuntimeDependency) -> PeopleListResponse:
+    return PeopleListResponse(
+        people=[_person_response(person) for person in runtime.people.list_active()]
+    )
+
+
+@router.get(
+    "/people/{person_id}",
+    response_model=PersonResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_person",
+)
+def get_person(person_id: ProductCoreIdentifier, runtime: RuntimeDependency) -> PersonResponse:
+    return _person_response(runtime.people.get(person_id))
+
+
+@router.patch(
+    "/people/{person_id}",
+    response_model=PersonResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_update_person",
+)
+def update_person(
+    person_id: ProductCoreIdentifier,
+    payload: PersonUpdateRequest,
+    runtime: RuntimeDependency,
+) -> PersonResponse:
+    return _person_response(
+        runtime.people.update(
+            person_id,
+            display_name=payload.display_name,
+            date_of_birth=payload.date_of_birth,
+            update_date_of_birth="date_of_birth" in payload.model_fields_set,
+        )
     )
 
 

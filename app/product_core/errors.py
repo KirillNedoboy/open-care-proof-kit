@@ -42,6 +42,14 @@ class CanonicalRecordNotFoundError(NotFoundError):
     """Raised when a requested canonical record does not exist."""
 
 
+class PersonNotFoundError(NotFoundError):
+    """Raised when a requested person does not exist."""
+
+
+class PersonValidationError(ProductCoreError, ValueError):
+    """Raised when a person value violates a domain constraint."""
+
+
 class PersonMismatchError(ProductCoreError):
     """Raised when related Product Core records belong to different people."""
 
