@@ -31,6 +31,15 @@ same package. Handlers map validated HTTP payloads to application services;
 they do not own lifecycle transitions or SQL. It deliberately does not add
 UI, a people table, extraction, or external model calls.
 
+Phase 1C adds `/workspace` as a server-rendered shell. Its browser JavaScript
+uses only `/api/product-core/v1`; the workspace route does not read SQLite,
+repositories, Unit of Work objects, source files, or Product Core services.
+The Product Core API remains the adapter between the UI and application
+services, which retain lifecycle authority. Workspace state is kept only in
+page memory, with no Product Core browser persistence. `/chat` remains a
+separate supporting feature. The shared password gate protects an installation,
+not an individual person; people profiles and family permissions remain deferred.
+
 ## Trust Foundation
 
 Trust Foundation owns reusable guarantees:
