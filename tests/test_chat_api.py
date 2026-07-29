@@ -44,8 +44,8 @@ def private_settings() -> Settings:
     )
 
 
-def test_root_opens_chat_workspace() -> None:
-    response = request("GET", "/")
+def test_chat_route_opens_chat_workspace() -> None:
+    response = request("GET", "/chat")
 
     assert response.status_code == 200
     assert "OpenCare chat" in response.text

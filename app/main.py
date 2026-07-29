@@ -151,7 +151,12 @@ async def enforce_private_access(
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> RedirectResponse:
-    return RedirectResponse(url="/chat", status_code=307)
+    return RedirectResponse(url="/workspace", status_code=307)
+
+
+@app.get("/workspace", response_class=HTMLResponse)
+def workspace(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "product_core_workspace.html")
 
 
 @app.get("/chat", response_class=HTMLResponse)
