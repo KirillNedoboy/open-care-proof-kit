@@ -124,9 +124,9 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Validation executed on 2026-07-30
 
-- `.\.venv\Scripts\python.exe -m pytest` -> `244 passed`.
+- `.\.venv\Scripts\python.exe -m pytest` -> `249 passed`.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` -> passed.
-- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `59 source files`.
+- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `61 source files`.
 - Focused Product Core tests -> `64 passed`.
 - Fresh and version-2-to-version-3 temporary-database migration smoke -> passed;
   repeated migration remained at version `3` with `PRAGMA foreign_keys=1`.
@@ -143,19 +143,20 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 `/workspace` is the product entry point for the Product Core flow: manual medication
 entry, review (confirm/correct/reject), confirmed records, timeline, persisted Visits,
-user-authored Visit Questions, and a deterministic Visit Brief. Phase 1D adds persisted
-active profiles and explicit selection before health records load. Phase 1E-A adds Visits
-and Questions without changing or persisting the current Brief. Existing opaque person IDs migrate to active
-`Imported profile` placeholders with no inferred name or date of birth. Browser state
-is not persisted. The shared password gate protects an installation, not individuals.
+user-authored Visit Questions, and immutable Visit-scoped Brief revisions with selected
+confirmed evidence, preparation notes, restore history and audited Markdown export.
+Existing opaque person IDs migrate to active `Imported profile` placeholders with no
+inferred name or date of birth. Browser state is not persisted. The shared password gate
+protects an installation, not individuals.
 
 ## Deferred work
 
-Editable evidence-linked Visit Briefs are designed in proposed ADR 0003 but
-remain unimplemented. Source/evidence drawers, JSON export, backup/recovery,
-identity and caregiver permissions, family relationships, uploads, OCR,
-genetics expansion, new providers, multi-user SaaS, and deployment changes
-remain deferred.
+Phase 1E-B persists editable evidence-linked Visit Briefs. ADR 0004 now
+proposes—but does not implement—Person-scoped portable export, installation
+backup and fail-closed recovery. Source/evidence drawers, portable import,
+backup/recovery runtime, identity and caregiver permissions, family
+relationships, uploads, OCR, genetics expansion, new providers, multi-user
+SaaS, cloud storage, encryption and deployment changes remain deferred.
 
 ## Canonical references
 

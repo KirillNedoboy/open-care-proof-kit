@@ -30,7 +30,7 @@ status is about the current implementation, not the approved future direction.
 | PGx | `DEMO_ONLY` | `app/pgx/`, `app/demo_pipeline.py`, `data/evidence_packs/pgx_demo_pack.json`, `tests/test_pgx_matcher.py`, `tests/test_demo_pipeline.py` |
 | Genetics | `DEMO_ONLY` | Demo parser only in `app/genetics/`, `data/demo_patients/demo_patient_a_23andme.txt`, `tests/test_genotype_parser.py`; no Product Core genetics workflow |
 | Deployment | `PARTIAL` | `Dockerfile`, `docker-compose.yml`, `docker-compose.prod.yml`, `deploy/`, `scripts/smoke_check.py`, `docs/deployment.md`, `docs/production_deployment.md` |
-| Backup and export | `PLANNED` | Report output exists, but no vault backup/export workflow; operator guidance is documentation only |
+| Backup and export | `PLANNED` | ADR 0004 proposes distinct Person-scoped portable export, operator installation backup, and fail-closed empty-target recovery; no runtime workflow exists yet |
 | Agent tools | `PARTIAL` | Portable context and answer validation CLI in `app/agent/cli.py`, `app/agent/portable.py`, `skills/opencare-health-agent/`; no read-only Product Core tool surface |
 | Family permissions | `OUT_OF_SCOPE` | No permission or caregiver authorization model in the runtime |
 

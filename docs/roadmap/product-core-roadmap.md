@@ -146,6 +146,19 @@ does not add JSON vault export, backup/recovery, PDF, upload/OCR, AI or external
 providers, identity/permissions, family relationships, Sentient work, or
 EvoSkill.
 
+## Phase 1F: vault export, installation backup, and recovery
+
+Phase 1F is proposed in [ADR 0004](../adr/0004-vault-export-backup-recovery.md).
+It separates a deterministic Person-scoped portable export from operator-only
+installation backup and fail-closed recovery. Portable export includes only
+reachable immutable sources; installation backup uses a consistent SQLite
+snapshot and all source payloads referenced by that snapshot.
+
+The implementation sequence is 1F-A portable export, 1F-B backup/verification,
+and 1F-C empty-target recovery with rollback. It does not add portable import,
+merge, cloud storage, schedules, encryption, sharing, credentials, Identity,
+family access, uploads/OCR or deployment changes.
+
 ## Phase 2: broader workspace
 
 ### Objective
