@@ -130,6 +130,21 @@ This phase does not persist or change the deterministic Visit Brief, add an
 evidence/source drawer, export or backup, identity or caregiver permissions,
 family relationships, or AI-generated questions or answers.
 
+## Phase 1E-B: persisted editable Visit Briefs
+
+Phase 1E-B is specified in [ADR 0003](../adr/0003-persisted-visit-briefs.md)
+and the [Visit Brief lifecycle](../architecture/visit-brief-lifecycle.md). It
+will connect one persisted Brief to a Visit, retain immutable revision history,
+select only confirmed medication evidence, include ordered Visit Questions, and
+render deterministic Markdown with separately editable preparation notes.
+
+The implementation will calculate freshness from snapshots and live evidence;
+it will not overwrite user edits during regeneration. Evidence, revisions, and
+current-pointer changes will be transaction-bound and source-linked. The phase
+does not add JSON vault export, backup/recovery, PDF, upload/OCR, AI or external
+providers, identity/permissions, family relationships, Sentient work, or
+EvoSkill.
+
 ## Phase 2: broader workspace
 
 ### Objective

@@ -21,7 +21,7 @@ status is about the current implementation, not the approved future direction.
 | Labs | `DEMO_ONLY` | `LabResult` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
 | Encounters / visits | `PARTIAL` | Persistent Person-scoped Visits in `app/product_core/`; synthetic Health/Family Vault visits remain demo-only |
 | Questions | `PARTIAL` | Persistent user-authored Visit Questions in `app/product_core/`; no generated answers or broad question workspace |
-| Visit preparation | `PARTIAL` | Workspace supports persistent Visits and Questions plus the separate deterministic Visit Brief; briefs are not yet persisted or linked to a Visit |
+| Visit preparation | `PARTIAL` | Workspace supports persistent Visits and Questions plus a separate transient deterministic Visit Brief; ADR 0003 proposes persisted immutable Brief revisions, evidence selection, and user notes, but that lifecycle is not implemented |
 | Guarded chat | `IMPLEMENTED` | Routes in `app/main.py`; policy, service, validation, and audit in `app/agent/`; coverage in `tests/test_agent.py`, `tests/test_chat_api.py`, `tests/test_api.py` |
 | External LLM provider | `PARTIAL` | Opt-in `OpenAIResponsesProvider` in `app/agent/provider.py`, configuration gates in `app/config.py`, tests in `tests/test_agent.py`; not required by default |
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |

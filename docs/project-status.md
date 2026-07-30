@@ -6,8 +6,8 @@ This is the canonical description of the repository as inspected on
 
 ## Repository snapshot
 
-- Branch: `codex/opencare-product-core-phase-1e-a`
-- Inspected starting commit: `3f7e0037e0997a2ba69db7c6a31d500f09d6d5f6`
+- Branch: `codex/opencare-product-integration`
+- Inspected starting commit: `8e7f90cd1639bba440004c04a7eba7aeafbd9b02`
 - Inspection date: 2026-07-30
 - Starting working tree: clean
 - Current repository: OpenCare foundation with demo/reference and trust
@@ -66,7 +66,8 @@ repository evidence paths.
   validation, but it is optional and not required by the default demo path.
 - Product Core has medication lifecycle UI, persisted active people profiles,
   Visits, and Visit Questions, but no per-person authorization, broader fact
-  types, or persisted editable Visit Brief.
+  types, or persisted editable Visit Brief. ADR 0003 proposes the next Brief
+  lifecycle; it is documentation only and not runtime behavior.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is
@@ -150,10 +151,11 @@ is not persisted. The shared password gate protects an installation, not individ
 
 ## Deferred work
 
-Editable evidence-linked Visit Briefs, source/evidence drawers, JSON export,
-backup/recovery, identity and caregiver permissions, family relationships,
-uploads, OCR, genetics expansion, new providers, multi-user SaaS, and deployment
-changes remain deferred.
+Editable evidence-linked Visit Briefs are designed in proposed ADR 0003 but
+remain unimplemented. Source/evidence drawers, JSON export, backup/recovery,
+identity and caregiver permissions, family relationships, uploads, OCR,
+genetics expansion, new providers, multi-user SaaS, and deployment changes
+remain deferred.
 
 ## Canonical references
 
