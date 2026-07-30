@@ -2,164 +2,153 @@
 
 ## Status
 
-This document is the proposed Phase 1F design. Phase 1F-A now implements the
-Person-scoped portable export, its API route, and Workspace download warning.
-Installation backup, recovery commands, import, encryption, and other Phase
-1F-B/1F-C work remain unimplemented.
+Phase 1F-A implements the Person-scoped portable export, its API route, and a
+Workspace download warning. Phase 1F-B implements the local operator backup and
+offline verifier described below. Recovery, import, encryption, and Phase 1F-C
+work remain unimplemented.
 
 ## Verified current boundary
 
-Product Core's SQLite database is configured by `OPENCARE_PRODUCT_DB_PATH`.
-`OPENCARE_SOURCE_DIR` holds immutable source payloads; Source metadata records
-their IDs, relative paths, sizes, SHA-256 hashes, types and provenance. Source
-reads already fail if the file is absent, has a different size or hash, or its
-path escapes the configured source root.
-
-The database contains the medication review lifecycle and derived timeline, as
-well as Visit preparation state and metadata-only Brief audit events. Brief
-revisions carry a deterministic content hash over their versioned content and
-stored Markdown. Runtime configuration, session state, external local-vault
-JSON and generated `reports/` outputs are outside this Product Core state.
+Product Core's SQLite database is configured by `OPENCARE_PRODUCT_DB_PATH` and
+immutable source payloads are held under `OPENCARE_SOURCE_DIR`. Source metadata
+records IDs, relative paths, size, SHA-256, type, and provenance. The source
+store rejects missing, changed, or root-escaping payloads. The database contains
+the medication lifecycle and timeline, Visit preparation state, persisted Brief
+revisions, and metadata-only Brief audit events. Runtime configuration, session
+state, external vault JSON, and generated reports are outside Product Core state.
 
 ## Portable export contract
 
-### Scope and graph closure
+Phase 1F-A exports exactly one Person with their supported Product Core graph:
+Sources, CandidateFacts, canonical medication records, Timeline Events, Visits,
+Questions, Briefs, revisions, and evidence selections. It preserves stable IDs
+and relationship fields. Source inclusion is graph-derived from CandidateFacts,
+canonical records, Timeline Events, and Brief selections; unrelated source files
+and internal Brief audit events are excluded. A missing, changed, or unsupported
+reachable record fails the export.
 
-The first format exports exactly one Person. It includes records whose
-`person_id` belongs to that Person, child records linked through their stable
-IDs, and Visit Brief material linked through exported Visits. It preserves IDs
-and relationship fields rather than rewriting references.
-
-Source inclusion is graph-derived, not directory-derived. The exporter collects
-source IDs referenced by exported CandidateFacts, canonical medication records,
-Timeline Events and Brief evidence selections. It verifies each selected Source
-metadata row and payload using the current immutable source checks before it
-writes any successful bundle. Other source files in the installation are not
-read or exported.
-
-The portable bundle excludes internal `visit_brief_audit_events`: they are
-installation operational metadata, not part of Person interchange. Unsupported
-reachable records or malformed rows stop the operation with an explicit error.
-
-### Logical layout
+Its logical ZIP layout is:
 
 ```text
 manifest.json
 manifest.sha256
 vault.json
 sources/<source_id>/payload.bin
-summary.md                 # optional and explicitly non-authoritative
 ```
 
-`vault.json` contains one versioned object with ordered arrays for Person,
-Sources, CandidateFacts, canonical records, Timeline Events, Visits, Questions,
-Briefs, Brief revisions and evidence selections. References use stored IDs.
-Source metadata contains type, media type, size, hash and provenance; it does
-not contain a local filesystem path. A future original display filename is only
-metadata and never determines an archive path.
-
-Sort collections by stable ownership and IDs; ordered Questions and evidence
-selections preserve their explicit position before their IDs. Use canonical UTF-8
-JSON with sorted object keys, separators `,` and `:`, and UTC ISO-8601 timestamp
-strings. The export format version and Product Core schema version are explicit.
-
-The manifest inventories `vault.json`, each `payload.bin`, and optional summary,
-with byte sizes and SHA-256 checksums. It contains no checksum for itself.
-`manifest.sha256` hashes the exact canonical bytes of `manifest.json`. A reader
-checks the manifest first, then every inventory entry. These checks prove
-integrity only; they do not authenticate an author or encrypt health data.
-
-An archive container is a transport choice, not part of determinism. The logical
-payload and checksums are deterministic; byte-identical ZIP output is not an
-acceptance criterion.
+The JSON artifacts are canonical UTF-8 with sorted keys, fixed separators,
+normalized UTC timestamps, and stable collection ordering. The manifest lists
+payload byte sizes and SHA-256 checksums but not its own; `manifest.sha256`
+hashes the exact canonical `manifest.json` bytes. This is an integrity contract,
+not encryption, author authentication, or byte-identical ZIP contract.
 
 ## Installation backup contract
 
 ### Staged snapshot
 
-The backup service writes to a newly created, operator-selected staging path on
-the target filesystem. It uses the Python SQLite backup API to create
-`database.sqlite3`, then queries that snapshot—not the live database—to identify
-every referenced Source. It copies each payload to the fixed safe source layout,
-verifies size and SHA-256 against snapshot metadata, writes compatibility
-metadata and checksum inventory, and independently verifies all staged files.
+The operator chooses a final destination directory that must not exist. The
+backup service validates the active database and source root, creates a private
+staging directory on the destination filesystem, and performs this exact order:
 
-Only after those checks does it atomically create `backup.complete`. Its presence
-is the completion signal. An interrupted operation has no marker and is not a
-recoverable backup. New records committed after the SQLite snapshot are outside
-the backup and are not treated as a failed consistency check.
+```text
+SQLite snapshot
+→ enumerate source rows from that snapshot
+→ copy and verify source payloads
+→ write compatibility metadata and checksums
+→ verify staged backup
+→ atomically write completion marker
+```
 
-Metadata records backup format version, Product Core schema version, backup
-creation timestamp, application/repository version when available, snapshot
-method, and the source inventory. It contains no credentials, passwords,
-secrets, cookies, filesystem paths, logs or generated report content.
+The SQLite copy uses Python's `sqlite3.Connection.backup()` API. Only the
+completed `database.sqlite3` snapshot is queried. Every snapshot `sources` row
+is copied, in source-ID order, to a fixed safe path after its persisted ID,
+configured-root containment, non-symlink regular-file status, byte size, and
+SHA-256 are checked. Files not represented by a snapshot source row are never
+included. Commits after the SQLite snapshot are outside that backup and are not
+a consistency failure.
+
+The exact completed layout is:
+
+```text
+database.sqlite3
+sources/<source_id>/payload.bin
+manifest.json
+manifest.sha256
+COMPLETE
+```
+
+`manifest.json` is canonical UTF-8 JSON and records format version, schema
+version read from the snapshot, injectable UTC `created_at`, snapshot method,
+optional reliable application version, deterministic source inventory, and the
+path/size/SHA-256 inventory for the database and payloads. The implementation
+supports only schema version 4. `manifest.sha256` is exactly 64 lowercase
+hexadecimal ASCII characters followed by one newline for the exact manifest
+bytes. Separate snapshots need not share a manifest because `created_at` is an
+actual operation time.
+
+The staged layout is independently verified before zero-byte `COMPLETE` is
+created exclusively. Immediately before activation, the service rechecks that
+the final destination remains absent, then uses a same-filesystem rename without
+replacement. A destination that appears during creation is preserved; staging
+cleanup is attempted and its failure is reported. Interrupted artifacts have no
+completion marker and are invalid.
+
+### Offline verification
+
+`python -m app.product_core.backup_cli verify --backup <directory>` uses only
+the given artifact. It opens the supplied SQLite snapshot read-only and does not
+consult environment defaults, active database/source paths, HTTP services, or
+runtime configuration. It checks exact layout, no symlinks or undeclared files,
+`COMPLETE`, canonical manifest/checksum, every declared payload, schema/migration
+state, SQLite integrity and foreign keys, source inventory, lifecycle ownership
+and question ordering, and Brief revision hashes. The metadata-only JSON report
+contains neither health content nor source display names, notes, Markdown, or
+secrets.
 
 ### Recovery compatibility
 
-The MVP accepts only explicitly supported backup and schema versions. It can
-restore complete installation backups, not portable exports. Portable import,
-merge and semantic conversion are separate future work.
+The MVP accepts only explicitly supported backup and schema versions. Recovery
+is deferred to Phase 1F-C and will be an operator CLI operation for an empty or
+maintenance-mode target only. Portable import, merge, and semantic conversion
+are separate future work.
 
-## Recovery state machine
+## Security and privacy boundary
 
-1. Refuse a non-empty target unless it is an explicitly entered maintenance-mode
-   empty target.
-2. Open the supplied artifact with size, file-count and extraction limits;
-   reject absolute paths, traversal, duplicate normalized paths, special files
-   and all symlinks.
-3. Extract into a protected temporary directory under the destination volume;
-   never trust archive path metadata.
-4. Require and validate the atomic completion marker, exact manifest bytes,
-   supported versions, inventory and every file checksum.
-5. Open the staged SQLite database with foreign keys enabled; run SQLite
-   integrity and foreign-key checks, then Product Core lifecycle checks.
-6. Verify every source referenced by the staged database exists at its fixed
-   staged location and matches stored size/hash. Verify every persisted Brief
-   revision's supported versions and content/Markdown hash.
-7. Produce a pre-activation report with entity counts, source count, versions
-   and pass/fail reason codes; it contains no source content, notes or names.
-8. Atomically rename verified staged database/source directories into the empty
-   target on the same filesystem. If any activation action fails, restore the
-   prior target layout and keep the installation unavailable.
-9. Re-open the activated state and repeat database, foreign-key, source and
-   Brief integrity checks. Emit a final metadata-only recovery report.
-
-Any missing file, malformed JSON, integrity failure, unsupported version,
-foreign key violation, missing/corrupt source, symlink, traversal attempt,
-partial backup, stale completion marker or Brief hash mismatch fails closed.
-No invalid record is skipped.
+Backups are sensitive plaintext artifacts. SHA-256 detects changed bytes only;
+it does not encrypt content or prove who created an artifact. Backups exclude
+`.env`, passwords, `OPENCARE_SECRET_KEY`, provider credentials, cookies, virtual
+environments, caches, logs, reports, test artifacts, and TLS/deployment secrets.
+The implementation adds neither an HTTP/Workspace backup route, scheduled or
+remote storage, cloud integration, encryption, import, nor recovery.
 
 ## Future delivery split
 
 ### Phase 1F-A: deterministic portable export
 
-Implemented: Person-scoped canonical bundle generation, reachable-source
-verification, manifest/checksum handling, and a Workspace download with an
-explicit sensitive-data warning. The HTTP response uses a request-scoped
-`SpooledTemporaryFile`; it retains no generated artifact and writes no export
-audit event. It does not add import, installation backup, encryption, or a
-server-retained file.
-
-Acceptance includes deterministic ordering/checksums, Person isolation, source
-closure, provenance, no paths/secrets, empty/populated Person cases and Brief
-revision integrity. Missing or corrupt reachable sources fail the export.
+Implemented: Person-scoped canonical bundle generation, reachable-source and
+Brief verification, manifest/checksum handling, and a Workspace warning. The
+request-scoped ZIP has no retained server artifact and writes no export audit.
 
 ### Phase 1F-B: installation backup and verification
 
-Deliver operator CLI backup and verify commands using the staged Python SQLite
-backup sequence and atomic completion marker. Do not add recovery, cloud/scheduled
-backup, remote storage, secrets, deployment changes or Workspace backup controls.
-
-Acceptance covers concurrent writes around snapshot time, source completeness,
-interruption, marker atomicity, checksum verification and excluded credential
-material. No completed marker means failure.
+Implemented: local operator backup and offline verification CLI with staged
+SQLite snapshots, exact `COMPLETE` marker, fixed source layout, source and Brief
+integrity checks, destination-race refusal, and metadata-only reporting.
 
 ### Phase 1F-C: recovery
 
-Deliver operator CLI preflight, recovery, rollback and metadata-only report for
-empty/maintenance targets. Do not add populated-installation merge, destructive
-overwrite by default, portable import or cross-version semantic conversion.
+Planned: preflight, empty-target-only recovery, rollback, and metadata-only
+operator report. It must validate all artifact and lifecycle boundaries before
+activation and must not introduce populated-target merge or overwrite semantics.
 
-Acceptance covers clean reconstruction, database/FK/source/Brief checks,
-corruption, traversal, symlinks, resource limits, non-empty target refusal,
-activation interruption and a clean post-recovery lifecycle smoke.
+## Test matrix
+
+- backup: empty/populated snapshots, writes after snapshot, source closure,
+  missing/changed/path/symlink sources, marker order, interruption, cleanup,
+  destination race, and secret exclusion;
+- verifier: manifest/payload/database/FK/schema/Brief corruption, undeclared
+  files, unsafe paths/symlinks, lifecycle violations, and offline-only access;
+- CLI: explicit paths, backup defaults, verify without defaults, exit codes,
+  and metadata-only output;
+- future recovery: limits, empty-target refusal, atomic activation/rollback,
+  and post-activation verification.

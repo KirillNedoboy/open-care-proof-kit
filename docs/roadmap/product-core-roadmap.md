@@ -155,14 +155,19 @@ JSON, manifest checksums, and a Workspace download warning. It verifies source
 payloads and persisted Brief integrity before responding, creates no persistent
 artifact, and does not add import or encryption.
 
-Installation backup and fail-closed recovery remain proposed. Installation
-backup uses a consistent SQLite snapshot and all source payloads referenced by
-that snapshot.
+Phase 1F-B is implemented: the operator-only Product Core CLI creates a
+staged SQLite snapshot, copies and verifies every snapshot `sources` payload,
+writes a canonical manifest and `COMPLETE` marker, and verifies supplied backup
+directories offline. It creates no HTTP/UI route and does not add recovery,
+import, encryption, cloud/scheduled storage, or deployment behavior.
 
-The implementation sequence is 1F-A portable export, 1F-B backup/verification,
-and 1F-C empty-target recovery with rollback. It does not add portable import,
-merge, cloud storage, schedules, encryption, sharing, credentials, Identity,
-family access, uploads/OCR or deployment changes.
+Only fail-closed recovery remains proposed. Installation backup uses a
+consistent SQLite snapshot and all source payloads represented by that snapshot.
+
+The implementation sequence is 1F-A portable export, completed 1F-B
+backup/verification, and 1F-C empty-target recovery with rollback. It does not
+add portable import, merge, cloud storage, schedules, encryption, sharing,
+credentials, Identity, family access, uploads/OCR or deployment changes.
 
 ## Phase 2: broader workspace
 

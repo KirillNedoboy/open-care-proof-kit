@@ -7,7 +7,7 @@ This is the canonical description of the repository as inspected on
 ## Repository snapshot
 
 - Branch: `codex/opencare-product-integration`
-- Inspected starting commit: `8e7f90cd1639bba440004c04a7eba7aeafbd9b02`
+- Inspected starting commit: `296a6d8daa7b399224995507387f85ffeb8348f1`
 - Inspection date: 2026-07-30
 - Starting working tree: clean
 - Current repository: OpenCare foundation with demo/reference and trust
@@ -54,6 +54,10 @@ Verified in `app/main.py`:
 - Person-scoped portable vault ZIP export with canonical `vault.json`, checksum
   manifest, reachable immutable sources, Brief-integrity verification, and a
   Workspace warning before download. It creates no persistent export artifact.
+- Operator-only Product Core backup/verification CLI that creates a staged
+  SQLite/source snapshot with canonical manifest and `COMPLETE` marker, then
+  verifies a supplied backup directory offline. Backups are sensitive plaintext
+  artifacts and recovery remains unimplemented.
 - Existing synthetic PGx briefing reference workflow in `app/demo_pipeline.py`,
   `app/pgx/`, `app/genetics/`, and `data/evidence_packs/`.
 
@@ -70,7 +74,8 @@ repository evidence paths.
 - Product Core has medication lifecycle UI, persisted active people profiles,
   Visits, Visit Questions, and Visit-scoped persisted editable Brief revisions
   with selected confirmed evidence, computed freshness, and audited Markdown
-  export. It also has Person-scoped portable export, but no import, encryption,
+  export. It also has Person-scoped portable export and operator-only
+  installation backup verification, but no import, recovery, encryption,
   per-person authorization, or broader fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
@@ -96,7 +101,7 @@ support.
 - No non-medication candidate-fact lifecycle.
 - No Product Core timeline rebuild command; Phase 1A creates events atomically
   with confirmation.
-- No installation backup, recovery, or portable import workflow.
+- No installation recovery or portable import workflow.
 - No family permissions or caregiver authorization.
 - No query-scoped AI consent and context preview workflow.
 
@@ -128,12 +133,12 @@ non-health routes. No deployment or infrastructure was changed in this phase.
 
 ## Validation executed on 2026-07-30
 
-- `.\.venv\Scripts\python.exe -m pytest` -> `249 passed`.
+- `.\.venv\Scripts\python.exe -m pytest` -> `274 passed`.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` -> passed.
-- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `61 source files`.
-- Focused Product Core tests -> `64 passed`.
-- Fresh and version-2-to-version-3 temporary-database migration smoke -> passed;
-  repeated migration remained at version `3` with `PRAGMA foreign_keys=1`.
+- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `64 source files`.
+- Focused installation backup and CLI tests -> `17 passed`.
+- Product Core migration tests -> `7 passed`, including fresh schema version `4`,
+  upgrade preservation, rollback, foreign-key enforcement, and concurrent startup.
 - `.\.venv\Scripts\python.exe -m evals.runner` -> `14 total, 14 passed, 0 failed`;
   `9` static-text cases and `5` pipeline cases.
 - `.\.venv\Scripts\python.exe -m evals.trust_metrics` -> passed; all reported
@@ -142,6 +147,7 @@ non-health routes. No deployment or infrastructure was changed in this phase.
   validation command found; the search itself returned only references to
   Markdown content and documentation terms.
 - `git diff --check` -> passed after documentation edits.
+- `node --check app/static/product_core_workspace.js` -> passed.
 
 ## Visit Preparation Workspace
 
@@ -156,11 +162,11 @@ protects an installation, not individuals.
 ## Deferred work
 
 Phase 1E-B persists editable evidence-linked Visit Briefs. Phase 1F-A implements
-Person-scoped portable export; ADR 0004 remains Proposed for installation
-backup and fail-closed recovery. Source/evidence drawers, portable import,
-backup/recovery runtime, encryption, identity and caregiver permissions, family
-relationships, uploads, OCR, genetics expansion, new providers, multi-user
-SaaS, cloud storage and deployment changes remain deferred.
+Person-scoped portable export and Phase 1F-B implements operator-only backup
+verification; ADR 0004 remains Proposed for fail-closed recovery. Source/evidence
+drawers, portable import, recovery runtime, encryption, identity and caregiver
+permissions, family relationships, uploads, OCR, genetics expansion, new
+providers, multi-user SaaS, cloud storage and deployment changes remain deferred.
 
 ## Canonical references
 

@@ -55,6 +55,11 @@ reachable immutable sources and persisted Brief revisions, and returns a
 request-scoped ZIP through the Product Core API. It does not own import,
 backup, recovery, encryption, a CLI, or storage-provider integration.
 
+Phase 1F-B adds `InstallationBackupService` and `app.product_core.backup_cli`
+to this boundary. They create a local installation snapshot and verify a
+supplied backup directory offline; they do not expose HTTP/UI behavior, recovery,
+import, encryption, remote storage, scheduling, or deployment integration.
+
 ## Trust Foundation
 
 Trust Foundation owns reusable guarantees:

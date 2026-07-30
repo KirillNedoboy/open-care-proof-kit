@@ -236,6 +236,25 @@ Review timestamps are server-controlled; `VisitBrief.generated_at` is the
 only client-supplied generation timestamp. No source-content download,
 extraction, provider call, or clinical/advisory behavior is exposed.
 
+## Installation backup verification
+
+Phase 1F-B adds an operator-only, local plaintext installation backup. It is
+not an HTTP route, a Workspace feature, an import mechanism, or recovery. A
+backup contains a SQLite snapshot and every persisted immutable Source payload;
+treat its directory as sensitive health data.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.product_core.backup_cli backup --database <sqlite> --source-dir <sources> --destination <new-backup-directory>
+.\.venv\Scripts\python.exe -m app.product_core.backup_cli verify --backup <backup-directory>
+```
+
+`backup` may use `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR` when the
+two path options are omitted. The destination must not already exist. `verify`
+uses only the supplied backup directory, validates its completion marker,
+manifest, SQLite snapshot, lifecycle and source payloads, and never accesses
+the active database or source directory. Recovery, import, and encryption are
+not implemented.
+
 Start the local app:
 
 ```powershell

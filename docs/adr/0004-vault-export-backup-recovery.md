@@ -25,8 +25,9 @@ Product Core data. Neither value may enter an export or backup.
 
 ## Decision
 
-Phase 1F defines three separate capabilities. Phase 1F-A is implemented; this
-ADR remains Proposed because Phase 1F-B and Phase 1F-C are not implemented.
+Phase 1F defines three separate capabilities. Phase 1F-A and Phase 1F-B are
+implemented; this ADR remains Proposed because Phase 1F-C recovery is not
+implemented.
 
 ### Portable vault export
 
@@ -87,9 +88,9 @@ export artifact. Portable import and encryption are still not implemented.
 
 An installation backup is an operator-controlled operational snapshot, not a
 user-facing interchange format. It contains a consistent SQLite snapshot,
-every immutable source payload referenced from that snapshot, Product Core
-audit data already in the database, compatibility metadata, payload checksums,
-and a completion marker.
+every immutable source payload represented by a `sources` row in that snapshot,
+Product Core audit data already in the database, compatibility metadata,
+payload checksums, and a completion marker.
 
 The chosen snapshot mechanism is Python's SQLite backup API. It creates a
 consistent database copy while avoiding unsafe direct copying of a live SQLite
@@ -110,7 +111,22 @@ SQLite snapshot
 
 Writes committed after the SQLite snapshot are outside that backup. They are not
 loss or an inconsistency in the completed snapshot. A backup is incomplete until
-the final marker is present and all preceding checks pass.
+the final marker is present and all preceding checks pass. The implemented layout
+is exactly:
+
+```text
+database.sqlite3
+sources/<source_id>/payload.bin
+manifest.json
+manifest.sha256
+COMPLETE
+```
+
+`COMPLETE` is a zero-byte exclusive marker created only after an independent
+staged verification. `manifest.sha256` is exactly the 64 lowercase hexadecimal
+SHA-256 characters for the canonical `manifest.json`, followed by one newline.
+The manifest records the schema version read from the completed SQLite snapshot;
+the current implementation accepts exactly Product Core schema version 4.
 
 Backups exclude `.env`, passwords, `OPENCARE_SECRET_KEY`, provider keys, session
 cookies, virtual environments, caches, logs, generated reports, test artifacts,
@@ -143,9 +159,12 @@ a sensitive-data warning, a deterministic safe filename and no persistent
 server-retained export artifact. A request-scoped temporary artifact is allowed
 only when needed for transport and must be removed on success and failure.
 
-Future operator CLI commands own installation backup, verification, recovery
-preflight, recovery execution and a recovery report. Full backup and recovery
-must not be exposed through ordinary HTTP or Workspace routes.
+The implemented operator CLI owns installation backup and verification:
+`python -m app.product_core.backup_cli backup` and `verify`. Verification opens
+only the supplied backup directory and has no dependency on active runtime
+settings, database, source directory, or HTTP services. Recovery preflight,
+recovery execution and a recovery report remain future CLI work. Full backup
+and recovery must not be exposed through ordinary HTTP or Workspace routes.
 
 Portable export does not mean import is implemented. Arbitrary merge, conflict
 resolution, identity remapping, partial import, cross-version semantic
