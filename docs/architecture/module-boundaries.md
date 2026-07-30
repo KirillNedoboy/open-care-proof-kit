@@ -49,6 +49,12 @@ immutable revisions, selected confirmed-evidence snapshots, metadata-only audit
 events, integrity verification, and stale-state derivation. It does not add
 generated questions or answers, family relationships, or access control.
 
+Phase 1F-A adds `PortableVaultExportService` inside this boundary. It reads a
+single Person's Product Core graph through the SQLite Unit of Work, verifies
+reachable immutable sources and persisted Brief revisions, and returns a
+request-scoped ZIP through the Product Core API. It does not own import,
+backup, recovery, encryption, a CLI, or storage-provider integration.
+
 ## Trust Foundation
 
 Trust Foundation owns reusable guarantees:

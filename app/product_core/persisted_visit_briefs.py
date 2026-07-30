@@ -95,7 +95,7 @@ class PersistedVisitBriefService:
         with self.database.uow() as uow:
             revisions = uow.visit_brief_revisions.list_for_brief(brief.brief_id)
         for revision in revisions:
-            self._verify_integrity(revision)
+            verify_persisted_visit_brief_revision(revision)
         return revisions
 
     def get_revision(
@@ -110,7 +110,7 @@ class PersistedVisitBriefService:
             raise VisitBriefRevisionNotFoundError(
                 f"visit brief revision not found: {revision_number}"
             )
-        self._verify_integrity(revision)
+        verify_persisted_visit_brief_revision(revision)
         return revision
 
     def list_eligible_evidence(self, visit_id: str) -> list[dict[str, object]]:
@@ -240,7 +240,7 @@ class PersistedVisitBriefService:
                 )
                 if parent is None:
                     raise VisitBriefRevisionNotFoundError("current revision not found")
-                self._verify_integrity(parent)
+                verify_persisted_visit_brief_revision(parent)
                 content = dict(parent.content)
                 content["preparation_notes"] = notes
                 content["revision"] = {
@@ -305,7 +305,7 @@ class PersistedVisitBriefService:
                     raise VisitBriefRevisionNotFoundError(
                         f"visit brief revision not found: {revision_number}"
                     )
-                self._verify_integrity(target)
+                verify_persisted_visit_brief_revision(target)
                 uow.visit_briefs.update_current(brief.brief_id, target.revision_id, now)
                 self._audit(
                     uow,
@@ -333,7 +333,7 @@ class PersistedVisitBriefService:
             )
             if revision is None:
                 raise VisitBriefRevisionNotFoundError("current revision not found")
-            self._verify_integrity(revision)
+            verify_persisted_visit_brief_revision(revision)
             self._audit(
                 uow,
                 visit_id=visit_id,
@@ -615,14 +615,17 @@ class PersistedVisitBriefService:
         )
         uow.visit_brief_audit.insert(event)
 
-    @staticmethod
-    def _verify_integrity(revision: PersistedVisitBriefRevision) -> None:
-        if revision.content_schema_version != CONTENT_SCHEMA_VERSION:
-            raise VisitBriefIntegrityError("unsupported visit brief content schema version")
-        if revision.render_version != RENDER_VERSION:
-            raise VisitBriefIntegrityError("unsupported visit brief render version")
-        if _content_hash(revision.content, revision.rendered_markdown) != revision.content_hash:
-            raise VisitBriefIntegrityError("visit brief content integrity failed")
+
+def verify_persisted_visit_brief_revision(
+    revision: PersistedVisitBriefRevision,
+) -> None:
+    """Verify a persisted revision before it is rendered, exported, or reused."""
+    if revision.content_schema_version != CONTENT_SCHEMA_VERSION:
+        raise VisitBriefIntegrityError("unsupported visit brief content schema version")
+    if revision.render_version != RENDER_VERSION:
+        raise VisitBriefIntegrityError("unsupported visit brief render version")
+    if _content_hash(revision.content, revision.rendered_markdown) != revision.content_hash:
+        raise VisitBriefIntegrityError("visit brief content integrity failed")
 
 
 def _canonical_json(value: object) -> str:

@@ -50,6 +50,8 @@ def test_workspace_renders_a_static_product_shell() -> None:
     assert 'id="brief-preparation-notes"' in response.text
     assert 'id="brief-revisions"' in response.text
     assert 'id="brief-markdown"' in response.text
+    assert 'id="open-vault-export"' in response.text
+    assert 'id="vault-export-warning"' in response.text
     assert 'id="workspace-status"' in response.text
     assert "/static/product_core_workspace.css" in response.text
     assert "/static/product_core_workspace.js" in response.text

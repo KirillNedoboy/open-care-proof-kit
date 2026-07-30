@@ -78,10 +78,11 @@ guarantee medical correctness.
 - Product Core SQLite persistence through `OPENCARE_PRODUCT_DB_PATH`.
 - Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
 - Deterministic medication lifecycle, persistent Visits and Visit Questions,
-  and transient Visit Brief services under `app/product_core/`.
+  persisted Visit Briefs, and Person-scoped portable vault export under
+  `app/product_core/`.
 - Versioned Product Core JSON API under `/api/product-core/v1` for source
 registration, candidate review, canonical medications, timeline, Visits, Visit
-Questions, and Visit Brief generation.
+Questions, Visit Brief generation, and portable vault export.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
@@ -215,6 +216,7 @@ POST /api/product-core/v1/candidates/medications
 POST /api/product-core/v1/candidates/{candidate_id}/confirm
 POST /api/product-core/v1/candidates/{candidate_id}/correct
 POST /api/product-core/v1/candidates/{candidate_id}/reject
+POST /api/product-core/v1/people/{person_id}/vault-export
 POST /api/product-core/v1/people
 GET  /api/product-core/v1/people
 GET  /api/product-core/v1/people/{person_id}
@@ -374,7 +376,8 @@ for the canonical next-phase roadmap. The older
 versioned Product Core API for manual medication entry, review, confirmed records,
 the Product Core timeline, persistent Visits and user-authored Visit Questions,
 and Visit-scoped persisted Brief revisions with confirmed-evidence selection,
-editable preparation notes, history/restore, and Markdown copy/download. The
+editable preparation notes, history/restore, Markdown copy/download, and an
+explicit Person-scoped portable vault download. The
 legacy deterministic Person-scoped Brief endpoint remains available. Profiles
 and selected Visits remain only in page memory.
 Legacy opaque person IDs migrate to `Imported profile` records without inferred data.

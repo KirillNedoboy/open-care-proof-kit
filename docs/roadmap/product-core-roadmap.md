@@ -148,11 +148,16 @@ EvoSkill.
 
 ## Phase 1F: vault export, installation backup, and recovery
 
-Phase 1F is proposed in [ADR 0004](../adr/0004-vault-export-backup-recovery.md).
-It separates a deterministic Person-scoped portable export from operator-only
-installation backup and fail-closed recovery. Portable export includes only
-reachable immutable sources; installation backup uses a consistent SQLite
-snapshot and all source payloads referenced by that snapshot.
+Phase 1F is defined in [ADR 0004](../adr/0004-vault-export-backup-recovery.md).
+Phase 1F-A is implemented: a deterministic Person-scoped portable ZIP contains
+the supported Product Core graph, only reachable immutable sources, canonical
+JSON, manifest checksums, and a Workspace download warning. It verifies source
+payloads and persisted Brief integrity before responding, creates no persistent
+artifact, and does not add import or encryption.
+
+Installation backup and fail-closed recovery remain proposed. Installation
+backup uses a consistent SQLite snapshot and all source payloads referenced by
+that snapshot.
 
 The implementation sequence is 1F-A portable export, 1F-B backup/verification,
 and 1F-C empty-target recovery with rollback. It does not add portable import,

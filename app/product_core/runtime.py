@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
+from app.product_core.portable_vault_export import PortableVaultExportService
 from app.product_core.services import (
     Clock,
     IdFactory,
@@ -27,6 +28,7 @@ class ProductCoreRuntime:
     lifecycle: MedicationLifecycleService
     visit_briefs: VisitBriefService
     persisted_visit_briefs: PersistedVisitBriefService
+    portable_vault_exports: PortableVaultExportService
     visits: VisitPlanningService
     clock: Clock
     id_factory: IdFactory
@@ -61,6 +63,7 @@ def create_product_core_runtime(
             id_factory=id_factory,
             source_reader=sources.store.read,
         ),
+        portable_vault_exports=PortableVaultExportService(database, sources.store),
         visits=VisitPlanningService(database, clock=clock, id_factory=id_factory),
         clock=clock,
         id_factory=id_factory,

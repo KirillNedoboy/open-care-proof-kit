@@ -25,7 +25,8 @@ Product Core data. Neither value may enter an export or backup.
 
 ## Decision
 
-Phase 1F defines three separate future capabilities.
+Phase 1F defines three separate capabilities. Phase 1F-A is implemented; this
+ADR remains Proposed because Phase 1F-B and Phase 1F-C are not implemented.
 
 ### Portable vault export
 
@@ -60,7 +61,6 @@ manifest.json
 manifest.sha256
 vault.json
 sources/<source_id>/payload.bin
-summary.md                 # optional, non-authoritative
 ```
 
 `vault.json` and `manifest.json` use canonical UTF-8 JSON: sorted keys, fixed
@@ -74,6 +74,14 @@ Identical logical state must produce identical canonical JSON and checksums. A
 byte-identical archive is not promised: archive container metadata and transport
 are not logical state. Checksums detect accidental or malicious modification but
 do not encrypt data or establish who produced it.
+
+Phase 1F-A implements this bundle as `POST
+/api/product-core/v1/people/{person_id}/vault-export` and an explicit Workspace
+download warning. It uses a request-scoped spooled ZIP artifact, checks each
+reachable source for a regular non-symlink file, configured-root containment,
+size, and SHA-256, and verifies every persisted Brief revision hash before a
+response is produced. It creates no audit event and retains no server-side
+export artifact. Portable import and encryption are still not implemented.
 
 ### Installation backup
 

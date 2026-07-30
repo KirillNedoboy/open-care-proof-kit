@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sqlite3
+import stat
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -167,6 +168,37 @@ class ImmutableSourceStore:
             raise SourceCorruptionError(
                 f"source payload is missing or unreadable: {source.id}"
             ) from exc
+        if len(payload) != source.size_bytes:
+            raise SourceCorruptionError(f"source size mismatch: {source.id}")
+        if hashlib.sha256(payload).hexdigest() != source.content_hash:
+            raise SourceCorruptionError(f"source hash mismatch: {source.id}")
+        return payload
+
+    def read_for_portable_export(self, source: Source) -> bytes:
+        """Read a source only when its stored location remains a regular local file."""
+        path = self._resolve_relative_path(source.relative_path)
+        relative = Path(source.relative_path)
+        raw_path = self.source_dir.resolve()
+        try:
+            for part in relative.parts:
+                raw_path = raw_path / part
+                if stat.S_ISLNK(raw_path.lstat().st_mode):
+                    raise SourceCorruptionError(
+                        f"source path must not contain symlinks: {source.id}"
+                    )
+            if not stat.S_ISREG(raw_path.lstat().st_mode):
+                raise SourceCorruptionError(
+                    f"source payload is not a regular file: {source.id}"
+                )
+            payload = raw_path.read_bytes()
+        except SourceCorruptionError:
+            raise
+        except OSError as exc:
+            raise SourceCorruptionError(
+                f"source payload is missing or unreadable: {source.id}"
+            ) from exc
+        if raw_path.resolve() != path:
+            raise SourceCorruptionError(f"source path changed while reading: {source.id}")
         if len(payload) != source.size_bytes:
             raise SourceCorruptionError(f"source size mismatch: {source.id}")
         if hashlib.sha256(payload).hexdigest() != source.content_hash:

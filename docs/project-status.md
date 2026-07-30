@@ -51,6 +51,9 @@ Verified in `app/main.py`:
 - Versioned Product Core JSON API under `/api/product-core/v1`, wired through
   the existing FastAPI application with startup migrations and stable scoped
   error responses.
+- Person-scoped portable vault ZIP export with canonical `vault.json`, checksum
+  manifest, reachable immutable sources, Brief-integrity verification, and a
+  Workspace warning before download. It creates no persistent export artifact.
 - Existing synthetic PGx briefing reference workflow in `app/demo_pipeline.py`,
   `app/pgx/`, `app/genetics/`, and `data/evidence_packs/`.
 
@@ -67,7 +70,8 @@ repository evidence paths.
 - Product Core has medication lifecycle UI, persisted active people profiles,
   Visits, Visit Questions, and Visit-scoped persisted editable Brief revisions
   with selected confirmed evidence, computed freshness, and audited Markdown
-  export. It has no per-person authorization or broader fact types.
+  export. It also has Person-scoped portable export, but no import, encryption,
+  per-person authorization, or broader fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is
@@ -92,7 +96,7 @@ support.
 - No non-medication candidate-fact lifecycle.
 - No Product Core timeline rebuild command; Phase 1A creates events atomically
   with confirmation.
-- No vault backup/export workflow.
+- No installation backup, recovery, or portable import workflow.
 - No family permissions or caregiver authorization.
 - No query-scoped AI consent and context preview workflow.
 
@@ -151,12 +155,12 @@ protects an installation, not individuals.
 
 ## Deferred work
 
-Phase 1E-B persists editable evidence-linked Visit Briefs. ADR 0004 now
-proposes—but does not implement—Person-scoped portable export, installation
+Phase 1E-B persists editable evidence-linked Visit Briefs. Phase 1F-A implements
+Person-scoped portable export; ADR 0004 remains Proposed for installation
 backup and fail-closed recovery. Source/evidence drawers, portable import,
-backup/recovery runtime, identity and caregiver permissions, family
+backup/recovery runtime, encryption, identity and caregiver permissions, family
 relationships, uploads, OCR, genetics expansion, new providers, multi-user
-SaaS, cloud storage, encryption and deployment changes remain deferred.
+SaaS, cloud storage and deployment changes remain deferred.
 
 ## Canonical references
 

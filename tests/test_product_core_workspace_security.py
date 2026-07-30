@@ -40,6 +40,9 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "initialize-brief" in script
     assert "brief-preparation-notes" in script
     assert "current:export" in script
+    assert "open-vault-export" in script
+    assert "requestBlob" in script
+    assert "confirm-vault-export" in script
     assert "visit-briefs:generate" not in script
 
 

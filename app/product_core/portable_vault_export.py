@@ -1,0 +1,334 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import tempfile
+import zipfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from app.product_core.errors import IntegrityStorageError, PersonNotFoundError
+from app.product_core.models import (
+    CandidateFact,
+    CanonicalMedicationRecord,
+    PersistedVisitBrief,
+    PersistedVisitBriefRevision,
+    Person,
+    Source,
+    TimelineEvent,
+    Visit,
+    VisitBriefEvidenceSelection,
+    VisitQuestion,
+    isoformat_utc,
+)
+from app.product_core.persisted_visit_briefs import verify_persisted_visit_brief_revision
+from app.product_core.services import ImmutableSourceStore
+from app.product_core.sqlite import SQLiteDatabase
+
+PORTABLE_VAULT_FORMAT_VERSION = 1
+PRODUCT_CORE_SCHEMA_VERSION = 4
+
+
+@dataclass(frozen=True)
+class PortableVaultExport:
+    zip_bytes: bytes
+    vault_json: bytes
+    manifest_json: bytes
+
+
+class PortableVaultExportService:
+    """Create a deterministic logical, Person-scoped portable vault archive."""
+
+    def __init__(
+        self,
+        database: SQLiteDatabase,
+        source_store: ImmutableSourceStore | Path | str,
+    ) -> None:
+        self.database = database
+        self.source_store = (
+            source_store
+            if isinstance(source_store, ImmutableSourceStore)
+            else ImmutableSourceStore(Path(source_store))
+        )
+
+    def export(self, person_id: str) -> PortableVaultExport:
+        with self.database.uow() as uow:
+            person = uow.people.get(person_id)
+            if person is None:
+                raise PersonNotFoundError(f"person not found: {person_id}")
+            candidates = sorted(
+                uow.candidates.list_for_person(person_id),
+                key=lambda item: (isoformat_utc(item.created_at), item.id),
+            )
+            records = sorted(
+                uow.canonical_records.list_for_person(person_id, include_inactive=True),
+                key=lambda item: (isoformat_utc(item.confirmed_at), item.id),
+            )
+            events = sorted(
+                uow.timeline_events.list_for_person(person_id),
+                key=lambda item: (isoformat_utc(item.event_at), item.id),
+            )
+            visits = sorted(
+                uow.visits.list_for_person(person_id),
+                key=lambda item: (isoformat_utc(item.created_at), item.visit_id),
+            )
+
+            questions_by_visit: dict[str, list[VisitQuestion]] = {}
+            briefs: list[tuple[PersistedVisitBrief, list[PersistedVisitBriefRevision]]]
+            briefs = []
+            selections_by_revision: dict[str, list[VisitBriefEvidenceSelection]] = {}
+            for visit in visits:
+                questions_by_visit[visit.visit_id] = sorted(
+                    uow.visit_questions.list_for_visit(visit.visit_id),
+                    key=lambda item: (item.position, item.question_id),
+                )
+                brief = uow.visit_briefs.get_by_visit(visit.visit_id)
+                if brief is None:
+                    continue
+                revisions = sorted(
+                    uow.visit_brief_revisions.list_for_brief(brief.brief_id),
+                    key=lambda item: (item.revision_number, item.revision_id),
+                )
+                for revision in revisions:
+                    verify_persisted_visit_brief_revision(revision)
+                    selections_by_revision[revision.revision_id] = sorted(
+                        uow.visit_brief_evidence.list_for_revision(revision.revision_id),
+                        key=lambda item: (item.position, item.canonical_record_id),
+                    )
+                briefs.append((brief, revisions))
+
+            source_ids = {
+                item.source_id for item in candidates
+            } | {item.source_id for item in records} | {item.source_id for item in events}
+            for selections in selections_by_revision.values():
+                source_ids.update(selection.source_id for selection in selections)
+
+            sources: list[Source] = []
+            source_payloads: dict[str, bytes] = {}
+            for source_id in sorted(source_ids):
+                source = uow.sources.get(source_id)
+                if source is None:
+                    raise IntegrityStorageError(f"export source is missing: {source_id}")
+                if source.person_id != person_id:
+                    raise IntegrityStorageError(
+                        f"export source belongs to another person: {source_id}"
+                    )
+                _source_archive_path(source)
+                sources.append(source)
+                source_payloads[source.id] = self.source_store.read_for_portable_export(source)
+
+        vault_json = _canonical_json_bytes(
+            {
+                "format_version": PORTABLE_VAULT_FORMAT_VERSION,
+                "person": _person_dto(person),
+                "sources": [_source_dto(source) for source in sources],
+                "candidate_facts": [_candidate_dto(item) for item in candidates],
+                "canonical_medication_records": [_canonical_record_dto(item) for item in records],
+                "timeline_events": [_timeline_event_dto(item) for item in events],
+                "visits": [_visit_dto(item) for item in visits],
+                "visit_questions": [
+                    _question_dto(question)
+                    for visit in visits
+                    for question in questions_by_visit[visit.visit_id]
+                ],
+                "visit_briefs": [
+                    _brief_dto(brief, revisions)
+                    for brief, revisions in briefs
+                ],
+                "visit_brief_revisions": [
+                    _revision_dto(revision)
+                    for _brief, revisions in briefs
+                    for revision in revisions
+                ],
+                "visit_brief_evidence_selections": [
+                    _selection_dto(revision.revision_id, selection)
+                    for _brief, revisions in briefs
+                    for revision in revisions
+                    for selection in selections_by_revision[revision.revision_id]
+                ],
+            }
+        )
+        entries: list[tuple[str, bytes]] = [("vault.json", vault_json)]
+        entries.extend(
+            (_source_archive_path(source), source_payloads[source.id])
+            for source in sources
+        )
+        manifest_json = _canonical_json_bytes(
+            {
+                "format_version": PORTABLE_VAULT_FORMAT_VERSION,
+                "product_core_schema_version": PRODUCT_CORE_SCHEMA_VERSION,
+                "person_id": person.person_id,
+                "payloads": [
+                    {
+                        "path": path,
+                        "sha256": hashlib.sha256(payload).hexdigest(),
+                        "size_bytes": len(payload),
+                    }
+                    for path, payload in entries
+                ],
+            }
+        )
+        manifest_hash = hashlib.sha256(manifest_json).hexdigest().encode("ascii")
+        with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as artifact:
+            with zipfile.ZipFile(
+                artifact, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
+            ) as archive:
+                archive.writestr("manifest.json", manifest_json)
+                archive.writestr("manifest.sha256", manifest_hash)
+                archive.writestr("vault.json", vault_json)
+                for path, payload in entries[1:]:
+                    archive.writestr(path, payload)
+            artifact.seek(0)
+            return PortableVaultExport(
+                zip_bytes=artifact.read(), vault_json=vault_json, manifest_json=manifest_json
+            )
+
+
+def _canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def _source_archive_path(source: Source) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", source.id):
+        raise IntegrityStorageError(f"export source ID is not archive-safe: {source.id}")
+    return f"sources/{source.id}/payload.bin"
+
+
+def _person_dto(person: Person) -> dict[str, object]:
+    return {
+        "person_id": person.person_id,
+        "display_name": person.display_name,
+        "date_of_birth": None if person.date_of_birth is None else person.date_of_birth.isoformat(),
+        "created_at": isoformat_utc(person.created_at),
+        "updated_at": isoformat_utc(person.updated_at),
+        "is_active": person.is_active,
+    }
+
+
+def _source_dto(source: Source) -> dict[str, object]:
+    return {
+        "source_id": source.id,
+        "person_id": source.person_id,
+        "source_type": source.source_type,
+        "content_hash": source.content_hash,
+        "size_bytes": source.size_bytes,
+        "media_type": source.media_type,
+        "created_at": isoformat_utc(source.created_at),
+    }
+
+
+def _candidate_dto(candidate: CandidateFact) -> dict[str, object]:
+    return {
+        "candidate_id": candidate.id,
+        "person_id": candidate.person_id,
+        "source_id": candidate.source_id,
+        "fact_type": candidate.fact_type,
+        "status": candidate.status,
+        "display_name": candidate.display_name,
+        "schedule_text": candidate.schedule_text,
+        "note": candidate.note,
+        "created_at": isoformat_utc(candidate.created_at),
+        "reviewed_at": (
+            None if candidate.reviewed_at is None else isoformat_utc(candidate.reviewed_at)
+        ),
+        "predecessor_candidate_id": candidate.predecessor_candidate_id,
+    }
+
+
+def _canonical_record_dto(record: CanonicalMedicationRecord) -> dict[str, object]:
+    return {
+        "canonical_record_id": record.id,
+        "person_id": record.person_id,
+        "candidate_id": record.candidate_id,
+        "source_id": record.source_id,
+        "display_name": record.display_name,
+        "schedule_text": record.schedule_text,
+        "note": record.note,
+        "confirmed_at": isoformat_utc(record.confirmed_at),
+        "is_active": record.is_active,
+    }
+
+
+def _timeline_event_dto(event: TimelineEvent) -> dict[str, object]:
+    return {
+        "timeline_event_id": event.id,
+        "person_id": event.person_id,
+        "canonical_record_id": event.canonical_record_id,
+        "source_id": event.source_id,
+        "event_type": event.event_type,
+        "event_at": isoformat_utc(event.event_at),
+        "title": event.title,
+    }
+
+
+def _visit_dto(visit: Visit) -> dict[str, object]:
+    return {
+        "visit_id": visit.visit_id,
+        "person_id": visit.person_id,
+        "title": visit.title,
+        "specialist": visit.specialist,
+        "scheduled_date": (
+            None if visit.scheduled_date is None else visit.scheduled_date.isoformat()
+        ),
+        "created_at": isoformat_utc(visit.created_at),
+        "updated_at": isoformat_utc(visit.updated_at),
+    }
+
+
+def _question_dto(question: VisitQuestion) -> dict[str, object]:
+    return {
+        "question_id": question.question_id,
+        "visit_id": question.visit_id,
+        "question_text": question.question_text,
+        "position": question.position,
+        "created_at": isoformat_utc(question.created_at),
+        "updated_at": isoformat_utc(question.updated_at),
+    }
+
+
+def _brief_dto(
+    brief: PersistedVisitBrief,
+    revisions: list[PersistedVisitBriefRevision],
+) -> dict[str, object]:
+    return {
+        "brief_id": brief.brief_id,
+        "visit_id": brief.visit_id,
+        "current_revision_id": brief.current_revision_id,
+        "current_revision_number": brief.current_revision_number,
+        "created_at": isoformat_utc(brief.created_at),
+        "updated_at": isoformat_utc(brief.updated_at),
+        "revision_numbers": [revision.revision_number for revision in revisions],
+    }
+
+
+def _revision_dto(revision: PersistedVisitBriefRevision) -> dict[str, object]:
+    return {
+        "revision_id": revision.revision_id,
+        "brief_id": revision.brief_id,
+        "revision_number": revision.revision_number,
+        "origin": revision.origin,
+        "parent_revision_id": revision.parent_revision_id,
+        "content_schema_version": revision.content_schema_version,
+        "render_version": revision.render_version,
+        "content": revision.content,
+        "rendered_markdown": revision.rendered_markdown,
+        "content_hash": revision.content_hash,
+        "created_at": isoformat_utc(revision.created_at),
+    }
+
+
+def _selection_dto(
+    revision_id: str,
+    selection: VisitBriefEvidenceSelection,
+) -> dict[str, object]:
+    return {
+        "revision_id": revision_id,
+        "canonical_record_id": selection.canonical_record_id,
+        "source_id": selection.source_id,
+        "position": selection.position,
+        "snapshot": selection.snapshot,
+    }

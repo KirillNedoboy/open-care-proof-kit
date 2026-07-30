@@ -760,6 +760,26 @@ def list_timeline(
 
 
 @router.post(
+    "/people/{person_id}/vault-export",
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    operation_id="product_core_export_person_portable_vault",
+)
+def export_person_portable_vault(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    _payload: Annotated[EmptyActionRequest | None, Body()] = None,
+) -> Response:
+    exported = runtime.portable_vault_exports.export(person_id)
+    return Response(
+        content=exported.zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="opencare-person-vault-v1.zip"'
+        },
+    )
+
+
+@router.post(
     "/visits/{visit_id}/brief",
     response_model=VisitBriefInitializeResponse,
     responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},

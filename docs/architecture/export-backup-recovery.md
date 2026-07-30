@@ -2,9 +2,10 @@
 
 ## Status
 
-This document is the proposed Phase 1F design. No vault export, installation
-backup, recovery command, import path, API route or UI control is implemented
-by this document.
+This document is the proposed Phase 1F design. Phase 1F-A now implements the
+Person-scoped portable export, its API route, and Workspace download warning.
+Installation backup, recovery commands, import, encryption, and other Phase
+1F-B/1F-C work remain unimplemented.
 
 ## Verified current boundary
 
@@ -132,10 +133,12 @@ No invalid record is skipped.
 
 ### Phase 1F-A: deterministic portable export
 
-Deliver Person-scoped canonical bundle generation, reachable-source verification,
-manifest/checksum handling and Workspace download with an explicit sensitive-data
-warning. Do not add import, installation backup, encryption, server-retained
-files or audit export.
+Implemented: Person-scoped canonical bundle generation, reachable-source
+verification, manifest/checksum handling, and a Workspace download with an
+explicit sensitive-data warning. The HTTP response uses a request-scoped
+`SpooledTemporaryFile`; it retains no generated artifact and writes no export
+audit event. It does not add import, installation backup, encryption, or a
+server-retained file.
 
 Acceptance includes deterministic ordering/checksums, Person isolation, source
 closure, provenance, no paths/secrets, empty/populated Person cases and Brief

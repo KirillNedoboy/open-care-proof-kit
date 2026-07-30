@@ -2,7 +2,7 @@
   "use strict";
 
   const api = "/api/product-core/v1";
-  const state = { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, loadVersion: 0 };
+  const state = { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, vaultExportTrigger: null, loadVersion: 0 };
   const byId = (id) => document.getElementById(id);
   const make = (tag, value = "", className = "") => { const node = document.createElement(tag); node.textContent = value; node.className = className; return node; };
   const clear = (node) => node.replaceChildren();
@@ -21,6 +21,12 @@
     const response = await fetch(api + path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
     if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
     return response.text();
+  }
+
+  async function requestBlob(path, options = {}) {
+    const response = await fetch(api + path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
+    if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
+    return response.blob();
   }
 
   function enableWorkspace(enabled) {
@@ -239,13 +245,16 @@
   }
 
   function clearWorkspace() {
-    Object.assign(state, { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false });
+    Object.assign(state, { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, vaultExportTrigger: null });
     byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; renderPersonContext(); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status("Profile selection cleared.");
   }
 
   byId("person-selector").addEventListener("change", () => { byId("load-workspace").disabled = !byId("person-selector").value; });
   byId("load-workspace").addEventListener("click", loadWorkspace);
   byId("clear-workspace").addEventListener("click", clearWorkspace);
+  byId("open-vault-export").addEventListener("click", (event) => { if (!state.person) return; state.vaultExportTrigger = event.currentTarget; byId("vault-export-warning").hidden = false; byId("confirm-vault-export").focus(); });
+  byId("cancel-vault-export").addEventListener("click", () => { byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); });
+  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person) return; const button = event.currentTarget; button.disabled = true; try { const payload = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }); const link = document.createElement("a"); link.href = URL.createObjectURL(payload); link.download = "opencare-person-vault-v1.zip"; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status("Vault download prepared.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
   byId("history-filter").addEventListener("change", render);
   byId("create-profile-form").addEventListener("submit", async (event) => { event.preventDefault(); const submit = event.submitter; submit.disabled = true; try { const person = await request("/people", { method: "POST", body: JSON.stringify({ display_name: byId("create-display-name").value, date_of_birth: byId("create-date-of-birth").value || null }) }); state.person = person; await refreshPeople(person); byId("create-profile-form").reset(); await loadWorkspace(); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
   byId("edit-profile").addEventListener("click", () => { if (!state.person) return; byId("edit-display-name").value = state.person.display_name; byId("edit-date-of-birth").value = state.person.date_of_birth || ""; byId("edit-profile-form").hidden = false; byId("edit-display-name").focus(); });
