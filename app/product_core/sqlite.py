@@ -12,6 +12,10 @@ from app.product_core.repositories import (
     SQLitePersonRepository,
     SQLiteSourceRepository,
     SQLiteTimelineRepository,
+    SQLiteVisitBriefAuditRepository,
+    SQLiteVisitBriefEvidenceRepository,
+    SQLiteVisitBriefRepository,
+    SQLiteVisitBriefRevisionRepository,
     SQLiteVisitQuestionRepository,
     SQLiteVisitRepository,
 )
@@ -53,6 +57,10 @@ class UnitOfWork:
         self.timeline_events: SQLiteTimelineRepository
         self.visits: SQLiteVisitRepository
         self.visit_questions: SQLiteVisitQuestionRepository
+        self.visit_briefs: SQLiteVisitBriefRepository
+        self.visit_brief_revisions: SQLiteVisitBriefRevisionRepository
+        self.visit_brief_evidence: SQLiteVisitBriefEvidenceRepository
+        self.visit_brief_audit: SQLiteVisitBriefAuditRepository
 
     def __enter__(self) -> Self:
         self.connection = self.database.connect()
@@ -69,6 +77,10 @@ class UnitOfWork:
         self.timeline_events = SQLiteTimelineRepository(self.connection)
         self.visits = SQLiteVisitRepository(self.connection)
         self.visit_questions = SQLiteVisitQuestionRepository(self.connection)
+        self.visit_briefs = SQLiteVisitBriefRepository(self.connection)
+        self.visit_brief_revisions = SQLiteVisitBriefRevisionRepository(self.connection)
+        self.visit_brief_evidence = SQLiteVisitBriefEvidenceRepository(self.connection)
+        self.visit_brief_audit = SQLiteVisitBriefAuditRepository(self.connection)
         return self
 
     def __exit__(

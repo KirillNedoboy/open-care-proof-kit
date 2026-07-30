@@ -2,11 +2,10 @@
 
 ## Status and scope
 
-This is the proposed Phase 1E-B design. It describes a future persisted
-Visit-Preparation Brief lifecycle; it is not evidence that the current runtime
-has this behavior. Today, Product Core has persisted People, Visits, and Visit
-Questions, while its deterministic Visit Brief remains transient and Person
-scoped.
+Phase 1E-B implements this Visit-scoped persisted lifecycle in Product Core
+schema v4. People, Visits, Questions, immutable Brief revisions, evidence
+selections, and metadata-only audit events are transaction-bound. The existing
+Person-scoped transient Brief endpoint remains unchanged for compatibility.
 
 The target flow is:
 

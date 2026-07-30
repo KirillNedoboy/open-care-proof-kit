@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 SourceType = Literal["manual_entry", "plain_text"]
 FactType = Literal["medication"]
 CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected"]
+VisitBriefRevisionOrigin = Literal[
+    "deterministic_generation", "user_edit", "regeneration"
+]
+VisitBriefState = Literal["current", "stale", "unavailable"]
 
 
 def ensure_utc_datetime(value: datetime) -> datetime:
@@ -197,6 +201,86 @@ class VisitQuestion(BaseModel):
     @field_validator("created_at", "updated_at")
     @classmethod
     def validate_timestamps(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
+class PersistedVisitBrief(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    brief_id: str = Field(min_length=1)
+    visit_id: str = Field(min_length=1)
+    current_revision_id: str | None = None
+    current_revision_number: int | None = Field(default=None, ge=1)
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def validate_timestamps(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
+class VisitBriefEvidenceSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    canonical_record_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    position: int = Field(ge=0)
+    snapshot: dict[str, Any]
+
+
+class PersistedVisitBriefRevision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    revision_id: str = Field(min_length=1)
+    brief_id: str = Field(min_length=1)
+    revision_number: int = Field(ge=1)
+    origin: VisitBriefRevisionOrigin
+    parent_revision_id: str | None = None
+    content_schema_version: int = Field(ge=1)
+    render_version: int = Field(ge=1)
+    content: dict[str, Any]
+    rendered_markdown: str = Field(min_length=1)
+    content_hash: str = Field(min_length=64, max_length=64)
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
+class VisitBriefStaleness(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    state: VisitBriefState
+    reasons: list[str] = Field(default_factory=list)
+
+
+class VisitBriefAuditEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    audit_event_id: str = Field(min_length=1)
+    visit_id: str = Field(min_length=1)
+    brief_id: str | None = None
+    revision_number: int | None = Field(default=None, ge=1)
+    action: Literal[
+        "initialize",
+        "deterministic_generation",
+        "regeneration",
+        "user_edit",
+        "restore",
+        "export",
+        "concurrency_conflict",
+    ]
+    involved_resource_ids: list[str] = Field(default_factory=list)
+    outcome: Literal["succeeded", "rejected"]
+    reason_code: str | None = None
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: datetime) -> datetime:
         return ensure_utc_datetime(value)
 
 

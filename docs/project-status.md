@@ -65,9 +65,9 @@ repository evidence paths.
 - External Responses mode exists behind explicit configuration and provider
   validation, but it is optional and not required by the default demo path.
 - Product Core has medication lifecycle UI, persisted active people profiles,
-  Visits, and Visit Questions, but no per-person authorization, broader fact
-  types, or persisted editable Visit Brief. ADR 0003 proposes the next Brief
-  lifecycle; it is documentation only and not runtime behavior.
+  Visits, Visit Questions, and Visit-scoped persisted editable Brief revisions
+  with selected confirmed evidence, computed freshness, and audited Markdown
+  export. It has no per-person authorization or broader fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is

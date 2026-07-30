@@ -37,6 +37,10 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "visit-question-form" in script
     assert "Move question up" in script
     assert "Move question down" in script
+    assert "initialize-brief" in script
+    assert "brief-preparation-notes" in script
+    assert "current:export" in script
+    assert "visit-briefs:generate" not in script
 
 
 def test_workspace_static_assets_exist() -> None:

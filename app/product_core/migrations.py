@@ -260,6 +260,85 @@ PRODUCT_MIGRATIONS = (
             ),
         ),
     ),
+    Migration(
+        version=4,
+        statements=(
+            """
+            CREATE TABLE visit_briefs (
+                brief_id TEXT PRIMARY KEY CHECK (length(trim(brief_id)) > 0),
+                visit_id TEXT NOT NULL UNIQUE REFERENCES visits(visit_id),
+                current_revision_id TEXT
+                    REFERENCES visit_brief_revisions(revision_id)
+                    DEFERRABLE INITIALLY DEFERRED,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE visit_brief_revisions (
+                revision_id TEXT PRIMARY KEY CHECK (length(trim(revision_id)) > 0),
+                brief_id TEXT NOT NULL REFERENCES visit_briefs(brief_id),
+                revision_number INTEGER NOT NULL CHECK (revision_number >= 1),
+                origin TEXT NOT NULL CHECK (
+                    origin IN ('deterministic_generation', 'user_edit', 'regeneration')
+                ),
+                parent_revision_id TEXT REFERENCES visit_brief_revisions(revision_id),
+                content_schema_version INTEGER NOT NULL CHECK (content_schema_version >= 1),
+                render_version INTEGER NOT NULL CHECK (render_version >= 1),
+                content_json TEXT NOT NULL,
+                rendered_markdown TEXT NOT NULL,
+                content_hash TEXT NOT NULL CHECK (length(content_hash) = 64),
+                created_at TEXT NOT NULL,
+                UNIQUE (brief_id, revision_number)
+            )
+            """,
+            """
+            CREATE TABLE visit_brief_evidence_selections (
+                revision_id TEXT NOT NULL REFERENCES visit_brief_revisions(revision_id),
+                position INTEGER NOT NULL CHECK (position >= 0),
+                canonical_record_id TEXT NOT NULL
+                    REFERENCES canonical_medication_records(id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                snapshot_json TEXT NOT NULL,
+                PRIMARY KEY (revision_id, position),
+                UNIQUE (revision_id, canonical_record_id)
+            )
+            """,
+            """
+            CREATE TABLE visit_brief_audit_events (
+                audit_event_id TEXT PRIMARY KEY CHECK (length(trim(audit_event_id)) > 0),
+                visit_id TEXT NOT NULL REFERENCES visits(visit_id),
+                brief_id TEXT REFERENCES visit_briefs(brief_id),
+                revision_number INTEGER CHECK (
+                    revision_number IS NULL OR revision_number >= 1
+                ),
+                action TEXT NOT NULL CHECK (
+                    action IN (
+                        'initialize', 'deterministic_generation', 'regeneration',
+                        'user_edit', 'restore', 'export', 'concurrency_conflict'
+                    )
+                ),
+                involved_resource_ids_json TEXT NOT NULL,
+                outcome TEXT NOT NULL CHECK (outcome IN ('succeeded', 'rejected')),
+                reason_code TEXT,
+                created_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX visit_briefs_visit_idx ON visit_briefs(visit_id)",
+            (
+                "CREATE INDEX visit_brief_revisions_brief_number_idx "
+                "ON visit_brief_revisions(brief_id, revision_number DESC)"
+            ),
+            (
+                "CREATE INDEX visit_brief_evidence_revision_position_idx "
+                "ON visit_brief_evidence_selections(revision_id, position)"
+            ),
+            (
+                "CREATE INDEX visit_brief_audit_events_brief_created_idx "
+                "ON visit_brief_audit_events(brief_id, created_at)"
+            ),
+        ),
+    ),
 )
 
 

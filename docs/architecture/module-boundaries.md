@@ -44,8 +44,10 @@ workspace selection. The migration preserves legacy opaque person IDs with an
 family relationships, permissions, or per-person authorization. Phase 1E-A adds
 persisted Visits and user-authored Visit Questions. They are Person-scoped,
 explicitly ordered within a Visit, and separate from the transient deterministic
-Visit Brief. This does not add sources, evidence linkage, generated questions or
-answers, family relationships, or access control.
+Visit Brief. Phase 1E-B adds a separate Visit-scoped persisted Brief lifecycle:
+immutable revisions, selected confirmed-evidence snapshots, metadata-only audit
+events, integrity verification, and stale-state derivation. It does not add
+generated questions or answers, family relationships, or access control.
 
 ## Trust Foundation
 

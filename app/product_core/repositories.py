@@ -9,11 +9,15 @@ from app.product_core.models import (
     CandidateFact,
     CandidateStatus,
     CanonicalMedicationRecord,
+    PersistedVisitBrief,
+    PersistedVisitBriefRevision,
     Person,
     Source,
     SourceType,
     TimelineEvent,
     Visit,
+    VisitBriefAuditEvent,
+    VisitBriefEvidenceSelection,
     VisitQuestion,
     parse_utc_datetime,
 )
@@ -165,14 +169,55 @@ class VisitQuestionRepository(Protocol):
     ) -> None: ...
 
 
+class VisitBriefRepository(Protocol):
+    def get_by_visit(self, visit_id: str) -> PersistedVisitBrief | None: ...
+
+    def get(self, brief_id: str) -> PersistedVisitBrief | None: ...
+
+    def insert(self, brief: PersistedVisitBrief) -> None: ...
+
+    def update_current(
+        self,
+        brief_id: str,
+        revision_id: str,
+        updated_at: datetime,
+    ) -> None: ...
+
+
+class VisitBriefRevisionRepository(Protocol):
+    def get(self, revision_id: str) -> PersistedVisitBriefRevision | None: ...
+
+    def get_by_number(
+        self,
+        brief_id: str,
+        revision_number: int,
+    ) -> PersistedVisitBriefRevision | None: ...
+
+    def list_for_brief(self, brief_id: str) -> list[PersistedVisitBriefRevision]: ...
+
+    def insert(self, revision: PersistedVisitBriefRevision) -> None: ...
+
+
+class VisitBriefEvidenceRepository(Protocol):
+    def insert_many(
+        self, selections: list[VisitBriefEvidenceSelection], revision_id: str
+    ) -> None: ...
+
+    def list_for_revision(self, revision_id: str) -> list[VisitBriefEvidenceSelection]: ...
+
+
+class VisitBriefAuditRepository(Protocol):
+    def insert(self, event: VisitBriefAuditEvent) -> None: ...
+
+    def list_for_brief(self, brief_id: str) -> list[VisitBriefAuditEvent]: ...
+
+
 class SQLiteSourceRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self.connection = connection
 
     def get(self, source_id: str) -> Source | None:
-        row = self.connection.execute(
-            "SELECT * FROM sources WHERE id = ?", (source_id,)
-        ).fetchone()
+        row = self.connection.execute("SELECT * FROM sources WHERE id = ?", (source_id,)).fetchone()
         return None if row is None else _source_from_row(row)
 
     def find_by_deduplication(
@@ -513,6 +558,235 @@ class SQLiteVisitQuestionRepository:
             )
 
 
+class SQLiteVisitBriefRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get_by_visit(self, visit_id: str) -> PersistedVisitBrief | None:
+        row = self.connection.execute(
+            """
+            SELECT brief.*, revision.revision_number AS current_revision_number
+            FROM visit_briefs AS brief
+            LEFT JOIN visit_brief_revisions AS revision
+                ON revision.revision_id = brief.current_revision_id
+            WHERE brief.visit_id = ?
+            """,
+            (visit_id,),
+        ).fetchone()
+        return None if row is None else _persisted_visit_brief_from_row(row)
+
+    def get(self, brief_id: str) -> PersistedVisitBrief | None:
+        row = self.connection.execute(
+            """
+            SELECT brief.*, revision.revision_number AS current_revision_number
+            FROM visit_briefs AS brief
+            LEFT JOIN visit_brief_revisions AS revision
+                ON revision.revision_id = brief.current_revision_id
+            WHERE brief.brief_id = ?
+            """,
+            (brief_id,),
+        ).fetchone()
+        return None if row is None else _persisted_visit_brief_from_row(row)
+
+    def insert(self, brief: PersistedVisitBrief) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO visit_briefs (
+                brief_id, visit_id, current_revision_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                brief.brief_id,
+                brief.visit_id,
+                brief.current_revision_id,
+                brief.created_at.isoformat(),
+                brief.updated_at.isoformat(),
+            ),
+        )
+
+    def update_current(
+        self,
+        brief_id: str,
+        revision_id: str,
+        updated_at: datetime,
+    ) -> None:
+        self.connection.execute(
+            """
+            UPDATE visit_briefs
+            SET current_revision_id = ?, updated_at = ?
+            WHERE brief_id = ?
+            """,
+            (revision_id, updated_at.isoformat(), brief_id),
+        )
+
+
+class SQLiteVisitBriefRevisionRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get_by_number(
+        self,
+        brief_id: str,
+        revision_number: int,
+    ) -> PersistedVisitBriefRevision | None:
+        row = self.connection.execute(
+            """
+            SELECT * FROM visit_brief_revisions
+            WHERE brief_id = ? AND revision_number = ?
+            """,
+            (brief_id, revision_number),
+        ).fetchone()
+        return None if row is None else _persisted_visit_brief_revision_from_row(row)
+
+    def get(self, revision_id: str) -> PersistedVisitBriefRevision | None:
+        row = self.connection.execute(
+            "SELECT * FROM visit_brief_revisions WHERE revision_id = ?", (revision_id,)
+        ).fetchone()
+        return None if row is None else _persisted_visit_brief_revision_from_row(row)
+
+    def list_for_brief(self, brief_id: str) -> list[PersistedVisitBriefRevision]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM visit_brief_revisions
+            WHERE brief_id = ?
+            ORDER BY revision_number DESC
+            """,
+            (brief_id,),
+        ).fetchall()
+        return [_persisted_visit_brief_revision_from_row(row) for row in rows]
+
+    def insert(self, revision: PersistedVisitBriefRevision) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO visit_brief_revisions (
+                revision_id, brief_id, revision_number, origin, parent_revision_id,
+                content_schema_version, render_version, content_json,
+                rendered_markdown, content_hash, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                revision.revision_id,
+                revision.brief_id,
+                revision.revision_number,
+                revision.origin,
+                revision.parent_revision_id,
+                revision.content_schema_version,
+                revision.render_version,
+                json.dumps(
+                    revision.content,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                revision.rendered_markdown,
+                revision.content_hash,
+                revision.created_at.isoformat(),
+            ),
+        )
+
+
+class SQLiteVisitBriefEvidenceRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def insert_many(
+        self,
+        selections: list[VisitBriefEvidenceSelection],
+        revision_id: str,
+    ) -> None:
+        self.connection.executemany(
+            """
+            INSERT INTO visit_brief_evidence_selections (
+                revision_id, position, canonical_record_id, source_id, snapshot_json
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    revision_id,
+                    selection.position,
+                    selection.canonical_record_id,
+                    selection.source_id,
+                    json.dumps(
+                        selection.snapshot,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                )
+                for selection in selections
+            ],
+        )
+
+    def list_for_revision(self, revision_id: str) -> list[VisitBriefEvidenceSelection]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM visit_brief_evidence_selections
+            WHERE revision_id = ?
+            ORDER BY position ASC
+            """,
+            (revision_id,),
+        ).fetchall()
+        return [
+            VisitBriefEvidenceSelection(
+                canonical_record_id=row["canonical_record_id"],
+                source_id=row["source_id"],
+                position=row["position"],
+                snapshot=json.loads(row["snapshot_json"]),
+            )
+            for row in rows
+        ]
+
+
+class SQLiteVisitBriefAuditRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def insert(self, event: VisitBriefAuditEvent) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO visit_brief_audit_events (
+                audit_event_id, visit_id, brief_id, revision_number, action,
+                involved_resource_ids_json, outcome, reason_code, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event.audit_event_id,
+                event.visit_id,
+                event.brief_id,
+                event.revision_number,
+                event.action,
+                json.dumps(event.involved_resource_ids, ensure_ascii=False, separators=(",", ":")),
+                event.outcome,
+                event.reason_code,
+                event.created_at.isoformat(),
+            ),
+        )
+
+    def list_for_brief(self, brief_id: str) -> list[VisitBriefAuditEvent]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM visit_brief_audit_events
+            WHERE brief_id = ?
+            ORDER BY created_at ASC, audit_event_id ASC
+            """,
+            (brief_id,),
+        ).fetchall()
+        return [
+            VisitBriefAuditEvent(
+                audit_event_id=row["audit_event_id"],
+                visit_id=row["visit_id"],
+                brief_id=row["brief_id"],
+                revision_number=row["revision_number"],
+                action=row["action"],
+                involved_resource_ids=json.loads(row["involved_resource_ids_json"]),
+                outcome=row["outcome"],
+                reason_code=row["reason_code"],
+                created_at=parse_utc_datetime(row["created_at"]),
+            )
+            for row in rows
+        ]
+
+
 def _source_from_row(row: sqlite3.Row) -> Source:
     return Source(
         id=row["id"],
@@ -608,4 +882,33 @@ def _visit_question_from_row(row: sqlite3.Row) -> VisitQuestion:
         position=row["position"],
         created_at=parse_utc_datetime(row["created_at"]),
         updated_at=parse_utc_datetime(row["updated_at"]),
+    )
+
+
+def _persisted_visit_brief_from_row(row: sqlite3.Row) -> PersistedVisitBrief:
+    return PersistedVisitBrief(
+        brief_id=row["brief_id"],
+        visit_id=row["visit_id"],
+        current_revision_id=row["current_revision_id"],
+        current_revision_number=row["current_revision_number"],
+        created_at=parse_utc_datetime(row["created_at"]),
+        updated_at=parse_utc_datetime(row["updated_at"]),
+    )
+
+
+def _persisted_visit_brief_revision_from_row(
+    row: sqlite3.Row,
+) -> PersistedVisitBriefRevision:
+    return PersistedVisitBriefRevision(
+        revision_id=row["revision_id"],
+        brief_id=row["brief_id"],
+        revision_number=row["revision_number"],
+        origin=row["origin"],
+        parent_revision_id=row["parent_revision_id"],
+        content_schema_version=row["content_schema_version"],
+        render_version=row["render_version"],
+        content=json.loads(row["content_json"]),
+        rendered_markdown=row["rendered_markdown"],
+        content_hash=row["content_hash"],
+        created_at=parse_utc_datetime(row["created_at"]),
     )

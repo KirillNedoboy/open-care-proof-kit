@@ -163,9 +163,9 @@ class VisitBriefGenerateRequest(APIModel):
     visit_purpose: str | None = Field(default=None, max_length=MAX_VISIT_TITLE_LENGTH)
     scheduled_date: str | None = Field(default=None, max_length=MAX_VISIT_TITLE_LENGTH)
     generated_at: datetime
-    selected_record_ids: list[
-        Annotated[str, Field(min_length=1, max_length=MAX_ID_LENGTH)]
-    ] | None = Field(
+    selected_record_ids: (
+        list[Annotated[str, Field(min_length=1, max_length=MAX_ID_LENGTH)]] | None
+    ) = Field(
         default=None,
         max_length=MAX_SELECTED_RECORDS,
     )
@@ -359,6 +359,88 @@ class VisitBriefResponse(APIModel):
     records: list[VisitBriefRecordResponse]
     source_references: list[str]
     markdown: str
+
+
+class VisitBriefInitializeResponse(APIModel):
+    visit_id: str
+    current_revision_number: int | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class VisitBriefEvidenceRequest(APIModel):
+    selected_record_ids: list[Annotated[str, Field(min_length=1, max_length=MAX_ID_LENGTH)]] = (
+        Field(max_length=MAX_SELECTED_RECORDS)
+    )
+
+    @field_validator("selected_record_ids")
+    @classmethod
+    def validate_record_ids(cls, values: list[str]) -> list[str]:
+        for value in values:
+            _validate_identifier(value)
+        if len(values) != len(set(values)):
+            raise ValueError("selected_record_ids must be unique")
+        return values
+
+
+class VisitBriefGenerateRevisionRequest(VisitBriefEvidenceRequest):
+    expected_current_revision_number: int | None = Field(..., ge=1)
+
+
+class VisitBriefUserEditRequest(APIModel):
+    preparation_notes: str = Field(max_length=MAX_NOTE_LENGTH)
+    expected_current_revision_number: int = Field(ge=1)
+
+    @field_validator("preparation_notes")
+    @classmethod
+    def validate_notes(cls, value: str) -> str:
+        return (
+            _reject_control_characters(value, "preparation_notes") if "\n" not in value else value
+        )
+
+
+class VisitBriefRestoreRequest(APIModel):
+    revision_number: int = Field(ge=1)
+    expected_current_revision_number: int = Field(ge=1)
+
+
+class VisitBriefStalenessResponse(APIModel):
+    state: Literal["current", "stale", "unavailable"]
+    reasons: list[str]
+
+
+class VisitBriefRevisionResponse(APIModel):
+    revision_number: int
+    origin: Literal["deterministic_generation", "user_edit", "regeneration"]
+    parent_revision_number: int | None
+    content_schema_version: int
+    render_version: int
+    created_at: datetime
+    content: dict[str, Any]
+    markdown: str
+    staleness: VisitBriefStalenessResponse
+
+
+class VisitBriefRevisionListResponse(APIModel):
+    revisions: list[VisitBriefRevisionResponse]
+
+
+class VisitBriefResponseV2(APIModel):
+    visit_id: str
+    current_revision_number: int | None
+    created_at: datetime
+    updated_at: datetime
+    current_revision: VisitBriefRevisionResponse | None
+
+
+class VisitBriefEligibleEvidenceResponse(APIModel):
+    evidence: list[dict[str, Any]]
+
+
+class VisitBriefEvidenceValidationResponse(APIModel):
+    valid: bool
+    selection_fingerprint: str
+    evidence: list[dict[str, Any]]
 
 
 class ErrorResponse(APIModel):

@@ -2,7 +2,7 @@
   "use strict";
 
   const api = "/api/product-core/v1";
-  const state = { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, brief: null, loadVersion: 0 };
+  const state = { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, loadVersion: 0 };
   const byId = (id) => document.getElementById(id);
   const make = (tag, value = "", className = "") => { const node = document.createElement(tag); node.textContent = value; node.className = className; return node; };
   const clear = (node) => node.replaceChildren();
@@ -17,11 +17,15 @@
     return body;
   }
 
+  async function requestText(path, options = {}) {
+    const response = await fetch(api + path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
+    if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
+    return response.text();
+  }
+
   function enableWorkspace(enabled) {
     byId("workspace-content").setAttribute("aria-disabled", String(!enabled));
     byId("workspace-content").querySelectorAll("input, textarea, select, button").forEach((item) => { item.disabled = !enabled; });
-    byId("include-all").checked = true;
-    byId("medication-selection").disabled = true;
     byId("edit-profile").disabled = !enabled;
   }
 
@@ -70,7 +74,7 @@
         request(`/people/${encodeURIComponent(personId)}/visits`),
       ]);
       if (version !== state.loadVersion) return;
-      Object.assign(state, { person, candidates: candidates.candidates, medications: medications.medications, timeline: timeline.events, visits: visits.visits, visit: null, questions: [], editingQuestion: null, brief: null });
+      Object.assign(state, { person, candidates: candidates.candidates, medications: medications.medications, timeline: timeline.events, visits: visits.visits, visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false });
       renderPersonContext(); render(); enableWorkspace(true); status("Workspace loaded.", "success");
     } catch (error) { status(error.message, "error"); }
   }
@@ -105,9 +109,7 @@
     state.medications.forEach((item) => medications.append(make("article", `${item.display_name} — Confirmed: ${item.confirmed_at} · Source: ${item.source_id}`, "record")));
     if (!state.timeline.length) timeline.append(make("p", "No Product Core timeline events are available.", "meta"));
     state.timeline.forEach((item) => timeline.append(make("article", `${item.title} — ${item.event_at} · ${item.event_type}`, "record")));
-    const options = byId("brief-medication-options"); clear(options);
-    state.medications.filter((item) => item.is_active).forEach((item) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.name = "record"; input.value = item.id; label.append(input, document.createTextNode(` ${item.display_name}`)); options.append(label); });
-    renderVisitPlanning();
+    renderVisitPlanning(); renderPersistedBrief();
   }
 
   function renderVisitPlanning() {
@@ -155,10 +157,54 @@
   async function selectVisit(visit, trigger) {
     try {
       const response = await request(`/visits/${encodeURIComponent(visit.visit_id)}/questions`);
-      state.visit = visit; state.questions = response.questions; state.editingQuestion = null; renderVisitPlanning();
+      state.visit = visit; state.questions = response.questions; state.editingQuestion = null; state.persistedBrief = null; state.briefRevision = null; state.briefEvidence = []; state.briefDirty = false; renderVisitPlanning(); await loadPersistedBrief();
       byId("new-visit-question").focus();
     } catch (error) { status(error.message, "error"); trigger.focus(); }
   }
+
+  function selectedEvidenceIds() {
+    return [...document.querySelectorAll('input[name="brief-record"]:checked')].map((item) => item.value);
+  }
+
+  function renderPersistedBrief() {
+    const hasVisit = Boolean(state.visit), hasBrief = Boolean(state.persistedBrief);
+    byId("initialize-brief").hidden = !hasVisit || hasBrief;
+    byId("initialize-brief").disabled = !hasVisit;
+    byId("brief-workflow").hidden = !hasBrief;
+    byId("brief-status").textContent = !hasVisit ? "Select a Visit to prepare its Brief." : !hasBrief ? "Initialize a persistent Brief for this Visit." : state.briefRevision ? `Viewing revision ${state.briefRevision.revision_number}.` : "Choose evidence and generate the first revision.";
+    const options = byId("brief-medication-options"); clear(options);
+    state.briefEvidence.forEach((item) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.name = "brief-record"; input.value = item.canonical_record_id; input.checked = Boolean(state.briefRevision?.content?.medications?.some((medication) => medication.canonical_record_id === item.canonical_record_id)); label.append(input, document.createTextNode(` ${item.display_name}`)); options.append(label); });
+    byId("brief-evidence-selection").disabled = !hasBrief;
+    byId("validate-brief-evidence").disabled = !hasBrief;
+    byId("generate-brief").disabled = !hasBrief;
+    byId("brief-preparation-notes").disabled = !state.briefRevision;
+    byId("save-brief-notes").disabled = !state.briefRevision || !state.briefDirty;
+    byId("brief-unsaved-warning").hidden = !state.briefDirty;
+    if (state.briefRevision) {
+      byId("brief-preparation-notes").value = state.briefRevision.content.preparation_notes || "";
+      byId("brief-metadata").textContent = `Revision ${state.briefRevision.revision_number} · ${state.briefRevision.origin} · ${state.briefRevision.staleness.state}`;
+      byId("brief-markdown").textContent = state.briefRevision.markdown;
+      byId("brief-result").hidden = false;
+    } else { byId("brief-result").hidden = true; }
+    renderBriefRevisions();
+  }
+
+  function renderBriefRevisions() {
+    const target = byId("brief-revisions"); clear(target);
+    const revisions = state.persistedBrief?.revisions || [];
+    if (!state.persistedBrief || !revisions.length) { target.append(make("p", state.persistedBrief ? "No revisions have been created." : "", "meta")); return; }
+    revisions.forEach((revision) => { const card = make("article", "", "record"), view = make("button", `View revision ${revision.revision_number}`), restore = make("button", `Restore revision ${revision.revision_number}`); view.type = restore.type = "button"; view.addEventListener("click", () => loadBriefRevision(revision.revision_number, view)); restore.disabled = revision.revision_number === state.persistedBrief.current_revision_number; restore.addEventListener("click", () => restoreBriefRevision(revision.revision_number, restore)); card.append(make("strong", `Revision ${revision.revision_number} · ${revision.origin}`), make("p", `State: ${revision.staleness.state}`, "meta"), view, restore); target.append(card); });
+  }
+
+  async function loadPersistedBrief() {
+    if (!state.visit) return;
+    try { state.persistedBrief = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief`); await Promise.all([loadBriefEvidence(), loadBriefHistory()]); state.briefRevision = state.persistedBrief.current_revision; renderPersistedBrief(); }
+    catch (error) { if (error.message === "That profile or record is not available.") { state.persistedBrief = null; renderPersistedBrief(); return; } status(error.message, "error"); }
+  }
+
+  async function loadBriefEvidence() { if (!state.visit) return; const response = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/evidence`); state.briefEvidence = response.evidence; }
+  async function loadBriefHistory() { if (!state.visit || !state.persistedBrief) return; const response = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/revisions`); state.persistedBrief.revisions = response.revisions; }
+  async function loadBriefRevision(number, trigger) { if (!state.visit) return; try { state.briefRevision = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/revisions/${number}`); state.briefDirty = false; renderPersistedBrief(); byId("brief-preparation-notes").focus(); } catch (error) { status(error.message, "error"); trigger.focus(); } }
 
   async function moveQuestion(question, position, trigger) {
     trigger.disabled = true;
@@ -193,7 +239,7 @@
   }
 
   function clearWorkspace() {
-    Object.assign(state, { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, brief: null });
+    Object.assign(state, { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false });
     byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; renderPersonContext(); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status("Profile selection cleared.");
   }
 
@@ -201,7 +247,6 @@
   byId("load-workspace").addEventListener("click", loadWorkspace);
   byId("clear-workspace").addEventListener("click", clearWorkspace);
   byId("history-filter").addEventListener("change", render);
-  byId("include-all").addEventListener("change", () => { byId("medication-selection").disabled = byId("include-all").checked; });
   byId("create-profile-form").addEventListener("submit", async (event) => { event.preventDefault(); const submit = event.submitter; submit.disabled = true; try { const person = await request("/people", { method: "POST", body: JSON.stringify({ display_name: byId("create-display-name").value, date_of_birth: byId("create-date-of-birth").value || null }) }); state.person = person; await refreshPeople(person); byId("create-profile-form").reset(); await loadWorkspace(); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
   byId("edit-profile").addEventListener("click", () => { if (!state.person) return; byId("edit-display-name").value = state.person.display_name; byId("edit-date-of-birth").value = state.person.date_of_birth || ""; byId("edit-profile-form").hidden = false; byId("edit-display-name").focus(); });
   byId("cancel-edit-profile").addEventListener("click", () => { byId("edit-profile-form").hidden = true; });
@@ -213,9 +258,14 @@
   byId("visit-question-form").addEventListener("submit", async (event) => { event.preventDefault(); if (!state.visit) return; const submit = event.submitter; submit.disabled = true; try { await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/questions`, { method: "POST", body: JSON.stringify({ question_text: byId("new-visit-question").value }) }); event.target.reset(); await selectVisit(state.visit, submit); status("Question added.", "success"); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
   byId("edit-visit-question-form").addEventListener("submit", async (event) => { event.preventDefault(); if (!state.editingQuestion) return; const submit = event.submitter, editing = state.editingQuestion; submit.disabled = true; try { await request(`/visit-questions/${encodeURIComponent(editing.question.question_id)}`, { method: "PATCH", body: JSON.stringify({ question_text: byId("edit-visit-question").value }) }); state.editingQuestion = null; byId("edit-visit-question-form").hidden = true; await selectVisit(state.visit, submit); status("Question updated.", "success"); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
   byId("cancel-edit-visit-question").addEventListener("click", () => { const trigger = state.editingQuestion?.trigger; state.editingQuestion = null; byId("edit-visit-question-form").hidden = true; if (trigger) trigger.focus(); });
-  byId("visit-brief-form").addEventListener("submit", async (event) => { event.preventDefault(); if (!state.person) return; const submit = event.submitter; submit.disabled = true; const selected = byId("include-all").checked ? null : [...document.querySelectorAll('input[name="record"]:checked')].map((item) => item.value); try { const brief = await request(`/people/${encodeURIComponent(state.person.person_id)}/visit-briefs:generate`, { method: "POST", body: JSON.stringify({ visit_title: byId("visit-title").value, generated_at: new Date().toISOString(), scheduled_date: byId("scheduled-date").value || null, selected_record_ids: selected }) }); state.brief = brief; byId("brief-metadata").textContent = `Generated: ${brief.generated_at}`; byId("brief-markdown").textContent = brief.markdown; byId("brief-result").hidden = false; status("Visit Brief generated.", "success"); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
-  byId("copy-brief").addEventListener("click", async () => { if (!state.brief) return; try { await navigator.clipboard.writeText(state.brief.markdown); status("Markdown copied.", "success"); } catch (_) { status("Copy is unavailable in this browser.", "error"); } });
-  byId("download-brief").addEventListener("click", () => { if (!state.brief) return; const blob = new Blob([state.brief.markdown], { type: "text/markdown;charset=utf-8" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "opencare-visit-brief.md"; link.click(); URL.revokeObjectURL(link.href); });
+  byId("initialize-brief").addEventListener("click", async (event) => { if (!state.visit) return; const button = event.currentTarget; button.disabled = true; try { state.persistedBrief = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief`, { method: "POST", body: "{}" }); state.persistedBrief.revisions = []; state.briefRevision = null; await loadBriefEvidence(); renderPersistedBrief(); status("Visit Brief initialized.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
+  byId("validate-brief-evidence").addEventListener("click", async (event) => { if (!state.visit) return; const button = event.currentTarget; button.disabled = true; try { await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/evidence:validate`, { method: "POST", body: JSON.stringify({ selected_record_ids: selectedEvidenceIds() }) }); status("Selected evidence is valid.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
+  byId("generate-brief").addEventListener("click", async (event) => { if (!state.visit || !state.persistedBrief) return; const button = event.currentTarget; button.disabled = true; try { state.briefRevision = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/revisions:generate`, { method: "POST", body: JSON.stringify({ selected_record_ids: selectedEvidenceIds(), expected_current_revision_number: state.persistedBrief.current_revision_number }) }); state.persistedBrief.current_revision_number = state.briefRevision.revision_number; state.briefDirty = false; await loadBriefHistory(); renderPersistedBrief(); status("Visit Brief revision generated.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
+  byId("brief-preparation-notes").addEventListener("input", () => { state.briefDirty = true; byId("save-brief-notes").disabled = false; byId("brief-unsaved-warning").hidden = false; });
+  byId("save-brief-notes").addEventListener("click", async (event) => { if (!state.visit || !state.persistedBrief?.current_revision_number) return; const button = event.currentTarget; button.disabled = true; try { state.briefRevision = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/revisions:user-edit`, { method: "POST", body: JSON.stringify({ preparation_notes: byId("brief-preparation-notes").value, expected_current_revision_number: state.persistedBrief.current_revision_number }) }); state.persistedBrief.current_revision_number = state.briefRevision.revision_number; state.briefDirty = false; await loadBriefHistory(); renderPersistedBrief(); status("Preparation notes saved as a new revision.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
+  async function restoreBriefRevision(number, trigger) { if (!state.visit || !state.persistedBrief?.current_revision_number) return; trigger.disabled = true; try { state.persistedBrief = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/current`, { method: "POST", body: JSON.stringify({ revision_number: number, expected_current_revision_number: state.persistedBrief.current_revision_number }) }); await loadBriefHistory(); state.briefRevision = await request(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/revisions/${number}`); state.briefDirty = false; renderPersistedBrief(); status("Current Brief revision restored.", "success"); } catch (error) { status(error.message, "error"); trigger.disabled = false; } }
+  byId("copy-brief").addEventListener("click", async () => { if (!state.briefRevision) return; try { await navigator.clipboard.writeText(state.briefRevision.markdown); status("Markdown copied.", "success"); } catch (_) { status("Copy is unavailable in this browser.", "error"); } });
+  byId("download-brief").addEventListener("click", async () => { if (!state.visit) return; try { const markdown = await requestText(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/current:export`, { method: "POST", body: "{}" }); const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `opencare-visit-brief-r${state.persistedBrief.current_revision_number}.md`; link.click(); URL.revokeObjectURL(link.href); status("Markdown download prepared.", "success"); } catch (error) { status(error.message, "error"); } });
 
   enableWorkspace(false); renderPeople([]); refreshPeople().catch((error) => { status(error.message, "error"); });
 })();

@@ -54,6 +54,30 @@ class VisitQuestionNotFoundError(NotFoundError):
     """Raised when a requested visit question does not exist."""
 
 
+class VisitBriefNotFoundError(NotFoundError):
+    """Raised when a requested persisted visit brief does not exist."""
+
+
+class VisitBriefRevisionNotFoundError(NotFoundError):
+    """Raised when a requested persisted visit brief revision does not exist."""
+
+
+class VisitBriefAlreadyExistsError(ProductCoreError):
+    """Raised when a Visit already has its one logical brief."""
+
+
+class VisitBriefConflictError(ProductCoreError):
+    """Raised when a request is based on a stale current revision pointer."""
+
+
+class VisitBriefValidationError(ProductCoreError, ValueError):
+    """Raised when persisted brief input violates lifecycle rules."""
+
+
+class VisitBriefIntegrityError(IntegrityStorageError):
+    """Raised when a persisted Visit Brief cannot be verified safely."""
+
+
 class VisitValidationError(ProductCoreError, ValueError):
     """Raised when a visit-planning value violates a domain constraint."""
 

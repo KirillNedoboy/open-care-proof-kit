@@ -31,8 +31,19 @@ from app.product_core.api_models import (
     SourceResponse,
     TimelineEventResponse,
     TimelineResponse,
+    VisitBriefEligibleEvidenceResponse,
+    VisitBriefEvidenceRequest,
+    VisitBriefEvidenceValidationResponse,
     VisitBriefGenerateRequest,
+    VisitBriefGenerateRevisionRequest,
+    VisitBriefInitializeResponse,
     VisitBriefResponse,
+    VisitBriefResponseV2,
+    VisitBriefRestoreRequest,
+    VisitBriefRevisionListResponse,
+    VisitBriefRevisionResponse,
+    VisitBriefStalenessResponse,
+    VisitBriefUserEditRequest,
     VisitCreateRequest,
     VisitListResponse,
     VisitQuestionCreateRequest,
@@ -59,6 +70,11 @@ from app.product_core.errors import (
     SourceNotFoundError,
     SourcePublicationError,
     UnsafeSourcePathError,
+    VisitBriefAlreadyExistsError,
+    VisitBriefConflictError,
+    VisitBriefNotFoundError,
+    VisitBriefRevisionNotFoundError,
+    VisitBriefValidationError,
     VisitNotFoundError,
     VisitQuestionNotFoundError,
     VisitValidationError,
@@ -102,12 +118,24 @@ def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
         return _error_response(422, "request_validation_failed", "The request is invalid.")
     if isinstance(exc, VisitValidationError):
         return _error_response(422, "request_validation_failed", "The request is invalid.")
+    if isinstance(exc, VisitBriefValidationError):
+        return _error_response(422, "request_validation_failed", "The request is invalid.")
     if isinstance(exc, PersonNotFoundError):
         return _error_response(404, "person_not_found", "Person was not found.")
     if isinstance(exc, VisitNotFoundError):
         return _error_response(404, "visit_not_found", "Visit was not found.")
     if isinstance(exc, VisitQuestionNotFoundError):
         return _error_response(404, "visit_question_not_found", "Visit question was not found.")
+    if isinstance(exc, VisitBriefNotFoundError):
+        return _error_response(404, "visit_brief_not_found", "Visit Brief was not found.")
+    if isinstance(exc, VisitBriefRevisionNotFoundError):
+        return _error_response(
+            404, "visit_brief_revision_not_found", "Visit Brief revision was not found."
+        )
+    if isinstance(exc, VisitBriefAlreadyExistsError):
+        return _error_response(409, "visit_brief_already_exists", "Visit Brief already exists.")
+    if isinstance(exc, VisitBriefConflictError):
+        return _error_response(409, "visit_brief_conflict", "Visit Brief changed.")
     if isinstance(exc, SourceNotFoundError):
         return _error_response(404, "source_not_found", "Source was not found.")
     if isinstance(exc, CandidateNotFoundError):
@@ -313,6 +341,56 @@ def _visit_question_response(question: Any) -> VisitQuestionResponse:
     )
 
 
+def _persisted_revision_response(
+    runtime: ProductCoreRuntime,
+    visit_id: str,
+    revision: Any,
+) -> VisitBriefRevisionResponse:
+    parent_revision_number: int | None = None
+    if revision.parent_revision_id is not None:
+        with runtime.database.uow() as uow:
+            parent = uow.visit_brief_revisions.get(revision.parent_revision_id)
+        parent_revision_number = None if parent is None else parent.revision_number
+    staleness = runtime.persisted_visit_briefs.staleness(visit_id, revision.revision_number)
+    return VisitBriefRevisionResponse(
+        revision_number=revision.revision_number,
+        origin=revision.origin,
+        parent_revision_number=parent_revision_number,
+        content_schema_version=revision.content_schema_version,
+        render_version=revision.render_version,
+        created_at=revision.created_at,
+        content=revision.content,
+        markdown=revision.rendered_markdown,
+        staleness=VisitBriefStalenessResponse(
+            state=staleness.state,
+            reasons=staleness.reasons,
+        ),
+    )
+
+
+def _persisted_brief_response(
+    runtime: ProductCoreRuntime,
+    visit_id: str,
+    brief: Any,
+) -> VisitBriefResponseV2:
+    current_revision = (
+        None
+        if brief.current_revision_number is None
+        else _persisted_revision_response(
+            runtime,
+            visit_id,
+            runtime.persisted_visit_briefs.get_revision(visit_id, brief.current_revision_number),
+        )
+    )
+    return VisitBriefResponseV2(
+        visit_id=visit_id,
+        current_revision_number=brief.current_revision_number,
+        created_at=brief.created_at,
+        updated_at=brief.updated_at,
+        current_revision=current_revision,
+    )
+
+
 @router.post(
     "/people",
     response_model=PersonResponse,
@@ -414,9 +492,7 @@ def create_visit_question(
     payload: VisitQuestionCreateRequest,
     runtime: RuntimeDependency,
 ) -> VisitQuestionResponse:
-    return _visit_question_response(
-        runtime.visits.create_question(visit_id, payload.question_text)
-    )
+    return _visit_question_response(runtime.visits.create_question(visit_id, payload.question_text))
 
 
 @router.get(
@@ -681,6 +757,201 @@ def list_timeline(
 ) -> TimelineResponse:
     events = runtime.lifecycle.list_timeline(person_id)
     return TimelineResponse(events=[_timeline_response(event) for event in events])
+
+
+@router.post(
+    "/visits/{visit_id}/brief",
+    response_model=VisitBriefInitializeResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_initialize_persisted_visit_brief",
+)
+def initialize_persisted_visit_brief(
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    _payload: Annotated[EmptyActionRequest | None, Body()] = None,
+) -> VisitBriefInitializeResponse:
+    brief = runtime.persisted_visit_briefs.initialize(visit_id)
+    return VisitBriefInitializeResponse(
+        visit_id=brief.visit_id,
+        current_revision_number=brief.current_revision_number,
+        created_at=brief.created_at,
+        updated_at=brief.updated_at,
+    )
+
+
+@router.get(
+    "/visits/{visit_id}/brief",
+    response_model=VisitBriefResponseV2,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_persisted_visit_brief",
+)
+def get_persisted_visit_brief(
+    visit_id: ProductCoreIdentifier, runtime: RuntimeDependency
+) -> VisitBriefResponseV2:
+    return _persisted_brief_response(
+        runtime, visit_id, runtime.persisted_visit_briefs.get(visit_id)
+    )
+
+
+@router.get(
+    "/visits/{visit_id}/brief/revisions",
+    response_model=VisitBriefRevisionListResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_list_persisted_visit_brief_revisions",
+)
+def list_persisted_visit_brief_revisions(
+    visit_id: ProductCoreIdentifier, runtime: RuntimeDependency
+) -> VisitBriefRevisionListResponse:
+    return VisitBriefRevisionListResponse(
+        revisions=[
+            _persisted_revision_response(runtime, visit_id, revision)
+            for revision in runtime.persisted_visit_briefs.list_revisions(visit_id)
+        ]
+    )
+
+
+@router.get(
+    "/visits/{visit_id}/brief/revisions/{revision_number}",
+    response_model=VisitBriefRevisionResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_persisted_visit_brief_revision",
+)
+def get_persisted_visit_brief_revision(
+    visit_id: ProductCoreIdentifier,
+    revision_number: Annotated[int, Path(ge=1)],
+    runtime: RuntimeDependency,
+) -> VisitBriefRevisionResponse:
+    return _persisted_revision_response(
+        runtime,
+        visit_id,
+        runtime.persisted_visit_briefs.get_revision(visit_id, revision_number),
+    )
+
+
+@router.get(
+    "/visits/{visit_id}/brief/evidence",
+    response_model=VisitBriefEligibleEvidenceResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_list_visit_brief_eligible_evidence",
+)
+def list_persisted_visit_brief_evidence(
+    visit_id: ProductCoreIdentifier, runtime: RuntimeDependency
+) -> VisitBriefEligibleEvidenceResponse:
+    return VisitBriefEligibleEvidenceResponse(
+        evidence=runtime.persisted_visit_briefs.list_eligible_evidence(visit_id)
+    )
+
+
+@router.post(
+    "/visits/{visit_id}/brief/evidence:validate",
+    response_model=VisitBriefEvidenceValidationResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_validate_visit_brief_evidence",
+)
+def validate_persisted_visit_brief_evidence(
+    visit_id: ProductCoreIdentifier,
+    payload: VisitBriefEvidenceRequest,
+    runtime: RuntimeDependency,
+) -> VisitBriefEvidenceValidationResponse:
+    return VisitBriefEvidenceValidationResponse.model_validate(
+        runtime.persisted_visit_briefs.validate_evidence_selection(
+            visit_id, payload.selected_record_ids
+        )
+    )
+
+
+@router.post(
+    "/visits/{visit_id}/brief/revisions:generate",
+    response_model=VisitBriefRevisionResponse,
+    responses={
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+    status_code=201,
+    operation_id="product_core_generate_persisted_visit_brief_revision",
+)
+def generate_persisted_visit_brief_revision(
+    visit_id: ProductCoreIdentifier,
+    payload: VisitBriefGenerateRevisionRequest,
+    runtime: RuntimeDependency,
+) -> VisitBriefRevisionResponse:
+    revision = runtime.persisted_visit_briefs.generate(
+        visit_id,
+        selected_record_ids=payload.selected_record_ids,
+        expected_current_revision_number=payload.expected_current_revision_number,
+    )
+    return _persisted_revision_response(runtime, visit_id, revision)
+
+
+@router.post(
+    "/visits/{visit_id}/brief/revisions:user-edit",
+    response_model=VisitBriefRevisionResponse,
+    responses={
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+    status_code=201,
+    operation_id="product_core_save_persisted_visit_brief_user_edit",
+)
+def save_persisted_visit_brief_user_edit(
+    visit_id: ProductCoreIdentifier,
+    payload: VisitBriefUserEditRequest,
+    runtime: RuntimeDependency,
+) -> VisitBriefRevisionResponse:
+    revision = runtime.persisted_visit_briefs.save_user_edit(
+        visit_id,
+        preparation_notes=payload.preparation_notes,
+        expected_current_revision_number=payload.expected_current_revision_number,
+    )
+    return _persisted_revision_response(runtime, visit_id, revision)
+
+
+@router.post(
+    "/visits/{visit_id}/brief/current",
+    response_model=VisitBriefResponseV2,
+    responses={
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+    operation_id="product_core_restore_persisted_visit_brief_revision",
+)
+def restore_persisted_visit_brief_revision(
+    visit_id: ProductCoreIdentifier,
+    payload: VisitBriefRestoreRequest,
+    runtime: RuntimeDependency,
+) -> VisitBriefResponseV2:
+    brief = runtime.persisted_visit_briefs.restore(
+        visit_id,
+        revision_number=payload.revision_number,
+        expected_current_revision_number=payload.expected_current_revision_number,
+    )
+    return _persisted_brief_response(runtime, visit_id, brief)
+
+
+@router.post(
+    "/visits/{visit_id}/brief/current:export",
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_export_current_persisted_visit_brief",
+)
+def export_current_persisted_visit_brief(
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    _payload: Annotated[EmptyActionRequest | None, Body()] = None,
+) -> Response:
+    markdown, revision_number = runtime.persisted_visit_briefs.export_current(visit_id)
+    return Response(
+        content=markdown.encode("utf-8"),
+        media_type="text/markdown",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="opencare-visit-brief-r{revision_number}.md"'
+            )
+        },
+    )
 
 
 @router.post(

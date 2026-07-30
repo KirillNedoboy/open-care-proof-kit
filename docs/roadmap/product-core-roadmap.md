@@ -132,15 +132,16 @@ family relationships, or AI-generated questions or answers.
 
 ## Phase 1E-B: persisted editable Visit Briefs
 
-Phase 1E-B is specified in [ADR 0003](../adr/0003-persisted-visit-briefs.md)
-and the [Visit Brief lifecycle](../architecture/visit-brief-lifecycle.md). It
-will connect one persisted Brief to a Visit, retain immutable revision history,
-select only confirmed medication evidence, include ordered Visit Questions, and
-render deterministic Markdown with separately editable preparation notes.
+Phase 1E-B is implemented according to [ADR 0003](../adr/0003-persisted-visit-briefs.md)
+and the [Visit Brief lifecycle](../architecture/visit-brief-lifecycle.md). One
+persisted Brief belongs to a Visit; immutable revisions retain selected confirmed
+medication evidence and ordered Visit Questions. Deterministic Markdown,
+separately editable preparation notes, restoration, integrity checks, derived
+stale state, and metadata-only export auditing are implemented.
 
-The implementation will calculate freshness from snapshots and live evidence;
-it will not overwrite user edits during regeneration. Evidence, revisions, and
-current-pointer changes will be transaction-bound and source-linked. The phase
+The implementation calculates freshness from snapshots and live evidence; it
+does not overwrite user edits during regeneration. Evidence, revisions, and
+current-pointer changes are transaction-bound and source-linked. The phase
 does not add JSON vault export, backup/recovery, PDF, upload/OCR, AI or external
 providers, identity/permissions, family relationships, Sentient work, or
 EvoSkill.

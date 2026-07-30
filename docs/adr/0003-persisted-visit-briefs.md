@@ -1,6 +1,6 @@
 # ADR 0003: Persisted Visit Briefs and immutable revisions
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
 - Decision owners: OpenCare maintainers
 
@@ -19,6 +19,10 @@ timeline events, sources, and candidate facts retain their present ownership.
 They are not revised by Brief operations.
 
 ## Decision
+
+Implemented in Product Core schema v4. The transient `VisitBriefService` and
+`POST /people/{person_id}/visit-briefs:generate` remain compatibility behavior;
+the persisted lifecycle is Visit-scoped.
 
 ### Brief ownership and revisions
 

@@ -24,7 +24,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2, 3]
+        ] == [1, 2, 3, 4]
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         table_names = {
             row[0]
@@ -41,6 +41,10 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
         "timeline_events",
         "visits",
         "visit_questions",
+        "visit_briefs",
+        "visit_brief_revisions",
+        "visit_brief_evidence_selections",
+        "visit_brief_audit_events",
     }.issubset(table_names)
 
 
@@ -143,7 +147,7 @@ def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path
     with database.connect() as connection:
         assert [row[0] for row in connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version"
-        ).fetchall()] == [1, 2, 3]
+        ).fetchall()] == [1, 2, 3, 4]
         person_name = connection.execute(
             "SELECT display_name FROM people WHERE person_id = 'person-1'"
         ).fetchone()[0]
@@ -160,7 +164,36 @@ def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 ("visit-missing", "missing", "Visit", None, None,
-                 "2026-07-30T00:00:00+00:00", "2026-07-30T00:00:00+00:00"),
+                "2026-07-30T00:00:00+00:00", "2026-07-30T00:00:00+00:00"),
+            )
+
+
+def test_phase_1e_b_upgrade_from_version_three_preserves_visits(tmp_path: Path) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    MigrationRunner(database.connect, migrations=PRODUCT_MIGRATIONS[:3]).migrate()
+    timestamp = "2026-07-30T00:00:00+00:00"
+    with database.connect() as connection:
+        connection.execute(
+            "INSERT INTO people VALUES (?, ?, ?, ?, ?, ?)",
+            ("person-1", "Ada", None, timestamp, timestamp, 1),
+        )
+        connection.execute(
+            "INSERT INTO visits VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("visit-1", "person-1", "Review", None, None, timestamp, timestamp),
+        )
+
+    database.migrate()
+
+    with database.connect() as connection:
+        title = connection.execute(
+            "SELECT title FROM visits WHERE visit_id = 'visit-1'"
+        ).fetchone()[0]
+        assert title == "Review"
+        assert connection.execute("SELECT COUNT(*) FROM visit_briefs").fetchone()[0] == 0
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO visit_briefs VALUES (?, ?, ?, ?, ?)",
+                ("brief-bad", "unknown-visit", None, timestamp, timestamp),
             )
 
 
@@ -276,7 +309,7 @@ finally:
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
         ]
-        assert versions == [1, 2, 3]
+        assert versions == [1, 2, 3, 4]
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
         ).fetchone() is not None

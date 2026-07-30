@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.config import Settings
+from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
 from app.product_core.services import (
     Clock,
     IdFactory,
@@ -25,6 +26,7 @@ class ProductCoreRuntime:
     people: PeopleService
     lifecycle: MedicationLifecycleService
     visit_briefs: VisitBriefService
+    persisted_visit_briefs: PersistedVisitBriefService
     visits: VisitPlanningService
     clock: Clock
     id_factory: IdFactory
@@ -37,14 +39,15 @@ def create_product_core_runtime(
     id_factory: IdFactory = default_id_factory,
 ) -> ProductCoreRuntime:
     database = SQLiteDatabase(Path(settings.product_db_path))
+    sources = SourceService(
+        database,
+        Path(settings.source_dir),
+        clock=clock,
+        id_factory=id_factory,
+    )
     return ProductCoreRuntime(
         database=database,
-        sources=SourceService(
-            database,
-            Path(settings.source_dir),
-            clock=clock,
-            id_factory=id_factory,
-        ),
+        sources=sources,
         people=PeopleService(database, clock=clock, id_factory=id_factory),
         lifecycle=MedicationLifecycleService(
             database,
@@ -52,6 +55,12 @@ def create_product_core_runtime(
             id_factory=id_factory,
         ),
         visit_briefs=VisitBriefService(database),
+        persisted_visit_briefs=PersistedVisitBriefService(
+            database,
+            clock=clock,
+            id_factory=id_factory,
+            source_reader=sources.store.read,
+        ),
         visits=VisitPlanningService(database, clock=clock, id_factory=id_factory),
         clock=clock,
         id_factory=id_factory,

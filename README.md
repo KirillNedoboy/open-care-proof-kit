@@ -373,9 +373,10 @@ for the canonical next-phase roadmap. The older
 `/workspace` is the primary OpenCare entry point and `/` redirects there. It uses the
 versioned Product Core API for manual medication entry, review, confirmed records,
 the Product Core timeline, persistent Visits and user-authored Visit Questions,
-and deterministic Visit Brief generation with Markdown copy/download. Visits do
-not yet populate or persist generated briefs. Profiles and selected Visits remain
-only in page memory.
+and Visit-scoped persisted Brief revisions with confirmed-evidence selection,
+editable preparation notes, history/restore, and Markdown copy/download. The
+legacy deterministic Person-scoped Brief endpoint remains available. Profiles
+and selected Visits remain only in page memory.
 Legacy opaque person IDs migrate to `Imported profile` records without inferred data.
 `/chat` remains a supporting feature; the shared password gate is not per-person
 authorization. Family relationships, permissions, deactivation, deletion, uploads,
