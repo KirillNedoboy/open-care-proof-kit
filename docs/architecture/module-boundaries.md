@@ -41,7 +41,11 @@ separate supporting feature. The shared password gate protects an installation,
 not an individual person. Phase 1D adds persisted active people profiles and explicit
 workspace selection. The migration preserves legacy opaque person IDs with an
 `Imported profile` placeholder and does not infer medical data. Profiles do not create
-family relationships, permissions, or per-person authorization.
+family relationships, permissions, or per-person authorization. Phase 1E-A adds
+persisted Visits and user-authored Visit Questions. They are Person-scoped,
+explicitly ordered within a Visit, and separate from the transient deterministic
+Visit Brief. This does not add sources, evidence linkage, generated questions or
+answers, family relationships, or access control.
 
 ## Trust Foundation
 

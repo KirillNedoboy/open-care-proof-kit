@@ -13,6 +13,8 @@ from app.product_core.models import (
     Source,
     SourceType,
     TimelineEvent,
+    Visit,
+    VisitQuestion,
     parse_utc_datetime,
 )
 
@@ -132,6 +134,35 @@ class TimelineRepository(Protocol):
     def insert(self, event: TimelineEvent) -> None: ...
 
     def list_for_person(self, person_id: str) -> list[TimelineEvent]: ...
+
+
+class VisitRepository(Protocol):
+    def get(self, visit_id: str) -> Visit | None: ...
+
+    def list_for_person(self, person_id: str) -> list[Visit]: ...
+
+    def insert(self, visit: Visit) -> None: ...
+
+    def update(self, visit: Visit) -> None: ...
+
+
+class VisitQuestionRepository(Protocol):
+    def get(self, question_id: str) -> VisitQuestion | None: ...
+
+    def list_for_visit(self, visit_id: str) -> list[VisitQuestion]: ...
+
+    def insert(self, question: VisitQuestion) -> None: ...
+
+    def update(self, question: VisitQuestion) -> None: ...
+
+    def delete(self, question_id: str) -> None: ...
+
+    def replace_positions(
+        self,
+        visit_id: str,
+        positions: dict[str, int],
+        updated_at: datetime,
+    ) -> None: ...
 
 
 class SQLiteSourceRepository:
@@ -349,6 +380,139 @@ class SQLiteTimelineRepository:
         return [_timeline_from_row(row) for row in rows]
 
 
+class SQLiteVisitRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get(self, visit_id: str) -> Visit | None:
+        row = self.connection.execute(
+            "SELECT * FROM visits WHERE visit_id = ?", (visit_id,)
+        ).fetchone()
+        return None if row is None else _visit_from_row(row)
+
+    def list_for_person(self, person_id: str) -> list[Visit]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM visits WHERE person_id = ?
+            ORDER BY created_at DESC, visit_id ASC
+            """,
+            (person_id,),
+        ).fetchall()
+        return [_visit_from_row(row) for row in rows]
+
+    def insert(self, visit: Visit) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO visits (
+                visit_id, person_id, title, specialist, scheduled_date, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                visit.visit_id,
+                visit.person_id,
+                visit.title,
+                visit.specialist,
+                None if visit.scheduled_date is None else visit.scheduled_date.isoformat(),
+                visit.created_at.isoformat(),
+                visit.updated_at.isoformat(),
+            ),
+        )
+
+    def update(self, visit: Visit) -> None:
+        self.connection.execute(
+            """
+            UPDATE visits
+            SET title = ?, specialist = ?, scheduled_date = ?, updated_at = ?
+            WHERE visit_id = ?
+            """,
+            (
+                visit.title,
+                visit.specialist,
+                None if visit.scheduled_date is None else visit.scheduled_date.isoformat(),
+                visit.updated_at.isoformat(),
+                visit.visit_id,
+            ),
+        )
+
+
+class SQLiteVisitQuestionRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get(self, question_id: str) -> VisitQuestion | None:
+        row = self.connection.execute(
+            "SELECT * FROM visit_questions WHERE question_id = ?", (question_id,)
+        ).fetchone()
+        return None if row is None else _visit_question_from_row(row)
+
+    def list_for_visit(self, visit_id: str) -> list[VisitQuestion]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM visit_questions WHERE visit_id = ?
+            ORDER BY position ASC, question_id ASC
+            """,
+            (visit_id,),
+        ).fetchall()
+        return [_visit_question_from_row(row) for row in rows]
+
+    def insert(self, question: VisitQuestion) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO visit_questions (
+                question_id, visit_id, question_text, position, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                question.question_id,
+                question.visit_id,
+                question.question_text,
+                question.position,
+                question.created_at.isoformat(),
+                question.updated_at.isoformat(),
+            ),
+        )
+
+    def update(self, question: VisitQuestion) -> None:
+        self.connection.execute(
+            """
+            UPDATE visit_questions
+            SET question_text = ?, position = ?, updated_at = ?
+            WHERE question_id = ?
+            """,
+            (
+                question.question_text,
+                question.position,
+                question.updated_at.isoformat(),
+                question.question_id,
+            ),
+        )
+
+    def delete(self, question_id: str) -> None:
+        self.connection.execute("DELETE FROM visit_questions WHERE question_id = ?", (question_id,))
+
+    def replace_positions(
+        self,
+        visit_id: str,
+        positions: dict[str, int],
+        updated_at: datetime,
+    ) -> None:
+        count = len(positions)
+        if count == 0:
+            return
+        self.connection.execute(
+            "UPDATE visit_questions SET position = position + ? WHERE visit_id = ?",
+            (count, visit_id),
+        )
+        for question_id, position in positions.items():
+            self.connection.execute(
+                """
+                UPDATE visit_questions SET position = ?, updated_at = ?
+                WHERE question_id = ? AND visit_id = ?
+                """,
+                (position, updated_at.isoformat(), question_id, visit_id),
+            )
+
+
 def _source_from_row(row: sqlite3.Row) -> Source:
     return Source(
         id=row["id"],
@@ -419,4 +583,29 @@ def _timeline_from_row(row: sqlite3.Row) -> TimelineEvent:
         event_type=row["event_type"],
         event_at=parse_utc_datetime(row["event_at"]),
         title=row["title"],
+    )
+
+
+def _visit_from_row(row: sqlite3.Row) -> Visit:
+    return Visit(
+        visit_id=row["visit_id"],
+        person_id=row["person_id"],
+        title=row["title"],
+        specialist=row["specialist"],
+        scheduled_date=(
+            None if row["scheduled_date"] is None else date.fromisoformat(row["scheduled_date"])
+        ),
+        created_at=parse_utc_datetime(row["created_at"]),
+        updated_at=parse_utc_datetime(row["updated_at"]),
+    )
+
+
+def _visit_question_from_row(row: sqlite3.Row) -> VisitQuestion:
+    return VisitQuestion(
+        question_id=row["question_id"],
+        visit_id=row["visit_id"],
+        question_text=row["question_text"],
+        position=row["position"],
+        created_at=parse_utc_datetime(row["created_at"]),
+        updated_at=parse_utc_datetime(row["updated_at"]),
     )

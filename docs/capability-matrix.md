@@ -19,9 +19,9 @@ status is about the current implementation, not the approved future direction.
 | Medications | `PARTIAL` | Product Core medication candidate/canonical lifecycle in `app/product_core/`; synthetic Health/Family Vault remains demo-only |
 | Conditions | `DEMO_ONLY` | `Condition` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
 | Labs | `DEMO_ONLY` | `LabResult` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
-| Encounters / visits | `DEMO_ONLY` | `Visit` model and read-model rendering in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/main.py` |
-| Questions | `DEMO_ONLY` | `QuestionThread` model, read model, page rendering, and guarded question response in `app/health_vault/models.py`, `app/health_vault/read_model.py`, `app/agent/service.py` |
-| Visit preparation | `PARTIAL` | Deterministic Product Core Visit Brief service and API exist; UI and broader visit workflow remain deferred |
+| Encounters / visits | `PARTIAL` | Persistent Person-scoped Visits in `app/product_core/`; synthetic Health/Family Vault visits remain demo-only |
+| Questions | `PARTIAL` | Persistent user-authored Visit Questions in `app/product_core/`; no generated answers or broad question workspace |
+| Visit preparation | `PARTIAL` | Workspace supports persistent Visits and Questions plus the separate deterministic Visit Brief; briefs are not yet persisted or linked to a Visit |
 | Guarded chat | `IMPLEMENTED` | Routes in `app/main.py`; policy, service, validation, and audit in `app/agent/`; coverage in `tests/test_agent.py`, `tests/test_chat_api.py`, `tests/test_api.py` |
 | External LLM provider | `PARTIAL` | Opt-in `OpenAIResponsesProvider` in `app/agent/provider.py`, configuration gates in `app/config.py`, tests in `tests/test_agent.py`; not required by default |
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |

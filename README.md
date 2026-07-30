@@ -2,8 +2,8 @@
 
 OpenCare is an open-source, self-hosted Personal and Family Health Workspace.
 This repository is the main OpenCare foundation: it contains a
-synthetic/demo Health/Family Vault, the first persistent Product Core
-medication lifecycle, reusable trust components, a guarded Question Workspace
+synthetic/demo Health/Family Vault, persistent Product Core medication and
+visit-planning records, reusable trust components, a guarded Question Workspace
 precursor, a frozen PGx reference workflow, and reviewer artifacts. It is not
 yet a complete editable user workspace.
 
@@ -77,11 +77,11 @@ guarantee medical correctness.
 - Mounted local vault file support through `OPENCARE_VAULT_FILE=/path/to/vault.json`.
 - Product Core SQLite persistence through `OPENCARE_PRODUCT_DB_PATH`.
 - Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
-- Deterministic medication lifecycle and Visit Brief services under
-  `app/product_core/`.
+- Deterministic medication lifecycle, persistent Visits and Visit Questions,
+  and transient Visit Brief services under `app/product_core/`.
 - Versioned Product Core JSON API under `/api/product-core/v1` for source
-  registration, candidate review, canonical medications, timeline, and Visit
-  Brief generation.
+registration, candidate review, canonical medications, timeline, Visits, Visit
+Questions, and Visit Brief generation.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
@@ -198,8 +198,9 @@ Product Core migration smoke test:
 .\.venv\Scripts\python.exe -c "from app.config import get_settings; from app.product_core.sqlite import SQLiteDatabase; s=get_settings(); SQLiteDatabase(s.product_db_path).migrate()"
 ```
 
-Product Core is still UI-free and medication-only. The Phase 1B API uses the
-same SQLite metadata and immutable UTF-8 source payloads configured through
+Product Core persists medication lifecycle records, active people profiles,
+Visits, and user-authored Visit Questions. The Phase 1B API uses the same
+SQLite metadata and immutable UTF-8 source payloads configured through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
 application startup. The API has persisted active people profiles; legacy opaque
 person IDs are retained through non-medical `Imported profile` placeholders during
@@ -221,6 +222,11 @@ PATCH /api/product-core/v1/people/{person_id}
 GET  /api/product-core/v1/people/{person_id}/medications
 GET  /api/product-core/v1/people/{person_id}/timeline
 POST /api/product-core/v1/people/{person_id}/visit-briefs:generate
+POST /api/product-core/v1/visits
+GET /api/product-core/v1/people/{person_id}/visits
+GET/PATCH /api/product-core/v1/visits/{visit_id}
+POST/GET /api/product-core/v1/visits/{visit_id}/questions
+PATCH/DELETE /api/product-core/v1/visit-questions/{question_id}
 ```
 
 The API returns stable safe error envelopes for Product Core routes only.
@@ -366,8 +372,10 @@ for the canonical next-phase roadmap. The older
 
 `/workspace` is the primary OpenCare entry point and `/` redirects there. It uses the
 versioned Product Core API for manual medication entry, review, confirmed records,
-the Product Core timeline, and deterministic Visit Brief generation with Markdown
-copy/download. Profiles are selected explicitly and remain only in page memory.
+the Product Core timeline, persistent Visits and user-authored Visit Questions,
+and deterministic Visit Brief generation with Markdown copy/download. Visits do
+not yet populate or persist generated briefs. Profiles and selected Visits remain
+only in page memory.
 Legacy opaque person IDs migrate to `Imported profile` records without inferred data.
 `/chat` remains a supporting feature; the shared password gate is not per-person
 authorization. Family relationships, permissions, deactivation, deletion, uploads,

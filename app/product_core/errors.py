@@ -46,6 +46,18 @@ class PersonNotFoundError(NotFoundError):
     """Raised when a requested person does not exist."""
 
 
+class VisitNotFoundError(NotFoundError):
+    """Raised when a requested visit does not exist."""
+
+
+class VisitQuestionNotFoundError(NotFoundError):
+    """Raised when a requested visit question does not exist."""
+
+
+class VisitValidationError(ProductCoreError, ValueError):
+    """Raised when a visit-planning value violates a domain constraint."""
+
+
 class PersonValidationError(ProductCoreError, ValueError):
     """Raised when a person value violates a domain constraint."""
 

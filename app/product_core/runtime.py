@@ -15,6 +15,7 @@ from app.product_core.services import (
 )
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visit_brief import VisitBriefService
+from app.product_core.visits import VisitPlanningService
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class ProductCoreRuntime:
     people: PeopleService
     lifecycle: MedicationLifecycleService
     visit_briefs: VisitBriefService
+    visits: VisitPlanningService
     clock: Clock
     id_factory: IdFactory
 
@@ -50,6 +52,7 @@ def create_product_core_runtime(
             id_factory=id_factory,
         ),
         visit_briefs=VisitBriefService(database),
+        visits=VisitPlanningService(database, clock=clock, id_factory=id_factory),
         clock=clock,
         id_factory=id_factory,
     )

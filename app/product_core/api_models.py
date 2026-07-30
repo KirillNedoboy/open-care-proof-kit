@@ -212,6 +212,33 @@ class VisitBriefGenerateRequest(APIModel):
         return ensure_utc_datetime(value)
 
 
+class VisitCreateRequest(APIModel):
+    person_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    title: str
+    specialist: str | None = None
+    scheduled_date: date | None = None
+
+    @field_validator("person_id")
+    @classmethod
+    def validate_person_id(cls, value: str) -> str:
+        return _validate_identifier(value)
+
+
+class VisitUpdateRequest(APIModel):
+    title: str | None = None
+    specialist: str | None = None
+    scheduled_date: date | None = None
+
+
+class VisitQuestionCreateRequest(APIModel):
+    question_text: str
+
+
+class VisitQuestionUpdateRequest(APIModel):
+    question_text: str | None = None
+    position: int | None = None
+
+
 class SourceResponse(APIModel):
     source_id: str
     person_id: str
@@ -286,6 +313,33 @@ class TimelineEventResponse(APIModel):
 
 class TimelineResponse(APIModel):
     events: list[TimelineEventResponse]
+
+
+class VisitResponse(APIModel):
+    visit_id: str
+    person_id: str
+    title: str
+    specialist: str | None
+    scheduled_date: date | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class VisitListResponse(APIModel):
+    visits: list[VisitResponse]
+
+
+class VisitQuestionResponse(APIModel):
+    question_id: str
+    visit_id: str
+    question_text: str
+    position: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class VisitQuestionListResponse(APIModel):
+    questions: list[VisitQuestionResponse]
 
 
 class VisitBriefRecordResponse(APIModel):

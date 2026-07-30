@@ -24,7 +24,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2]
+        ] == [1, 2, 3]
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         table_names = {
             row[0]
@@ -39,6 +39,8 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
         "candidate_facts",
         "canonical_medication_records",
         "timeline_events",
+        "visits",
+        "visit_questions",
     }.issubset(table_names)
 
 
@@ -107,6 +109,58 @@ def test_phase_1c_upgrade_backfills_people_and_preserves_records(tmp_path: Path)
                 "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 ("bad", "unknown", "manual_entry", "bad.json", "b" * 64, 1,
                  "application/json", "2026-01-01T00:00:00+00:00", "{}"),
+            )
+
+
+def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path: Path) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    MigrationRunner(database.connect, migrations=PRODUCT_MIGRATIONS[:2]).migrate()
+    with database.connect() as connection:
+        connection.execute("BEGIN")
+        connection.execute(
+            """
+            INSERT INTO people (
+                person_id, display_name, date_of_birth, created_at, updated_at, is_active
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            ("person-1", "Ada", None, "2026-07-30T00:00:00+00:00", "2026-07-30T00:00:00+00:00", 1),
+        )
+        connection.execute(
+            """
+            INSERT INTO sources (
+                id, person_id, source_type, relative_path, content_hash,
+                size_bytes, media_type, created_at, provenance_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("source-1", "person-1", "manual_entry", "source-1.json", "b" * 64, 1,
+             "application/json", "2026-07-30T00:00:00+00:00", "{}"),
+        )
+        connection.commit()
+
+    database.migrate()
+
+    with database.connect() as connection:
+        assert [row[0] for row in connection.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        ).fetchall()] == [1, 2, 3]
+        person_name = connection.execute(
+            "SELECT display_name FROM people WHERE person_id = 'person-1'"
+        ).fetchone()[0]
+        source_id = connection.execute(
+            "SELECT id FROM sources WHERE id = 'source-1'"
+        ).fetchone()[0]
+        assert person_name == "Ada"
+        assert source_id == "source-1"
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """
+                INSERT INTO visits (
+                    visit_id, person_id, title, specialist, scheduled_date, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                ("visit-missing", "missing", "Visit", None, None,
+                 "2026-07-30T00:00:00+00:00", "2026-07-30T00:00:00+00:00"),
             )
 
 
@@ -222,7 +276,7 @@ finally:
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
         ]
-        assert versions == [1, 2]
+        assert versions == [1, 2, 3]
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
         ).fetchone() is not None

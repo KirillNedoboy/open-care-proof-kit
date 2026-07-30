@@ -33,6 +33,10 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "Cancel" in script
     assert "name.focus()" in script
     assert "trigger.focus()" in script
+    assert "visit-form" in script
+    assert "visit-question-form" in script
+    assert "Move question up" in script
+    assert "Move question down" in script
 
 
 def test_workspace_static_assets_exist() -> None:

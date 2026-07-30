@@ -12,6 +12,8 @@ from app.product_core.repositories import (
     SQLitePersonRepository,
     SQLiteSourceRepository,
     SQLiteTimelineRepository,
+    SQLiteVisitQuestionRepository,
+    SQLiteVisitRepository,
 )
 
 
@@ -49,6 +51,8 @@ class UnitOfWork:
         self.candidates: SQLiteCandidateRepository
         self.canonical_records: SQLiteCanonicalRepository
         self.timeline_events: SQLiteTimelineRepository
+        self.visits: SQLiteVisitRepository
+        self.visit_questions: SQLiteVisitQuestionRepository
 
     def __enter__(self) -> Self:
         self.connection = self.database.connect()
@@ -63,6 +67,8 @@ class UnitOfWork:
         self.candidates = SQLiteCandidateRepository(self.connection)
         self.canonical_records = SQLiteCanonicalRepository(self.connection)
         self.timeline_events = SQLiteTimelineRepository(self.connection)
+        self.visits = SQLiteVisitRepository(self.connection)
+        self.visit_questions = SQLiteVisitQuestionRepository(self.connection)
         return self
 
     def __exit__(

@@ -221,6 +221,45 @@ PRODUCT_MIGRATIONS = (
             ),
         ),
     ),
+    Migration(
+        version=3,
+        statements=(
+            """
+            CREATE TABLE visits (
+                visit_id TEXT PRIMARY KEY CHECK (length(trim(visit_id)) > 0),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+                specialist TEXT,
+                scheduled_date TEXT CHECK (
+                    scheduled_date IS NULL OR (
+                        length(scheduled_date) = 10 AND date(scheduled_date) = scheduled_date
+                    )
+                ),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE visit_questions (
+                question_id TEXT PRIMARY KEY CHECK (length(trim(question_id)) > 0),
+                visit_id TEXT NOT NULL REFERENCES visits(visit_id),
+                question_text TEXT NOT NULL CHECK (length(trim(question_text)) > 0),
+                position INTEGER NOT NULL CHECK (position >= 0),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE (visit_id, position)
+            )
+            """,
+            (
+                "CREATE INDEX visits_person_created_idx "
+                "ON visits(person_id, created_at DESC, visit_id)"
+            ),
+            (
+                "CREATE INDEX visit_questions_visit_position_idx "
+                "ON visit_questions(visit_id, position)"
+            ),
+        ),
+    ),
 )
 
 

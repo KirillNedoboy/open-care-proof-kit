@@ -41,6 +41,10 @@ def test_workspace_renders_a_static_product_shell() -> None:
     assert 'id="candidate-history"' in response.text
     assert 'id="canonical-medications"' in response.text
     assert 'id="timeline"' in response.text
+    assert 'id="visit-form"' in response.text
+    assert 'id="visits"' in response.text
+    assert 'id="visit-question-form"' in response.text
+    assert 'id="visit-questions"' in response.text
     assert 'id="visit-brief-form"' in response.text
     assert 'id="brief-markdown"' in response.text
     assert 'id="workspace-status"' in response.text

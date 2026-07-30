@@ -33,6 +33,14 @@ from app.product_core.api_models import (
     TimelineResponse,
     VisitBriefGenerateRequest,
     VisitBriefResponse,
+    VisitCreateRequest,
+    VisitListResponse,
+    VisitQuestionCreateRequest,
+    VisitQuestionListResponse,
+    VisitQuestionResponse,
+    VisitQuestionUpdateRequest,
+    VisitResponse,
+    VisitUpdateRequest,
     _validate_identifier,
 )
 from app.product_core.errors import (
@@ -51,6 +59,9 @@ from app.product_core.errors import (
     SourceNotFoundError,
     SourcePublicationError,
     UnsafeSourcePathError,
+    VisitNotFoundError,
+    VisitQuestionNotFoundError,
+    VisitValidationError,
 )
 from app.product_core.models import VisitBriefRequest
 from app.product_core.runtime import ProductCoreRuntime
@@ -89,8 +100,14 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, Any]]:
 def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
     if isinstance(exc, PersonValidationError):
         return _error_response(422, "request_validation_failed", "The request is invalid.")
+    if isinstance(exc, VisitValidationError):
+        return _error_response(422, "request_validation_failed", "The request is invalid.")
     if isinstance(exc, PersonNotFoundError):
         return _error_response(404, "person_not_found", "Person was not found.")
+    if isinstance(exc, VisitNotFoundError):
+        return _error_response(404, "visit_not_found", "Visit was not found.")
+    if isinstance(exc, VisitQuestionNotFoundError):
+        return _error_response(404, "visit_question_not_found", "Visit question was not found.")
     if isinstance(exc, SourceNotFoundError):
         return _error_response(404, "source_not_found", "Source was not found.")
     if isinstance(exc, CandidateNotFoundError):
@@ -273,6 +290,29 @@ def _timeline_response(event: Any) -> TimelineEventResponse:
     )
 
 
+def _visit_response(visit: Any) -> VisitResponse:
+    return VisitResponse(
+        visit_id=visit.visit_id,
+        person_id=visit.person_id,
+        title=visit.title,
+        specialist=visit.specialist,
+        scheduled_date=visit.scheduled_date,
+        created_at=visit.created_at,
+        updated_at=visit.updated_at,
+    )
+
+
+def _visit_question_response(question: Any) -> VisitQuestionResponse:
+    return VisitQuestionResponse(
+        question_id=question.question_id,
+        visit_id=question.visit_id,
+        question_text=question.question_text,
+        position=question.position,
+        created_at=question.created_at,
+        updated_at=question.updated_at,
+    )
+
+
 @router.post(
     "/people",
     response_model=PersonResponse,
@@ -298,6 +338,138 @@ def list_people(runtime: RuntimeDependency) -> PeopleListResponse:
     return PeopleListResponse(
         people=[_person_response(person) for person in runtime.people.list_active()]
     )
+
+
+@router.post(
+    "/visits",
+    response_model=VisitResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_create_visit",
+)
+def create_visit(payload: VisitCreateRequest, runtime: RuntimeDependency) -> VisitResponse:
+    return _visit_response(
+        runtime.visits.create_visit(
+            payload.person_id,
+            title=payload.title,
+            specialist=payload.specialist,
+            scheduled_date=payload.scheduled_date,
+        )
+    )
+
+
+@router.get(
+    "/people/{person_id}/visits",
+    response_model=VisitListResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_list_visits",
+)
+def list_visits(person_id: ProductCoreIdentifier, runtime: RuntimeDependency) -> VisitListResponse:
+    return VisitListResponse(
+        visits=[_visit_response(visit) for visit in runtime.visits.list_visits(person_id)]
+    )
+
+
+@router.get(
+    "/visits/{visit_id}",
+    response_model=VisitResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_get_visit",
+)
+def get_visit(visit_id: ProductCoreIdentifier, runtime: RuntimeDependency) -> VisitResponse:
+    return _visit_response(runtime.visits.get_visit(visit_id))
+
+
+@router.patch(
+    "/visits/{visit_id}",
+    response_model=VisitResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_update_visit",
+)
+def update_visit(
+    visit_id: ProductCoreIdentifier,
+    payload: VisitUpdateRequest,
+    runtime: RuntimeDependency,
+) -> VisitResponse:
+    return _visit_response(
+        runtime.visits.update_visit(
+            visit_id,
+            title=payload.title,
+            specialist=payload.specialist,
+            scheduled_date=payload.scheduled_date,
+            update_fields=frozenset(payload.model_fields_set),
+        )
+    )
+
+
+@router.post(
+    "/visits/{visit_id}/questions",
+    response_model=VisitQuestionResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_create_visit_question",
+)
+def create_visit_question(
+    visit_id: ProductCoreIdentifier,
+    payload: VisitQuestionCreateRequest,
+    runtime: RuntimeDependency,
+) -> VisitQuestionResponse:
+    return _visit_question_response(
+        runtime.visits.create_question(visit_id, payload.question_text)
+    )
+
+
+@router.get(
+    "/visits/{visit_id}/questions",
+    response_model=VisitQuestionListResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_list_visit_questions",
+)
+def list_visit_questions(
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+) -> VisitQuestionListResponse:
+    return VisitQuestionListResponse(
+        questions=[
+            _visit_question_response(question)
+            for question in runtime.visits.list_questions(visit_id)
+        ]
+    )
+
+
+@router.patch(
+    "/visit-questions/{question_id}",
+    response_model=VisitQuestionResponse,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_update_visit_question",
+)
+def update_visit_question(
+    question_id: ProductCoreIdentifier,
+    payload: VisitQuestionUpdateRequest,
+    runtime: RuntimeDependency,
+) -> VisitQuestionResponse:
+    return _visit_question_response(
+        runtime.visits.update_question(
+            question_id,
+            question_text=payload.question_text,
+            position=payload.position,
+            update_fields=frozenset(payload.model_fields_set),
+        )
+    )
+
+
+@router.delete(
+    "/visit-questions/{question_id}",
+    status_code=204,
+    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    operation_id="product_core_delete_visit_question",
+)
+def delete_visit_question(
+    question_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+) -> Response:
+    runtime.visits.delete_question(question_id)
+    return Response(status_code=204)
 
 
 @router.get(

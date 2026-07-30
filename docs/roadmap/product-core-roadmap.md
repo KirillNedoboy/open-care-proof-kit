@@ -119,6 +119,17 @@ that backfills existing opaque IDs as non-medical `Imported profile` records bef
 foreign keys are enforced. The shared password gate remains installation-wide, so this
 does not add accounts, family relationships, or authorization.
 
+## Phase 1E-A: persistent Visits and Visit Questions
+
+Phase 1E-A adds Person-scoped persisted Visits and user-authored Visit Questions
+to the existing SQLite Product Core. Questions have explicit contiguous ordering
+within a Visit and may be edited, moved, or removed. The workspace keeps profile
+and Visit selection in page memory only.
+
+This phase does not persist or change the deterministic Visit Brief, add an
+evidence/source drawer, export or backup, identity or caregiver permissions,
+family relationships, or AI-generated questions or answers.
+
 ## Phase 2: broader workspace
 
 ### Objective

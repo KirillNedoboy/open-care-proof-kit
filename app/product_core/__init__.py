@@ -6,12 +6,15 @@ from app.product_core.models import (
     MedicationCandidateInput,
     Source,
     TimelineEvent,
+    Visit,
     VisitBrief,
     VisitBriefRequest,
+    VisitQuestion,
 )
 from app.product_core.services import MedicationLifecycleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visit_brief import VisitBriefService
+from app.product_core.visits import VisitPlanningService
 
 __all__ = [
     "CandidateFact",
@@ -25,4 +28,7 @@ __all__ = [
     "VisitBrief",
     "VisitBriefRequest",
     "VisitBriefService",
+    "Visit",
+    "VisitPlanningService",
+    "VisitQuestion",
 ]

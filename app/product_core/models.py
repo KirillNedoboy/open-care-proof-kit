@@ -167,6 +167,39 @@ class TimelineEvent(BaseModel):
         return ensure_utc_datetime(value)
 
 
+class Visit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    visit_id: str = Field(min_length=1)
+    person_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    specialist: str | None = None
+    scheduled_date: date | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def validate_timestamps(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
+class VisitQuestion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question_id: str = Field(min_length=1)
+    visit_id: str = Field(min_length=1)
+    question_text: str = Field(min_length=1)
+    position: int = Field(ge=0)
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def validate_timestamps(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
 class VisitBriefRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
