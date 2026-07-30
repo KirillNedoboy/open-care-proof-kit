@@ -1,0 +1,23 @@
+{
+  "patient_id": "demo-patient-a",
+  "display_name": "Synthetic Demo Patient A",
+  "data_classification": "synthetic_demo_only",
+  "age_range": "adult",
+  "sex": "unspecified",
+  "problems": [
+    {
+      "name": "demo mood symptoms",
+      "status": "historical",
+      "notes": "Synthetic context for demo only."
+    }
+  ],
+  "medications": [
+    {
+      "name": "sertraline",
+      "status": "question",
+      "notes": "Demo medication question; not a prescription."
+    }
+  ],
+  "allergies": [],
+  "notes": "Synthetic data only. Do not use as clinical example."
+}

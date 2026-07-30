@@ -58,6 +58,11 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="OpenCare Proof Kit", version=__version__, lifespan=product_core_lifespan)
 APP_DIR = Path(__file__).resolve().parent
+RUNTIME_ASSETS_DIR = APP_DIR / "assets"
+REVIEWER_QUICKSTART_PATH = RUNTIME_ASSETS_DIR / "docs" / "reviewer_quickstart.md"
+HEALTH_VAULT_MANIFEST_PATH = (
+    RUNTIME_ASSETS_DIR / "docs" / "health_vault" / "family-vault-manifest.json"
+)
 SERVICE_NAME = "opencare-proof-kit"
 ACCESS_COOKIE_NAME = "opencare_access"
 ACCESS_COOKIE_VALUE = "private-access"
@@ -211,8 +216,8 @@ def get_required_asset_paths(settings: Settings) -> list[Path]:
     required_paths = [
         settings.data_dir / "demo_patients" / "demo_patient_a.json",
         settings.data_dir / "demo_patients" / "demo_family_vault.json",
-        Path("docs") / "reviewer_quickstart.md",
-        Path("docs") / "assets" / "health_vault" / "family-vault-manifest.json",
+        REVIEWER_QUICKSTART_PATH,
+        HEALTH_VAULT_MANIFEST_PATH,
         APP_DIR / "templates",
         APP_DIR / "static",
     ]
@@ -287,13 +292,11 @@ def _load_demo_vault() -> HealthVault:
 
 
 def _load_reviewer_quickstart() -> str:
-    quickstart_path = Path("docs") / "reviewer_quickstart.md"
-    return quickstart_path.read_text(encoding="utf-8")
+    return REVIEWER_QUICKSTART_PATH.read_text(encoding="utf-8")
 
 
 def _load_health_vault_manifest() -> dict[str, Any]:
-    manifest_path = Path("docs") / "assets" / "health_vault" / "family-vault-manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(HEALTH_VAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
     return cast(dict[str, Any], manifest)
 
 

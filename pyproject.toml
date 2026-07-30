@@ -25,6 +25,9 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["app*", "evals*"]
 
+[tool.setuptools.package-data]
+app = ["static/*.css", "static/*.js", "templates/*.html", "assets/**/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

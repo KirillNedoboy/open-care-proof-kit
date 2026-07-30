@@ -6,6 +6,9 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 SECRET_KEY_MIN_LENGTH = 32
+PACKAGE_DIR = Path(__file__).resolve().parent
+RUNTIME_ASSETS_DIR = PACKAGE_DIR / "assets"
+DEFAULT_DATA_DIR = RUNTIME_ASSETS_DIR / "data"
 
 
 class ConfigError(ValueError):
@@ -105,7 +108,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     settings = Settings(
         env=app_env,
         demo_mode=demo_mode,
-        data_dir=Path(values.get("OPENCARE_DATA_DIR", "data")),
+        data_dir=Path(values["OPENCARE_DATA_DIR"])
+        if "OPENCARE_DATA_DIR" in values
+        else DEFAULT_DATA_DIR,
         product_db_path=Path(
             values.get("OPENCARE_PRODUCT_DB_PATH", "data/opencare.sqlite3")
         ),

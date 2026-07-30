@@ -1,0 +1,5 @@
+# Synthetic 23andMe-like demo data. Not real patient data.
+# rsid chromosome position genotype
+rs4244285 10 96541616 AG
+rs4986893 10 96540410 GG
+rs1065852 22 42130692 CC

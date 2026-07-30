@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.config import ConfigError, load_settings
+from app.config import DEFAULT_DATA_DIR, ConfigError, load_settings
 
 
 def test_load_settings_defaults_to_easy_development_mode() -> None:
@@ -12,7 +12,7 @@ def test_load_settings_defaults_to_easy_development_mode() -> None:
     assert settings.demo_mode is True
     assert settings.vault_source == "demo"
     assert settings.vault_file is None
-    assert settings.data_dir == Path("data")
+    assert settings.data_dir == DEFAULT_DATA_DIR
     assert settings.product_db_path == Path("data/opencare.sqlite3")
     assert settings.source_dir == Path("data/sources")
     assert settings.reports_dir == Path("reports")
