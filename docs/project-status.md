@@ -54,10 +54,11 @@ Verified in `app/main.py`:
 - Person-scoped portable vault ZIP export with canonical `vault.json`, checksum
   manifest, reachable immutable sources, Brief-integrity verification, and a
   Workspace warning before download. It creates no persistent export artifact.
-- Operator-only Product Core backup/verification CLI that creates a staged
-  SQLite/source snapshot with canonical manifest and `COMPLETE` marker, then
-  verifies a supplied backup directory offline. Backups are sensitive plaintext
-  artifacts and recovery remains unimplemented.
+- Operator-only Product Core backup/recovery CLI that creates a staged
+  SQLite/source snapshot with canonical manifest and `COMPLETE` marker,
+  verifies supplied backups offline, preflights explicit targets read-only, and
+  fail-closed recovers only to absent or empty installation roots. Backups are
+  sensitive plaintext artifacts.
 - Existing synthetic PGx briefing reference workflow in `app/demo_pipeline.py`,
   `app/pgx/`, `app/genetics/`, and `data/evidence_packs/`.
 
@@ -75,8 +76,8 @@ repository evidence paths.
   Visits, Visit Questions, and Visit-scoped persisted editable Brief revisions
   with selected confirmed evidence, computed freshness, and audited Markdown
   export. It also has Person-scoped portable export and operator-only
-  installation backup verification, but no import, recovery, encryption,
-  per-person authorization, or broader fact types.
+  installation backup verification and empty-target recovery, but no import,
+  merge, encryption, per-person authorization, or broader fact types.
 - Deployment artifacts cover local Docker and a documented single-node
   Compose/Caddy path; they do not establish production readiness.
 - Portable agent support exports redacted context and validates answers; it is
@@ -101,7 +102,7 @@ support.
 - No non-medication candidate-fact lifecycle.
 - No Product Core timeline rebuild command; Phase 1A creates events atomically
   with confirmation.
-- No installation recovery or portable import workflow.
+- No portable import, merge, or populated-installation recovery workflow.
 - No family permissions or caregiver authorization.
 - No query-scoped AI consent and context preview workflow.
 
@@ -131,12 +132,13 @@ and a documented single-node VPS path using Docker Compose and Caddy examples.
 The runtime has health/readiness endpoints and an optional password gate for
 non-health routes. No deployment or infrastructure was changed in this phase.
 
-## Validation executed on 2026-07-30
+## Validation executed on 2026-07-31
 
-- `.\.venv\Scripts\python.exe -m pytest` -> `274 passed`.
+- `.\.venv\Scripts\python.exe -m pytest` -> `286 passed`.
 - `.\.venv\Scripts\python.exe -m ruff check app tests evals` -> passed.
-- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `64 source files`.
-- Focused installation backup and CLI tests -> `17 passed`.
+- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `65 source files`.
+- Focused backup, recovery, CLI, and source-store tests cover empty-target
+  activation, rollback, offline commands, and fail-closed fallback behavior.
 - Product Core migration tests -> `7 passed`, including fresh schema version `4`,
   upgrade preservation, rollback, foreign-key enforcement, and concurrent startup.
 - `.\.venv\Scripts\python.exe -m evals.runner` -> `14 total, 14 passed, 0 failed`;
@@ -161,9 +163,9 @@ protects an installation, not individuals.
 
 ## Deferred work
 
-Phase 1E-B persists editable evidence-linked Visit Briefs. Phase 1F-A implements
-Person-scoped portable export and Phase 1F-B implements operator-only backup
-verification; ADR 0004 remains Proposed for fail-closed recovery. Source/evidence
+Phase 1E-B persists editable evidence-linked Visit Briefs. Phase 1F implements
+Person-scoped portable export plus operator-only backup verification and
+fail-closed empty-target recovery; ADR 0004 is Accepted. Source/evidence
 drawers, portable import, recovery runtime, encryption, identity and caregiver
 permissions, family relationships, uploads, OCR, genetics expansion, new
 providers, multi-user SaaS, cloud storage and deployment changes remain deferred.

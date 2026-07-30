@@ -236,24 +236,34 @@ Review timestamps are server-controlled; `VisitBrief.generated_at` is the
 only client-supplied generation timestamp. No source-content download,
 extraction, provider call, or clinical/advisory behavior is exposed.
 
-## Installation backup verification
+## Installation backup and recovery
 
-Phase 1F-B adds an operator-only, local plaintext installation backup. It is
-not an HTTP route, a Workspace feature, an import mechanism, or recovery. A
-backup contains a SQLite snapshot and every persisted immutable Source payload;
-treat its directory as sensitive health data.
+Phase 1F adds operator-only local plaintext backup, offline verification, and
+fail-closed recovery. It is not an HTTP route, Workspace feature, import, or
+merge mechanism. A backup contains a SQLite snapshot and every persisted
+immutable Source payload; treat its directory as sensitive health data.
 
 ```powershell
 .\.venv\Scripts\python.exe -m app.product_core.backup_cli backup --database <sqlite> --source-dir <sources> --destination <new-backup-directory>
 .\.venv\Scripts\python.exe -m app.product_core.backup_cli verify --backup <backup-directory>
+.\.venv\Scripts\python.exe -m app.product_core.backup_cli preflight --backup <backup-directory> --target-root <installation-root>
+.\.venv\Scripts\python.exe -m app.product_core.backup_cli recover --backup <backup-directory> --target-root <installation-root> --confirm-maintenance
 ```
 
 `backup` may use `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR` when the
-two path options are omitted. The destination must not already exist. `verify`
-uses only the supplied backup directory, validates its completion marker,
-manifest, SQLite snapshot, lifecycle and source payloads, and never accesses
-the active database or source directory. Recovery, import, and encryption are
-not implemented.
+two path options are omitted. `verify`, `preflight`, and `recover` use only
+their explicit paths and never load runtime defaults. Recovery requires an
+absent or real empty target and `--confirm-maintenance`; this acknowledges that
+no OpenCare process uses the target, which the CLI cannot prove. It stages,
+verifies, atomically activates, verifies again, and rolls back handled failures.
+It cannot guarantee crash- or power-loss safety between filesystem operations;
+exact abandoned recovery artifacts block subsequent recovery until inspected.
+
+Recovery restores neither `.env` nor passwords, `OPENCARE_SECRET_KEY`, provider
+keys, cookies, sessions, TLS files, or deployment configuration. It does not
+rotate credentials or invalidate signed cookies when an operator separately
+reuses the same secret key. Import, merge, encryption, and populated-target
+recovery remain unsupported.
 
 Start the local app:
 

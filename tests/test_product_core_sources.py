@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
@@ -43,6 +44,42 @@ def make_source_service(tmp_path: Path, ids: SequenceIds | None = None) -> Sourc
         clock=FixedClock(datetime(2026, 7, 26, 10, tzinfo=UTC)),
         id_factory=ids or SequenceIds("source-1", "source-2"),
     )
+
+
+def test_source_store_reads_fixed_recovery_payload_only_when_original_path_is_absent(
+    tmp_path: Path,
+) -> None:
+    service = make_source_service(tmp_path)
+    source = service.register_plain_text("person-1", "synthetic recovery payload")
+    original = service.store.source_dir / source.relative_path
+    recovered = service.store.source_dir / source.id / "payload.bin"
+    recovered.parent.mkdir()
+    original.replace(recovered)
+
+    assert service.store.read(source) == b"synthetic recovery payload"
+
+    original.write_bytes(b"corrupt original")
+    with pytest.raises(SourceCorruptionError, match="source size mismatch"):
+        service.store.read(source)
+
+
+def test_source_store_never_uses_recovery_fallback_after_existing_original_link(
+    tmp_path: Path,
+) -> None:
+    service = make_source_service(tmp_path)
+    source = service.register_plain_text("person-1", "synthetic recovery payload")
+    original = service.store.source_dir / source.relative_path
+    recovered = service.store.source_dir / source.id / "payload.bin"
+    recovered.parent.mkdir()
+    recovered.write_bytes(b"synthetic recovery payload")
+    original.unlink()
+    try:
+        os.symlink(recovered, original)
+    except OSError:
+        pytest.skip("symlinks are unavailable in this test environment")
+
+    with pytest.raises(SourceCorruptionError, match="must not contain links"):
+        service.store.read(source)
 
 
 def seed_people(database: SQLiteDatabase, *person_ids: str) -> None:

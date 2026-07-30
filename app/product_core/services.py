@@ -161,7 +161,35 @@ class ImmutableSourceStore:
             raise
 
     def read(self, source: Source) -> bytes:
-        path = self._resolve_relative_path(source.relative_path)
+        original = self._raw_relative_path(source.relative_path)
+        payload = self._read_verified_source_file(original, source, allow_missing=True)
+        if payload is not None:
+            return payload
+        if re.fullmatch(r"[A-Za-z0-9_-]+", source.id) is None:
+            raise SourceCorruptionError(f"source ID is unsafe: {source.id}")
+        recovered = self.source_dir / source.id / "payload.bin"
+        payload = self._read_verified_source_file(recovered, source, allow_missing=False)
+        assert payload is not None
+        return payload
+
+    def _read_verified_source_file(
+        self, path: Path, source: Source, *, allow_missing: bool
+    ) -> bytes | None:
+        self._reject_unsafe_path_components(path, source.id)
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            if allow_missing:
+                return None
+            raise SourceCorruptionError(
+                f"source payload is missing or unreadable: {source.id}"
+            ) from None
+        except OSError as exc:
+            raise SourceCorruptionError(
+                f"source payload is missing or unreadable: {source.id}"
+            ) from exc
+        if not stat.S_ISREG(mode):
+            raise SourceCorruptionError(f"source payload is not a regular file: {source.id}")
         try:
             payload = path.read_bytes()
         except OSError as exc:
@@ -173,6 +201,30 @@ class ImmutableSourceStore:
         if hashlib.sha256(payload).hexdigest() != source.content_hash:
             raise SourceCorruptionError(f"source hash mismatch: {source.id}")
         return payload
+
+    def _raw_relative_path(self, relative_path: str) -> Path:
+        relative = Path(relative_path)
+        if relative.is_absolute() or relative.anchor or ".." in relative.parts:
+            raise UnsafeSourcePathError("source path escapes OPENCARE_SOURCE_DIR")
+        return self.source_dir / relative
+
+    @staticmethod
+    def _reject_unsafe_path_components(path: Path, source_id: str) -> None:
+        current = Path(path.anchor)
+        for part in path.parts[1:]:
+            current = current / part
+            try:
+                metadata = current.lstat()
+            except FileNotFoundError:
+                continue
+            except OSError as exc:
+                raise SourceCorruptionError(
+                    f"source payload is missing or unreadable: {source_id}"
+                ) from exc
+            attributes = getattr(metadata, "st_file_attributes", 0)
+            reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            if stat.S_ISLNK(metadata.st_mode) or (reparse and attributes & reparse):
+                raise SourceCorruptionError(f"source path must not contain links: {source_id}")
 
     def read_for_portable_export(self, source: Source) -> bytes:
         """Read a source only when its stored location remains a regular local file."""

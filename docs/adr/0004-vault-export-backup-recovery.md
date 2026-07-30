@@ -1,6 +1,6 @@
 # ADR 0004: Vault export, installation backup, and recovery
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
 - Decision owners: OpenCare maintainers
 
@@ -25,9 +25,8 @@ Product Core data. Neither value may enter an export or backup.
 
 ## Decision
 
-Phase 1F defines three separate capabilities. Phase 1F-A and Phase 1F-B are
-implemented; this ADR remains Proposed because Phase 1F-C recovery is not
-implemented.
+Phase 1F defines three separate capabilities. Phase 1F-A, Phase 1F-B, and
+Phase 1F-C are implemented.
 
 ### Portable vault export
 
@@ -135,18 +134,22 @@ operators provide configuration and credentials separately.
 
 ### Recovery
 
-Recovery is an operator CLI procedure for an empty or explicitly
-maintenance-mode installation. It does not merge records into a populated
-installation. A populated target is rejected unless a separately approved,
-explicitly destructive design is added later.
+Recovery is an operator CLI procedure for an absent or real empty target. It
+requires `--confirm-maintenance` as an operator acknowledgement that the target
+is not being used by OpenCare; the CLI cannot prove this. It does not merge
+records into a populated installation, and a populated target is always
+rejected.
 
 Recovery validates the artifact before activation: format/schema compatibility,
 completion marker, paths, symlinks, resource limits, checksums, SQLite integrity
 and foreign keys, source payload hashes, Product Core lifecycle relations and
-persisted Brief revision hashes. It stages extraction in a protected temporary
-directory and atomically activates verified data with same-filesystem renames.
-If activation fails, it restores the prior empty/maintenance target state and
-reports failure rather than exposing partial state.
+persisted Brief revision hashes. It stages reconstruction in a protected
+temporary directory and atomically activates verified data with same-filesystem
+renames. The database is restored byte-for-byte without migrations,
+normalization, or new domain/audit rows. Handled failures restore the prior
+absent state or original empty directory. Crash or power-loss consistency
+between filesystem operations is not guaranteed; exact abandoned recovery
+artifacts are detected and block a subsequent run.
 
 Recovery does not claim to invalidate existing browser sessions. The current
 access cookie remains valid only if the separately managed secret key is the
@@ -162,9 +165,11 @@ only when needed for transport and must be removed on success and failure.
 The implemented operator CLI owns installation backup and verification:
 `python -m app.product_core.backup_cli backup` and `verify`. Verification opens
 only the supplied backup directory and has no dependency on active runtime
-settings, database, source directory, or HTTP services. Recovery preflight,
-recovery execution and a recovery report remain future CLI work. Full backup
-and recovery must not be exposed through ordinary HTTP or Workspace routes.
+settings, database, source directory, or HTTP services. Recovery is operator
+CLI work: `preflight --backup <directory> --target-root <root>` is read-only,
+and `recover --backup <directory> --target-root <root> --confirm-maintenance`
+requires an absent or empty target. Full backup and recovery must not be exposed
+through ordinary HTTP or Workspace routes.
 
 Portable export does not mean import is implemented. Arbitrary merge, conflict
 resolution, identity remapping, partial import, cross-version semantic

@@ -4,8 +4,8 @@
 
 Phase 1F-A implements the Person-scoped portable export, its API route, and a
 Workspace download warning. Phase 1F-B implements the local operator backup and
-offline verifier described below. Recovery, import, encryption, and Phase 1F-C
-work remain unimplemented.
+offline verifier described below. Phase 1F-C implements fail-closed
+empty-target recovery. Import and encryption remain unimplemented.
 
 ## Verified current boundary
 
@@ -108,9 +108,14 @@ secrets.
 ### Recovery compatibility
 
 The MVP accepts only explicitly supported backup and schema versions. Recovery
-is deferred to Phase 1F-C and will be an operator CLI operation for an empty or
-maintenance-mode target only. Portable import, merge, and semantic conversion
-are separate future work.
+is an operator CLI operation for an absent or real empty target only:
+`preflight --backup <directory> --target-root <root>` is read-only and
+`recover --backup <directory> --target-root <root> --confirm-maintenance`
+requires explicit maintenance acknowledgement. It validates backup and target
+state, stages a byte-for-byte database copy and fixed source payload paths on
+the target filesystem, verifies before/after activation, and rolls back handled
+failures. Portable import, merge, populated-target recovery, and semantic
+conversion are separate future work.
 
 ## Security and privacy boundary
 
@@ -119,7 +124,7 @@ it does not encrypt content or prove who created an artifact. Backups exclude
 `.env`, passwords, `OPENCARE_SECRET_KEY`, provider credentials, cookies, virtual
 environments, caches, logs, reports, test artifacts, and TLS/deployment secrets.
 The implementation adds neither an HTTP/Workspace backup route, scheduled or
-remote storage, cloud integration, encryption, import, nor recovery.
+remote storage, cloud integration, encryption, import, nor merge.
 
 ## Future delivery split
 
@@ -137,9 +142,13 @@ integrity checks, destination-race refusal, and metadata-only reporting.
 
 ### Phase 1F-C: recovery
 
-Planned: preflight, empty-target-only recovery, rollback, and metadata-only
-operator report. It must validate all artifact and lifecycle boundaries before
-activation and must not introduce populated-target merge or overwrite semantics.
+Implemented: read-only preflight, empty-target-only recovery, canonical
+metadata-only `RECOVERY_REPORT.json`, guarded same-filesystem activation,
+post-activation verification, and handled rollback. The report excludes health
+content and credentials. Recovery does not claim crash/power-loss consistency
+between filesystem operations; exact abandoned private recovery artifacts block
+the next operation for diagnosis. It does not introduce populated-target merge
+or overwrite semantics.
 
 ## Test matrix
 
@@ -150,5 +159,5 @@ activation and must not introduce populated-target merge or overwrite semantics.
   files, unsafe paths/symlinks, lifecycle violations, and offline-only access;
 - CLI: explicit paths, backup defaults, verify without defaults, exit codes,
   and metadata-only output;
-- future recovery: limits, empty-target refusal, atomic activation/rollback,
-  and post-activation verification.
+- recovery: read-only preflight, path/link/overlap refusal, absent/empty-target
+  activation, source/Brief integrity, rollback, and post-activation verification.

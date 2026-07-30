@@ -161,10 +161,11 @@ writes a canonical manifest and `COMPLETE` marker, and verifies supplied backup
 directories offline. It creates no HTTP/UI route and does not add recovery,
 import, encryption, cloud/scheduled storage, or deployment behavior.
 
-Only fail-closed recovery remains proposed. Installation backup uses a
-consistent SQLite snapshot and all source payloads represented by that snapshot.
+Phase 1F-C is implemented: operator-only preflight and fail-closed recovery
+restore a verified backup only into an absent or real empty target, with
+same-filesystem staging, post-activation verification, and handled rollback.
 
-The implementation sequence is 1F-A portable export, completed 1F-B
+The implementation sequence is complete: 1F-A portable export, 1F-B
 backup/verification, and 1F-C empty-target recovery with rollback. It does not
 add portable import, merge, cloud storage, schedules, encryption, sharing,
 credentials, Identity, family access, uploads/OCR or deployment changes.

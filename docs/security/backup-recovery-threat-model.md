@@ -2,8 +2,8 @@
 
 ## Status and boundary
 
-Phase 1F-A portable export and Phase 1F-B local operator backup/verification
-are implemented; recovery remains proposed. These artifacts contain sensitive
+Phase 1F-A portable export, Phase 1F-B local operator backup/verification, and
+Phase 1F-C fail-closed recovery are implemented. These artifacts contain sensitive
 health data in plaintext. They require operator-controlled destinations and
 local handling. Phase 1F does not add encryption, signing, cloud storage,
 scheduled jobs, sharing or public backup and recovery HTTP endpoints.
@@ -21,7 +21,7 @@ creator.
 | Incomplete source store | Enumerate every persisted source ID from the database snapshot; verify each copied payload path, regular-file status, size and hash. | Backup is incomplete without marker; verifier and recovery reject it. |
 | Tampered Brief revision | Recompute supported Brief content/Markdown hash and reject unsupported versions. | Fail closed; do not expose the restored installation. |
 | Stale backup | Include creation timestamp and version metadata in report; do not claim freshness. | Operator explicitly decides whether to recover an older complete backup. |
-| Restore into wrong/populated installation | Require an empty or explicitly maintenance-mode target and report target identity/path safely. | Refuse populated target. |
+| Restore into wrong/populated installation | Require an absent or real empty target, explicit maintenance acknowledgement, path-overlap/link checks, and a safe target path report. | Refuse populated target. |
 | Interrupted activation | Stage under target filesystem; activate with atomic rename and retain rollback material until post-checks pass. | Restore prior empty target layout and leave service unavailable. |
 | Temporary extraction leakage | Use protected temporary directories, no user-controlled names, cleanup on success/failure, no content logging. | Cleanup failure is reported as an operator action, never treated as success. |
 | Restored access state | Exclude passwords, secret key and cookies. Document that cookie invalidation cannot be claimed when an external secret is reused. | Operator supplies access configuration separately. |
@@ -32,9 +32,20 @@ directory, or runtime HTTP services. It checks `COMPLETE`, canonical manifest
 bytes/checksum, exact declared layout, payloads, SQLite/FK/lifecycle consistency,
 source metadata, and Brief revision integrity before reporting success.
 
+Recovery preflight is strictly read-only and recovery requires explicit paths,
+an absent or real empty target, and `--confirm-maintenance`. The flag records
+operator acknowledgement rather than proving the application is stopped.
+Recovery restores no passwords, secret key, provider key, cookie, session, TLS,
+or deployment configuration; it neither rotates credentials nor claims to
+invalidate cookies if the externally managed secret key is reused. It uses
+same-filesystem staging and guarded renames, verifies after activation, and
+rolls back handled failures. It does not guarantee a crash- or power-loss-safe
+state between filesystem operations; exact private abandoned artifacts block a
+later operation for manual diagnosis.
+
 ## Review and test requirements
 
-Future tests must assert no secret leakage or sensitive logging, source and
-checksum verification, safe temporary directory cleanup, archive resource
-limits, destination permission handling, path/symlink rejection, empty-target
-refusal, atomic rollback and a verified post-recovery lifecycle.
+Tests assert no secret leakage or sensitive logging, source/checksum
+verification, strictly read-only preflight, safe temporary-directory cleanup,
+path/symlink rejection, empty-target refusal, guarded activation, rollback, and
+a verified post-recovery lifecycle.

@@ -56,9 +56,11 @@ request-scoped ZIP through the Product Core API. It does not own import,
 backup, recovery, encryption, a CLI, or storage-provider integration.
 
 Phase 1F-B adds `InstallationBackupService` and `app.product_core.backup_cli`
-to this boundary. They create a local installation snapshot and verify a
-supplied backup directory offline; they do not expose HTTP/UI behavior, recovery,
-import, encryption, remote storage, scheduling, or deployment integration.
+to this boundary. Phase 1F-C adds `InstallationRecoveryService` and target-only
+recovered-installation verification. They create, verify, preflight, and
+fail-closed recover local installation state offline; they do not expose HTTP/UI
+behavior, import/merge, encryption, remote storage, scheduling, or deployment
+integration.
 
 ## Trust Foundation
 

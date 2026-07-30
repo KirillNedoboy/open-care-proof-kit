@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.product_core import backup_cli
+from app.product_core.installation_backup import InstallationBackupService
 from app.product_core.models import Person
 from app.product_core.services import SourceService
 from app.product_core.sqlite import SQLiteDatabase
@@ -137,3 +138,44 @@ def test_backup_cli_module_backup_and_verify_smoke(tmp_path: Path) -> None:
     )
     assert verify.returncode == 0
     assert json.loads(verify.stdout)["status"] == "valid"
+
+
+def test_recovery_cli_preflight_and_confirmation_are_offline_and_privacy_safe(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    database = SQLiteDatabase(tmp_path / "active.sqlite3")
+    database.migrate()
+    sources = SourceService(database, tmp_path / "active-sources")
+    backup = tmp_path / "backup"
+    InstallationBackupService(database.path, sources.store.source_dir).backup(backup)
+    target = tmp_path / "recovered"
+
+    monkeypatch.setattr(
+        backup_cli,
+        "load_settings",
+        lambda: (_ for _ in ()).throw(AssertionError("recovery must be offline")),
+    )
+    assert (
+        backup_cli.main(
+            ["preflight", "--backup", str(backup), "--target-root", str(target)]
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["status"] == "valid"
+
+    assert backup_cli.main(["recover", "--backup", str(backup), "--target-root", str(target)]) == 1
+    refusal = json.loads(capsys.readouterr().out)
+    assert refusal["reason_code"] == "maintenance_confirmation_required"
+    assert not target.exists()
+
+
+def test_backup_cli_invalid_recovery_usage_returns_json_exit_code_two(capsys) -> None:
+    assert backup_cli.main(["preflight"]) == 2
+
+    assert json.loads(capsys.readouterr().out) == {
+        "operation": "cli",
+        "reason_code": "invalid_cli_usage",
+        "status": "invalid",
+    }
