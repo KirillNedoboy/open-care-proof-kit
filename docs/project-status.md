@@ -164,11 +164,17 @@ protects an installation, not individuals.
 ## Deferred work
 
 Phase 1E-B persists editable evidence-linked Visit Briefs. Phase 1F implements
-Person-scoped portable export plus operator-only backup verification and
-fail-closed empty-target recovery; ADR 0004 is Accepted. Source/evidence
-drawers, portable import, recovery runtime, encryption, identity and caregiver
+Person-scoped portable export, operator-only backup verification, and Phase 1F-C
+operator-only `preflight` and `recover` through `InstallationRecoveryService`.
+Recovery requires maintenance confirmation, stages and verifies the installation,
+activates it atomically, rolls back handled failures, and writes
+`RECOVERY_REPORT.json`; it accepts only an absent or empty target. ADR 0004 is
+Accepted. Source/evidence drawers, portable import or merge, recovery into a
+populated installation or destructive overwrite, encryption or authenticity
+signatures, cloud or scheduled backup, HTTP or Workspace recovery, crash or
+power-loss guarantees between filesystem operations, identity and caregiver
 permissions, family relationships, uploads, OCR, genetics expansion, new
-providers, multi-user SaaS, cloud storage and deployment changes remain deferred.
+providers, multi-user SaaS, and deployment changes remain deferred.
 
 ## Canonical references
 
