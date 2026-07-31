@@ -43,7 +43,7 @@ Recommended local setup:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+python -m pip install -c constraints/python312.txt -e ".[dev]"
 ```
 
 ## Common commands

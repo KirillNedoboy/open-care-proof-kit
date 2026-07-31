@@ -6,13 +6,14 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
+COPY constraints/python312.txt ./constraints/python312.txt
 COPY app ./app
 COPY evals ./evals
 COPY data ./data
 COPY docs ./docs
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir -c constraints/python312.txt .
 
 EXPOSE 8000
 

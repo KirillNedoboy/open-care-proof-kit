@@ -23,7 +23,7 @@ Your tasks:
 1. Run the setup and checks:
    - python -m venv .venv
    - source .venv/bin/activate
-   - pip install -e ".[dev]"
+   - python -m pip install -c constraints/python312.txt -e ".[dev]"
    - pytest
    - ruff check app tests evals
    - mypy app evals

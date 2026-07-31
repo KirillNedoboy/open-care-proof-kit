@@ -34,7 +34,7 @@ Run:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+python -m pip install -c constraints/python312.txt -e ".[dev]"
 pytest
 ruff check app tests evals
 mypy app evals
@@ -45,7 +45,7 @@ Windows PowerShell equivalent:
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pip install -c constraints/python312.txt -e ".[dev]"
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\python.exe -m ruff check app tests evals
 .\.venv\Scripts\python.exe -m mypy app evals
