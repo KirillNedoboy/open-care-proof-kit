@@ -1,14 +1,16 @@
 # OpenCare Current Project Status
 
-This is the canonical description of the repository as inspected on
-2026-07-30. Historical chronology remains in `CHECKPOINT.md` and
-`SESSION_NOTES.md`; those files are not current status sources.
+This is the canonical description of the repository prepared on 2026-07-31
+from the accepted implementation baseline. Historical chronology remains in
+`CHECKPOINT.md` and `SESSION_NOTES.md`; those files are not current status
+sources.
 
 ## Repository snapshot
 
 - Branch: `codex/opencare-product-integration`
-- Inspected starting commit: `296a6d8daa7b399224995507387f85ffeb8348f1`
-- Inspection date: 2026-07-30
+- Accepted implementation baseline: `874c44d1308e016c68c58bf257a29a26eea746f6`
+- Documentation prepared from that baseline before this metadata-only commit.
+- Inspection date: 2026-07-31
 - Starting working tree: clean
 - Current repository: OpenCare foundation with demo/reference and trust
   components, not a complete editable Personal and Family Health Workspace.
@@ -135,24 +137,21 @@ source payloads through explicit `OPENCARE_PRODUCT_DATA_DIR` and
 `OPENCARE_BACKUP_DIR` host bind mounts; development Compose remains a separate
 demo/development path.
 
-## Validation executed on 2026-07-31
+## Accepted validation baseline
 
-- `.\.venv\Scripts\python.exe -m pytest` -> `286 passed`.
-- `.\.venv\Scripts\python.exe -m ruff check app tests evals` -> passed.
-- `.\.venv\Scripts\python.exe -m mypy app evals` -> no issues in `65 source files`.
-- Focused backup, recovery, CLI, and source-store tests cover empty-target
-  activation, rollback, offline commands, and fail-closed fallback behavior.
-- Product Core migration tests -> `7 passed`, including fresh schema version `4`,
-  upgrade preservation, rollback, foreign-key enforcement, and concurrent startup.
-- `.\.venv\Scripts\python.exe -m evals.runner` -> `14 total, 14 passed, 0 failed`;
-  `9` static-text cases and `5` pipeline cases.
-- `.\.venv\Scripts\python.exe -m evals.trust_metrics` -> passed; all reported
-  eval and artifact safety flags were true/zero as applicable.
-- Repository documentation search -> no configured Markdown lint or docs
-  validation command found; the search itself returned only references to
-  Markdown content and documentation terms.
-- `git diff --check` -> passed after documentation edits.
-- `node --check app/static/product_core_workspace.js` -> passed.
+The following are prior accepted evidence from the implementation commits, not
+claims that this documentation-only commit reran every check:
+
+- pytest: `304 passed`.
+- Ruff: passed.
+- mypy: passed for `65` files.
+- evals: `14/14` passed.
+- trust metrics: passed.
+- Constrained Python 3.12 installation and `pip check`: passed.
+- Non-editable wheel startup: passed.
+- Production Compose configuration validation: passed.
+- Docker container recreation smoke: not executed because Docker Engine was
+  unavailable.
 
 ## Visit Preparation Workspace
 
@@ -172,11 +171,12 @@ operator-only `preflight` and `recover` through `InstallationRecoveryService`.
 Recovery requires maintenance confirmation, stages and verifies the installation,
 activates it atomically, rolls back handled failures, and writes
 `RECOVERY_REPORT.json`; it accepts only an absent or empty target. ADR 0004 is
-Accepted. Source/evidence drawers, portable import or merge, recovery into a
-populated installation or destructive overwrite, encryption or authenticity
-signatures, cloud or scheduled backup, HTTP or Workspace recovery, crash or
-power-loss guarantees between filesystem operations, identity and caregiver
-permissions, family relationships, uploads, OCR, genetics expansion, new
+Accepted. Identity and per-Person authorization, caregiver permissions,
+portable import or merge, recovery into a populated installation or destructive
+overwrite, encryption or authenticity signatures, cloud or scheduled backup,
+HTTP or Workspace recovery, crash or power-loss guarantees between filesystem
+operations, clinical validation, diagnosis or treatment advice, uploads, OCR,
+broad medical ingestion, genetics expansion, Sentient integration, new
 providers, and multi-user SaaS remain deferred.
 
 ## Canonical references

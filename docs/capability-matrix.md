@@ -1,7 +1,9 @@
 # Capability Matrix
 
-This matrix describes verified repository capability as of 2026-07-26. A
-status is about the current implementation, not the approved future direction.
+This matrix describes repository capability as prepared on 2026-07-31 from the
+accepted implementation baseline `874c44d1308e016c68c58bf257a29a26eea746f6`.
+It is documentation prepared from that baseline, not a claim about the final
+branch HEAD after this metadata-only commit.
 
 | Capability | Status | Repository evidence or boundary |
 |---|---|---|
@@ -27,10 +29,12 @@ status is about the current implementation, not the approved future direction.
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |
 | Audit | `IMPLEMENTED` | Metadata-only agent audit in `app/agent/audit.py`; report audit in `app/reports/json_audit.py`; tests in `tests/test_agent.py`, `tests/test_report_generation.py` |
 | Evaluations | `IMPLEMENTED` | `evals/runner.py`, `evals/cases/`, `evals/trust_metrics.py`, `tests/test_evals_runner.py`, `tests/test_trust_metrics.py` |
+| Wheel distribution | `IMPLEMENTED` | The source checkout and non-editable wheel startup have accepted validation evidence; runtime assets are packaged. |
+| Constrained Python 3.12 | `IMPLEMENTED` | `constraints/python312.txt` pins the accepted Python 3.12 release/test environment. |
 | PGx | `DEMO_ONLY` | `app/pgx/`, `app/demo_pipeline.py`, `data/evidence_packs/pgx_demo_pack.json`, `tests/test_pgx_matcher.py`, `tests/test_demo_pipeline.py` |
 | Genetics | `DEMO_ONLY` | Demo parser only in `app/genetics/`, `data/demo_patients/demo_patient_a_23andme.txt`, `tests/test_genotype_parser.py`; no Product Core genetics workflow |
-| Deployment | `PARTIAL` | Production Compose persists Product Core SQLite and immutable sources through required host bind mounts; `Dockerfile`, Compose manifests, `deploy/`, `scripts/smoke_check.py`, and deployment docs define the bounded VPS path. |
-| Backup and export | `PARTIAL` | Phase 1F implements Person-scoped portable ZIP export plus operator-only local backup, offline verification, read-only preflight, and fail-closed empty-target recovery with SQLite/source/Brief checks. ADR 0004 is Accepted. No import, merge, encryption, or populated-target recovery exists. |
+| Deployment | `PARTIAL` | Production Compose persists Product Core SQLite and immutable sources through explicit required host bind mounts; Docker container recreation smoke remains unexecuted because Docker Engine was unavailable. |
+| Backup and export | `PARTIAL` | Phase 1F implements Person-scoped portable ZIP export plus operator-only local `backup`, `verify`, read-only `preflight`, and fail-closed `recover` with SQLite/source/Brief checks. ADR 0004 is Accepted. No import, merge, encryption, or populated-target recovery exists. |
 | Agent tools | `PARTIAL` | Portable context and answer validation CLI in `app/agent/cli.py`, `app/agent/portable.py`, `skills/opencare-health-agent/`; no read-only Product Core tool surface |
 | Family permissions | `OUT_OF_SCOPE` | No permission or caregiver authorization model in the runtime |
 

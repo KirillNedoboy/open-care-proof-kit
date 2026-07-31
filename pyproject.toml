@@ -6,13 +6,20 @@ build-backend = "setuptools.build_meta"
 name = "open-care-proof-kit"
 version = "0.1.0"
 description = "Local-first open-source trust/evidence/safety toolkit for private health AI agents."
+readme = "README.md"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
   "fastapi>=0.111.0",
   "jinja2>=3.1.0",
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.7.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/KirillNedoboy/open-care-proof-kit"
+Issues = "https://github.com/KirillNedoboy/open-care-proof-kit/issues"
 
 [project.optional-dependencies]
 dev = [

@@ -16,6 +16,10 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 - [Product direction ADR](docs/adr/0001-opencare-product-direction.md)
 - [Current project status](docs/project-status.md)
 - [Capability matrix](docs/capability-matrix.md)
+- [Changelog](CHANGELOG.md)
+- [Private-alpha release notes](docs/releases/v0.1.0-private-alpha.md)
+- [Private-alpha operator checklist](docs/private-alpha-operator-checklist.md)
+- [Security reporting](SECURITY.md)
 - [Product Core roadmap](docs/roadmap/product-core-roadmap.md)
 - [Module boundaries](docs/architecture/module-boundaries.md)
 - [Agent direction summary](AGENTS.product-direction.md)
@@ -23,6 +27,18 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 `CHECKPOINT.md` and `SESSION_NOTES.md` are historical chronology, not current
 status sources. Grant and reviewer documents are supporting evidence, not the
 product roadmap.
+
+## Release candidate status
+
+Version `0.1.0` is a controlled private-alpha release candidate. No Git tag or
+public release has been created. Both the source checkout and packaged wheel
+have accepted validation evidence; this is not a production-readiness or
+clinical-readiness claim.
+
+Production Compose requires explicit persistent Product Core and backup host
+paths. Development Compose remains synthetic/demo-only and is not suitable for
+sensitive private-alpha data. See the private-alpha operator checklist before
+handling any non-synthetic installation data.
 
 ## Portable Health-Agent Skill
 
