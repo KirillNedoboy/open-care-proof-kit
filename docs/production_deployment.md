@@ -56,6 +56,8 @@ The repo ignores those operator-specific files so secrets and real domains do no
 OPENCARE_SECRET_KEY=<32+ character secret>
 OPENCARE_ACCESS_PASSWORD=<strong private password>
 OPENCARE_LOCAL_VAULT_PATH=/absolute/or/repo-relative/path/to/local-family-vault.json
+OPENCARE_PRODUCT_DATA_DIR=./private/opencare-product-core
+OPENCARE_BACKUP_DIR=./private/opencare-backups
 ```
 
 Rules:
@@ -64,9 +66,39 @@ Rules:
 - `OPENCARE_ACCESS_PASSWORD` should be unique and strong;
 - `OPENCARE_LOCAL_VAULT_PATH` must point to a host file you control;
 - the mounted vault file stays read-only in the container;
+- `OPENCARE_PRODUCT_DATA_DIR` and `OPENCARE_BACKUP_DIR` are required host directories;
 - do not point this path at a committed private data file.
 
 For a safe dry run, you can temporarily use `docs/examples/local-family-vault.template.json`.
+
+## Product Core host storage
+
+Production Compose binds two operator-controlled host directories:
+
+| Host variable | Container path | Contents |
+|---|---|---|
+| `OPENCARE_PRODUCT_DATA_DIR` | `/var/lib/opencare/product-core` | `database.sqlite3` and immutable `sources/` payloads |
+| `OPENCARE_BACKUP_DIR` | `/var/backups/opencare` | operator-created installation backups |
+
+The application receives only the fixed container paths through
+`OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`; it does not receive the
+host-path variables. `OPENCARE_PRODUCT_DATA_DIR=./private/opencare-product-core`
+and `OPENCARE_BACKUP_DIR=./private/opencare-backups` resolve from the Compose
+project directory containing `docker-compose.prod.yml`, normally the repository
+root. They do not resolve relative to `deploy/env.production`.
+
+Prepare both host directories before starting the stack. On a Linux VPS:
+
+```bash
+mkdir -p ./private/opencare-product-core ./private/opencare-backups
+chmod 700 ./private/opencare-product-core ./private/opencare-backups
+docker compose --env-file deploy/env.production -f docker-compose.prod.yml run --rm --no-deps --entrypoint sh opencare -c 'id -u; id -g'
+sudo chown -R <container-uid>:<container-gid> ./private/opencare-product-core ./private/opencare-backups
+```
+
+The Dockerfile has no `USER` instruction, so the operator must use the reported
+UID/GID rather than assuming ownership values. Keep both directories writable by
+that UID/GID and restrict them to the operator; do not make them world-writable.
 
 ## Caddy File
 
@@ -94,6 +126,8 @@ The production stack:
 - sets `OPENCARE_VAULT_SOURCE=local_file`;
 - sets `OPENCARE_VAULT_FILE=/vault/local-family-vault.json`;
 - mounts the host vault file read-only;
+- mounts persistent Product Core state at `/var/lib/opencare/product-core`;
+- mounts operator backups at `/var/backups/opencare`;
 - keeps the app container off public ports;
 - publishes only Caddy on `80` and `443`;
 - includes a container healthcheck and restart policy.
@@ -109,6 +143,11 @@ Stop it:
 ```powershell
 docker compose --env-file deploy/env.production -f docker-compose.prod.yml down
 ```
+
+Recreating the `opencare` container preserves People, Sources and immutable
+payloads, CandidateFacts and review state, canonical medications, Timeline
+Events, Visits, Visit Questions, persisted Visit Brief revisions, and Product
+Core audit rows because they remain in `OPENCARE_PRODUCT_DATA_DIR` on the host.
 
 ## Smoke Check
 
@@ -143,19 +182,33 @@ Protected behavior in the documented production path:
 - successful login sets the signed cookie;
 - non-health routes stay behind the private gate.
 
-## Backup Guidance
+## Product Core backup and recovery
 
-The local vault JSON is operator-owned host data. In V2C, backup/export guidance means copying that host file, not exporting through the app.
+The Product Core backup artifact is plaintext sensitive health data. Create it
+inside the persistent backup mount, then verify only that artifact:
 
-Recommended practice:
+```powershell
+docker compose --env-file deploy/env.production -f docker-compose.prod.yml exec opencare `
+  python -m app.product_core.backup_cli backup `
+  --database /var/lib/opencare/product-core/database.sqlite3 `
+  --source-dir /var/lib/opencare/product-core/sources `
+  --destination /var/backups/opencare/<new-backup-directory>
 
-- keep the vault JSON outside Git or under an ignored path;
-- store at least one offline or encrypted backup copy you control;
-- version backups at the host or filesystem level;
-- test restore by replacing the mounted host file with a backup copy;
-- never edit the mounted file from inside the container.
+docker compose --env-file deploy/env.production -f docker-compose.prod.yml exec opencare `
+  python -m app.product_core.backup_cli verify `
+  --backup /var/backups/opencare/<new-backup-directory>
+```
 
-The container mount is read-only by design. Recovery is done by restoring the host file and restarting the stack if needed.
+Backups exclude `.env`, passwords, `OPENCARE_SECRET_KEY`, provider credentials,
+cookies, sessions, TLS material, deployment configuration, and generated
+reports. Store the mounted local vault JSON separately; it is not Product Core
+state.
+
+Recovery is an offline maintenance operation. Stop application access first;
+the CLI cannot prove that the service is stopped. Do not run recovery against
+the active mounted Product Core directory. It requires an absent or real empty
+target and does not support populated-target overwrite or merge. This deployment
+path does not define an in-place Compose recovery command.
 
 ## Security Checklist
 
@@ -175,7 +228,7 @@ The container mount is read-only by design. Recovery is done by restoring the ho
 - No medical advice.
 - No clinical decision support.
 - No uploads.
-- No database persistence.
+- Product Core persistence depends on the two required host bind mounts.
 - No user accounts.
 - No LLM generation in this deployment path.
 - No genetics support in this deployment path.

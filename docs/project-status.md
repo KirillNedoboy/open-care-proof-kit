@@ -130,7 +130,10 @@ persisted. Generated files under `reports/` remain ignored.
 The repository supports local Uvicorn execution, Docker Compose development,
 and a documented single-node VPS path using Docker Compose and Caddy examples.
 The runtime has health/readiness endpoints and an optional password gate for
-non-health routes. No deployment or infrastructure was changed in this phase.
+non-health routes. Production Compose persists Product Core SQLite and immutable
+source payloads through explicit `OPENCARE_PRODUCT_DATA_DIR` and
+`OPENCARE_BACKUP_DIR` host bind mounts; development Compose remains a separate
+demo/development path.
 
 ## Validation executed on 2026-07-31
 
@@ -174,7 +177,7 @@ populated installation or destructive overwrite, encryption or authenticity
 signatures, cloud or scheduled backup, HTTP or Workspace recovery, crash or
 power-loss guarantees between filesystem operations, identity and caregiver
 permissions, family relationships, uploads, OCR, genetics expansion, new
-providers, multi-user SaaS, and deployment changes remain deferred.
+providers, and multi-user SaaS remain deferred.
 
 ## Canonical references
 

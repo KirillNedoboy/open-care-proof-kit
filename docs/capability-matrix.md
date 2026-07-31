@@ -29,7 +29,7 @@ status is about the current implementation, not the approved future direction.
 | Evaluations | `IMPLEMENTED` | `evals/runner.py`, `evals/cases/`, `evals/trust_metrics.py`, `tests/test_evals_runner.py`, `tests/test_trust_metrics.py` |
 | PGx | `DEMO_ONLY` | `app/pgx/`, `app/demo_pipeline.py`, `data/evidence_packs/pgx_demo_pack.json`, `tests/test_pgx_matcher.py`, `tests/test_demo_pipeline.py` |
 | Genetics | `DEMO_ONLY` | Demo parser only in `app/genetics/`, `data/demo_patients/demo_patient_a_23andme.txt`, `tests/test_genotype_parser.py`; no Product Core genetics workflow |
-| Deployment | `PARTIAL` | `Dockerfile`, `docker-compose.yml`, `docker-compose.prod.yml`, `deploy/`, `scripts/smoke_check.py`, `docs/deployment.md`, `docs/production_deployment.md` |
+| Deployment | `PARTIAL` | Production Compose persists Product Core SQLite and immutable sources through required host bind mounts; `Dockerfile`, Compose manifests, `deploy/`, `scripts/smoke_check.py`, and deployment docs define the bounded VPS path. |
 | Backup and export | `PARTIAL` | Phase 1F implements Person-scoped portable ZIP export plus operator-only local backup, offline verification, read-only preflight, and fail-closed empty-target recovery with SQLite/source/Brief checks. ADR 0004 is Accepted. No import, merge, encryption, or populated-target recovery exists. |
 | Agent tools | `PARTIAL` | Portable context and answer validation CLI in `app/agent/cli.py`, `app/agent/portable.py`, `skills/opencare-health-agent/`; no read-only Product Core tool surface |
 | Family permissions | `OUT_OF_SCOPE` | No permission or caregiver authorization model in the runtime |

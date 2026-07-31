@@ -205,6 +205,8 @@ The validated remote deployment path in V2C is:
 - `OPENCARE_DEMO_MODE=false`;
 - `OPENCARE_VAULT_SOURCE=local_file`;
 - read-only mounted vault JSON file.
+- explicit production bind mounts for Product Core SQLite, immutable sources, and
+  operator backup artifacts.
 
 Use [docs/production_deployment.md](production_deployment.md) for the complete operator flow. That document includes:
 
@@ -212,7 +214,7 @@ Use [docs/production_deployment.md](production_deployment.md) for the complete o
 - `deploy/Caddyfile.example`;
 - DNS/firewall expectations;
 - the `scripts/smoke_check.py` command;
-- backup guidance for the mounted local vault JSON;
+- Product Core host storage and backup guidance;
 - the production security checklist.
 
 Do not expose the app container directly without the reverse proxy.
@@ -255,7 +257,7 @@ If any of these are missing, readiness fails closed.
 - No medical advice.
 - No clinical decision support.
 - No user account system.
-- No database persistence workflow.
+- Product Core persistence is available only through the required production host mounts.
 - No secrets committed to source control.
 
 For broader product and safety context, also read [README.md](../README.md) and [privacy_safety_threat_model.md](privacy_safety_threat_model.md).

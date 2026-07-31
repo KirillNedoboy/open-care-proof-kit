@@ -298,6 +298,8 @@ OpenCare now includes a minimal self-hosted deployment foundation plus one docum
 - Health checks stay public at `/health`, `/healthz`, and `/readyz`.
 - The validated remote deployment path is single-node VPS + Docker Compose + Caddy + TLS.
 - The deployment smoke check script is `scripts/smoke_check.py`.
+- Production Compose persists Product Core SQLite and immutable source payloads through
+  required `OPENCARE_PRODUCT_DATA_DIR` and `OPENCARE_BACKUP_DIR` host bind mounts.
 
 See [docs/deployment.md](docs/deployment.md) for:
 
@@ -317,7 +319,7 @@ See [docs/production_deployment.md](docs/production_deployment.md) for the valid
 - `deploy/env.production.example`;
 - Caddy reverse proxy/TLS flow;
 - `scripts/smoke_check.py`;
-- operator backup guidance for the mounted local vault JSON.
+- persistent Product Core storage, backup destination, and recovery boundaries.
 
 ## Validation And Trust Metrics
 
