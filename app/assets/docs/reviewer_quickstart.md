@@ -1,8 +1,8 @@
 # Reviewer Quickstart (Supporting Evidence)
 
 > This is a reviewer procedure for the current demo/reference surfaces. It is
-> not the product roadmap. The authoritative direction is [ADR 0001](adr/0001-opencare-product-direction.md)
-> and the authoritative status is [project-status.md](project-status.md).
+> not the product roadmap. The authoritative direction is [ADR 0001](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/adr/0001-opencare-product-direction.md)
+> and the authoritative status is [project-status.md](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/project-status.md).
 
 Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generated report, audit JSON, Health/Family Vault reviewer UI, API endpoints, and evals.
 

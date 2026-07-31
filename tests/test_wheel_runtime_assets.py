@@ -5,6 +5,11 @@ import zipfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_URL = "https://github.com/KirillNedoboy/open-care-proof-kit"
+REVIEWER_QUICKSTART_URLS = (
+    f"{REPOSITORY_URL}/blob/main/docs/adr/0001-opencare-product-direction.md",
+    f"{REPOSITORY_URL}/blob/main/docs/project-status.md",
+)
 
 
 def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path) -> None:
@@ -28,6 +33,7 @@ def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path)
 
     with zipfile.ZipFile(wheel_path) as wheel:
         names = set(wheel.namelist())
+        quickstart = wheel.read("app/assets/docs/reviewer_quickstart.md").decode("utf-8")
 
     assert {
         "app/static/product_core_workspace.css",
@@ -40,6 +46,8 @@ def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path)
         "app/assets/docs/reviewer_quickstart.md",
         "app/assets/docs/health_vault/family-vault-manifest.json",
     }.issubset(names)
+    for url in REVIEWER_QUICKSTART_URLS:
+        assert url in quickstart
 
     install_dir = tmp_path / "installed"
     subprocess.run(
@@ -82,6 +90,9 @@ def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path)
                     "'/static/product_core_workspace.css', "
                     "'/static/product_core_workspace.js'):",
                     "        assert client.get(path).status_code == 200, path",
+                    "    quickstart = client.get('/reviewer-quickstart')",
+                    "    assert quickstart.status_code == 200",
+                    *[f"    assert {url!r} in quickstart.text" for url in REVIEWER_QUICKSTART_URLS],
                 ]
             ),
         ],

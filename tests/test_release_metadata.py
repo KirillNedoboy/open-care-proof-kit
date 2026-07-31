@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -7,10 +9,26 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE_COMMIT = "874c44d1308e016c68c58bf257a29a26eea746f6"
 REPOSITORY_URL = "https://github.com/KirillNedoboy/open-care-proof-kit"
 ISSUES_URL = f"{REPOSITORY_URL}/issues"
+REVIEWER_QUICKSTART_URLS = (
+    f"{REPOSITORY_URL}/blob/main/docs/adr/0001-opencare-product-direction.md",
+    f"{REPOSITORY_URL}/blob/main/docs/project-status.md",
+)
+MARKDOWN_LINK_RE = re.compile(r"!?(?:\[[^\]]*\])\(([^)]+)\)")
 
 
 def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
+
+
+def _tracked_markdown_paths() -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "*.md"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [ROOT / path for path in result.stdout.splitlines()]
 
 
 def test_project_metadata_is_complete_without_dependency_or_version_changes() -> None:
@@ -93,3 +111,26 @@ def test_readme_links_to_candidate_documents_and_security_reporting() -> None:
         "[Security reporting](SECURITY.md)",
     ):
         assert link in readme
+
+
+def test_tracked_markdown_local_links_resolve() -> None:
+    broken: list[tuple[str, str]] = []
+    for document in _tracked_markdown_paths():
+        for raw_link in MARKDOWN_LINK_RE.findall(document.read_text(encoding="utf-8")):
+            link = raw_link.strip().strip("<>")
+            if not link or link.startswith(("#", "http://", "https://", "mailto:", "tel:")):
+                continue
+            local_path = link.split("#", 1)[0].split(" ", 1)[0]
+            if local_path and not (document.parent / local_path).resolve().exists():
+                broken.append((document.relative_to(ROOT).as_posix(), raw_link))
+    assert not broken
+
+
+def test_packaged_reviewer_quickstart_links_target_canonical_main_documents() -> None:
+    quickstart = _read("app/assets/docs/reviewer_quickstart.md")
+
+    for url in REVIEWER_QUICKSTART_URLS:
+        assert url in quickstart
+        tracked_path = url.removeprefix(f"{REPOSITORY_URL}/blob/main/")
+        assert tracked_path != url
+        assert (ROOT / tracked_path).is_file()
