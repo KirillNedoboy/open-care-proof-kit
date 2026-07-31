@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from app.product_core import backup_cli
 from app.product_core.installation_backup import InstallationBackupService
 from app.product_core.models import Person
@@ -179,3 +181,56 @@ def test_backup_cli_invalid_recovery_usage_returns_json_exit_code_two(capsys) ->
         "reason_code": "invalid_cli_usage",
         "status": "invalid",
     }
+
+
+@pytest.mark.parametrize(
+    ("arguments", "usage"),
+    [
+        (["--help"], "usage: python -m app.product_core.backup_cli"),
+        (["backup", "--help"], "usage: python -m app.product_core.backup_cli backup"),
+        (["verify", "--help"], "usage: python -m app.product_core.backup_cli verify"),
+        (["preflight", "--help"], "usage: python -m app.product_core.backup_cli preflight"),
+        (["recover", "--help"], "usage: python -m app.product_core.backup_cli recover"),
+    ],
+)
+def test_backup_cli_module_help_exits_successfully_without_usage_json(
+    arguments: list[str], usage: str
+) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "app.product_core.backup_cli", *arguments],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert usage in result.stdout
+    assert "invalid_cli_usage" not in result.stdout
+    assert result.stderr == ""
+
+
+def test_backup_cli_main_returns_success_for_help(capsys) -> None:
+    assert backup_cli.main(["--help"]) == 0
+
+    output = capsys.readouterr().out
+    assert "usage: python -m app.product_core.backup_cli" in output
+    assert "invalid_cli_usage" not in output
+
+
+def test_backup_cli_module_invalid_usage_is_privacy_safe() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "app.product_core.backup_cli", "preflight"],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert json.loads(result.stdout) == {
+        "operation": "cli",
+        "reason_code": "invalid_cli_usage",
+        "status": "invalid",
+    }
+    assert result.stderr == ""

@@ -56,7 +56,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = build_parser().parse_args(argv)
-    except (_CliUsageError, SystemExit):
+    except _CliUsageError:
+        _print_usage_failure()
+        return 2
+    except SystemExit as exc:
+        if exc.code == 0:
+            return 0
         _print_usage_failure()
         return 2
     if args.command == "backup":
