@@ -24,7 +24,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2, 3, 4]
+        ] == [1, 2, 3, 4, 5]
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         table_names = {
             row[0]
@@ -147,7 +147,7 @@ def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path
     with database.connect() as connection:
         assert [row[0] for row in connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version"
-        ).fetchall()] == [1, 2, 3, 4]
+        ).fetchall()] == [1, 2, 3, 4, 5]
         person_name = connection.execute(
             "SELECT display_name FROM people WHERE person_id = 'person-1'"
         ).fetchone()[0]
@@ -309,7 +309,7 @@ finally:
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
         ]
-        assert versions == [1, 2, 3, 4]
+        assert versions == [1, 2, 3, 4, 5]
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
         ).fetchone() is not None

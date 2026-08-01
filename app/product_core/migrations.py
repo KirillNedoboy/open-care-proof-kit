@@ -339,6 +339,623 @@ PRODUCT_MIGRATIONS = (
             ),
         ),
     ),
+    Migration(
+        version=5,
+        statements=(
+            """
+            CREATE TABLE actors (
+                actor_id TEXT PRIMARY KEY CHECK (length(trim(actor_id)) > 0),
+                username_normalized TEXT NOT NULL UNIQUE
+                    CHECK (length(trim(username_normalized)) > 0),
+                display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+                status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
+                created_at TEXT NOT NULL,
+                disabled_at TEXT,
+                disabled_by_actor_id TEXT REFERENCES actors(actor_id),
+                CHECK (
+                    (status = 'active' AND disabled_at IS NULL)
+                    OR (status = 'disabled' AND disabled_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE TABLE actor_credentials (
+                credential_id TEXT PRIMARY KEY CHECK (length(trim(credential_id)) > 0),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                credential_type TEXT NOT NULL DEFAULT 'local_password'
+                    CHECK (credential_type = 'local_password'),
+                algorithm TEXT NOT NULL CHECK (algorithm = 'scrypt'),
+                algorithm_version INTEGER NOT NULL CHECK (algorithm_version = 1),
+                salt BLOB NOT NULL CHECK (length(salt) >= 16),
+                verifier BLOB NOT NULL CHECK (length(verifier) = 64),
+                created_at TEXT NOT NULL,
+                revoked_at TEXT,
+                replaced_by_credential_id TEXT REFERENCES actor_credentials(credential_id),
+                CHECK (
+                    (revoked_at IS NULL AND replaced_by_credential_id IS NULL)
+                    OR revoked_at IS NOT NULL
+                )
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX actor_credentials_actor_active_idx
+            ON actor_credentials(actor_id) WHERE revoked_at IS NULL
+            """,
+            """
+            CREATE TABLE installation_admin_assignments (
+                admin_assignment_id TEXT PRIMARY KEY
+                    CHECK (length(trim(admin_assignment_id)) > 0),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                assigned_by_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                assigned_at TEXT NOT NULL,
+                revoked_at TEXT,
+                revoked_by_actor_id TEXT REFERENCES actors(actor_id),
+                reason_code TEXT CHECK (reason_code IS NULL OR length(reason_code) <= 80),
+                CHECK (
+                    (is_active = 1 AND revoked_at IS NULL AND revoked_by_actor_id IS NULL)
+                    OR (is_active = 0 AND revoked_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX installation_admin_actor_active_idx
+            ON installation_admin_assignments(actor_id) WHERE is_active = 1
+            """,
+            """
+            CREATE TABLE families (
+                family_id TEXT PRIMARY KEY CHECK (length(trim(family_id)) > 0),
+                display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+                created_by_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                created_at TEXT NOT NULL,
+                is_archived INTEGER NOT NULL DEFAULT 0 CHECK (is_archived IN (0, 1)),
+                archived_at TEXT,
+                archived_by_actor_id TEXT REFERENCES actors(actor_id),
+                CHECK (
+                    (is_archived = 0 AND archived_at IS NULL AND archived_by_actor_id IS NULL)
+                    OR (is_archived = 1 AND archived_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE TABLE family_memberships (
+                membership_id TEXT PRIMARY KEY CHECK (length(trim(membership_id)) > 0),
+                family_id TEXT NOT NULL REFERENCES families(family_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                created_by_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                created_at TEXT NOT NULL,
+                ended_at TEXT,
+                ended_by_actor_id TEXT REFERENCES actors(actor_id),
+                CHECK (
+                    (is_active = 1 AND ended_at IS NULL AND ended_by_actor_id IS NULL)
+                    OR (is_active = 0 AND ended_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX family_memberships_person_active_idx
+            ON family_memberships(person_id) WHERE is_active = 1
+            """,
+            """
+            CREATE INDEX family_memberships_family_active_idx
+            ON family_memberships(family_id, is_active, person_id)
+            """,
+            """
+            CREATE TABLE person_relationships (
+                relationship_id TEXT PRIMARY KEY CHECK (length(trim(relationship_id)) > 0),
+                family_id TEXT NOT NULL REFERENCES families(family_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                related_person_id TEXT NOT NULL REFERENCES people(person_id),
+                relationship_type TEXT NOT NULL CHECK (
+                    relationship_type IN (
+                        'parent', 'child', 'spouse', 'partner', 'sibling',
+                        'guardian', 'dependent', 'other'
+                    )
+                ),
+                created_by_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                created_at TEXT NOT NULL,
+                ended_at TEXT,
+                ended_by_actor_id TEXT REFERENCES actors(actor_id),
+                CHECK (person_id <> related_person_id),
+                CHECK (
+                    (is_active = 1 AND ended_at IS NULL AND ended_by_actor_id IS NULL)
+                    OR (is_active = 0 AND ended_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX person_relationships_directed_active_idx
+            ON person_relationships(family_id, person_id, related_person_id, relationship_type)
+            WHERE is_active = 1
+            """,
+            """
+            CREATE TABLE person_access_consent_history (
+                consent_event_id TEXT PRIMARY KEY CHECK (length(trim(consent_event_id)) > 0),
+                event_type TEXT NOT NULL CHECK (
+                    event_type IN ('grant', 'accept', 'revise', 'revoke', 'expire')
+                ),
+                acting_owner_actor_id TEXT REFERENCES actors(actor_id),
+                recipient_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                role TEXT NOT NULL CHECK (role IN ('owner', 'caregiver')),
+                scopes_json TEXT NOT NULL CHECK (
+                    json_valid(scopes_json) AND json_type(scopes_json) = 'array'
+                ),
+                reason_code TEXT NOT NULL CHECK (
+                    length(trim(reason_code)) > 0 AND length(reason_code) <= 80
+                ),
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE INDEX person_access_consent_person_created_idx
+            ON person_access_consent_history(person_id, created_at, consent_event_id)
+            """,
+            """
+            CREATE TABLE person_access_assignments (
+                assignment_id TEXT PRIMARY KEY CHECK (length(trim(assignment_id)) > 0),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                role TEXT NOT NULL CHECK (role IN ('owner', 'caregiver')),
+                scopes_json TEXT NOT NULL CHECK (
+                    json_valid(scopes_json) AND json_type(scopes_json) = 'array'
+                ),
+                consent_event_id TEXT NOT NULL
+                    REFERENCES person_access_consent_history(consent_event_id),
+                granted_by_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                granted_at TEXT NOT NULL,
+                revoked_at TEXT,
+                revoked_by_actor_id TEXT REFERENCES actors(actor_id),
+                revision_of_assignment_id TEXT REFERENCES person_access_assignments(assignment_id),
+                CHECK (
+                    (is_active = 1 AND revoked_at IS NULL AND revoked_by_actor_id IS NULL)
+                    OR (is_active = 0 AND revoked_at IS NOT NULL)
+                ),
+                CHECK (
+                    revision_of_assignment_id IS NULL
+                    OR revision_of_assignment_id <> assignment_id
+                )
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX person_access_actor_person_active_idx
+            ON person_access_assignments(actor_id, person_id) WHERE is_active = 1
+            """,
+            """
+            CREATE INDEX person_access_person_role_active_idx
+            ON person_access_assignments(person_id, role, is_active, actor_id)
+            """,
+            """
+            CREATE TABLE own_person_links (
+                own_person_link_id TEXT PRIMARY KEY CHECK (length(trim(own_person_link_id)) > 0),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                created_at TEXT NOT NULL,
+                revoked_at TEXT,
+                revoked_by_actor_id TEXT REFERENCES actors(actor_id),
+                CHECK (
+                    (is_active = 1 AND revoked_at IS NULL AND revoked_by_actor_id IS NULL)
+                    OR (is_active = 0 AND revoked_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX own_person_links_actor_active_idx
+            ON own_person_links(actor_id) WHERE is_active = 1
+            """,
+            """
+            CREATE UNIQUE INDEX own_person_links_person_active_idx
+            ON own_person_links(person_id) WHERE is_active = 1
+            """,
+            """
+            CREATE TABLE access_invitations (
+                invitation_id TEXT PRIMARY KEY CHECK (length(trim(invitation_id)) > 0),
+                secret_hash BLOB NOT NULL UNIQUE CHECK (length(secret_hash) = 32),
+                inviter_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                role TEXT NOT NULL CHECK (role IN ('owner', 'caregiver')),
+                scopes_json TEXT NOT NULL CHECK (
+                    json_valid(scopes_json) AND json_type(scopes_json) = 'array'
+                ),
+                state TEXT NOT NULL CHECK (state IN ('active', 'revoked', 'redeemed', 'expired')),
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked_at TEXT,
+                revoked_by_actor_id TEXT REFERENCES actors(actor_id),
+                redeemed_at TEXT,
+                redeemed_by_actor_id TEXT REFERENCES actors(actor_id),
+                CHECK (
+                    (state = 'active' AND revoked_at IS NULL AND redeemed_at IS NULL)
+                    OR (state = 'revoked' AND revoked_at IS NOT NULL AND redeemed_at IS NULL)
+                    OR (state = 'redeemed' AND redeemed_at IS NOT NULL AND revoked_at IS NULL)
+                    OR (state = 'expired' AND redeemed_at IS NULL)
+                )
+            )
+            """,
+            """
+            CREATE INDEX access_invitations_person_state_idx
+            ON access_invitations(person_id, state, expires_at, invitation_id)
+            """,
+            """
+            CREATE TABLE access_audit_events (
+                audit_event_id TEXT PRIMARY KEY CHECK (length(trim(audit_event_id)) > 0),
+                actor_id TEXT REFERENCES actors(actor_id),
+                action_code TEXT NOT NULL CHECK (
+                    length(trim(action_code)) > 0 AND length(action_code) <= 80
+                ),
+                target_class TEXT NOT NULL CHECK (
+                    target_class IN (
+                        'installation', 'actor', 'credential', 'family', 'membership',
+                        'relationship', 'person', 'assignment', 'invitation', 'session'
+                    )
+                ),
+                target_id TEXT CHECK (target_id IS NULL OR length(target_id) <= 128),
+                outcome TEXT NOT NULL CHECK (outcome IN ('success', 'denied', 'failure')),
+                reason_code TEXT NOT NULL CHECK (
+                    length(trim(reason_code)) > 0 AND length(reason_code) <= 80
+                ),
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE INDEX access_audit_created_idx
+            ON access_audit_events(created_at, audit_event_id)
+            """,
+            """
+            CREATE INDEX access_audit_actor_created_idx
+            ON access_audit_events(actor_id, created_at, audit_event_id)
+            """,
+            """
+            CREATE TRIGGER actor_disable_requires_privilege_revocation
+            BEFORE UPDATE OF status ON actors
+            WHEN OLD.status = 'active' AND NEW.status = 'disabled' AND (
+                EXISTS (
+                    SELECT 1 FROM installation_admin_assignments
+                    WHERE actor_id = OLD.actor_id AND is_active = 1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM person_access_assignments
+                    WHERE actor_id = OLD.actor_id AND is_active = 1
+                )
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_actor_privileges_must_be_revoked_first');
+            END
+            """,
+            """
+            CREATE TRIGGER installation_admin_last_active_update
+            BEFORE UPDATE OF is_active ON installation_admin_assignments
+            WHEN OLD.is_active = 1 AND NEW.is_active = 0
+                 AND (
+                    SELECT COUNT(*) FROM installation_admin_assignments AS iaa
+                    JOIN actors AS a ON a.actor_id = iaa.actor_id
+                    WHERE iaa.is_active = 1 AND a.status = 'active'
+                 ) <= 1
+            BEGIN
+                SELECT RAISE(ABORT, 'last_active_installation_admin');
+            END
+            """,
+            """
+            CREATE TRIGGER installation_admin_last_active_delete
+            BEFORE DELETE ON installation_admin_assignments
+            WHEN OLD.is_active = 1
+                 AND (
+                    SELECT COUNT(*) FROM installation_admin_assignments AS iaa
+                    JOIN actors AS a ON a.actor_id = iaa.actor_id
+                    WHERE iaa.is_active = 1 AND a.status = 'active'
+                 ) <= 1
+            BEGIN
+                SELECT RAISE(ABORT, 'last_active_installation_admin');
+            END
+            """,
+            """
+            CREATE TRIGGER installation_admin_active_actor_insert
+            BEFORE INSERT ON installation_admin_assignments
+            WHEN NEW.is_active = 1 AND NOT EXISTS (
+                SELECT 1 FROM actors
+                WHERE actor_id = NEW.actor_id AND status = 'active'
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_admin_requires_active_actor');
+            END
+            """,
+            """
+            CREATE TRIGGER installation_admin_active_actor_update
+            BEFORE UPDATE OF is_active, actor_id ON installation_admin_assignments
+            WHEN NEW.is_active = 1 AND NOT EXISTS (
+                SELECT 1 FROM actors
+                WHERE actor_id = NEW.actor_id AND status = 'active'
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_admin_requires_active_actor');
+            END
+            """,
+            """
+            CREATE TRIGGER person_access_last_owner_update
+            BEFORE UPDATE OF is_active, role, person_id ON person_access_assignments
+            WHEN OLD.is_active = 1 AND OLD.role = 'owner'
+                 AND (
+                    NEW.is_active = 0 OR NEW.role <> 'owner'
+                    OR NEW.person_id <> OLD.person_id
+                 )
+                 AND (
+                    SELECT COUNT(*) FROM person_access_assignments
+                    WHERE person_id = OLD.person_id AND role = 'owner' AND is_active = 1
+                 ) <= 1
+            BEGIN
+                SELECT RAISE(ABORT, 'last_active_person_owner');
+            END
+            """,
+            """
+            CREATE TRIGGER person_access_last_owner_delete
+            BEFORE DELETE ON person_access_assignments
+            WHEN OLD.is_active = 1 AND OLD.role = 'owner'
+                 AND (
+                    SELECT COUNT(*) FROM person_access_assignments
+                    WHERE person_id = OLD.person_id AND role = 'owner' AND is_active = 1
+                 ) <= 1
+            BEGIN
+                SELECT RAISE(ABORT, 'last_active_person_owner');
+            END
+            """,
+            """
+            CREATE TRIGGER person_access_active_subject_insert
+            BEFORE INSERT ON person_access_assignments
+            WHEN NEW.is_active = 1 AND (
+                NOT EXISTS (
+                    SELECT 1 FROM actors
+                    WHERE actor_id = NEW.actor_id AND status = 'active'
+                )
+                OR NOT EXISTS (
+                    SELECT 1 FROM people
+                    WHERE person_id = NEW.person_id AND is_active = 1
+                )
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_assignment_requires_active_subjects');
+            END
+            """,
+            """
+            CREATE TRIGGER person_access_active_subject_update
+            BEFORE UPDATE OF is_active, actor_id, person_id ON person_access_assignments
+            WHEN NEW.is_active = 1 AND (
+                NOT EXISTS (
+                    SELECT 1 FROM actors
+                    WHERE actor_id = NEW.actor_id AND status = 'active'
+                )
+                OR NOT EXISTS (
+                    SELECT 1 FROM people
+                    WHERE person_id = NEW.person_id AND is_active = 1
+                )
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_assignment_requires_active_subjects');
+            END
+            """,
+            """
+            CREATE TRIGGER own_person_link_requires_owner_insert
+            BEFORE INSERT ON own_person_links
+            WHEN NEW.is_active = 1 AND NOT EXISTS (
+                SELECT 1 FROM person_access_assignments
+                WHERE actor_id = NEW.actor_id AND person_id = NEW.person_id
+                      AND role = 'owner' AND is_active = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'own_person_link_requires_active_owner');
+            END
+            """,
+            """
+            CREATE TRIGGER own_person_link_requires_owner_update
+            BEFORE UPDATE OF is_active, actor_id, person_id ON own_person_links
+            WHEN NEW.is_active = 1 AND NOT EXISTS (
+                SELECT 1 FROM person_access_assignments
+                WHERE actor_id = NEW.actor_id AND person_id = NEW.person_id
+                      AND role = 'owner' AND is_active = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'own_person_link_requires_active_owner');
+            END
+            """,
+            """
+            CREATE TRIGGER owner_assignment_preserves_own_link
+            BEFORE UPDATE OF is_active, role, actor_id, person_id ON person_access_assignments
+            WHEN OLD.is_active = 1 AND OLD.role = 'owner'
+                 AND (
+                    NEW.is_active = 0 OR NEW.role <> 'owner'
+                    OR NEW.actor_id <> OLD.actor_id OR NEW.person_id <> OLD.person_id
+                 )
+                 AND EXISTS (
+                    SELECT 1 FROM own_person_links
+                    WHERE actor_id = OLD.actor_id AND person_id = OLD.person_id AND is_active = 1
+                 )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_own_person_link_requires_owner');
+            END
+            """,
+            """
+            CREATE TRIGGER owner_assignment_delete_preserves_own_link
+            BEFORE DELETE ON person_access_assignments
+            WHEN OLD.is_active = 1 AND OLD.role = 'owner'
+                 AND EXISTS (
+                    SELECT 1 FROM own_person_links
+                    WHERE actor_id = OLD.actor_id AND person_id = OLD.person_id AND is_active = 1
+                 )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_own_person_link_requires_owner');
+            END
+            """,
+            """
+            CREATE TRIGGER archived_family_membership_insert
+            BEFORE INSERT ON family_memberships
+            WHEN EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = NEW.family_id AND is_archived = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'archived_family_is_read_only');
+            END
+            """,
+            """
+            CREATE TRIGGER archived_family_membership_update
+            BEFORE UPDATE ON family_memberships
+            WHEN EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = OLD.family_id AND is_archived = 1
+            ) OR EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = NEW.family_id AND is_archived = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'archived_family_is_read_only');
+            END
+            """,
+            """
+            CREATE TRIGGER archived_family_membership_delete
+            BEFORE DELETE ON family_memberships
+            WHEN EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = OLD.family_id AND is_archived = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'archived_family_is_read_only');
+            END
+            """,
+            """
+            CREATE TRIGGER archived_family_relationship_insert
+            BEFORE INSERT ON person_relationships
+            WHEN EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = NEW.family_id AND is_archived = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'archived_family_is_read_only');
+            END
+            """,
+            """
+            CREATE TRIGGER archived_family_relationship_update
+            BEFORE UPDATE ON person_relationships
+            WHEN EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = OLD.family_id AND is_archived = 1
+            ) OR EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = NEW.family_id AND is_archived = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'archived_family_is_read_only');
+            END
+            """,
+            """
+            CREATE TRIGGER archived_family_relationship_delete
+            BEFORE DELETE ON person_relationships
+            WHEN EXISTS (
+                SELECT 1 FROM families
+                WHERE family_id = OLD.family_id AND is_archived = 1
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'archived_family_is_read_only');
+            END
+            """,
+            """
+            CREATE TRIGGER family_relationship_requires_memberships_insert
+            BEFORE INSERT ON person_relationships
+            WHEN NEW.is_active = 1 AND (
+                NOT EXISTS (
+                    SELECT 1 FROM family_memberships
+                    WHERE family_id = NEW.family_id AND person_id = NEW.person_id AND is_active = 1
+                )
+                OR NOT EXISTS (
+                    SELECT 1 FROM family_memberships
+                    WHERE family_id = NEW.family_id
+                          AND person_id = NEW.related_person_id AND is_active = 1
+                )
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'relationship_requires_active_family_memberships');
+            END
+            """,
+            """
+            CREATE TRIGGER family_relationship_requires_memberships_update
+            BEFORE UPDATE OF is_active, family_id, person_id, related_person_id
+            ON person_relationships
+            WHEN NEW.is_active = 1 AND (
+                NOT EXISTS (
+                    SELECT 1 FROM family_memberships
+                    WHERE family_id = NEW.family_id AND person_id = NEW.person_id AND is_active = 1
+                )
+                OR NOT EXISTS (
+                    SELECT 1 FROM family_memberships
+                    WHERE family_id = NEW.family_id
+                          AND person_id = NEW.related_person_id AND is_active = 1
+                )
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'relationship_requires_active_family_memberships');
+            END
+            """,
+            """
+            CREATE TRIGGER family_membership_update_preserves_relationships
+            BEFORE UPDATE OF is_active, family_id, person_id ON family_memberships
+            WHEN OLD.is_active = 1
+                 AND (
+                    NEW.is_active = 0 OR NEW.family_id <> OLD.family_id
+                    OR NEW.person_id <> OLD.person_id
+                 )
+                 AND EXISTS (
+                SELECT 1 FROM person_relationships
+                WHERE family_id = OLD.family_id AND is_active = 1
+                      AND (person_id = OLD.person_id OR related_person_id = OLD.person_id)
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_relationship_requires_membership');
+            END
+            """,
+            """
+            CREATE TRIGGER family_membership_delete_preserves_relationships
+            BEFORE DELETE ON family_memberships
+            WHEN OLD.is_active = 1 AND EXISTS (
+                SELECT 1 FROM person_relationships
+                WHERE family_id = OLD.family_id AND is_active = 1
+                      AND (person_id = OLD.person_id OR related_person_id = OLD.person_id)
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'active_relationship_requires_membership');
+            END
+            """,
+            """
+            CREATE TRIGGER consent_history_immutable_update
+            BEFORE UPDATE ON person_access_consent_history
+            BEGIN
+                SELECT RAISE(ABORT, 'consent_history_is_append_only');
+            END
+            """,
+            """
+            CREATE TRIGGER consent_history_immutable_delete
+            BEFORE DELETE ON person_access_consent_history
+            BEGIN
+                SELECT RAISE(ABORT, 'consent_history_is_append_only');
+            END
+            """,
+            """
+            CREATE TRIGGER access_audit_immutable_update
+            BEFORE UPDATE ON access_audit_events
+            BEGIN
+                SELECT RAISE(ABORT, 'access_audit_is_append_only');
+            END
+            """,
+            """
+            CREATE TRIGGER access_audit_immutable_delete
+            BEFORE DELETE ON access_audit_events
+            BEGIN
+                SELECT RAISE(ABORT, 'access_audit_is_append_only');
+            END
+            """,
+        ),
+    ),
 )
 
 
@@ -364,9 +981,7 @@ class MigrationRunner:
             self._bootstrap(connection)
             applied_versions = {
                 row[0]
-                for row in connection.execute(
-                    "SELECT version FROM schema_migrations"
-                ).fetchall()
+                for row in connection.execute("SELECT version FROM schema_migrations").fetchall()
             }
             for migration in self.migrations:
                 if migration.version in applied_versions:

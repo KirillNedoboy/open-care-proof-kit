@@ -21,6 +21,10 @@ from app.agent.models import AgentQuestion
 from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
+from app.family_access.api import family_access_exception_handler
+from app.family_access.api import router as family_access_router
+from app.family_access.errors import FamilyAccessError
+from app.family_access.runtime import create_family_access_runtime
 from app.health_vault.loader import load_demo_family_vault
 from app.health_vault.read_model import VaultReadModel, build_vault_read_model
 from app.health_vault.runtime_loader import ActiveVault, load_active_vault
@@ -44,16 +48,29 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
         else:
             runtime = runtime_factory(get_settings())
         runtime.database.migrate()
+        family_runtime_factory = getattr(application.state, "family_access_runtime_factory", None)
+        if family_runtime_factory is None:
+            family_runtime = create_family_access_runtime(
+                get_settings(),
+                runtime.database,
+                clock=runtime.clock,
+                id_factory=runtime.id_factory,
+            )
+        else:
+            family_runtime = family_runtime_factory(get_settings(), runtime)
     except Exception:
         logger.error("Product Core startup failed", exc_info=False)
         raise
 
     application.state.product_core_runtime = runtime
+    application.state.family_access_runtime = family_runtime
     try:
         yield
     finally:
         if hasattr(application.state, "product_core_runtime"):
             del application.state.product_core_runtime
+        if hasattr(application.state, "family_access_runtime"):
+            del application.state.family_access_runtime
 
 
 app = FastAPI(title="OpenCare Proof Kit", version=__version__, lifespan=product_core_lifespan)
@@ -69,6 +86,8 @@ ACCESS_COOKIE_VALUE = "private-access"
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 app.include_router(product_core_router)
+app.include_router(family_access_router)
+app.add_exception_handler(FamilyAccessError, family_access_exception_handler)
 
 
 def _is_public_path(path: str) -> bool:

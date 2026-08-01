@@ -3,6 +3,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION_COMPOSE = PROJECT_ROOT / "docker-compose.prod.yml"
 DEVELOPMENT_COMPOSE = PROJECT_ROOT / "docker-compose.yml"
+DOCKERFILE = PROJECT_ROOT / "Dockerfile"
 PRODUCTION_ENV_EXAMPLE = PROJECT_ROOT / "deploy" / "env.production.example"
 PRODUCT_DATA_BIND_SOURCE = (
     'source: "${OPENCARE_PRODUCT_DATA_DIR:?OPENCARE_PRODUCT_DATA_DIR is required}"'
@@ -19,6 +20,25 @@ def test_production_compose_uses_required_persistent_product_core_mounts() -> No
     assert "target: /var/lib/opencare/product-core" in compose
     assert BACKUP_BIND_SOURCE in compose
     assert "target: /var/backups/opencare" in compose
+
+
+def test_production_compose_uses_ephemeral_session_tmpfs_outside_persistent_mounts() -> None:
+    compose = PRODUCTION_COMPOSE.read_text(encoding="utf-8")
+
+    assert "OPENCARE_SESSION_DB_PATH: /run/opencare/sessions.sqlite3" in compose
+    assert "tmpfs:" in compose
+    assert "- /run/opencare:mode=0700" in compose
+    volume_targets = [
+        line.strip() for line in compose.splitlines() if line.strip().startswith("target:")
+    ]
+    assert all("/run/opencare" not in line for line in volume_targets)
+
+
+def test_container_trusts_forwarded_https_from_the_internal_caddy_proxy() -> None:
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert '"--proxy-headers"' in dockerfile
+    assert '"--forwarded-allow-ips", "*"' in dockerfile
 
 
 def test_production_compose_keeps_host_paths_and_secrets_out_of_app_environment() -> None:

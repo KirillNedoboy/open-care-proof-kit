@@ -1,4 +1,6 @@
+import hashlib
 import os
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
@@ -33,6 +35,7 @@ class Settings:
     llm_model: str | None = None
     product_db_path: Path = Path("data/opencare.sqlite3")
     source_dir: Path = Path("data/sources")
+    session_db_path: Path = Path(tempfile.gettempdir()) / "opencare-default" / "sessions.sqlite3"
 
     @property
     def is_production(self) -> bool:
@@ -105,16 +108,27 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         None if responses_url_raw is None or not responses_url_raw.strip() else responses_url_raw
     )
 
+    product_db_path = Path(values.get("OPENCARE_PRODUCT_DB_PATH", "data/opencare.sqlite3"))
+    source_dir = Path(values.get("OPENCARE_SOURCE_DIR", "data/sources"))
+    session_path_raw = values.get("OPENCARE_SESSION_DB_PATH")
+    session_db_path = (
+        Path(session_path_raw)
+        if session_path_raw is not None and session_path_raw.strip()
+        else (
+            Path("/run/opencare/sessions.sqlite3")
+            if app_env == "production"
+            else _default_session_db_path(product_db_path)
+        )
+    )
     settings = Settings(
         env=app_env,
         demo_mode=demo_mode,
         data_dir=Path(values["OPENCARE_DATA_DIR"])
         if "OPENCARE_DATA_DIR" in values
         else DEFAULT_DATA_DIR,
-        product_db_path=Path(
-            values.get("OPENCARE_PRODUCT_DB_PATH", "data/opencare.sqlite3")
-        ),
-        source_dir=Path(values.get("OPENCARE_SOURCE_DIR", "data/sources")),
+        product_db_path=product_db_path,
+        source_dir=source_dir,
+        session_db_path=session_db_path,
         reports_dir=Path(values.get("OPENCARE_REPORTS_DIR", "reports")),
         allow_cloud_llm=allow_cloud_llm,
         secret_key=secret_key,
@@ -132,6 +146,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
 
 
 def _validate_settings(settings: Settings) -> None:
+    _validate_session_storage(settings)
     if settings.agent_mode == "openai_responses":
         if not settings.agent_allow_external_llm:
             raise ConfigError("OPENCARE_AGENT_ALLOW_EXTERNAL_LLM must be true for external mode.")
@@ -197,6 +212,42 @@ def _is_valid_responses_url(value: str) -> bool:
         and not parsed.query
         and not parsed.fragment
     )
+
+
+def _default_session_db_path(product_db_path: Path) -> Path:
+    installation = hashlib.sha256(
+        str(product_db_path.resolve(strict=False)).encode("utf-8")
+    ).hexdigest()[:16]
+    return Path(tempfile.gettempdir()).resolve() / f"opencare-{installation}" / "sessions.sqlite3"
+
+
+def _path_contains(parent: Path, child: Path) -> bool:
+    try:
+        child.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def _validate_session_storage(settings: Settings) -> None:
+    session_path = settings.session_db_path.resolve(strict=False)
+    if not session_path.is_absolute():
+        raise ConfigError("OPENCARE_SESSION_DB_PATH must be an absolute runtime path.")
+    session_dir = session_path.parent
+    product_path = settings.product_db_path.resolve(strict=False)
+    product_dir = product_path.parent
+    source_dir = settings.source_dir.resolve(strict=False)
+    overlaps = (
+        session_path == product_path
+        or _path_contains(product_dir, session_dir)
+        or _path_contains(session_dir, product_dir)
+        or _path_contains(source_dir, session_dir)
+        or _path_contains(session_dir, source_dir)
+    )
+    if overlaps:
+        raise ConfigError(
+            "OPENCARE_SESSION_DB_PATH must be outside Product Core and source storage."
+        )
 
 
 @lru_cache(maxsize=1)

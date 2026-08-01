@@ -29,6 +29,7 @@ services:
       OPENCARE_REPORTS_DIR: reports
       OPENCARE_PRODUCT_DB_PATH: /var/lib/opencare/product-core/database.sqlite3
       OPENCARE_SOURCE_DIR: /var/lib/opencare/product-core/sources
+      OPENCARE_SESSION_DB_PATH: /run/opencare/sessions.sqlite3
       OPENCARE_ALLOW_CLOUD_LLM: "false"
       OPENCARE_SECRET_KEY: ${OPENCARE_SECRET_KEY}
       OPENCARE_ACCESS_PASSWORD: ${OPENCARE_ACCESS_PASSWORD}
@@ -43,6 +44,8 @@ services:
       - type: bind
         source: "${OPENCARE_BACKUP_DIR:?OPENCARE_BACKUP_DIR is required}"
         target: /var/backups/opencare
+    tmpfs:
+      - /run/opencare:mode=0700
     expose:
       - "8000"
     healthcheck:
