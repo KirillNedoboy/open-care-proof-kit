@@ -31,7 +31,7 @@ def test_product_core_rejects_cross_origin_and_incompatible_content_type(
 
 def test_existing_chat_error_contract_remains_unchanged(product_core_client: TestClient) -> None:
     response = product_core_client.post(
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"hello"}',
         headers={"origin": "https://attacker.example", "content-type": "application/json"},
     )
@@ -40,7 +40,7 @@ def test_existing_chat_error_contract_remains_unchanged(product_core_client: Tes
     assert response.json() == {"detail": "Cross-origin request rejected."}
 
 
-def test_product_core_inherits_private_password_gate(
+def test_product_core_uses_actor_session_instead_of_private_password_gate(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -63,10 +63,10 @@ def test_product_core_inherits_private_password_gate(
                 json={"person_id": "person-1", "content": "content"},
                 headers=json_headers(),
             )
-            assert response.status_code == 307
-            assert response.headers["location"].startswith("/access")
+            assert response.status_code == 401
+            assert response.json()["error"]["code"] == "authentication_required"
             assert post_response.status_code == 401
-            assert post_response.json() == {"detail": "Private access required."}
+            assert post_response.json()["error"]["code"] == "authentication_required"
     finally:
         clear_settings_cache()
 

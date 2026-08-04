@@ -175,7 +175,7 @@ def local_file_payload() -> dict[str, object]:
 
 
 def test_vault_page_renders_demo_source_by_default() -> None:
-    response = get("/vault")
+    response = get("/demo/health-vault")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
@@ -184,7 +184,7 @@ def test_vault_page_renders_demo_source_by_default() -> None:
     assert "Demo Adult Alex" in response.text
 
 
-def test_vault_page_renders_local_file_source_without_leaking_full_path(
+def test_demo_vault_stays_synthetic_when_operator_configures_a_local_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -205,14 +205,14 @@ def test_vault_page_renders_local_file_source_without_leaking_full_path(
         ),
     )
 
-    response = get("/vault")
+    response = get("/demo/health-vault")
 
     assert response.status_code == 200
-    assert "Source: local file" in response.text
-    assert "local-family-vault.json" in response.text
+    assert "Source: demo" in response.text
+    assert "local-family-vault.json" not in response.text
     assert str(vault_path) not in response.text
-    assert "Local Family Vault" in response.text
-    assert "Local Adult One" in response.text
+    assert "Local Family Vault" not in response.text
+    assert "Demo Adult Alex" in response.text
 
 
 def test_demo_report_view_renders_briefing() -> None:
@@ -364,15 +364,15 @@ def test_private_production_redirects_protected_html_route_without_access(
     assert response.headers["location"] == "/access?next=%2Fdemo%2Fhealth-vault"
 
 
-def test_private_production_redirects_vault_route_without_access(
+def test_private_production_live_vault_requires_actor_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("app.main.get_settings", private_production_settings)
 
     response = get("/vault", follow_redirects=False)
 
-    assert response.status_code == 307
-    assert response.headers["location"] == "/access?next=%2Fvault"
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "authentication_required"
 
 
 def test_access_page_renders_in_private_production(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -461,7 +461,7 @@ def test_demo_mode_keeps_vault_route_public(monkeypatch: pytest.MonkeyPatch) -> 
         ),
     )
 
-    response = get("/vault")
+    response = get("/demo/health-vault")
 
     assert response.status_code == 200
     assert "Source: demo" in response.text

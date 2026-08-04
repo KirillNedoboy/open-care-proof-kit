@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Private Person vault · OpenCare</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
+</head>
+<body>
+  <header><a href="/workspace">OpenCare</a><nav aria-label="Primary"><a href="/workspace">Workspace</a><a href="/chat">Chat</a><a aria-current="page" href="/vault">Vault</a></nav></header>
+  <main>
+    <section>
+      <p>Private Product Core vault</p>
+      <h1>{{ person.display_name }}</h1>
+      <p>This page shows the Person currently selected in your signed-in session.</p>
+      <p class="note">Recorded context only. Not diagnosis, treatment advice, medication selection, dosage guidance, or a start/stop instruction.</p>
+    </section>
+    <section>
+      <h2>Person-scoped records</h2>
+      <p>Use the <a href="/workspace">Workspace</a> to review sources, medications, timeline events, visits, and clinician discussion questions available to this Actor.</p>
+    </section>
+  </main>
+</body>
+</html>

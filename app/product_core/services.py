@@ -40,6 +40,7 @@ from app.product_core.sqlite import SQLiteDatabase
 
 Clock = Callable[[], datetime]
 IdFactory = Callable[[], str]
+MutationAuthorizer = Callable[[sqlite3.Connection], None]
 
 
 @dataclass(frozen=True)
@@ -101,12 +102,16 @@ class PeopleService:
         display_name: str | None = None,
         date_of_birth: date | None = None,
         update_date_of_birth: bool = False,
+        authorize: MutationAuthorizer | None = None,
     ) -> Person:
         if display_name is None and not update_date_of_birth:
             raise ValueError("an update field is required")
         now = ensure_utc_datetime(self.clock())
         self._validate_date_of_birth(date_of_birth, now)
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             existing = uow.people.get(person_id)
             if existing is None:
                 raise PersonNotFoundError(f"person not found: {person_id}")
@@ -300,6 +305,7 @@ class SourceService:
         schedule_text: str | None = None,
         note: str | None = None,
         provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
     ) -> Source:
         return self.register_manual_entry_result(
             person_id,
@@ -307,6 +313,7 @@ class SourceService:
             schedule_text=schedule_text,
             note=note,
             provenance=provenance,
+            authorize=authorize,
         ).source
 
     def register_manual_entry_result(
@@ -317,6 +324,7 @@ class SourceService:
         schedule_text: str | None = None,
         note: str | None = None,
         provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
     ) -> SourceRegistrationResult:
         display_name = name.strip()
         if not person_id.strip() or not display_name:
@@ -342,6 +350,7 @@ class SourceService:
             media_type="application/json",
             suffix="json",
             provenance=provenance or {"entry_method": "manual"},
+            authorize=authorize,
         )
 
     def register_plain_text(
@@ -350,11 +359,13 @@ class SourceService:
         content: str,
         *,
         provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
     ) -> Source:
         return self.register_plain_text_result(
             person_id,
             content,
             provenance=provenance,
+            authorize=authorize,
         ).source
 
     def register_plain_text_result(
@@ -363,6 +374,7 @@ class SourceService:
         content: str,
         *,
         provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
     ) -> SourceRegistrationResult:
         if not person_id.strip():
             raise ValueError("person_id must not be empty")
@@ -374,6 +386,7 @@ class SourceService:
             media_type="text/plain",
             suffix="txt",
             provenance=provenance or {"entry_method": "plain_text"},
+            authorize=authorize,
         )
 
     def get(self, source_id: str) -> Source:
@@ -396,11 +409,15 @@ class SourceService:
         media_type: str,
         suffix: str,
         provenance: dict[str, str],
+        authorize: MutationAuthorizer | None,
     ) -> SourceRegistrationResult:
         content_hash = hashlib.sha256(payload).hexdigest()
         relative_path: str | None = None
         try:
             with self.database.uow(begin_mode="IMMEDIATE") as uow:
+                assert uow.connection is not None
+                if authorize is not None:
+                    authorize(uow.connection)
                 if uow.people.get(person_id) is None:
                     raise PersonNotFoundError(f"person not found: {person_id}")
                 existing = uow.sources.find_by_deduplication(
@@ -477,6 +494,7 @@ class MedicationLifecycleService:
         display_name: str,
         schedule_text: str | None,
         note: str | None,
+        authorize: MutationAuthorizer | None = None,
     ) -> CandidateFact:
         input_data = MedicationCandidateInput(
             display_name=display_name,
@@ -484,7 +502,10 @@ class MedicationLifecycleService:
             note=note,
         )
         created_at = ensure_utc_datetime(self.clock())
-        with self.database.uow() as uow:
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             if uow.people.get(person_id) is None:
                 raise PersonNotFoundError(f"person not found: {person_id}")
             source = uow.sources.get(source_id)
@@ -522,8 +543,16 @@ class MedicationLifecycleService:
                 raise PersonNotFoundError(f"person not found: {person_id}")
             return uow.candidates.list_for_person(person_id, status)
 
-    def confirm(self, candidate_id: str) -> CanonicalMedicationRecord:
-        with self.database.uow() as uow:
+    def confirm(
+        self,
+        candidate_id: str,
+        *,
+        authorize: MutationAuthorizer | None = None,
+    ) -> CanonicalMedicationRecord:
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             candidate = uow.candidates.get(candidate_id)
             if candidate is None:
                 raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
@@ -578,13 +607,17 @@ class MedicationLifecycleService:
         schedule_text: str | None = None,
         note: str | None = None,
         source_id: str | None = None,
+        authorize: MutationAuthorizer | None = None,
     ) -> CandidateFact:
         input_data = MedicationCandidateInput(
             display_name=display_name,
             schedule_text=schedule_text,
             note=note,
         )
-        with self.database.uow() as uow:
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             original = uow.candidates.get(candidate_id)
             if original is None:
                 raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
@@ -614,8 +647,16 @@ class MedicationLifecycleService:
             uow.candidates.insert(replacement)
             return replacement
 
-    def reject(self, candidate_id: str) -> CandidateFact:
-        with self.database.uow() as uow:
+    def reject(
+        self,
+        candidate_id: str,
+        *,
+        authorize: MutationAuthorizer | None = None,
+    ) -> CandidateFact:
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             candidate = uow.candidates.get(candidate_id)
             if candidate is None:
                 raise CandidateNotFoundError(f"candidate not found: {candidate_id}")

@@ -8,9 +8,16 @@
   const clear = (node) => node.replaceChildren();
   const status = (message, kind = "") => { const target = byId("workspace-status"); target.textContent = message; target.className = kind; };
   const safeError = (response, body) => response.status === 422 ? "Check the entered values and try again." : response.status === 404 ? "That profile or record is not available." : response.status === 409 ? "This record changed. Refresh and try again." : body?.error?.code === "product_core_storage_unavailable" ? "Local storage is temporarily unavailable." : "The request could not be completed. Try again.";
+  const csrfToken = () => document.cookie.split("; ").find((item) => item.startsWith("opencare_csrf="))?.split("=").slice(1).join("=") || "";
+  const securedOptions = (options = {}) => {
+    const method = (options.method || "GET").toUpperCase();
+    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) headers["X-OpenCare-CSRF"] = csrfToken();
+    return { ...options, headers };
+  };
 
   async function request(path, options = {}) {
-    const response = await fetch(api + path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
+    const response = await fetch(api + path, { credentials: "same-origin", ...securedOptions(options) });
     let body;
     try { body = await response.json(); } catch (_) {}
     if (!response.ok) throw Error(safeError(response, body));
@@ -18,13 +25,13 @@
   }
 
   async function requestText(path, options = {}) {
-    const response = await fetch(api + path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
+    const response = await fetch(api + path, { credentials: "same-origin", ...securedOptions(options) });
     if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
     return response.text();
   }
 
   async function requestBlob(path, options = {}) {
-    const response = await fetch(api + path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
+    const response = await fetch(api + path, { credentials: "same-origin", ...securedOptions(options) });
     if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
     return response.blob();
   }
@@ -72,6 +79,7 @@
     const version = ++state.loadVersion;
     status("Loading workspace…");
     try {
+      await setActivePerson(personId);
       const [person, candidates, medications, timeline, visits] = await Promise.all([
         request(`/people/${encodeURIComponent(personId)}`),
         request(`/people/${encodeURIComponent(personId)}/candidates`),
@@ -83,6 +91,14 @@
       Object.assign(state, { person, candidates: candidates.candidates, medications: medications.medications, timeline: timeline.events, visits: visits.visits, visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false });
       renderPersonContext(); render(); enableWorkspace(true); status("Workspace loaded.", "success");
     } catch (error) { status(error.message, "error"); }
+  }
+
+  async function setActivePerson(personId) {
+    const response = await fetch("/api/family-access/v1/active-person", {
+      credentials: "same-origin",
+      ...securedOptions({ method: "PUT", body: JSON.stringify({ person_id: personId }) }),
+    });
+    if (!response.ok) throw Error("That profile is not available.");
   }
 
   function candidateCard(candidate, actions) {
@@ -244,19 +260,20 @@
     trigger.closest("article").append(form); name.focus();
   }
 
-  function clearWorkspace() {
+  async function clearWorkspace() {
+    try { await setActivePerson(null); } catch (error) { status(error.message, "error"); return; }
     Object.assign(state, { person: null, candidates: [], medications: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, vaultExportTrigger: null });
     byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; renderPersonContext(); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status("Profile selection cleared.");
   }
 
   byId("person-selector").addEventListener("change", () => { byId("load-workspace").disabled = !byId("person-selector").value; });
   byId("load-workspace").addEventListener("click", loadWorkspace);
-  byId("clear-workspace").addEventListener("click", clearWorkspace);
+  byId("clear-workspace").addEventListener("click", () => { void clearWorkspace(); });
   byId("open-vault-export").addEventListener("click", (event) => { if (!state.person) return; state.vaultExportTrigger = event.currentTarget; byId("vault-export-warning").hidden = false; byId("confirm-vault-export").focus(); });
   byId("cancel-vault-export").addEventListener("click", () => { byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); });
-  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person) return; const button = event.currentTarget; button.disabled = true; try { const payload = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }); const link = document.createElement("a"); link.href = URL.createObjectURL(payload); link.download = "opencare-person-vault-v1.zip"; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status("Vault download prepared.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
+  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person) return; const button = event.currentTarget; button.disabled = true; try { const payload = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }); const link = document.createElement("a"); link.href = URL.createObjectURL(payload); link.download = "opencare-person-vault-v2.zip"; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status("Vault download prepared.", "success"); } catch (error) { status(error.message, "error"); } finally { button.disabled = false; } });
   byId("history-filter").addEventListener("change", render);
-  byId("create-profile-form").addEventListener("submit", async (event) => { event.preventDefault(); const submit = event.submitter; submit.disabled = true; try { const person = await request("/people", { method: "POST", body: JSON.stringify({ display_name: byId("create-display-name").value, date_of_birth: byId("create-date-of-birth").value || null }) }); state.person = person; await refreshPeople(person); byId("create-profile-form").reset(); await loadWorkspace(); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
+  byId("create-profile-form").addEventListener("submit", async (event) => { event.preventDefault(); const submit = event.submitter; submit.disabled = true; try { const person = await request("/people", { method: "POST", body: JSON.stringify({ display_name: byId("create-display-name").value, date_of_birth: byId("create-date-of-birth").value || null, confirm_owner_assignment: true }) }); state.person = person; await refreshPeople(person); byId("create-profile-form").reset(); await loadWorkspace(); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });
   byId("edit-profile").addEventListener("click", () => { if (!state.person) return; byId("edit-display-name").value = state.person.display_name; byId("edit-date-of-birth").value = state.person.date_of_birth || ""; byId("edit-profile-form").hidden = false; byId("edit-display-name").focus(); });
   byId("cancel-edit-profile").addEventListener("click", () => { byId("edit-profile-form").hidden = true; });
   byId("edit-profile-form").addEventListener("submit", async (event) => { event.preventDefault(); if (!state.person) return; const submit = event.submitter; submit.disabled = true; try { const person = await request(`/people/${encodeURIComponent(state.person.person_id)}`, { method: "PATCH", body: JSON.stringify({ display_name: byId("edit-display-name").value, date_of_birth: byId("edit-date-of-birth").value || null }) }); state.person = person; await refreshPeople(person); renderPersonContext(); byId("edit-profile-form").hidden = true; status("Profile updated.", "success"); } catch (error) { status(error.message, "error"); } finally { submit.disabled = false; } });

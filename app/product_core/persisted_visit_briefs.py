@@ -31,7 +31,13 @@ from app.product_core.models import (
     ensure_utc_datetime,
     isoformat_utc,
 )
-from app.product_core.services import Clock, IdFactory, default_clock, default_id_factory
+from app.product_core.services import (
+    Clock,
+    IdFactory,
+    MutationAuthorizer,
+    default_clock,
+    default_id_factory,
+)
 from app.product_core.sqlite import SQLiteDatabase, UnitOfWork
 
 CONTENT_SCHEMA_VERSION = 1
@@ -54,9 +60,17 @@ class PersistedVisitBriefService:
         self.id_factory = id_factory
         self.source_reader = source_reader
 
-    def initialize(self, visit_id: str) -> PersistedVisitBrief:
+    def initialize(
+        self,
+        visit_id: str,
+        *,
+        authorize: MutationAuthorizer | None = None,
+    ) -> PersistedVisitBrief:
         now = ensure_utc_datetime(self.clock())
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             if uow.visits.get(visit_id) is None:
                 raise VisitNotFoundError(f"visit not found: {visit_id}")
             if uow.visit_briefs.get_by_visit(visit_id) is not None:
@@ -144,10 +158,14 @@ class PersistedVisitBriefService:
         *,
         selected_record_ids: list[str],
         expected_current_revision_number: int | None,
+        authorize: MutationAuthorizer | None = None,
     ) -> PersistedVisitBriefRevision:
         now = ensure_utc_datetime(self.clock())
         conflict = False
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             visit = self._visit_or_raise(uow, visit_id)
             brief = self._brief_or_raise(uow, visit_id)
             if brief.current_revision_number != expected_current_revision_number:
@@ -215,11 +233,15 @@ class PersistedVisitBriefService:
         *,
         preparation_notes: str,
         expected_current_revision_number: int,
+        authorize: MutationAuthorizer | None = None,
     ) -> PersistedVisitBriefRevision:
         notes = _preparation_notes(preparation_notes)
         now = ensure_utc_datetime(self.clock())
         conflict = False
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             brief = self._brief_or_raise(uow, visit_id)
             if brief.current_revision_number != expected_current_revision_number:
                 self._audit(
@@ -281,10 +303,14 @@ class PersistedVisitBriefService:
         *,
         revision_number: int,
         expected_current_revision_number: int,
+        authorize: MutationAuthorizer | None = None,
     ) -> PersistedVisitBrief:
         now = ensure_utc_datetime(self.clock())
         conflict = False
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             brief = self._brief_or_raise(uow, visit_id)
             if brief.current_revision_number != expected_current_revision_number:
                 self._audit(
@@ -322,9 +348,17 @@ class PersistedVisitBriefService:
             raise VisitBriefConflictError("expected current revision does not match")
         return self.get(visit_id)
 
-    def export_current(self, visit_id: str) -> tuple[str, int]:
+    def export_current(
+        self,
+        visit_id: str,
+        *,
+        authorize: MutationAuthorizer | None = None,
+    ) -> tuple[str, int]:
         now = ensure_utc_datetime(self.clock())
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             brief = self._brief_or_raise(uow, visit_id)
             if brief.current_revision_number is None:
                 raise VisitBriefValidationError("visit brief has no current revision")

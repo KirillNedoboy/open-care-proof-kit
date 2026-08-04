@@ -27,8 +27,8 @@ from app.product_core.persisted_visit_briefs import verify_persisted_visit_brief
 from app.product_core.services import ImmutableSourceStore
 from app.product_core.sqlite import SQLiteDatabase
 
-PORTABLE_VAULT_FORMAT_VERSION = 1
-PRODUCT_CORE_SCHEMA_VERSION = 4
+PORTABLE_VAULT_FORMAT_VERSION = 2
+PRODUCT_CORE_SCHEMA_VERSION = 5
 
 
 @dataclass(frozen=True)
@@ -119,6 +119,66 @@ class PortableVaultExportService:
                 sources.append(source)
                 source_payloads[source.id] = self.source_store.read_for_portable_export(source)
 
+            connection = uow.connection
+            assert connection is not None
+            memberships = [
+                _membership_dto(row)
+                for row in connection.execute(
+                    "SELECT * FROM family_memberships WHERE person_id = ? "
+                    "ORDER BY created_at, membership_id",
+                    (person_id,),
+                ).fetchall()
+            ]
+            family_ids = sorted({str(item["family_id"]) for item in memberships})
+            families = []
+            for family_id in family_ids:
+                family = connection.execute(
+                    "SELECT * FROM families WHERE family_id = ?", (family_id,)
+                ).fetchone()
+                if family is None:
+                    raise IntegrityStorageError("export family is missing")
+                families.append(_family_dto(family))
+            relationships = [
+                _relationship_dto(row)
+                for row in connection.execute(
+                    """
+                    SELECT * FROM person_relationships
+                    WHERE person_id = ? OR related_person_id = ?
+                    ORDER BY created_at, relationship_id
+                    """,
+                    (person_id, person_id),
+                ).fetchall()
+            ]
+            consents = [
+                _consent_dto(row)
+                for row in connection.execute(
+                    "SELECT * FROM person_access_consent_history WHERE person_id = ? "
+                    "ORDER BY created_at, consent_event_id",
+                    (person_id,),
+                ).fetchall()
+            ]
+            assignments = [
+                _assignment_dto(row)
+                for row in connection.execute(
+                    "SELECT * FROM person_access_assignments WHERE person_id = ? "
+                    "ORDER BY granted_at, assignment_id",
+                    (person_id,),
+                ).fetchall()
+            ]
+            actor_ids = _relevant_actor_ids(
+                memberships, relationships, families, consents, assignments
+            )
+            actors = []
+            for actor_id in sorted(actor_ids):
+                actor = connection.execute(
+                    "SELECT actor_id, display_name, status, created_at FROM actors "
+                    "WHERE actor_id = ?",
+                    (actor_id,),
+                ).fetchone()
+                if actor is None:
+                    raise IntegrityStorageError("export Actor history is incomplete")
+                actors.append(_actor_dto(actor))
+
         vault_json = _canonical_json_bytes(
             {
                 "format_version": PORTABLE_VAULT_FORMAT_VERSION,
@@ -148,6 +208,12 @@ class PortableVaultExportService:
                     for revision in revisions
                     for selection in selections_by_revision[revision.revision_id]
                 ],
+                "families": families,
+                "family_memberships": memberships,
+                "person_relationships": relationships,
+                "person_access_consent_history": consents,
+                "person_access_assignments": assignments,
+                "actors": actors,
             }
         )
         entries: list[tuple[str, bytes]] = [("vault.json", vault_json)]
@@ -175,11 +241,11 @@ class PortableVaultExportService:
             with zipfile.ZipFile(
                 artifact, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
             ) as archive:
-                archive.writestr("manifest.json", manifest_json)
-                archive.writestr("manifest.sha256", manifest_hash)
-                archive.writestr("vault.json", vault_json)
+                _write_deterministic(archive, "manifest.json", manifest_json)
+                _write_deterministic(archive, "manifest.sha256", manifest_hash)
+                _write_deterministic(archive, "vault.json", vault_json)
                 for path, payload in entries[1:]:
-                    archive.writestr(path, payload)
+                    _write_deterministic(archive, path, payload)
             artifact.seek(0)
             return PortableVaultExport(
                 zip_bytes=artifact.read(), vault_json=vault_json, manifest_json=manifest_json
@@ -190,6 +256,13 @@ def _canonical_json_bytes(value: Any) -> bytes:
     return json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
+
+
+def _write_deterministic(archive: zipfile.ZipFile, path: str, payload: bytes) -> None:
+    info = zipfile.ZipInfo(path, date_time=(1980, 1, 1, 0, 0, 0))
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = 0o600 << 16
+    archive.writestr(info, payload, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
 
 
 def _source_archive_path(source: Source) -> str:
@@ -331,4 +404,116 @@ def _selection_dto(
         "source_id": selection.source_id,
         "position": selection.position,
         "snapshot": selection.snapshot,
+    }
+
+
+def _family_dto(row: Any) -> dict[str, object]:
+    return {
+        "family_id": str(row["family_id"]),
+        "display_name": str(row["display_name"]),
+        "created_by_actor_id": str(row["created_by_actor_id"]),
+        "created_at": str(row["created_at"]),
+        "is_archived": bool(row["is_archived"]),
+        "archived_at": row["archived_at"],
+        "archived_by_actor_id": row["archived_by_actor_id"],
+    }
+
+
+def _membership_dto(row: Any) -> dict[str, object]:
+    return {
+        "membership_id": str(row["membership_id"]),
+        "family_id": str(row["family_id"]),
+        "person_id": str(row["person_id"]),
+        "created_by_actor_id": str(row["created_by_actor_id"]),
+        "is_active": bool(row["is_active"]),
+        "created_at": str(row["created_at"]),
+        "ended_at": row["ended_at"],
+        "ended_by_actor_id": row["ended_by_actor_id"],
+    }
+
+
+def _relationship_dto(row: Any) -> dict[str, object]:
+    return {
+        "relationship_id": str(row["relationship_id"]),
+        "family_id": str(row["family_id"]),
+        "person_id": str(row["person_id"]),
+        "related_person_id": str(row["related_person_id"]),
+        "relationship_type": str(row["relationship_type"]),
+        "created_by_actor_id": str(row["created_by_actor_id"]),
+        "is_active": bool(row["is_active"]),
+        "created_at": str(row["created_at"]),
+        "ended_at": row["ended_at"],
+        "ended_by_actor_id": row["ended_by_actor_id"],
+    }
+
+
+def _consent_dto(row: Any) -> dict[str, object]:
+    return {
+        "consent_event_id": str(row["consent_event_id"]),
+        "event_type": str(row["event_type"]),
+        "acting_owner_actor_id": row["acting_owner_actor_id"],
+        "recipient_actor_id": str(row["recipient_actor_id"]),
+        "person_id": str(row["person_id"]),
+        "role": str(row["role"]),
+        "scopes": _stored_scope_list(row["scopes_json"]),
+        "reason_code": str(row["reason_code"]),
+        "created_at": str(row["created_at"]),
+    }
+
+
+def _assignment_dto(row: Any) -> dict[str, object]:
+    return {
+        "assignment_id": str(row["assignment_id"]),
+        "actor_id": str(row["actor_id"]),
+        "person_id": str(row["person_id"]),
+        "role": str(row["role"]),
+        "scopes": _stored_scope_list(row["scopes_json"]),
+        "consent_event_id": str(row["consent_event_id"]),
+        "granted_by_actor_id": str(row["granted_by_actor_id"]),
+        "is_active": bool(row["is_active"]),
+        "granted_at": str(row["granted_at"]),
+        "revoked_at": row["revoked_at"],
+        "revoked_by_actor_id": row["revoked_by_actor_id"],
+        "revision_of_assignment_id": row["revision_of_assignment_id"],
+    }
+
+
+def _actor_dto(row: Any) -> dict[str, object]:
+    return {
+        "actor_id": str(row["actor_id"]),
+        "display_name": str(row["display_name"]),
+        "status": str(row["status"]),
+        "created_at": str(row["created_at"]),
+    }
+
+
+def _stored_scope_list(value: object) -> list[str]:
+    try:
+        decoded = json.loads(str(value))
+    except (TypeError, ValueError) as exc:
+        raise IntegrityStorageError("export access scopes are invalid") from exc
+    if not isinstance(decoded, list) or not all(isinstance(item, str) for item in decoded):
+        raise IntegrityStorageError("export access scopes are invalid")
+    return sorted(decoded)
+
+
+def _relevant_actor_ids(*collections: list[dict[str, object]]) -> set[str]:
+    actor_fields = {
+        "actor_id",
+        "created_by_actor_id",
+        "ended_by_actor_id",
+        "archived_by_actor_id",
+        "acting_owner_actor_id",
+        "recipient_actor_id",
+        "granted_by_actor_id",
+        "revoked_by_actor_id",
+    }
+    return {
+        value
+        for collection in collections
+        for item in collection
+        for field, raw_value in item.items()
+        if field in actor_fields
+        for value in [raw_value]
+        if isinstance(value, str) and value
     }

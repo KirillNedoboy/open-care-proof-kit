@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
+from app.agent.context import build_product_core_agent_context
 from app.agent.models import AgentQuestion
 from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
@@ -30,7 +31,13 @@ from app.health_vault.read_model import VaultReadModel, build_vault_read_model
 from app.health_vault.runtime_loader import ActiveVault, load_active_vault
 from app.health_vault.trace_graph import build_vault_trace_graph
 from app.http_security import is_same_origin
+from app.product_core.api import resolve_product_core_access
 from app.product_core.api import router as product_core_router
+from app.product_core.errors import (
+    AccessAuditUnavailableError,
+    ScopeForbiddenError,
+)
+from app.product_core.errors import NotFoundError as ProductCoreNotFoundError
 from app.product_core.runtime import create_product_core_runtime
 from app.reports.json_audit import PIPELINE_STEPS
 from app.vault.loader import load_health_vault
@@ -97,6 +104,14 @@ def _is_public_path(path: str) -> bool:
     )
 
 
+def _uses_actor_session_boundary(path: str) -> bool:
+    return (
+        path in {"/", "/workspace", "/vault", "/chat", "/api/chat", "/invite"}
+        or path.startswith("/api/product-core/")
+        or path.startswith("/api/family-access/")
+    )
+
+
 def _normalize_next_path(next_path: str | None) -> str:
     if next_path is None or not next_path.strip():
         return "/"
@@ -149,7 +164,9 @@ async def enforce_private_access(
     request: Request,
     call_next: RequestResponseEndpoint,
 ) -> Response:
-    if _is_public_path(request.url.path):
+    if _is_public_path(request.url.path) or _uses_actor_session_boundary(
+        request.url.path
+    ):
         return await call_next(request)
 
     try:
@@ -178,13 +195,113 @@ def index() -> RedirectResponse:
     return RedirectResponse(url="/workspace", status_code=307)
 
 
+def _live_access_error(exc: Exception) -> JSONResponse:
+    if isinstance(exc, AccessAuditUnavailableError):
+        return JSONResponse(
+            {"detail": "Sensitive access could not be audited."}, status_code=503
+        )
+    if isinstance(exc, ScopeForbiddenError):
+        return JSONResponse({"detail": "Required scope is not granted."}, status_code=403)
+    return JSONResponse({"detail": "Person was not found."}, status_code=404)
+
+
 @app.get("/workspace", response_class=HTMLResponse)
-def workspace(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "product_core_workspace.html")
+def workspace(request: Request) -> Response:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse):
+        return access
+    if access.active_person_id is not None:
+        try:
+            access.require_active_person("person.read")
+        except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
+            return _live_access_error(exc)
+    return templates.TemplateResponse(
+        request,
+        "product_core_workspace.html",
+        {"active_person_id": access.active_person_id},
+    )
 
 
 @app.get("/chat", response_class=HTMLResponse)
-def chat_page(request: Request) -> HTMLResponse:
+def chat_page(request: Request) -> Response:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse):
+        return access
+    try:
+        person_id = access.require_active_person("chat.use", "person.read")
+        person = access.runtime.people.get(person_id)
+    except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
+        return _live_access_error(exc)
+    settings = get_settings()
+    return templates.TemplateResponse(
+        request=request,
+        name="chat.html",
+        context={
+            "vault_source_label": "Product Core",
+            "vault_source_name": person.display_name,
+            "family_label": person.display_name,
+            "people": [person],
+            "provider_status": (
+                "External model configured by operator"
+                if settings.agent_mode == "openai_responses"
+                else "Local deterministic demo"
+            ),
+        },
+    )
+
+
+@app.post("/api/chat")
+async def chat_api(request: Request) -> JSONResponse:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse):
+        return access
+    content_type = request.headers.get("content-type", "").lower()
+    if not content_type.startswith("application/json"):
+        return JSONResponse({"detail": "JSON content type is required."}, status_code=415)
+    body = await request.body()
+    if len(body) > 10_000:
+        return JSONResponse({"detail": "Question is too long."}, status_code=413)
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return JSONResponse({"detail": "Malformed JSON request."}, status_code=400)
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"question"}
+        or not isinstance(payload.get("question"), str)
+    ):
+        return JSONResponse({"detail": "A question is required."}, status_code=422)
+    question = payload["question"].strip()
+    if not question:
+        return JSONResponse({"detail": "A question is required."}, status_code=422)
+    if len(question) > 2_000:
+        return JSONResponse({"detail": "Question is too long."}, status_code=413)
+    try:
+        person_id = access.require_active_person(
+            "chat.use",
+            "person.read",
+            "source.read",
+            "medication.read",
+            "timeline.read",
+            "visit.read",
+            audit_action="chat.context",
+            required_audit=True,
+        )
+        context = build_product_core_agent_context(access.runtime, person_id)
+    except (
+        ProductCoreNotFoundError,
+        ScopeForbiddenError,
+        AccessAuditUnavailableError,
+    ) as exc:
+        return _live_access_error(exc)
+    answer = GuardedChatService.for_context(context, get_settings()).answer(
+        AgentQuestion(question=question).question
+    )
+    return JSONResponse(answer.model_dump())
+
+
+@app.get("/demo/chat", response_class=HTMLResponse)
+def demo_chat_page(request: Request) -> HTMLResponse:
     settings = get_settings()
     active_vault = load_active_vault(settings)
     return templates.TemplateResponse(
@@ -204,8 +321,8 @@ def chat_page(request: Request) -> HTMLResponse:
     )
 
 
-@app.post("/api/chat")
-async def chat_api(request: Request) -> JSONResponse:
+@app.post("/api/demo/chat")
+async def demo_chat_api(request: Request) -> JSONResponse:
     if not is_same_origin(request):
         return JSONResponse({"detail": "Cross-origin request rejected."}, status_code=403)
     content_type = request.headers.get("content-type", "").lower()
@@ -660,23 +777,25 @@ def health_vault_page(request: Request) -> HTMLResponse:
 
 
 @app.get("/vault", response_class=HTMLResponse)
-def vault_page(request: Request) -> HTMLResponse:
-    settings = get_settings()
-    active_vault = load_active_vault(settings)
+def vault_page(request: Request) -> Response:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse):
+        return access
+    try:
+        person_id = access.require_active_person(
+            "person.read",
+            "source.read",
+            "medication.read",
+            "timeline.read",
+            "visit.read",
+        )
+        person = access.runtime.people.get(person_id)
+    except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
+        return _live_access_error(exc)
     return templates.TemplateResponse(
         request=request,
-        name="health_vault.html",
-        context=_build_vault_page_context(
-            active_vault,
-            include_trace_graph=False,
-            include_trust_flags=False,
-            page_eyebrow="Local vault UI",
-            page_title="Health/Family Vault",
-            page_lede=(
-                "Read-only vault page for the active configured source, with deterministic "
-                "provenance coverage and visible safety boundaries."
-            ),
-        ),
+        name="product_core_vault.html",
+        context={"person": person},
     )
 
 

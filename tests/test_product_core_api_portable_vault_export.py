@@ -34,7 +34,7 @@ def test_person_portable_vault_export_returns_verified_zip(
     assert response.headers["content-type"] == "application/zip"
     assert (
         response.headers["content-disposition"]
-        == 'attachment; filename="opencare-person-vault-v1.zip"'
+        == 'attachment; filename="opencare-person-vault-v2.zip"'
     )
     with zipfile.ZipFile(BytesIO(response.content)) as archive:
         assert archive.namelist() == [
@@ -49,6 +49,7 @@ def test_person_portable_vault_export_returns_verified_zip(
         )
         vault = json.loads(archive.read("vault.json"))
     assert vault["person"]["person_id"] == "person-1"
+    assert vault["format_version"] == 2
     assert "relative_path" not in response.text
     assert "visit_brief_audit_events" not in response.text
 

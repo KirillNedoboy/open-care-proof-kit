@@ -92,3 +92,11 @@ class PersonMismatchError(ProductCoreError):
 
 class RuntimeNotReadyError(ProductCoreError):
     """Raised when the application runtime was not initialized at startup."""
+
+
+class ScopeForbiddenError(ProductCoreError):
+    """Raised when an accessible Person assignment lacks an operation scope."""
+
+
+class AccessAuditUnavailableError(ProductCoreError):
+    """Raised when required sensitive-access audit persistence fails."""

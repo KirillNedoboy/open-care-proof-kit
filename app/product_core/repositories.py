@@ -36,6 +36,8 @@ class PersonRepository(Protocol):
 class SourceRepository(Protocol):
     def get(self, source_id: str) -> Source | None: ...
 
+    def list_for_person(self, person_id: str) -> list[Source]: ...
+
     def find_by_deduplication(
         self,
         person_id: str,
@@ -219,6 +221,13 @@ class SQLiteSourceRepository:
     def get(self, source_id: str) -> Source | None:
         row = self.connection.execute("SELECT * FROM sources WHERE id = ?", (source_id,)).fetchone()
         return None if row is None else _source_from_row(row)
+
+    def list_for_person(self, person_id: str) -> list[Source]:
+        rows = self.connection.execute(
+            "SELECT * FROM sources WHERE person_id = ? ORDER BY created_at, id",
+            (person_id,),
+        ).fetchall()
+        return [_source_from_row(row) for row in rows]
 
     def find_by_deduplication(
         self,

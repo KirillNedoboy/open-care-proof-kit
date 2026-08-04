@@ -10,7 +10,13 @@ from app.product_core.errors import (
     VisitValidationError,
 )
 from app.product_core.models import Visit, VisitQuestion, ensure_utc_datetime
-from app.product_core.services import Clock, IdFactory, default_clock, default_id_factory
+from app.product_core.services import (
+    Clock,
+    IdFactory,
+    MutationAuthorizer,
+    default_clock,
+    default_id_factory,
+)
 from app.product_core.sqlite import SQLiteDatabase
 
 
@@ -33,6 +39,7 @@ class VisitPlanningService:
         title: str,
         specialist: str | None = None,
         scheduled_date: date | None = None,
+        authorize: MutationAuthorizer | None = None,
     ) -> Visit:
         now = ensure_utc_datetime(self.clock())
         visit = Visit(
@@ -45,6 +52,9 @@ class VisitPlanningService:
             updated_at=now,
         )
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             if uow.people.get(person_id) is None:
                 raise PersonNotFoundError(f"person not found: {person_id}")
             uow.visits.insert(visit)
@@ -71,10 +81,14 @@ class VisitPlanningService:
         specialist: str | None = None,
         scheduled_date: date | None = None,
         update_fields: frozenset[str],
+        authorize: MutationAuthorizer | None = None,
     ) -> Visit:
         _validate_update_fields(update_fields, {"title", "specialist", "scheduled_date"})
         now = ensure_utc_datetime(self.clock())
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             existing = uow.visits.get(visit_id)
             if existing is None:
                 raise VisitNotFoundError(f"visit not found: {visit_id}")
@@ -102,9 +116,18 @@ class VisitPlanningService:
             uow.visits.update(visit)
         return visit
 
-    def create_question(self, visit_id: str, question_text: str) -> VisitQuestion:
+    def create_question(
+        self,
+        visit_id: str,
+        question_text: str,
+        *,
+        authorize: MutationAuthorizer | None = None,
+    ) -> VisitQuestion:
         now = ensure_utc_datetime(self.clock())
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             if uow.visits.get(visit_id) is None:
                 raise VisitNotFoundError(f"visit not found: {visit_id}")
             question = VisitQuestion(
@@ -131,10 +154,14 @@ class VisitPlanningService:
         question_text: str | None = None,
         position: int | None = None,
         update_fields: frozenset[str],
+        authorize: MutationAuthorizer | None = None,
     ) -> VisitQuestion:
         _validate_update_fields(update_fields, {"question_text", "position"})
         now = ensure_utc_datetime(self.clock())
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             existing = uow.visit_questions.get(question_id)
             if existing is None:
                 raise VisitQuestionNotFoundError(f"visit question not found: {question_id}")
@@ -168,9 +195,17 @@ class VisitPlanningService:
                 uow.visit_questions.update(question)
         return question
 
-    def delete_question(self, question_id: str) -> None:
+    def delete_question(
+        self,
+        question_id: str,
+        *,
+        authorize: MutationAuthorizer | None = None,
+    ) -> None:
         now = ensure_utc_datetime(self.clock())
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            if authorize is not None:
+                authorize(uow.connection)
             existing = uow.visit_questions.get(question_id)
             if existing is None:
                 raise VisitQuestionNotFoundError(f"visit question not found: {question_id}")

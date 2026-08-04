@@ -65,6 +65,12 @@ class GuardedChatService:
     @classmethod
     def for_settings(cls, settings: Settings) -> "GuardedChatService":
         context = build_agent_context(load_active_vault(settings))
+        return cls.for_context(context, settings)
+
+    @classmethod
+    def for_context(
+        cls, context: AgentContext, settings: Settings
+    ) -> "GuardedChatService":
         if settings.agent_mode == "demo":
             return cls(context=context, provider=DemoProvider(), provider_mode="demo")
         return cls(

@@ -86,10 +86,13 @@ def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path)
                     "from app.main import APP_DIR, app",
                     "assert APP_DIR.is_relative_to(Path.cwd() / 'installed')",
                     "with TestClient(app) as client:",
-                    "    for path in ('/health', '/readyz', '/workspace', '/chat', "
+                    "    for path in ('/health', '/readyz', '/demo/chat', "
+                    "'/demo/health-vault', "
                     "'/static/product_core_workspace.css', "
                     "'/static/product_core_workspace.js'):",
                     "        assert client.get(path).status_code == 200, path",
+                    "    for path in ('/workspace', '/chat', '/vault'):",
+                    "        assert client.get(path).status_code == 401, path",
                     "    quickstart = client.get('/reviewer-quickstart')",
                     "    assert quickstart.status_code == 200",
                     *[f"    assert {url!r} in quickstart.text" for url in REVIEWER_QUICKSTART_URLS],

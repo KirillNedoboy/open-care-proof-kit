@@ -510,6 +510,8 @@ class FamilyAccessService:
         if not confirm_owner_assignment:
             raise ConfirmationRequiredError("owner_confirmation_required")
         now_value = self._now()
+        if date_of_birth is not None and date_of_birth > now_value.date():
+            raise ValidationError("date of birth is invalid")
         now = isoformat_utc(now_value)
         person_id = self._id()
         with self.database.uow(begin_mode="IMMEDIATE") as uow:

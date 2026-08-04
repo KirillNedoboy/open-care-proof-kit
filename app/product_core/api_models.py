@@ -92,6 +92,7 @@ class PlainTextSourceRequest(APIModel):
 class PersonCreateRequest(APIModel):
     display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
     date_of_birth: date | None = None
+    confirm_owner_assignment: bool = Field(default=False, strict=True)
 
     @field_validator("display_name")
     @classmethod

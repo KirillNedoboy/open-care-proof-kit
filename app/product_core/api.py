@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable
+from contextlib import suppress
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request, Response
@@ -10,7 +12,10 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BeforeValidator
 
+from app.family_access.api import CSRF_HEADER_NAME, SESSION_COOKIE_NAME, AuthenticatedSession
+from app.family_access.runtime import FamilyAccessRuntime
 from app.http_security import is_same_origin
+from app.product_core.access import ProductCoreAccess
 from app.product_core.api_models import (
     CandidateListResponse,
     CandidateResponse,
@@ -55,6 +60,7 @@ from app.product_core.api_models import (
     _validate_identifier,
 )
 from app.product_core.errors import (
+    AccessAuditUnavailableError,
     CandidateNotFoundError,
     CanonicalRecordNotFoundError,
     IntegrityStorageError,
@@ -65,6 +71,7 @@ from app.product_core.errors import (
     PersonValidationError,
     ProductCoreError,
     RuntimeNotReadyError,
+    ScopeForbiddenError,
     SelectionError,
     SourceCorruptionError,
     SourceNotFoundError,
@@ -114,6 +121,14 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, Any]]:
 
 
 def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
+    if isinstance(exc, ScopeForbiddenError):
+        return _error_response(403, "scope_forbidden", "Required scope is not granted.")
+    if isinstance(exc, AccessAuditUnavailableError):
+        return _error_response(
+            503,
+            "access_audit_unavailable",
+            "Sensitive access could not be audited.",
+        )
     if isinstance(exc, PersonValidationError):
         return _error_response(422, "request_validation_failed", "The request is invalid.")
     if isinstance(exc, VisitValidationError):
@@ -182,8 +197,6 @@ def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
 
 
 async def _check_request_safety(request: Request) -> JSONResponse | None:
-    if not is_same_origin(request):
-        return _error_response(403, "origin_rejected", "The request origin is not allowed.")
     if request.method in {"POST", "PUT", "PATCH"}:
         media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         if media_type != "application/json":
@@ -195,15 +208,226 @@ async def _check_request_safety(request: Request) -> JSONResponse | None:
     return None
 
 
+_PERSON_PATH_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_get_person": ("person.read",),
+    "product_core_update_person": ("person.update",),
+    "product_core_list_visits": ("visit.read",),
+    "product_core_list_candidates": ("candidate.read",),
+    "product_core_list_medications": ("medication.read",),
+    "product_core_list_timeline": ("timeline.read",),
+    "product_core_generate_visit_brief": ("brief.write",),
+}
+_VISIT_PATH_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_get_visit": ("visit.read",),
+    "product_core_update_visit": ("visit.write",),
+    "product_core_create_visit_question": ("visit.write",),
+    "product_core_list_visit_questions": ("visit.read",),
+    "product_core_initialize_persisted_visit_brief": ("brief.write",),
+    "product_core_get_persisted_visit_brief": ("brief.read",),
+    "product_core_list_persisted_visit_brief_revisions": ("brief.read",),
+    "product_core_get_persisted_visit_brief_revision": ("brief.read",),
+    "product_core_list_visit_brief_eligible_evidence": ("brief.read",),
+    "product_core_validate_visit_brief_evidence": ("brief.write",),
+    "product_core_generate_persisted_visit_brief_revision": ("brief.write",),
+    "product_core_save_persisted_visit_brief_user_edit": ("brief.write",),
+    "product_core_restore_persisted_visit_brief_revision": ("brief.write",),
+}
+_QUESTION_PATH_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_update_visit_question": ("visit.write",),
+    "product_core_delete_visit_question": ("visit.write",),
+}
+_CANDIDATE_PATH_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_get_candidate": ("candidate.read",),
+    "product_core_confirm_candidate": ("candidate.review", "medication.write"),
+    "product_core_reject_candidate": ("candidate.review",),
+    "product_core_correct_candidate": ("candidate.review",),
+}
+_BODY_PERSON_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_create_visit": ("visit.write",),
+    "product_core_register_manual_medication_source": ("source.write",),
+    "product_core_register_plain_text_source": ("source.write",),
+    "product_core_create_medication_candidate": ("candidate.review",),
+}
+_ATOMIC_MUTATION_OPERATIONS = {
+    "product_core_update_person",
+    "product_core_create_visit",
+    "product_core_update_visit",
+    "product_core_create_visit_question",
+    "product_core_update_visit_question",
+    "product_core_delete_visit_question",
+    "product_core_register_manual_medication_source",
+    "product_core_register_plain_text_source",
+    "product_core_create_medication_candidate",
+    "product_core_confirm_candidate",
+    "product_core_reject_candidate",
+    "product_core_correct_candidate",
+    "product_core_initialize_persisted_visit_brief",
+    "product_core_generate_persisted_visit_brief_revision",
+    "product_core_save_persisted_visit_brief_user_edit",
+    "product_core_restore_persisted_visit_brief_revision",
+    "product_core_export_current_persisted_visit_brief",
+}
+
+
+async def _authorize_route_request(
+    request: Request, operation_id: str, access: ProductCoreAccess
+) -> None:
+    # Preflight path resources before request-model validation to preserve 404
+    # privacy semantics. The authoritative recheck and success audit still run
+    # inside the same Product Core write transaction as the mutation.
+    if operation_id in _ATOMIC_MUTATION_OPERATIONS:
+        if operation_id in _PERSON_PATH_SCOPES:
+            access.preflight_person(
+                str(request.path_params["person_id"]),
+                *_PERSON_PATH_SCOPES[operation_id],
+            )
+            return
+        if operation_id in _VISIT_PATH_SCOPES:
+            access.preflight_visit(
+                str(request.path_params["visit_id"]),
+                *_VISIT_PATH_SCOPES[operation_id],
+            )
+            return
+        if operation_id == "product_core_export_current_persisted_visit_brief":
+            access.preflight_visit(str(request.path_params["visit_id"]), "brief.export")
+            return
+        if operation_id in _QUESTION_PATH_SCOPES:
+            access.preflight_question(
+                str(request.path_params["question_id"]),
+                *_QUESTION_PATH_SCOPES[operation_id],
+            )
+            return
+        if operation_id in _CANDIDATE_PATH_SCOPES:
+            access.preflight_candidate(
+                str(request.path_params["candidate_id"]),
+                *_CANDIDATE_PATH_SCOPES[operation_id],
+            )
+            return
+        try:
+            payload = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return
+        if not isinstance(payload, dict) or not isinstance(payload.get("person_id"), str):
+            return
+        person_id = payload["person_id"]
+        try:
+            _validate_identifier(person_id)
+        except ValueError:
+            return
+        access.preflight_person(person_id, *_BODY_PERSON_SCOPES[operation_id])
+        if operation_id == "product_core_create_medication_candidate" and isinstance(
+            payload.get("source_id"), str
+        ):
+            try:
+                _validate_identifier(payload["source_id"])
+            except ValueError:
+                return
+            access.preflight_source_for_person(
+                payload["source_id"], person_id, "source.read"
+            )
+        return
+    if operation_id in _PERSON_PATH_SCOPES:
+        access.require_person(
+            str(request.path_params["person_id"]), *_PERSON_PATH_SCOPES[operation_id]
+        )
+        return
+    if operation_id == "product_core_export_person_portable_vault":
+        access.require_person(
+            str(request.path_params["person_id"]),
+            "vault.export",
+            audit_action="vault.export",
+            required_audit=True,
+        )
+        return
+    if operation_id in _VISIT_PATH_SCOPES:
+        access.require_visit(
+            str(request.path_params["visit_id"]), *_VISIT_PATH_SCOPES[operation_id]
+        )
+        return
+    if operation_id == "product_core_export_current_persisted_visit_brief":
+        access.require_brief_export(str(request.path_params["visit_id"]))
+        return
+    if operation_id in _QUESTION_PATH_SCOPES:
+        access.require_question(
+            str(request.path_params["question_id"]), *_QUESTION_PATH_SCOPES[operation_id]
+        )
+        return
+    if operation_id in _CANDIDATE_PATH_SCOPES:
+        access.require_candidate(
+            str(request.path_params["candidate_id"]), *_CANDIDATE_PATH_SCOPES[operation_id]
+        )
+        return
+    if operation_id not in _BODY_PERSON_SCOPES:
+        return
+    try:
+        payload = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return
+    if not isinstance(payload, dict) or not isinstance(payload.get("person_id"), str):
+        return
+    person_id = payload["person_id"]
+    try:
+        _validate_identifier(person_id)
+    except ValueError:
+        return
+    access.require_person(person_id, *_BODY_PERSON_SCOPES[operation_id])
+    if operation_id == "product_core_create_medication_candidate" and isinstance(
+        payload.get("source_id"), str
+    ):
+        try:
+            _validate_identifier(payload["source_id"])
+        except ValueError:
+            return
+        access.require_source_for_person(payload["source_id"], person_id, "source.read")
+
+
+def resolve_product_core_access(request: Request) -> ProductCoreAccess | JSONResponse:
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if token is None:
+        return _error_response(401, "authentication_required", "Authentication required.")
+    product_runtime = getattr(request.app.state, "product_core_runtime", None)
+    family_runtime = getattr(request.app.state, "family_access_runtime", None)
+    if not isinstance(product_runtime, ProductCoreRuntime) or not isinstance(
+        family_runtime, FamilyAccessRuntime
+    ):
+        return _error_response(
+            503, "product_core_storage_unavailable", "Product Core storage is unavailable."
+        )
+    record = family_runtime.sessions.resolve(token)
+    if record is None:
+        return _error_response(401, "authentication_required", "Authentication required.")
+    actor = family_runtime.service.get_actor_for_session(record.actor_id, record.credential_id)
+    if actor is None:
+        with suppress(Exception):
+            family_runtime.sessions.revoke(token)
+        return _error_response(401, "authentication_required", "Authentication required.")
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.headers.get("origin") is None or not is_same_origin(request):
+            return _error_response(403, "origin_rejected", "The request origin is not allowed.")
+        csrf_token = request.headers.get(CSRF_HEADER_NAME)
+        if csrf_token is None or not family_runtime.sessions.verify_csrf(token, csrf_token):
+            return _error_response(403, "csrf_rejected", "CSRF validation failed.")
+    return ProductCoreAccess(
+        runtime=product_runtime,
+        family_runtime=family_runtime,
+        authenticated=AuthenticatedSession(actor=actor, record=record, session_token=token),
+    )
+
+
 class ProductCoreRoute(APIRoute):
     def get_route_handler(self) -> Callable[..., Any]:
         original_route_handler = super().get_route_handler()
 
         async def product_core_route_handler(request: Request) -> Any:
-            safety_response = await _check_request_safety(request)
-            if safety_response is not None:
-                return safety_response
             try:
+                access = resolve_product_core_access(request)
+                if isinstance(access, JSONResponse):
+                    return access
+                request.state.product_core_access = access
+                safety_response = await _check_request_safety(request)
+                if safety_response is not None:
+                    return safety_response
+                await _authorize_route_request(request, self.operation_id or "", access)
                 return await original_route_handler(request)
             except RequestValidationError as exc:
                 return _error_response(
@@ -213,6 +437,13 @@ class ProductCoreRoute(APIRoute):
                     _validation_details(exc),
                 )
             except ProductCoreError as exc:
+                if (
+                    self.operation_id in _ATOMIC_MUTATION_OPERATIONS
+                    and isinstance(exc, (NotFoundError, ScopeForbiddenError))
+                ):
+                    resolved_access = getattr(request.state, "product_core_access", None)
+                    if isinstance(resolved_access, ProductCoreAccess):
+                        resolved_access.audit_denial_best_effort()
                 return _map_product_core_error(exc)
             except sqlite3.OperationalError:
                 return _error_response(
@@ -251,6 +482,16 @@ def get_product_core_runtime(request: Request) -> ProductCoreRuntime:
 
 
 RuntimeDependency = Annotated[ProductCoreRuntime, Depends(get_product_core_runtime)]
+
+
+def get_product_core_access(request: Request) -> ProductCoreAccess:
+    access = getattr(request.state, "product_core_access", None)
+    if not isinstance(access, ProductCoreAccess):
+        raise RuntimeNotReadyError("Product Core access is not ready")
+    return access
+
+
+AccessDependency = Annotated[ProductCoreAccess, Depends(get_product_core_access)]
 
 
 def _source_response(source: Any) -> SourceResponse:
@@ -401,10 +642,14 @@ def _persisted_brief_response(
 def create_person(
     payload: PersonCreateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> PersonResponse:
-    return _person_response(
-        runtime.people.create(payload.display_name, date_of_birth=payload.date_of_birth)
+    person_id = access.create_person(
+        display_name=payload.display_name,
+        date_of_birth=payload.date_of_birth,
+        confirm_owner_assignment=payload.confirm_owner_assignment,
     )
+    return _person_response(runtime.people.get(person_id))
 
 
 @router.get(
@@ -412,9 +657,9 @@ def create_person(
     response_model=PeopleListResponse,
     operation_id="product_core_list_people",
 )
-def list_people(runtime: RuntimeDependency) -> PeopleListResponse:
+def list_people(access: AccessDependency) -> PeopleListResponse:
     return PeopleListResponse(
-        people=[_person_response(person) for person in runtime.people.list_active()]
+        people=[_person_response(person) for person in access.list_people()]
     )
 
 
@@ -425,13 +670,20 @@ def list_people(runtime: RuntimeDependency) -> PeopleListResponse:
     status_code=201,
     operation_id="product_core_create_visit",
 )
-def create_visit(payload: VisitCreateRequest, runtime: RuntimeDependency) -> VisitResponse:
+def create_visit(
+    payload: VisitCreateRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> VisitResponse:
     return _visit_response(
         runtime.visits.create_visit(
             payload.person_id,
             title=payload.title,
             specialist=payload.specialist,
             scheduled_date=payload.scheduled_date,
+            authorize=access.authorize_person_mutation(
+                payload.person_id, "visit.write", action="visit.create"
+            ),
         )
     )
 
@@ -442,7 +694,12 @@ def create_visit(payload: VisitCreateRequest, runtime: RuntimeDependency) -> Vis
     responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
     operation_id="product_core_list_visits",
 )
-def list_visits(person_id: ProductCoreIdentifier, runtime: RuntimeDependency) -> VisitListResponse:
+def list_visits(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> VisitListResponse:
+    access.require_person(person_id, "visit.read")
     return VisitListResponse(
         visits=[_visit_response(visit) for visit in runtime.visits.list_visits(person_id)]
     )
@@ -454,7 +711,12 @@ def list_visits(person_id: ProductCoreIdentifier, runtime: RuntimeDependency) ->
     responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
     operation_id="product_core_get_visit",
 )
-def get_visit(visit_id: ProductCoreIdentifier, runtime: RuntimeDependency) -> VisitResponse:
+def get_visit(
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> VisitResponse:
+    access.require_visit(visit_id, "visit.read")
     return _visit_response(runtime.visits.get_visit(visit_id))
 
 
@@ -468,6 +730,7 @@ def update_visit(
     visit_id: ProductCoreIdentifier,
     payload: VisitUpdateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitResponse:
     return _visit_response(
         runtime.visits.update_visit(
@@ -476,6 +739,9 @@ def update_visit(
             specialist=payload.specialist,
             scheduled_date=payload.scheduled_date,
             update_fields=frozenset(payload.model_fields_set),
+            authorize=access.authorize_visit_mutation(
+                visit_id, "visit.write", action="visit.update"
+            ),
         )
     )
 
@@ -491,8 +757,17 @@ def create_visit_question(
     visit_id: ProductCoreIdentifier,
     payload: VisitQuestionCreateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitQuestionResponse:
-    return _visit_question_response(runtime.visits.create_question(visit_id, payload.question_text))
+    return _visit_question_response(
+        runtime.visits.create_question(
+            visit_id,
+            payload.question_text,
+            authorize=access.authorize_visit_mutation(
+                visit_id, "visit.write", action="visit_question.create"
+            ),
+        )
+    )
 
 
 @router.get(
@@ -504,7 +779,9 @@ def create_visit_question(
 def list_visit_questions(
     visit_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitQuestionListResponse:
+    access.require_visit(visit_id, "visit.read")
     return VisitQuestionListResponse(
         questions=[
             _visit_question_response(question)
@@ -523,6 +800,7 @@ def update_visit_question(
     question_id: ProductCoreIdentifier,
     payload: VisitQuestionUpdateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitQuestionResponse:
     return _visit_question_response(
         runtime.visits.update_question(
@@ -530,6 +808,9 @@ def update_visit_question(
             question_text=payload.question_text,
             position=payload.position,
             update_fields=frozenset(payload.model_fields_set),
+            authorize=access.authorize_question_mutation(
+                question_id, "visit.write", action="visit_question.update"
+            ),
         )
     )
 
@@ -543,8 +824,14 @@ def update_visit_question(
 def delete_visit_question(
     question_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> Response:
-    runtime.visits.delete_question(question_id)
+    runtime.visits.delete_question(
+        question_id,
+        authorize=access.authorize_question_mutation(
+            question_id, "visit.write", action="visit_question.delete"
+        ),
+    )
     return Response(status_code=204)
 
 
@@ -554,7 +841,12 @@ def delete_visit_question(
     responses={404: {"model": ErrorResponse}},
     operation_id="product_core_get_person",
 )
-def get_person(person_id: ProductCoreIdentifier, runtime: RuntimeDependency) -> PersonResponse:
+def get_person(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> PersonResponse:
+    access.require_person(person_id, "person.read")
     return _person_response(runtime.people.get(person_id))
 
 
@@ -568,6 +860,7 @@ def update_person(
     person_id: ProductCoreIdentifier,
     payload: PersonUpdateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> PersonResponse:
     return _person_response(
         runtime.people.update(
@@ -575,6 +868,9 @@ def update_person(
             display_name=payload.display_name,
             date_of_birth=payload.date_of_birth,
             update_date_of_birth="date_of_birth" in payload.model_fields_set,
+            authorize=access.authorize_person_mutation(
+                person_id, "person.update", action="person.update"
+            ),
         )
     )
 
@@ -593,12 +889,16 @@ def register_manual_source(
     payload: ManualSourceRequest,
     response: Response,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> SourceRegistrationResponse:
     result = runtime.sources.register_manual_entry_result(
         payload.person_id,
         payload.medication.display_name,
         schedule_text=payload.medication.schedule_text,
         note=payload.medication.note,
+        authorize=access.authorize_person_mutation(
+            payload.person_id, "source.write", action="source.create"
+        ),
     )
     response.status_code = 201 if result.created else 200
     return SourceRegistrationResponse(
@@ -621,8 +921,15 @@ def register_plain_text_source(
     payload: PlainTextSourceRequest,
     response: Response,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> SourceRegistrationResponse:
-    result = runtime.sources.register_plain_text_result(payload.person_id, payload.content)
+    result = runtime.sources.register_plain_text_result(
+        payload.person_id,
+        payload.content,
+        authorize=access.authorize_person_mutation(
+            payload.person_id, "source.write", action="source.create"
+        ),
+    )
     response.status_code = 201 if result.created else 200
     return SourceRegistrationResponse(
         created=result.created,
@@ -640,6 +947,7 @@ def register_plain_text_source(
 def create_medication_candidate(
     payload: MedicationCandidateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> CandidateResponse:
     candidate = runtime.lifecycle.create_candidate(
         person_id=payload.person_id,
@@ -647,6 +955,17 @@ def create_medication_candidate(
         display_name=payload.display_name,
         schedule_text=payload.schedule_text,
         note=payload.note,
+        authorize=access.combine_mutation_authorizers(
+            access.authorize_person_mutation(
+                payload.person_id, "candidate.review", action="candidate.create"
+            ),
+            access.authorize_source_mutation(
+                payload.source_id,
+                payload.person_id,
+                "source.read",
+                action="source.read",
+            ),
+        ),
     )
     return _candidate_response(candidate)
 
@@ -660,7 +979,9 @@ def create_medication_candidate(
 def get_candidate(
     candidate_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> CandidateResponse:
+    access.require_candidate(candidate_id, "candidate.read")
     return _candidate_response(runtime.lifecycle.get_candidate(candidate_id))
 
 
@@ -673,8 +994,10 @@ def get_candidate(
 def list_candidates(
     person_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     status: Annotated[CandidateStatus | None, Query()] = None,
 ) -> CandidateListResponse:
+    access.require_person(person_id, "candidate.read")
     candidates = runtime.lifecycle.list_candidates(person_id, status)
     return CandidateListResponse(candidates=[_candidate_response(item) for item in candidates])
 
@@ -688,9 +1011,20 @@ def list_candidates(
 def confirm_candidate(
     candidate_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     _payload: Annotated[EmptyActionRequest | None, Body()] = None,
 ) -> CanonicalMedicationResponse:
-    return _canonical_response(runtime.lifecycle.confirm(candidate_id))
+    return _canonical_response(
+        runtime.lifecycle.confirm(
+            candidate_id,
+            authorize=access.authorize_candidate_mutation(
+                candidate_id,
+                "candidate.review",
+                "medication.write",
+                action="candidate.confirm",
+            ),
+        )
+    )
 
 
 @router.post(
@@ -702,9 +1036,17 @@ def confirm_candidate(
 def reject_candidate(
     candidate_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     _payload: Annotated[EmptyActionRequest | None, Body()] = None,
 ) -> CandidateResponse:
-    return _candidate_response(runtime.lifecycle.reject(candidate_id))
+    return _candidate_response(
+        runtime.lifecycle.reject(
+            candidate_id,
+            authorize=access.authorize_candidate_mutation(
+                candidate_id, "candidate.review", action="candidate.reject"
+            ),
+        )
+    )
 
 
 @router.post(
@@ -718,12 +1060,16 @@ def correct_candidate(
     candidate_id: ProductCoreIdentifier,
     payload: CorrectCandidateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> CandidateResponse:
     replacement = runtime.lifecycle.correct(
         candidate_id,
         display_name=payload.display_name,
         schedule_text=payload.schedule_text,
         note=payload.note,
+        authorize=access.authorize_candidate_mutation(
+            candidate_id, "candidate.review", action="candidate.correct"
+        ),
     )
     return _candidate_response(replacement)
 
@@ -737,8 +1083,10 @@ def correct_candidate(
 def list_medications(
     person_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     include_inactive: Annotated[bool, Query()] = False,
 ) -> CanonicalMedicationListResponse:
+    access.require_person(person_id, "medication.read")
     records = runtime.lifecycle.list_canonical(person_id, include_inactive=include_inactive)
     return CanonicalMedicationListResponse(
         medications=[_canonical_response(record) for record in records]
@@ -754,7 +1102,9 @@ def list_medications(
 def list_timeline(
     person_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> TimelineResponse:
+    access.require_person(person_id, "timeline.read")
     events = runtime.lifecycle.list_timeline(person_id)
     return TimelineResponse(events=[_timeline_response(event) for event in events])
 
@@ -767,14 +1117,21 @@ def list_timeline(
 def export_person_portable_vault(
     person_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     _payload: Annotated[EmptyActionRequest | None, Body()] = None,
 ) -> Response:
+    access.require_person(
+        person_id,
+        "vault.export",
+        audit_action="vault.export",
+        required_audit=True,
+    )
     exported = runtime.portable_vault_exports.export(person_id)
     return Response(
         content=exported.zip_bytes,
         media_type="application/zip",
         headers={
-            "Content-Disposition": 'attachment; filename="opencare-person-vault-v1.zip"'
+            "Content-Disposition": 'attachment; filename="opencare-person-vault-v2.zip"'
         },
     )
 
@@ -789,9 +1146,15 @@ def export_person_portable_vault(
 def initialize_persisted_visit_brief(
     visit_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     _payload: Annotated[EmptyActionRequest | None, Body()] = None,
 ) -> VisitBriefInitializeResponse:
-    brief = runtime.persisted_visit_briefs.initialize(visit_id)
+    brief = runtime.persisted_visit_briefs.initialize(
+        visit_id,
+        authorize=access.authorize_visit_mutation(
+            visit_id, "brief.write", action="brief.initialize"
+        ),
+    )
     return VisitBriefInitializeResponse(
         visit_id=brief.visit_id,
         current_revision_number=brief.current_revision_number,
@@ -807,8 +1170,11 @@ def initialize_persisted_visit_brief(
     operation_id="product_core_get_persisted_visit_brief",
 )
 def get_persisted_visit_brief(
-    visit_id: ProductCoreIdentifier, runtime: RuntimeDependency
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefResponseV2:
+    access.require_visit(visit_id, "brief.read")
     return _persisted_brief_response(
         runtime, visit_id, runtime.persisted_visit_briefs.get(visit_id)
     )
@@ -821,8 +1187,11 @@ def get_persisted_visit_brief(
     operation_id="product_core_list_persisted_visit_brief_revisions",
 )
 def list_persisted_visit_brief_revisions(
-    visit_id: ProductCoreIdentifier, runtime: RuntimeDependency
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefRevisionListResponse:
+    access.require_visit(visit_id, "brief.read")
     return VisitBriefRevisionListResponse(
         revisions=[
             _persisted_revision_response(runtime, visit_id, revision)
@@ -841,7 +1210,9 @@ def get_persisted_visit_brief_revision(
     visit_id: ProductCoreIdentifier,
     revision_number: Annotated[int, Path(ge=1)],
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefRevisionResponse:
+    access.require_visit(visit_id, "brief.read")
     return _persisted_revision_response(
         runtime,
         visit_id,
@@ -856,8 +1227,11 @@ def get_persisted_visit_brief_revision(
     operation_id="product_core_list_visit_brief_eligible_evidence",
 )
 def list_persisted_visit_brief_evidence(
-    visit_id: ProductCoreIdentifier, runtime: RuntimeDependency
+    visit_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefEligibleEvidenceResponse:
+    access.require_visit(visit_id, "brief.read")
     return VisitBriefEligibleEvidenceResponse(
         evidence=runtime.persisted_visit_briefs.list_eligible_evidence(visit_id)
     )
@@ -873,7 +1247,9 @@ def validate_persisted_visit_brief_evidence(
     visit_id: ProductCoreIdentifier,
     payload: VisitBriefEvidenceRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefEvidenceValidationResponse:
+    access.require_visit(visit_id, "brief.write")
     return VisitBriefEvidenceValidationResponse.model_validate(
         runtime.persisted_visit_briefs.validate_evidence_selection(
             visit_id, payload.selected_record_ids
@@ -896,11 +1272,15 @@ def generate_persisted_visit_brief_revision(
     visit_id: ProductCoreIdentifier,
     payload: VisitBriefGenerateRevisionRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefRevisionResponse:
     revision = runtime.persisted_visit_briefs.generate(
         visit_id,
         selected_record_ids=payload.selected_record_ids,
         expected_current_revision_number=payload.expected_current_revision_number,
+        authorize=access.authorize_visit_mutation(
+            visit_id, "brief.write", action="brief.generate"
+        ),
     )
     return _persisted_revision_response(runtime, visit_id, revision)
 
@@ -920,11 +1300,15 @@ def save_persisted_visit_brief_user_edit(
     visit_id: ProductCoreIdentifier,
     payload: VisitBriefUserEditRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefRevisionResponse:
     revision = runtime.persisted_visit_briefs.save_user_edit(
         visit_id,
         preparation_notes=payload.preparation_notes,
         expected_current_revision_number=payload.expected_current_revision_number,
+        authorize=access.authorize_visit_mutation(
+            visit_id, "brief.write", action="brief.update"
+        ),
     )
     return _persisted_revision_response(runtime, visit_id, revision)
 
@@ -943,11 +1327,15 @@ def restore_persisted_visit_brief_revision(
     visit_id: ProductCoreIdentifier,
     payload: VisitBriefRestoreRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefResponseV2:
     brief = runtime.persisted_visit_briefs.restore(
         visit_id,
         revision_number=payload.revision_number,
         expected_current_revision_number=payload.expected_current_revision_number,
+        authorize=access.authorize_visit_mutation(
+            visit_id, "brief.write", action="brief.restore"
+        ),
     )
     return _persisted_brief_response(runtime, visit_id, brief)
 
@@ -960,9 +1348,15 @@ def restore_persisted_visit_brief_revision(
 def export_current_persisted_visit_brief(
     visit_id: ProductCoreIdentifier,
     runtime: RuntimeDependency,
+    access: AccessDependency,
     _payload: Annotated[EmptyActionRequest | None, Body()] = None,
 ) -> Response:
-    markdown, revision_number = runtime.persisted_visit_briefs.export_current(visit_id)
+    markdown, revision_number = runtime.persisted_visit_briefs.export_current(
+        visit_id,
+        authorize=access.authorize_visit_mutation(
+            visit_id, "brief.export", action="brief.export"
+        ),
+    )
     return Response(
         content=markdown.encode("utf-8"),
         media_type="text/markdown",
@@ -984,7 +1378,9 @@ def generate_visit_brief(
     person_id: ProductCoreIdentifier,
     payload: VisitBriefGenerateRequest,
     runtime: RuntimeDependency,
+    access: AccessDependency,
 ) -> VisitBriefResponse:
+    access.require_person(person_id, "brief.write")
     brief = runtime.visit_briefs.generate(
         VisitBriefRequest(
             person_id=person_id,

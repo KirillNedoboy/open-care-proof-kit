@@ -1,34 +1,17 @@
 from __future__ import annotations
 
-import asyncio
-
-import httpx
-
-from app.main import app
+from fastapi.testclient import TestClient
 
 
-def get(path: str, *, follow_redirects: bool = True) -> httpx.Response:
-    async def send() -> httpx.Response:
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport,
-            base_url="http://testserver",
-            follow_redirects=follow_redirects,
-        ) as client:
-            return await client.get(path)
-
-    return asyncio.run(send())
-
-
-def test_root_redirects_to_workspace() -> None:
-    response = get("/", follow_redirects=False)
+def test_root_redirects_to_workspace(product_core_client: TestClient) -> None:
+    response = product_core_client.get("/", follow_redirects=False)
 
     assert response.status_code == 307
     assert response.headers["location"] == "/workspace"
 
 
-def test_workspace_renders_a_static_product_shell() -> None:
-    response = get("/workspace")
+def test_workspace_renders_a_static_product_shell(product_core_client: TestClient) -> None:
+    response = product_core_client.get("/workspace")
 
     assert response.status_code == 200
     assert "Visit Preparation Workspace" in response.text
@@ -58,8 +41,12 @@ def test_workspace_renders_a_static_product_shell() -> None:
     assert "person-demo" not in response.text
 
 
-def test_chat_remains_available() -> None:
-    response = get("/chat")
+def test_chat_remains_available(product_core_client: TestClient) -> None:
+    selected = product_core_client.put(
+        "/api/family-access/v1/active-person", json={"person_id": "person-1"}
+    )
+    assert selected.status_code == 204
+    response = product_core_client.get("/chat")
 
     assert response.status_code == 200
     assert "OpenCare chat" in response.text

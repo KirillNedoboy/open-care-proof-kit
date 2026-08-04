@@ -2,6 +2,9 @@ from typing import Any
 
 from app.agent.models import AgentContext, ContextItem, ContextSource
 from app.health_vault.runtime_loader import ActiveVault
+from app.product_core.errors import PersonNotFoundError
+from app.product_core.models import isoformat_utc
+from app.product_core.runtime import ProductCoreRuntime
 
 
 def build_agent_context(active_vault: ActiveVault) -> AgentContext:
@@ -39,6 +42,114 @@ def build_agent_context(active_vault: ActiveVault) -> AgentContext:
         people=[person.display_name for person in read_model.people],
         items=items,
         sources=sources,
+    )
+
+
+def build_product_core_agent_context(
+    runtime: ProductCoreRuntime, person_id: str
+) -> AgentContext:
+    """Build one Person's deterministic chat context without reading source payloads."""
+    with runtime.database.uow() as uow:
+        person = uow.people.get(person_id)
+        if person is None or not person.is_active:
+            raise PersonNotFoundError("Person was not found.")
+        sources = sorted(
+            uow.sources.list_for_person(person_id),
+            key=lambda source: (isoformat_utc(source.created_at), source.id),
+        )
+        medications = sorted(
+            uow.canonical_records.list_for_person(person_id, include_inactive=False),
+            key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+        )
+        timeline = sorted(
+            uow.timeline_events.list_for_person(person_id),
+            key=lambda event: (isoformat_utc(event.event_at), event.id),
+        )
+        visits = sorted(
+            uow.visits.list_for_person(person_id),
+            key=lambda visit: (isoformat_utc(visit.created_at), visit.visit_id),
+        )
+        questions = [
+            question
+            for visit in visits
+            for question in sorted(
+                uow.visit_questions.list_for_visit(visit.visit_id),
+                key=lambda item: (item.position, item.question_id),
+            )
+        ]
+    items = [
+        ContextItem(
+            id=person.person_id,
+            kind="person",
+            text=person.display_name,
+            provenance_status="recorded_without_source",
+        )
+    ]
+    items.extend(
+        ContextItem(
+            id=record.id,
+            kind="medication",
+            text=" | ".join(
+                value
+                for value in (record.display_name, record.schedule_text, record.note)
+                if value
+            ),
+            source_ids=[record.source_id],
+            provenance_status="source_backed",
+        )
+        for record in medications
+    )
+    items.extend(
+        ContextItem(
+            id=event.id,
+            kind="timeline",
+            text=" | ".join(
+                (isoformat_utc(event.event_at), event.title, event.event_type)
+            ),
+            source_ids=[event.source_id],
+            provenance_status="source_backed",
+        )
+        for event in timeline
+    )
+    items.extend(
+        ContextItem(
+            id=visit.visit_id,
+            kind="visit",
+            text=" | ".join(
+                value
+                for value in (
+                    visit.title,
+                    visit.specialist,
+                    None if visit.scheduled_date is None else visit.scheduled_date.isoformat(),
+                )
+                if value
+            ),
+            provenance_status="recorded_without_source",
+        )
+        for visit in visits
+    )
+    items.extend(
+        ContextItem(
+            id=question.question_id,
+            kind="recorded_question",
+            text=question.question_text,
+            provenance_status="recorded_without_source",
+        )
+        for question in questions
+    )
+    return AgentContext(
+        source_kind="product_core",
+        family_label="Active Person vault",
+        people=[person.display_name],
+        items=items,
+        sources=[
+            ContextSource(
+                source_id=source.id,
+                title=f"Recorded {source.source_type.replace('_', ' ')} source",
+                source_type=source.source_type,
+            )
+            for source in sources
+        ],
     )
 
 

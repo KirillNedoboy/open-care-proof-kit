@@ -91,7 +91,8 @@ def test_visit_api_rejects_invalid_patch_and_unknown_records(
     unknown_person = product_core_client.get("/api/product-core/v1/people/missing/visits")
     unknown_visit = product_core_client.get("/api/product-core/v1/visits/missing/questions")
 
-    assert empty_patch.status_code == 422
+    assert empty_patch.status_code == 404
+    assert empty_patch.content == unknown_visit.content
     assert invalid_title.status_code == 422
     assert unknown_person.status_code == 404
     assert unknown_person.json()["error"]["code"] == "person_not_found"

@@ -8,7 +8,11 @@ def test_people_api_creates_lists_gets_and_updates_profiles(
 ) -> None:
     created = product_core_client.post(
         "/api/product-core/v1/people",
-        json={"display_name": "  Ada Lovelace  ", "date_of_birth": "1815-12-10"},
+        json={
+            "display_name": "  Ada Lovelace  ",
+            "date_of_birth": "1815-12-10",
+            "confirm_owner_assignment": True,
+        },
         headers=json_headers(),
     )
 
@@ -57,14 +61,18 @@ def test_people_api_rejects_client_id_and_unknown_person_safely(
     assert missing.json()["error"] == {
         "code": "person_not_found", "message": "Person was not found."
     }
-    assert empty_patch.status_code == 422
-    assert empty_patch.json()["error"]["code"] == "request_validation_failed"
+    assert empty_patch.status_code == 404
+    assert empty_patch.content == missing.content
 
 
 def test_people_api_rejects_a_future_date_of_birth(product_core_client: TestClient) -> None:
     response = product_core_client.post(
         "/api/product-core/v1/people",
-        json={"display_name": "Future", "date_of_birth": "2026-07-27"},
+        json={
+            "display_name": "Future",
+            "date_of_birth": "2026-07-27",
+            "confirm_owner_assignment": True,
+        },
         headers=json_headers(),
     )
 

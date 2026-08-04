@@ -45,14 +45,14 @@ def private_settings() -> Settings:
 
 
 def test_chat_route_opens_chat_workspace() -> None:
-    response = request("GET", "/chat")
+    response = request("GET", "/demo/chat")
 
     assert response.status_code == 200
     assert "OpenCare chat" in response.text
 
 
 def test_public_demo_chat_route_is_passwordless() -> None:
-    response = request("GET", "/chat", follow_redirects=False)
+    response = request("GET", "/demo/chat", follow_redirects=False)
 
     assert response.status_code == 200
 
@@ -60,7 +60,7 @@ def test_public_demo_chat_route_is_passwordless() -> None:
 def test_chat_api_returns_validated_demo_answer() -> None:
     response = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Prepare questions for my doctor"}',
         headers=json_headers(),
     )
@@ -75,13 +75,13 @@ def test_chat_api_returns_validated_demo_answer() -> None:
 def test_chat_api_returns_cited_recorded_medication_and_missing_dosage_answers() -> None:
     medication = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Which medications are recorded in this vault?"}',
         headers=json_headers(),
     )
     dosage = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"What dosage is recorded in the source?"}',
         headers=json_headers(),
     )
@@ -103,13 +103,13 @@ def test_chat_api_returns_cited_recorded_medication_and_missing_dosage_answers()
 def test_chat_api_refuses_diagnosis_and_dosage_change_requests() -> None:
     diagnosis = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"What diagnosis do I have?"}',
         headers=json_headers(),
     )
     dosage_change = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Should I increase my dosage?"}',
         headers=json_headers(),
     )
@@ -123,7 +123,7 @@ def test_chat_api_refuses_diagnosis_and_dosage_change_requests() -> None:
 def test_chat_api_rejects_cross_origin_request() -> None:
     response = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Prepare questions for my doctor"}',
         headers=json_headers(origin="https://attacker.example"),
     )
@@ -135,7 +135,7 @@ def test_chat_api_rejects_cross_origin_request() -> None:
 def test_chat_api_rejects_malformed_origin() -> None:
     response = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Prepare questions for my doctor"}',
         headers=json_headers(origin="https://testserver:bad"),
     )
@@ -144,10 +144,10 @@ def test_chat_api_rejects_malformed_origin() -> None:
 
 
 def test_chat_api_rejects_non_json_and_empty_input() -> None:
-    non_json = request("POST", "/api/chat", content=b"question=value")
+    non_json = request("POST", "/api/demo/chat", content=b"question=value")
     empty = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"  "}',
         headers=json_headers(),
     )
@@ -157,10 +157,10 @@ def test_chat_api_rejects_non_json_and_empty_input() -> None:
 
 
 def test_chat_api_rejects_get_and_oversized_question() -> None:
-    get_response = request("GET", "/api/chat", follow_redirects=False)
+    get_response = request("GET", "/api/demo/chat", follow_redirects=False)
     oversized = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=('{"question":"' + "x" * 2001 + '"}').encode(),
         headers=json_headers(),
     )
@@ -182,17 +182,17 @@ def test_private_chat_page_redirects_but_api_returns_json_401(
 ) -> None:
     monkeypatch.setattr(main_module, "get_settings", private_settings)
 
-    page = request("GET", "/chat", follow_redirects=False)
+    page = request("GET", "/demo/chat", follow_redirects=False)
     api = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Prepare questions for my doctor"}',
         headers=json_headers(),
         follow_redirects=False,
     )
 
     assert page.status_code == 307
-    assert page.headers["location"] == "/access?next=%2Fchat"
+    assert page.headers["location"] == "/access?next=%2Fdemo%2Fchat"
     assert api.status_code == 401
     assert api.headers["content-type"].startswith("application/json")
     assert api.json() == {"detail": "Private access required."}
@@ -208,7 +208,7 @@ def test_private_authenticated_same_origin_chat_api_succeeds(
 
     response = request(
         "POST",
-        "/api/chat",
+        "/api/demo/chat",
         content=b'{"question":"Which information is source-backed?"}',
         headers={**json_headers(), "cookie": cookie},
     )

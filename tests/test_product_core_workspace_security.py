@@ -52,3 +52,14 @@ def test_workspace_static_assets_exist() -> None:
 
     assert css.is_file()
     assert script.is_file()
+
+
+def test_workspace_uses_session_csrf_and_server_side_active_person() -> None:
+    script = (ROOT / "app" / "static" / "product_core_workspace.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "X-OpenCare-CSRF" in script
+    assert "/api/family-access/v1/active-person" in script
+    assert "confirm_owner_assignment: true" in script
+    assert "opencare-person-vault-v2.zip" in script
