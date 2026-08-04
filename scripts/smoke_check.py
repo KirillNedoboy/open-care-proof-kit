@@ -43,8 +43,8 @@ def _is_expected_redirect(location: str | None, *, path: str, next_path: str | N
 
 
 def validate_vault_without_password(result: HttpResult) -> str:
-    if result.status == 200:
-        return "public"
+    if result.status == 401:
+        return "actor_session_required"
     if result.status in REDIRECT_STATUS_CODES and _is_expected_redirect(
         result.location,
         path="/access",
@@ -59,6 +59,7 @@ def validate_private_vault_flow(
     initial: HttpResult,
     login: HttpResult,
     unlocked: HttpResult,
+    actor_login: HttpResult,
 ) -> None:
     if not (
         initial.status in REDIRECT_STATUS_CODES
@@ -70,20 +71,25 @@ def validate_private_vault_flow(
         and _is_expected_redirect(login.location, path="/vault", next_path=None)
     ):
         raise CheckError("Expected successful login redirect to /vault.")
-    if unlocked.status != 200:
-        raise CheckError("Expected unlocked /vault to return 200.")
+    if unlocked.status != 401:
+        raise CheckError("Expected /vault to require an Actor session after outer login.")
+    if actor_login.status != 200:
+        raise CheckError("Expected /login to return 200 after outer login.")
 
 
 def _build_connection(target_url: str, *, timeout: float) -> http.client.HTTPConnection:
     parsed = urlsplit(target_url)
+    hostname = parsed.hostname
+    if hostname is None:
+        raise CheckError("Target URL has no hostname.")
     if parsed.scheme == "https":
         return http.client.HTTPSConnection(
-            parsed.hostname,
+            hostname,
             parsed.port or 443,
             timeout=timeout,
             context=ssl.create_default_context(),
         )
-    return http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=timeout)
+    return http.client.HTTPConnection(hostname, parsed.port or 80, timeout=timeout)
 
 
 def _request(
@@ -144,7 +150,11 @@ def run_smoke_check(*, base_url: str, password: str | None, timeout: float) -> l
     vault_mode = validate_vault_without_password(initial_vault)
     notes.append(f"vault_mode={vault_mode}")
 
-    if vault_mode == "public":
+    if vault_mode == "actor_session_required":
+        actor_login = _request(normalized_base_url, "/login", timeout=timeout)
+        if actor_login.status != 200:
+            raise CheckError(f"/login returned {actor_login.status}, expected 200.")
+        notes.append("actor_login_ok")
         return notes
 
     if password is None:
@@ -171,12 +181,19 @@ def run_smoke_check(*, base_url: str, password: str | None, timeout: float) -> l
         timeout=timeout,
         headers={"Cookie": cookie},
     )
+    actor_login = _request(
+        normalized_base_url,
+        "/login",
+        timeout=timeout,
+        headers={"Cookie": cookie},
+    )
     validate_private_vault_flow(
         initial=initial_vault,
         login=login_result,
         unlocked=unlocked_vault,
+        actor_login=actor_login,
     )
-    notes.append("private_login_ok")
+    notes.extend(("private_login_ok", "actor_session_required", "actor_login_ok"))
     return notes
 
 

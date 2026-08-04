@@ -81,3 +81,11 @@ def test_repository_controlled_installation_paths_use_python312_constraints() ->
     assert '-c constraints/python312.txt -e ".[dev]"' in workflow
     assert "COPY constraints/python312.txt ./constraints/python312.txt" in dockerfile
     assert "-c constraints/python312.txt ." in dockerfile
+
+
+def test_family_access_scrypt_runs_on_python312_windows_and_linux_ci() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert "os: [ubuntu-latest, windows-latest]" in workflow
+    assert "python -m pytest tests/test_family_access_security.py -q" in workflow
+    assert workflow.count('python-version: "3.12"') >= 2

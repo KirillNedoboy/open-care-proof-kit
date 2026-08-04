@@ -15,10 +15,10 @@ def test_normalize_base_url_trims_trailing_slash() -> None:
     )
 
 
-def test_validate_vault_without_password_accepts_public_vault() -> None:
-    result = validate_vault_without_password(HttpResult(status=200, location=None))
+def test_validate_vault_without_password_accepts_actor_session_boundary() -> None:
+    result = validate_vault_without_password(HttpResult(status=401, location=None))
 
-    assert result == "public"
+    assert result == "actor_session_required"
 
 
 def test_validate_vault_without_password_accepts_private_redirect() -> None:
@@ -38,7 +38,8 @@ def test_validate_private_vault_flow_accepts_redirect_login_and_unlocked_page() 
     validate_private_vault_flow(
         initial=HttpResult(status=307, location="/access?next=%2Fvault"),
         login=HttpResult(status=303, location="/vault"),
-        unlocked=HttpResult(status=200, location=None),
+        unlocked=HttpResult(status=401, location=None),
+        actor_login=HttpResult(status=200, location=None),
     )
 
 
@@ -47,7 +48,8 @@ def test_validate_private_vault_flow_rejects_missing_initial_redirect() -> None:
         validate_private_vault_flow(
             initial=HttpResult(status=200, location=None),
             login=HttpResult(status=303, location="/vault"),
-            unlocked=HttpResult(status=200, location=None),
+            unlocked=HttpResult(status=401, location=None),
+            actor_login=HttpResult(status=200, location=None),
         )
 
 
@@ -56,14 +58,26 @@ def test_validate_private_vault_flow_rejects_failed_login() -> None:
         validate_private_vault_flow(
             initial=HttpResult(status=307, location="/access?next=%2Fvault"),
             login=HttpResult(status=401, location=None),
-            unlocked=HttpResult(status=200, location=None),
+            unlocked=HttpResult(status=401, location=None),
+            actor_login=HttpResult(status=200, location=None),
         )
 
 
-def test_validate_private_vault_flow_rejects_locked_final_vault() -> None:
-    with pytest.raises(CheckError, match="Expected unlocked /vault"):
+def test_validate_private_vault_flow_rejects_actor_boundary_bypass() -> None:
+    with pytest.raises(CheckError, match="Expected /vault to require an Actor session"):
         validate_private_vault_flow(
             initial=HttpResult(status=307, location="/access?next=%2Fvault"),
             login=HttpResult(status=303, location="/vault"),
-            unlocked=HttpResult(status=307, location="/access?next=%2Fvault"),
+            unlocked=HttpResult(status=200, location=None),
+            actor_login=HttpResult(status=200, location=None),
+        )
+
+
+def test_validate_private_vault_flow_requires_actor_login_page() -> None:
+    with pytest.raises(CheckError, match="Expected /login to return 200"):
+        validate_private_vault_flow(
+            initial=HttpResult(status=307, location="/access?next=%2Fvault"),
+            login=HttpResult(status=303, location="/vault"),
+            unlocked=HttpResult(status=401, location=None),
+            actor_login=HttpResult(status=503, location=None),
         )

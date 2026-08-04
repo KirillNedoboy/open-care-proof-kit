@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.family_access.policy import valid_role_scopes
 from app.product_core.errors import VisitBriefIntegrityError
 from app.product_core.migrations import PRODUCT_MIGRATIONS
 from app.product_core.models import (
@@ -239,6 +240,7 @@ def _validate_snapshot(connection: sqlite3.Connection) -> int:
         raise InstallationBackupError("unsupported_schema_version")
     _validate_lifecycle(connection)
     _validate_brief_revisions(connection)
+    _validate_family_access(connection)
     return versions[-1]
 
 
@@ -542,6 +544,79 @@ def _validate_brief_revisions(connection: sqlite3.Connection) -> None:
             VisitBriefIntegrityError,
         ) as exc:
             raise InstallationBackupError("visit_brief_integrity_failed") from exc
+
+
+def _validate_family_access(connection: sqlite3.Connection) -> None:
+    scoped_tables = (
+        "person_access_consent_history",
+        "person_access_assignments",
+        "access_invitations",
+    )
+    try:
+        for table in scoped_tables:
+            rows = connection.execute(
+                f"SELECT role, scopes_json FROM {table} ORDER BY rowid"
+            ).fetchall()
+            for row in rows:
+                scopes = json.loads(str(row["scopes_json"]))
+                if not valid_role_scopes(str(row["role"]), scopes):
+                    raise InstallationBackupError("family_access_consistency_failed")
+    except (json.JSONDecodeError, TypeError, sqlite3.Error) as exc:
+        raise InstallationBackupError("family_access_consistency_failed") from exc
+
+    inconsistent_queries = (
+        """
+        SELECT 1 FROM actors AS actor
+        WHERE actor.status = 'active'
+          AND NOT EXISTS (
+              SELECT 1 FROM actor_credentials AS credential
+              WHERE credential.actor_id = actor.actor_id AND credential.revoked_at IS NULL
+          )
+        LIMIT 1
+        """,
+        """
+        SELECT 1 FROM installation_admin_assignments AS assignment
+        JOIN actors AS actor ON actor.actor_id = assignment.actor_id
+        WHERE assignment.is_active = 1 AND actor.status <> 'active'
+        LIMIT 1
+        """,
+        """
+        SELECT 1 FROM actors
+        WHERE NOT EXISTS (
+            SELECT 1 FROM installation_admin_assignments AS assignment
+            JOIN actors AS administrator ON administrator.actor_id = assignment.actor_id
+            WHERE assignment.is_active = 1 AND administrator.status = 'active'
+        )
+        LIMIT 1
+        """,
+        """
+        SELECT 1 FROM person_access_assignments AS assignment
+        JOIN actors AS actor ON actor.actor_id = assignment.actor_id
+        JOIN people AS person ON person.person_id = assignment.person_id
+        WHERE assignment.is_active = 1
+          AND (actor.status <> 'active' OR person.is_active <> 1)
+        LIMIT 1
+        """,
+        """
+        SELECT 1 FROM own_person_links AS link
+        JOIN actors AS actor ON actor.actor_id = link.actor_id
+        JOIN people AS person ON person.person_id = link.person_id
+        WHERE link.is_active = 1 AND (
+            actor.status <> 'active'
+            OR person.is_active <> 1
+            OR NOT EXISTS (
+                SELECT 1 FROM person_access_assignments AS assignment
+                WHERE assignment.actor_id = link.actor_id
+                  AND assignment.person_id = link.person_id
+                  AND assignment.role = 'owner'
+                  AND assignment.is_active = 1
+            )
+        )
+        LIMIT 1
+        """,
+    )
+    if any(connection.execute(query).fetchone() is not None for query in inconsistent_queries):
+        raise InstallationBackupError("family_access_consistency_failed")
 
 
 def _source_payload_relative_path(source_id: str) -> str:
