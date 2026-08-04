@@ -6,7 +6,6 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE_COMMIT = "874c44d1308e016c68c58bf257a29a26eea746f6"
 REPOSITORY_URL = "https://github.com/KirillNedoboy/open-care-proof-kit"
 ISSUES_URL = f"{REPOSITORY_URL}/issues"
 REVIEWER_QUICKSTART_URLS = (
@@ -54,20 +53,22 @@ def test_project_metadata_is_complete_without_dependency_or_version_changes() ->
     assert "Apache License" in _read("LICENSE")
 
 
-def test_release_documents_describe_an_undated_private_alpha_candidate() -> None:
+def test_release_documents_preserve_published_v010_and_unreleased_phase2() -> None:
     changelog = _read("CHANGELOG.md")
     release_notes = _read("docs/releases/v0.1.0-private-alpha.md")
 
     assert "## [Unreleased]" in changelog
-    assert "## [0.1.0] - Release candidate" in changelog
-    assert "no tag" in changelog.lower()
-    assert "no public release" in changelog.lower()
-    assert "not production-ready" in changelog.lower()
-    assert "not clinically validated" in changelog.lower()
-    assert "candidate only" in release_notes.lower()
-    assert "no tag or public release" in release_notes.lower()
+    assert "## [0.1.0] - 2026-07-31" in changelog
+    assert "tag `v0.1.0`" in changelog
+    assert "phase 2" in changelog.lower()
+    assert "unreleased" in changelog.lower()
+    assert "production-ready" in changelog.lower()
+    assert "clinically validated" in changelog.lower()
+    assert "published as tag `v0.1.0`" in release_notes.lower()
+    assert "phase 2" in release_notes.lower()
+    assert "after this tag" in release_notes.lower()
     assert "not production-ready" in release_notes.lower()
-    assert "not clinically validated" in release_notes.lower()
+    assert "clinically validated" in release_notes.lower()
 
 
 def test_operator_checklist_keeps_privacy_recovery_and_stop_boundaries_visible() -> None:
@@ -85,17 +86,15 @@ def test_operator_checklist_keeps_privacy_recovery_and_stop_boundaries_visible()
         assert required_text in checklist
 
 
-def test_status_and_capability_matrix_reference_the_accepted_implementation_baseline() -> None:
+def test_status_and_capability_matrix_describe_phase2_without_a_release_bump() -> None:
     status = _read("docs/project-status.md")
     matrix = _read("docs/capability-matrix.md")
 
-    for document in (status, matrix):
-        assert BASELINE_COMMIT in document
-        assert "accepted implementation baseline" in document.lower()
-        assert "296a6d8" not in document
-
-    assert "prior accepted evidence" in status.lower()
-    assert "docker container recreation smoke: not executed" in status.lower()
+    assert "phase 2" in status.lower()
+    assert "`v0.1.0`" in status
+    assert "unreleased" in status.lower()
+    assert "family permissions" in matrix.lower()
+    assert "`implemented`" in matrix.lower()
     assert "wheel distribution" in matrix.lower()
     assert "constrained python 3.12" in matrix.lower()
     assert "do not imply clinical validation or production readiness" in matrix.lower()

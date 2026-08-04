@@ -1,14 +1,18 @@
 # Production Deployment
 
-OpenCare Proof Kit V2C documents one validated remote deployment path only:
+OpenCare documents one bounded remote deployment path:
 
 - single-node VPS;
 - Docker Compose;
 - Caddy reverse proxy with HTTPS/TLS;
-- read-only mounted local vault JSON file;
-- private password gate for non-health routes.
+- read-only mounted synthetic/reference vault JSON file;
+- the legacy private password gate for non-Actor surfaces;
+- local Actor sessions and explicit Person assignments for live Product Core data.
 
-This is a self-hosted read-only MVP. It is not clinical software. It does not provide diagnosis, treatment recommendation, dosage guidance, medication selection advice, start/stop medication advice, uploads, LLM generation, or genetics support in this phase.
+This is a controlled self-hosted private-alpha path, not a production-readiness
+claim or clinical software. It does not provide diagnosis, treatment
+recommendation, dosage guidance, medication selection advice, start/stop
+medication advice, uploads, OCR, or Phase 3 ingest.
 
 ## Supported Production Path
 
@@ -80,6 +84,12 @@ Production Compose binds two operator-controlled host directories:
 | `OPENCARE_PRODUCT_DATA_DIR` | `/var/lib/opencare/product-core` | `database.sqlite3` and immutable `sources/` payloads |
 | `OPENCARE_BACKUP_DIR` | `/var/backups/opencare` | operator-created installation backups |
 
+Actor sessions are not a third persistent directory. Compose sets
+`OPENCARE_SESSION_DB_PATH=/run/opencare/sessions.sqlite3` and mounts
+`/run/opencare` as mode `0700` tmpfs. Do not add a volume for that path. A
+container/runtime recreation intentionally removes sessions and requires every
+Actor to log in again.
+
 The application receives only the fixed container paths through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`; it does not receive the
 host-path variables. `OPENCARE_PRODUCT_DATA_DIR=./private/opencare-product-core`
@@ -128,6 +138,7 @@ The production stack:
 - mounts the host vault file read-only;
 - mounts persistent Product Core state at `/var/lib/opencare/product-core`;
 - mounts operator backups at `/var/backups/opencare`;
+- keeps the server-side session database on non-persistent `/run/opencare` tmpfs;
 - keeps the app container off public ports;
 - publishes only Caddy on `80` and `443`;
 - includes a container healthcheck and restart policy.
@@ -144,10 +155,13 @@ Stop it:
 docker compose --env-file deploy/env.production -f docker-compose.prod.yml down
 ```
 
-Recreating the `opencare` container preserves People, Sources and immutable
+Recreating the `opencare` container preserves People, durable Actors and
+credential verifiers, Families, relationships, consent, assignments, access
+audits, Sources and immutable
 payloads, CandidateFacts and review state, canonical medications, Timeline
 Events, Visits, Visit Questions, persisted Visit Brief revisions, and Product
 Core audit rows because they remain in `OPENCARE_PRODUCT_DATA_DIR` on the host.
+It deliberately does not preserve Actor sessions.
 
 ## Smoke Check
 
@@ -161,9 +175,11 @@ The smoke check:
 
 - requires `/healthz` to return `200`;
 - requires `/readyz` to return `200`;
-- accepts `/vault` returning `200` in public/demo mode;
-- detects `/vault` redirecting to `/access` in private mode;
-- when a password is supplied, verifies the `/access` login flow and unlocked `/vault`;
+- requires `/vault` to return `401` until an Actor session exists;
+- detects the legacy `/access` redirect if a pre-Phase-2-compatible server uses
+  it for `/vault`;
+- on the Phase 2 runtime, confirms `/vault` requires an Actor session and
+  `/login` is available; the optional legacy password is not Actor authentication;
 - exits non-zero on failure;
 - never prints the password value.
 
@@ -177,10 +193,14 @@ Public endpoints in the documented production path:
 
 Protected behavior in the documented production path:
 
-- `/vault` requires the private gate;
+- `/vault`, `/workspace`, `/family-access`, and `/chat` require a valid Actor
+  session and Person policy where Person data is involved;
 - `/access` serves the password form;
-- successful login sets the signed cookie;
-- non-health routes stay behind the private gate.
+- a legacy gate cookie grants no Actor identity or Person access;
+- `/login`, `/bootstrap`, and generic `/invite` provide the Actor entry flows;
+- legacy non-Actor routes stay behind the private gate in private production;
+  Actor entry/live routes enforce their own session boundary directly so a
+  missing Actor session remains `401`.
 
 ## Product Core backup and recovery
 
@@ -199,16 +219,20 @@ docker compose --env-file deploy/env.production -f docker-compose.prod.yml exec 
   --backup /var/backups/opencare/<new-backup-directory>
 ```
 
-Backups exclude `.env`, passwords, `OPENCARE_SECRET_KEY`, provider credentials,
-cookies, sessions, TLS material, deployment configuration, and generated
-reports. Store the mounted local vault JSON separately; it is not Product Core
-state.
+Backups contain schema v5 durable identity/access state, including credential
+verifiers and invitation hashes. They exclude plaintext passwords, invitation
+codes, `.env`, `OPENCARE_SECRET_KEY`, provider credentials, cookies, sessions,
+TLS material, deployment configuration, and generated reports. Store the
+mounted reference vault JSON separately; it is not Product Core state.
 
 Recovery is an offline maintenance operation. Stop application access first;
 the CLI cannot prove that the service is stopped. Do not run recovery against
 the active mounted Product Core directory. It requires an absent or real empty
 target and does not support populated-target overwrite or merge. This deployment
 path does not define an in-place Compose recovery command.
+Recovery restores durable credentials and revocations but no sessions. Before
+reopening HTTP access, require new logins and review active administrators,
+owners, caregivers, and outstanding invitations in the restored snapshot.
 
 ## Security Checklist
 
@@ -219,17 +243,17 @@ path does not define an in-place Compose recovery command.
 - Do not expose the app container directly without the reverse proxy.
 - Do not commit private vault files.
 - Keep the vault mount read-only.
+- Keep `/run/opencare` ephemeral and never copy its session database into a backup.
 - Keep `deploy/env.production` and `deploy/Caddyfile` uncommitted.
 
 ## Boundaries
 
-- Self-hosted read-only MVP only.
+- Controlled self-hosted private alpha only.
 - Not clinical software.
 - No medical advice.
 - No clinical decision support.
 - No uploads.
 - Product Core persistence depends on the two required host bind mounts.
-- No user accounts.
-- No LLM generation in this deployment path.
-- No genetics support in this deployment path.
+- Local Actor accounts only; no public SaaS identity or account recovery.
+- No Phase 3 ingest, OCR, cloud synchronization, or deployment automation.
 

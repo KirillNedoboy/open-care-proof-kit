@@ -125,12 +125,14 @@ COMPLETE
 staged verification. `manifest.sha256` is exactly the 64 lowercase hexadecimal
 SHA-256 characters for the canonical `manifest.json`, followed by one newline.
 The manifest records the schema version read from the completed SQLite snapshot;
-the current implementation accepts exactly Product Core schema version 4.
+the current implementation accepts exactly Product Core schema version 5.
 
-Backups exclude `.env`, passwords, `OPENCARE_SECRET_KEY`, provider keys, session
-cookies, virtual environments, caches, logs, generated reports, test artifacts,
-and TLS/deployment secrets. They do not attempt to recreate host configuration;
-operators provide configuration and credentials separately.
+Schema v5 backups include durable Actor credentials as salts and derived
+verifiers, plus hash-only invitation state. They never contain plaintext
+passwords or invitation codes. Backups exclude `.env`, `OPENCARE_SECRET_KEY`,
+provider keys, cookies, the separate session database, virtual environments,
+caches, logs, generated reports, test artifacts, and TLS/deployment secrets.
+They do not attempt to recreate host configuration.
 
 ### Recovery
 
@@ -151,9 +153,10 @@ absent state or original empty directory. Crash or power-loss consistency
 between filesystem operations is not guaranteed; exact abandoned recovery
 artifacts are detected and block a subsequent run.
 
-Recovery does not claim to invalidate existing browser sessions. The current
-access cookie remains valid only if the separately managed secret key is the
-same; backup deliberately excludes that key and access password.
+Phase 2 supersedes the earlier shared-cookie assumption: Actor sessions live in
+the separate `OPENCARE_SESSION_DB_PATH` store and are never backed up or
+restored. Recovery restores durable credentials, so every Actor must log in and
+create a new session after recovery.
 
 ## Interfaces and boundaries
 

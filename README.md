@@ -4,8 +4,10 @@ OpenCare is an open-source, self-hosted Personal and Family Health Workspace.
 This repository is the main OpenCare foundation: it contains a
 synthetic/demo Health/Family Vault, persistent Product Core medication and
 visit-planning records, reusable trust components, a guarded Question Workspace
-precursor, a frozen PGx reference workflow, and reviewer artifacts. It is not
-yet a complete editable user workspace.
+precursor, local Actor sessions with explicit Person permissions, a frozen PGx
+reference workflow, and reviewer artifacts. Live `/workspace`, `/vault`, and
+`/chat` are Person-scoped; synthetic reviewer surfaces remain separate under
+`/demo`.
 
 The product rule is simple: vault first, genetics second, LLM third as interface. OpenCare should be useful without DNA. The current implementation is not an AI doctor, not diagnosis, not treatment recommendation, not dosage guidance, and not clinical decision support.
 
@@ -22,17 +24,20 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 - [Security reporting](SECURITY.md)
 - [Product Core roadmap](docs/roadmap/product-core-roadmap.md)
 - [Module boundaries](docs/architecture/module-boundaries.md)
+- [Family identity ADR](docs/adr/0005-family-identity-access-boundary.md)
+- [Family authorization matrix](docs/security/family-access-authorization-matrix.md)
+- [Family access threat model](docs/security/family-access-threat-model.md)
 - [Agent direction summary](AGENTS.product-direction.md)
 
 `CHECKPOINT.md` and `SESSION_NOTES.md` are historical chronology, not current
 status sources. Grant and reviewer documents are supporting evidence, not the
 product roadmap.
 
-## Release candidate status
+## Release status
 
-Version `0.1.0` is a controlled private-alpha release candidate. No Git tag or
-public release has been created. Both the source checkout and packaged wheel
-have accepted validation evidence; this is not a production-readiness or
+`v0.1.0` is the published controlled private-alpha baseline. Phase 2 Family
+Identity and Access Boundary is implemented on the current feature branch and
+is not a new release or tag. Neither status is a production-readiness or
 clinical-readiness claim.
 
 Production Compose requires explicit persistent Product Core and backup host
@@ -80,21 +85,32 @@ guarantee medical correctness.
 - Deterministic local reviewer artifacts: JSON read model, Markdown summary, manifest.
 - Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
 - Read-only local reviewer page at `/demo/health-vault`.
-- Read-only active vault page at `/vault`.
-- Guarded chat workspace at `/chat`, with validated `POST /api/chat` answers.
+- Actor-scoped live vault and Workspace at `/vault` and `/workspace`.
+- Actor-scoped chat at `/chat`; the browser sends only the question and the
+  server builds context for the authorized active Person.
+- Schema v5 Actors, scrypt credentials, Families, relationships, append-only
+  consent, assignments, hash-only invitations, and metadata-only access audit.
+- Eight-hour server-side sessions in a separate runtime database, same-origin
+  checks, and CSRF enforcement for authenticated mutations.
+- Fixed owner/caregiver scopes, independent last-owner and last-administrator
+  guards, explicit high-risk owner grants, and atomic confirmed Person creation.
+- Family/access management UI plus a generic body-only `/invite` flow.
 - Deterministic `Context / Provenance Trace Graph` on the reviewer page.
 - Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
 - GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
 - Deterministic local trust metrics report for reviewer/demo trust checks.
 - Production config validation with fail-closed checks for secrets and private mode.
 - Public `/health`, `/healthz`, and `/readyz` endpoints for self-hosted checks.
-- Minimal password-gated private deployment mode for non-health routes.
+- Legacy password-gated private mode for non-Actor routes; its cookie never
+  substitutes for an Actor session or Person assignment.
 - Configurable runtime vault source through `OPENCARE_VAULT_SOURCE=demo|local_file`.
 - Mounted local vault file support through `OPENCARE_VAULT_FILE=/path/to/vault.json`.
 - Product Core SQLite persistence through `OPENCARE_PRODUCT_DB_PATH`.
+- Runtime-only session storage through `OPENCARE_SESSION_DB_PATH`, outside
+  Product Core backup and recovery.
 - Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
 - Deterministic medication lifecycle, persistent Visits and Visit Questions,
-  persisted Visit Briefs, and Person-scoped portable vault export under
+  persisted Visit Briefs, and deterministic Person export v2 under
   `app/product_core/`.
 - Versioned Product Core JSON API under `/api/product-core/v1` for source
 registration, candidate review, canonical medications, timeline, Visits, Visit
@@ -138,9 +154,10 @@ The LLM is intentionally third. Deterministic loaders, read models, rules, prove
 ### Guarded chat workspace
 
 The `/chat` route remains a guarded Question Workspace precursor for
-questions about the active vault. This is a runtime fact, not the canonical
-product identity. The browser sends a question only; OpenCare applies an intent
-policy, prepares compact provenance-aware context, obtains either a
+questions about the active Person. A valid Actor session, selected accessible
+Person, and `chat.use` scope are required. The browser sends a question only;
+OpenCare resolves Product Core context server-side, applies an intent policy,
+obtains either a
 deterministic demo response or an optional external response, and validates the
 completed structure before display. Chat messages stay in page memory and are
 not persisted.
@@ -169,7 +186,9 @@ The runtime vault route is:
 http://127.0.0.1:8000/vault
 ```
 
-It is local and read-only. In the default `demo` source it renders the synthetic family vault. In `local_file` mode it renders the mounted local JSON file through the same deterministic loader and read-model path. The page labels the source, shows provenance coverage, keeps the safety boundary notices, and does not expose secret environment variables or the full mounted file path.
+It is the live Actor-scoped Product Core vault for the active Person. It never
+falls back to demo or mounted reviewer JSON. The synthetic read-only vault
+remains at `/demo/health-vault`.
 
 ### Medication-to-Doctor Briefing reference workflow
 
@@ -222,12 +241,21 @@ Product Core migration smoke test:
 ```
 
 Product Core persists medication lifecycle records, active people profiles,
-Visits, and user-authored Visit Questions. The Phase 1B API uses the same
+Visits, user-authored Visit Questions, and schema v5 Family identity/access
+state. The API uses the same
 SQLite metadata and immutable UTF-8 source payloads configured through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
 application startup. The API has persisted active people profiles; legacy opaque
 person IDs are retained through non-medical `Imported profile` placeholders during
-migration. The shared instance password gate is not per-person authorization.
+migration. The outer shared password gate is not Person authorization: every
+live Product Core request resolves the Actor session, resource owner, and fixed
+scope server-side.
+
+Family identity and access endpoints use `/api/family-access/v1`. They cover
+bootstrap, login/logout, password replacement, current Actor and active Person,
+explicit Person creation, Actor deactivation, Families, memberships,
+relationships, assignments, consent/audit views, and body-only invitations.
+See the [authorization matrix](docs/security/family-access-authorization-matrix.md).
 
 Product Core API lifecycle endpoints include:
 
@@ -281,11 +309,12 @@ verifies, atomically activates, verifies again, and rolls back handled failures.
 It cannot guarantee crash- or power-loss safety between filesystem operations;
 exact abandoned recovery artifacts block subsequent recovery until inspected.
 
-Recovery restores neither `.env` nor passwords, `OPENCARE_SECRET_KEY`, provider
-keys, cookies, sessions, TLS files, or deployment configuration. It does not
-rotate credentials or invalidate signed cookies when an operator separately
-reuses the same secret key. Import, merge, encryption, and populated-target
-recovery remain unsupported.
+Recovery restores durable Actor credentials and the complete v5 access state,
+including revocations. It restores neither `.env`, plaintext passwords,
+invitation codes, `OPENCARE_SECRET_KEY`, provider keys, cookies, sessions, TLS
+files, nor deployment configuration. Every Actor logs in again and creates a
+new runtime session. Import, merge, encryption, and populated-target recovery
+remain unsupported.
 
 Start the local app:
 
@@ -293,10 +322,23 @@ Start the local app:
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
+On a fresh schema v5 installation, open `/bootstrap` while no Actor exists.
+Bootstrap creates the first local Actor and installation administrator; it
+grants no implicit Person access. Any selected existing Person becomes an owner
+grant only after the explicit full-access confirmation. Later sessions start at
+`/login`. Creating a Person requires the visible
+`confirm_owner_assignment: true` confirmation and atomically assigns the
+creating Actor as owner. Invitation codes are entered only on the generic
+`/invite` form and never belong in a link.
+
 Open:
 
 ```txt
 http://127.0.0.1:8000/
+http://127.0.0.1:8000/login
+http://127.0.0.1:8000/bootstrap
+http://127.0.0.1:8000/invite
+http://127.0.0.1:8000/family-access
 http://127.0.0.1:8000/demo
 http://127.0.0.1:8000/demo/health-vault
 http://127.0.0.1:8000/vault
@@ -322,6 +364,8 @@ OpenCare now includes a minimal self-hosted deployment foundation plus one docum
 - The deployment smoke check script is `scripts/smoke_check.py`.
 - Production Compose persists Product Core SQLite and immutable source payloads through
   required `OPENCARE_PRODUCT_DATA_DIR` and `OPENCARE_BACKUP_DIR` host bind mounts.
+- Production Compose keeps `OPENCARE_SESSION_DB_PATH` on restrictive
+  non-persistent `/run/opencare` tmpfs with no session backup volume.
 
 See [docs/deployment.md](docs/deployment.md) for:
 
@@ -352,6 +396,10 @@ GitHub Actions CI runs:
 - `python -m mypy app evals`
 - `python -m evals.runner`
 - `python -m evals.trust_metrics`
+
+The full validation job runs on Linux CPython 3.12. A focused credential job
+also runs the scrypt/session security tests on Windows and Linux CPython 3.12
+without weakening `N=2^15`, `r=8`, or `p=1`.
 
 Local trust metrics combine eval totals with Health/Family Vault manifest safety flags and the generated-report ignore check. They are automated reviewer/demo trust checks, not clinical validation.
 
@@ -389,6 +437,8 @@ Generated files under `reports/` remain ignored by Git.
 ```txt
 app/vault        health vault schemas and demo patient loading for the PGx path
 app/health_vault Health/Family Vault schemas, loader, read model, artifacts, trace graph
+app/family_access local Actors, credentials, sessions, Family, consent, policy, invitations
+app/product_core durable Person/Medication/Visit lifecycle, access enforcement, export/recovery
 app/genetics     demo genotype/VCF-like parsing and normalization for the PGx path
 app/evidence     local evidence pack schema and loading
 app/pgx          deterministic medication/genotype rule matching
@@ -432,8 +482,9 @@ and Visit-scoped persisted Brief revisions with confirmed-evidence selection,
 editable preparation notes, history/restore, Markdown copy/download, and an
 explicit Person-scoped portable vault download. The
 legacy deterministic Person-scoped Brief endpoint remains available. Profiles
-and selected Visits remain only in page memory.
+and selected Visits remain only in page memory; the active Person selection is
+held in the server-side Actor session.
 Legacy opaque person IDs migrate to `Imported profile` records without inferred data.
-`/chat` remains a supporting feature; the shared password gate is not per-person
-authorization. Family relationships, permissions, deactivation, deletion, uploads,
-and extraction remain out of scope.
+`/chat` remains a supporting feature behind the same Actor and Person policy.
+Family/access management and Actor deactivation are implemented. Person
+deletion, uploads, extraction, OCR, and Phase 3 ingest remain out of scope.

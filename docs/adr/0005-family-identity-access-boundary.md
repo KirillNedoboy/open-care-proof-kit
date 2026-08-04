@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-02
 - Decision owners: OpenCare maintainers
+- Implementation: Completed on the Phase 2 feature branch; unreleased
 
 ## Context
 
@@ -188,14 +189,16 @@ invitation or assignment change.
 
 Creating a Person from the authenticated workspace is atomic: the caller must
 send `confirm_owner_assignment: true`, and one transaction inserts the Person,
-an active fixed-scope owner assignment for the Actor, and the success audit
-event. Any validation, authorization, constraint, or audit failure rolls back
-all three rows. The service never creates an ownerless new Person.
+self-granted owner consent, an active fixed-scope owner assignment for the
+Actor, an optional valid own-Person link, and the success access audit. Any
+validation, authorization, constraint, or audit failure rolls back every row.
+The service never creates an ownerless new Person.
 
 Existing v4 People are not automatically assigned to an Actor. Bootstrap is
-available only when there are zero Actors, and, in private production, is also
-behind the existing outer `/access` gate. It is not a remote unauthenticated
-bootstrap path. The bootstrap transaction creates the first Actor, credential,
+available only when there are zero Actors and requires same-origin validation.
+Actor entry and live Actor-protected routes deliberately do not treat the
+legacy `/access` cookie as authentication; this preserves the exact Actor
+`401` boundary. The bootstrap transaction creates the first Actor, credential,
 and installation-administrator assignment, plus the selected existing-Person
 owner consent records, fixed full owner assignments, and success audits. An
 empty installation may select no existing Person. Failure rolls back the whole
@@ -208,7 +211,7 @@ relationships, consent, access, or health data.
 ### Family access API and deactivation
 
 The authentication and access-management surface is
-`/api/family-access/v1`. It provides exactly these initial auth routes:
+`/api/family-access/v1`. Its authentication and Actor routes are:
 
 | Route | Purpose |
 |---|---|
@@ -224,6 +227,14 @@ The authentication and access-management surface is
 | `POST /invite/preview` | Body-only generic invitation preview; it never exposes invitation state through an error. |
 | `POST /invite/register` | Body-only registration for a valid caregiver or owner invitation recipient. |
 | `POST /invite/accept` | Body-only, atomic caregiver or owner invitation acceptance. |
+
+The same router provides authenticated Person creation, Family creation and
+archive, membership and relationship management, assignment/consent/audit
+views, explicit assignment grants/revisions/revocations, and body-only
+invitation creation/revocation. These routes use the fixed matrix in
+[the authorization matrix](../security/family-access-authorization-matrix.md);
+adding a new route without an explicit policy mapping is a deny-by-default
+error.
 
 All list responses, including `GET /actors`, return no hidden names, opaque IDs,
 memberships, counts, or installation totals. Unauthorized callers receive the
@@ -260,8 +271,8 @@ HTTP responses are fixed as follows:
 | Status | Meaning |
 |---|---|
 | `401` | No valid, unexpired Actor session. API responses do not disclose target existence; browser facades may redirect only to the actor sign-in route. |
-| `403` | Authenticated Actor reached a non-Person-scoped protected control but lacks the required installation privilege, CSRF validation, or explicit high-risk confirmation. It reveals no Person record state. |
-| `404` | A Person-scoped route returns the same response for an unknown Person, an inactive Person, missing resource beneath that Person, or a Person policy denial. This prevents Person enumeration. |
+| `403` | Invalid CSRF/high-risk confirmation, missing installation privilege, or an Actor who can access the Person but lacks the known action scope. |
+| `404` | Unknown, inactive, hidden, or guessed Person, plus a missing or guessed nested resource owned by an inaccessible Person. This prevents Person enumeration. |
 
 The actor session guard protects `/vault`, `/workspace`, every related live
 vault API, every `/api/product-core/v1` route, `/chat`, and `/api/chat`. The
@@ -271,12 +282,13 @@ demo/reviewer surfaces and the frozen PGx workflow remain unchanged.
 `/demo/health-vault` and all reviewer/demo surfaces never touch Actor or live
 access state. Conversely, `/vault`, `/workspace`, and `/chat` live routes never
 fall back to demo context.
-The old installation password gate may remain an outer deployment gate during
-transition, but it is not an Actor session and cannot satisfy this policy.
+The old installation password gate may remain for legacy non-Actor surfaces,
+but its cookie is not an Actor session and cannot satisfy or precede this
+policy for live Actor routes.
 
 ### Export, backup, verify, and recovery
 
-Person portable export advances to format v2 when v5 is implemented. It retains
+Person portable export is format v2. It retains
 the v1 canonical layout and Person-owned medical graph, and adds the selected
 Person's family membership, Person relationships involving that Person,
 consent-history entries where that Person is the subject, and non-secret
@@ -302,6 +314,9 @@ administrators, assignments, and outstanding invitations before reopening the
 live HTTP service. Sessions are never restored. Recovery never migrates,
 normalizes, or invents state. These are installation-operator workflows that
 require no Actor session, Person access assignment, or Person impersonation.
+Offline verification also validates the fixed owner/caregiver scope policy and
+active Actor, administrator, assignment, and own-Person-link invariants before
+it accepts a v5 snapshot.
 
 Migration 5 is one `BEGIN IMMEDIATE` v4-to-v5 transaction. It creates only the
 v5 tables, indexes, and invariant triggers; it leaves v4 Person and medical
@@ -314,9 +329,9 @@ restore an operator-created pre-migration snapshot. The v5 recovery path
 accepts only an explicitly supported complete v5 backup and does not apply
 migrations during recovery.
 
-### Required implementation verification
+### Implemented verification
 
-The implementation must add focused tests for:
+The implementation includes focused tests for:
 
 - fresh v5 creation, v4-to-v5 preservation, transactional migration failure,
   and the absence of inferred actor/access data;
@@ -367,7 +382,7 @@ version change, or v0.1.0 demo-surface change is part of this decision.
 
 ## Consequences
 
-Phase 2 can add explicit local family access without changing the source,
+Phase 2 adds explicit local family access without changing the source,
 review, canonical-record, provenance, medical-safety, or local-first
 boundaries. It also creates deliberate operational work: the first local
 administrator must bootstrap an installation, existing People must be

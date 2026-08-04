@@ -24,20 +24,22 @@ creator.
 | Restore into wrong/populated installation | Require an absent or real empty target, explicit maintenance acknowledgement, path-overlap/link checks, and a safe target path report. | Refuse populated target. |
 | Interrupted activation | Stage under target filesystem; activate with atomic rename and retain rollback material until post-checks pass. | Restore prior empty target layout and leave service unavailable. |
 | Temporary extraction leakage | Use protected temporary directories, no user-controlled names, cleanup on success/failure, no content logging. | Cleanup failure is reported as an operator action, never treated as success. |
-| Restored access state | Exclude passwords, secret key and cookies. Document that cookie invalidation cannot be claimed when an external secret is reused. | Operator supplies access configuration separately. |
+| Restored access state | Preserve and verify durable Actor, credential, administrator, Family, relationship, consent, assignment, invitation-hash, and access-audit state. Exclude plaintext passwords, invitation codes, secret key, cookies, and the runtime session database. | Revoked access in the selected snapshot stays revoked; every Actor logs in again and creates a new session. |
 
 The implemented verifier opens only the supplied backup directory. It does not
 consult environment defaults, the active Product Core database, active source
 directory, or runtime HTTP services. It checks `COMPLETE`, canonical manifest
 bytes/checksum, exact declared layout, payloads, SQLite/FK/lifecycle consistency,
-source metadata, and Brief revision integrity before reporting success.
+source metadata, Brief revision integrity, role-scope policy, and active
+Actor/admin/assignment/own-Person-link invariants before reporting success.
 
 Recovery preflight is strictly read-only and recovery requires explicit paths,
 an absent or real empty target, and `--confirm-maintenance`. The flag records
 operator acknowledgement rather than proving the application is stopped.
-Recovery restores no passwords, secret key, provider key, cookie, session, TLS,
-or deployment configuration; it neither rotates credentials nor claims to
-invalidate cookies if the externally managed secret key is reused. It uses
+Recovery restores durable credential verifiers but no plaintext passwords,
+secret key, provider key, cookie, Actor session, TLS, or deployment
+configuration. A fresh runtime session store starts empty and recovered Actors
+must authenticate again. Recovery uses
 same-filesystem staging and guarded renames, verifies after activation, and
 rolls back handled failures. It does not guarantee a crash- or power-loss-safe
 state between filesystem operations; exact private abandoned artifacts block a

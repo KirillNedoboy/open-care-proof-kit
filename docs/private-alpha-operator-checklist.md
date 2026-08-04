@@ -13,19 +13,31 @@
 - [ ] Choose a Python 3.12 source/wheel path or the production Docker path.
 - [ ] Create dedicated Product Core and backup storage with restrictive
   filesystem permissions, separate from secrets and configuration.
+- [ ] Keep `OPENCARE_SESSION_DB_PATH` in runtime-only storage. In production
+  Compose it is `/run/opencare/sessions.sqlite3` on tmpfs; do not add a session
+  backup volume.
 - [ ] Generate `OPENCARE_SECRET_KEY`, set a strong access password, and review
   TLS/reverse-proxy boundaries where applicable.
 
 ## 3. Installation verification
 
 - [ ] Complete constrained source or wheel installation and run `pip check`.
-- [ ] Verify `/health`, `/readyz`, `/workspace`, `/chat`, `/openapi.json`, and
-  static assets.
+- [ ] Verify `/health`, `/readyz`, `/login`, `/bootstrap`, `/workspace`,
+  `/family-access`, `/chat`, `/openapi.json`, and static assets.
 - [ ] Verify the password gate in private production mode.
+- [ ] Bootstrap exactly one first Actor, record who holds installation-admin
+  responsibility, and confirm that administrator status alone reveals no
+  Person data.
 
 ## 4. Synthetic acceptance flow
 
-- [ ] Create a Person and add a manual Medication source.
+- [ ] Create a Person only with the explicit owner-assignment confirmation;
+  verify the creating Actor becomes that Person's owner atomically.
+- [ ] Create a caregiver invitation through `/invite`, transfer its code out of
+  band, and confirm the code never appears in a URL or log.
+- [ ] Exercise Person switching and confirm inaccessible People, Family members,
+  and installation totals are absent rather than merely disabled in the UI.
+- [ ] Add a manual Medication source.
 - [ ] Review each CandidateFact; confirm, correct, or reject it.
 - [ ] Verify the canonical record and Timeline, then create a Visit and Questions.
 - [ ] Generate and edit a Visit Brief, then export the Person vault.
@@ -35,13 +47,17 @@
 - [ ] Create and verify an installation backup; record its operator-controlled
   location.
 - [ ] Confirm that backups are plaintext sensitive artifacts and that secrets
-  are excluded.
+  and sessions are excluded. Treat durable credential verifiers and invitation
+  hashes inside schema v5 as sensitive installation state.
 
 ## 6. Recovery drill
 
 - [ ] Stop application access and enter maintenance mode.
 - [ ] Use only an absent or empty target; run `preflight`, then `recover`, then
   verify the recovered installation.
+- [ ] Confirm no old Actor session works after recovery, then authenticate with
+  a restored credential to create a new session. Review active administrators,
+  owners, caregivers, revocations, and outstanding invitations before reopening.
 - [ ] Never overwrite active or populated state, and never treat recovery as
   import or merge.
 

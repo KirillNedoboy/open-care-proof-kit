@@ -1,187 +1,93 @@
-# OpenCare Current Project Status
+# OpenCare current project status
 
-This is the canonical description of the repository prepared on 2026-07-31
-from the accepted implementation baseline. Historical chronology remains in
-`CHECKPOINT.md` and `SESSION_NOTES.md`; those files are not current status
-sources.
+This is the canonical status for the Phase 2 Family Identity and Access
+Boundary feature branch as of 2026-08-04. The published `v0.1.0` tag remains
+unchanged; Phase 2 is unreleased and has not been integrated into `main`.
 
-## Repository snapshot
+## Implemented boundary
 
-- Branch: `codex/opencare-product-integration`
-- Accepted implementation baseline: `874c44d1308e016c68c58bf257a29a26eea746f6`
-- Documentation prepared from that baseline before this metadata-only commit.
-- Inspection date: 2026-07-31
-- Starting working tree: clean
-- Current repository: OpenCare foundation with demo/reference and trust
-  components, not a complete editable Personal and Family Health Workspace.
+- Product Core schema v5 preserves the Medication/Visit lifecycle and adds
+  durable Actors, versioned scrypt credentials, installation administrators,
+  Families, memberships, relationships, append-only consent, explicit Person
+  assignments, one-to-one own-Person links, hash-only invitations, and
+  metadata-only access audit.
+- A centralized `family-access-v1` policy protects live `/workspace`, `/vault`,
+  `/api/product-core/v1`, `/chat`, and `/api/chat`. Resource ownership is
+  resolved server-side and authorization is deny-by-default.
+- Installation administration grants no Person access. The final active owner
+  of each Person and the final active installation administrator are protected
+  by independent service and database invariants.
+- Eight-hour Actor sessions live at `OPENCARE_SESSION_DB_PATH`, outside Product
+  Core storage, export, backup, and recovery. Production Compose uses
+  `/run/opencare/sessions.sqlite3` on mode-`0700` tmpfs with no session volume.
+- Authenticated mutations require same-origin and CSRF proof. Successful
+  sensitive mutations share a transaction with their audit; audit failure
+  rolls the mutation back. A denial-audit failure preserves the original
+  privacy-safe denial.
+- Owner grants require explicit full-access confirmation and always use the
+  fixed complete owner scope set. Caregivers receive the fixed base set plus
+  only bounded optional scopes and cannot manage access or become owners by
+  revision.
+- Authenticated Person creation requires `confirm_owner_assignment: true` and
+  atomically creates the Person, self-consent, full owner assignment, optional
+  valid identity link, and access audit. Installation-admin status is not
+  required.
+- Invitation codes are random 256-bit bearer secrets accepted only in POST
+  bodies. Plaintext is returned once and never persisted, logged, audited,
+  exported, backed up, or placed in a URL.
+- Person export v2 contains only the authorized Person's Product Core graph and
+  relevant non-secret Family/consent/assignment history. Credentials, sessions,
+  invitation state, access audit, unrelated identities, and installation totals
+  are excluded.
+- Offline `backup`, `verify`, `preflight`, and `recover` remain operator
+  workflows with no Actor session or Person impersonation. They preserve and
+  verify durable schema v5 access state. Recovery restores credentials and
+  revocations but no sessions, so every Actor logs in again.
+- `/demo/health-vault`, reviewer routes, and the frozen PGx workflow remain
+  synthetic and separate from live actor-scoped data.
 
-## Runtime routes
+## HTTP privacy contract
 
-Verified in `app/main.py`:
+- no valid Actor session: `401`;
+- invalid CSRF or high-risk confirmation: `403`;
+- visible Person but missing known action scope: `403`;
+- hidden/guessed Person or nested resource: `404`;
+- invalid, expired, revoked, or replayed invitation: one generic response;
+- lists contain no hidden names, IDs, Family members, hidden counts, or
+  installation totals.
 
-- `GET /` redirects to `/workspace`.
-- `GET /chat` renders the guarded chat workspace.
-- `POST /api/chat` accepts a bounded same-origin JSON question and returns a
-  validated structured answer.
-- `GET /access` and `POST /access` implement the optional private access gate.
-- `GET /demo` renders the existing synthetic patient/demo surface.
-- `GET /demo/health-vault` renders the synthetic read-only reviewer page.
-- `GET /vault` renders the active configured vault in read-only mode.
-- `GET /reviewer-quickstart` serves reviewer documentation.
-- `GET /demo/report-view`, `/demo/report`, `/demo/report.md`, and
-  `/demo/audit` expose the PGx briefing reference outputs.
-- `GET /health`, `/healthz`, and `/readyz` expose health/readiness checks.
+The complete policy is in
+[the authorization matrix](security/family-access-authorization-matrix.md) and
+[ADR 0005](adr/0005-family-identity-access-boundary.md).
 
-## Implemented capabilities
+## Validation baseline
 
-- Pydantic Health/Family Vault schemas, validation, deterministic read model,
-  artifacts, and trace graph in `app/health_vault/`.
-- Synthetic family dataset in `data/demo_patients/demo_family_vault.json`.
-- Read-only reviewer and active-vault HTML surfaces in `app/main.py` and
-  `app/templates/health_vault.html`.
-- Guarded chat policy, deterministic demo provider, answer validation,
-  metadata-only audit, portable context export, and answer validation in
-  `app/agent/`.
-- Deterministic citation, safety, report, audit, evaluation, and trust-check
-  components in `app/agent/`, `app/safety/`, `app/reports/`, and `evals/`.
-- Product Core medication lifecycle in `app/product_core/`: SQLite
-  migrations, immutable source storage, candidate review, canonical records,
-  timeline events, and deterministic Visit Brief output.
-- Persistent Product Core Visits and user-authored Visit Questions with versioned
-  API and workspace controls. Questions are scoped to one Visit and use explicit
-  ordering; generated answers are not stored.
-- Versioned Product Core JSON API under `/api/product-core/v1`, wired through
-  the existing FastAPI application with startup migrations and stable scoped
-  error responses.
-- Person-scoped portable vault ZIP export with canonical `vault.json`, checksum
-  manifest, reachable immutable sources, Brief-integrity verification, and a
-  Workspace warning before download. It creates no persistent export artifact.
-- Operator-only Product Core backup/recovery CLI that creates a staged
-  SQLite/source snapshot with canonical manifest and `COMPLETE` marker,
-  verifies supplied backups offline, preflights explicit targets read-only, and
-  fail-closed recovers only to absent or empty installation roots. Backups are
-  sensitive plaintext artifacts.
-- Existing synthetic PGx briefing reference workflow in `app/demo_pipeline.py`,
-  `app/pgx/`, `app/genetics/`, and `data/evidence_packs/`.
+The most recent full validation run on this branch reported:
 
-See [the capability matrix](capability-matrix.md) for status by capability and
-repository evidence paths.
+- pytest: `399 passed, 2 skipped`;
+- Ruff: all checks passed;
+- mypy: no issues in `77` source files;
+- focused recovery/credential/smoke tests: passed;
+- JavaScript syntax and live browser flows: passed earlier in the six-commit
+  implementation sequence.
 
-## Partial capabilities
+Final evals, trust metrics, package installation, Uvicorn/production Compose
+smoke, and clean-worktree evidence are recorded in the implementation report,
+not projected here before execution.
 
-- Local JSON vault loading supports demo data and an operator-supplied
-  `OPENCARE_VAULT_FILE`, but the runtime pages are read-only and there is no
-  editable persistence layer.
-- External Responses mode exists behind explicit configuration and provider
-  validation, but it is optional and not required by the default demo path.
-- Product Core has medication lifecycle UI, persisted active people profiles,
-  Visits, Visit Questions, and Visit-scoped persisted editable Brief revisions
-  with selected confirmed evidence, computed freshness, and audited Markdown
-  export. It also has Person-scoped portable export and operator-only
-  installation backup verification and empty-target recovery, but no import,
-  merge, encryption, per-person authorization, or broader fact types.
-- Deployment artifacts cover local Docker and a documented single-node
-  Compose/Caddy path; they do not establish production readiness.
-- Portable agent support exports redacted context and validates answers; it is
-  not a general read-only Product Core tool API.
+## Preserved boundaries
 
-## Demo-only capabilities
+- published `v0.1.0` baseline;
+- deterministic Medication and Visit lifecycle, exports, and offline recovery;
+- guarded answer validation and medical-safety restrictions;
+- no new runtime dependency;
+- no Phase 3 ingest, OCR, Conditions/Labs lifecycle, FHIR, Sentient, EvoSkill,
+  genetics expansion, cloud synchronization, public SaaS identity, deployment,
+  or new release tag.
 
-People, family relationships, medications, conditions, labs, visits, timeline
-events, questions, sources, and provenance are represented in a synthetic
-Health/Family Vault and rendered as read-only context. PGx and genetics code
-supports the narrow synthetic Medication-to-Doctor Briefing reference path.
+## Remaining product limits
 
-These surfaces are evidence of domain and trust behavior. They are not
-editable user-owned records, clinical interpretation, or production medical
-support.
-
-## Known gaps
-
-- No canonical lifecycle UI or general editable vault beyond the medication
-  API.
-- No document upload, extraction, OCR, or general review inbox.
-- No non-medication candidate-fact lifecycle.
-- No Product Core timeline rebuild command; Phase 1A creates events atomically
-  with confirmation.
-- No portable import, merge, or populated-installation recovery workflow.
-- No family permissions or caregiver authorization.
-- No query-scoped AI consent and context preview workflow.
-
-## Safety boundaries
-
-Current code and documentation explicitly prohibit diagnosis, treatment
-recommendation, dosage guidance, medication selection advice, start/stop
-medication advice, clinical decision support, and claims of clinical
-validation. Health/Family Vault summaries are deterministic reorganizations of
-recorded context. The repository is synthetic/demo-only by default; local-file
-mode accepts operator-supplied JSON but remains read-only in the UI.
-
-## Storage model
-
-The current demo runtime reads structured data from JSON through
-`app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, and
-`app/vault/loader.py`. Product Core uses standard-library SQLite
-metadata and immutable local source files configured through
-`OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`; FastAPI startup applies
-schema migrations through the existing lifespan. Chat content is not
-persisted. Generated files under `reports/` remain ignored.
-
-## Deployment model
-
-The repository supports local Uvicorn execution, Docker Compose development,
-and a documented single-node VPS path using Docker Compose and Caddy examples.
-The runtime has health/readiness endpoints and an optional password gate for
-non-health routes. Production Compose persists Product Core SQLite and immutable
-source payloads through explicit `OPENCARE_PRODUCT_DATA_DIR` and
-`OPENCARE_BACKUP_DIR` host bind mounts; development Compose remains a separate
-demo/development path.
-
-## Accepted validation baseline
-
-The following are prior accepted evidence from the implementation commits, not
-claims that this documentation-only commit reran every check:
-
-- pytest: `304 passed`.
-- Ruff: passed.
-- mypy: passed for `65` files.
-- evals: `14/14` passed.
-- trust metrics: passed.
-- Constrained Python 3.12 installation and `pip check`: passed.
-- Non-editable wheel startup: passed.
-- Production Compose configuration validation: passed.
-- Docker container recreation smoke: not executed because Docker Engine was
-  unavailable.
-
-## Visit Preparation Workspace
-
-`/workspace` is the product entry point for the Product Core flow: manual medication
-entry, review (confirm/correct/reject), confirmed records, timeline, persisted Visits,
-user-authored Visit Questions, and immutable Visit-scoped Brief revisions with selected
-confirmed evidence, preparation notes, restore history and audited Markdown export.
-Existing opaque person IDs migrate to active `Imported profile` placeholders with no
-inferred name or date of birth. Browser state is not persisted. The shared password gate
-protects an installation, not individuals.
-
-## Deferred work
-
-Phase 1E-B persists editable evidence-linked Visit Briefs. Phase 1F implements
-Person-scoped portable export, operator-only backup verification, and Phase 1F-C
-operator-only `preflight` and `recover` through `InstallationRecoveryService`.
-Recovery requires maintenance confirmation, stages and verifies the installation,
-activates it atomically, rolls back handled failures, and writes
-`RECOVERY_REPORT.json`; it accepts only an absent or empty target. ADR 0004 is
-Accepted. Identity and per-Person authorization, caregiver permissions,
-portable import or merge, recovery into a populated installation or destructive
-overwrite, encryption or authenticity signatures, cloud or scheduled backup,
-HTTP or Workspace recovery, crash or power-loss guarantees between filesystem
-operations, clinical validation, diagnosis or treatment advice, uploads, OCR,
-broad medical ingestion, genetics expansion, Sentient integration, new
-providers, and multi-user SaaS remain deferred.
-
-## Canonical references
-
-- [Direction ADR](adr/0001-opencare-product-direction.md)
-- [Capability matrix](capability-matrix.md)
-- [Product Core roadmap](roadmap/product-core-roadmap.md)
-- [Module boundaries](architecture/module-boundaries.md)
+OpenCare is not a diagnostic system, treatment or dosage recommender, clinical
+decision-support system, public identity service, encrypted backup system, or
+populated-installation import/merge tool. Phase 2 does not make the documented
+self-hosted path production-ready or clinically validated.

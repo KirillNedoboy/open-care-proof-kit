@@ -37,11 +37,12 @@ repositories, Unit of Work objects, source files, or Product Core services.
 The Product Core API remains the adapter between the UI and application
 services, which retain lifecycle authority. Workspace state is kept only in
 page memory, with no Product Core browser persistence. `/chat` remains a
-separate supporting feature. The shared password gate protects an installation,
-not an individual person. Phase 1D adds persisted active people profiles and explicit
+separate supporting feature. At that phase, the shared password gate protected
+an installation rather than an individual Person. Phase 1D adds persisted active people profiles and explicit
 workspace selection. The migration preserves legacy opaque person IDs with an
-`Imported profile` placeholder and does not infer medical data. Profiles do not create
-family relationships, permissions, or per-person authorization. Phase 1E-A adds
+`Imported profile` placeholder and does not infer medical data. That migration
+does not infer Family relationships, permissions, or Person authorization;
+Phase 2 adds them only through explicit actions. Phase 1E-A adds
 persisted Visits and user-authored Visit Questions. They are Person-scoped,
 explicitly ordered within a Visit, and separate from the transient deterministic
 Visit Brief. Phase 1E-B adds a separate Visit-scoped persisted Brief lifecycle:
@@ -61,6 +62,16 @@ recovered-installation verification. They create, verify, preflight, and
 fail-closed recover local installation state offline; they do not expose HTTP/UI
 behavior, import/merge, encryption, remote storage, scheduling, or deployment
 integration.
+
+Phase 2 adds `app/family_access/` as the local Actor, credential, session,
+consent, Family, assignment, invitation, and centralized Person-policy façade.
+Durable identity/access rows live in Product Core schema v5; runtime sessions
+live at the separate `OPENCARE_SESSION_DB_PATH`. `app/product_core/access.py`
+resolves each live HTTP resource to its owning Person and applies the policy
+before Product Core services release data. Successful sensitive mutations
+repeat authorization and write access audit inside the same SQLite transaction.
+The offline backup/recovery CLI deliberately remains outside Actor-session
+authorization and verifies the durable v5 state directly.
 
 ## Trust Foundation
 
@@ -121,9 +132,12 @@ truth.
 13. Product Core API startup migrations are composed through the existing
     FastAPI application lifespan; runtime state contains no live SQLite
     connection or request-reused Unit of Work.
-14. The existing password gate provides shared-instance protection only. A
-    `person_id` route filter is not per-person authorization; family and
-    multi-user authorization remain deferred.
+14. The outer password gate provides shared-instance protection only. Live
+    Person authorization requires a valid Actor session and an explicit active
+    assignment evaluated by `family-access-v1`; a `person_id`, Family link,
+    relationship, own-Person link, or installation-admin role is never a grant.
+15. Synthetic demo/reviewer routes remain separate from the actor-scoped live
+    Workspace, vault, Product Core API, and chat.
 
 ## Current-to-intended mapping
 
