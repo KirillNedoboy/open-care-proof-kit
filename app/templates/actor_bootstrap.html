@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Set up installation · OpenCare</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
+  <script src="{{ url_for('static', path='/actor_auth.js') }}" defer></script>
+</head>
+<body>
+  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/login">Sign in</a><a href="/invite">Use invitation</a></nav></header>
+  <main>
+    <section>
+      <p>One-time setup</p>
+      <h1>Create the first installation administrator</h1>
+      <p>This account can administer the installation. It receives no Person access unless you explicitly list existing Person IDs and confirm full owner access.</p>
+      <p id="actor-auth-status" role="status" aria-live="polite"></p>
+      <form id="actor-bootstrap-form">
+        <label for="bootstrap-username">Username</label><input id="bootstrap-username" required maxlength="128" autocomplete="username">
+        <label for="bootstrap-display-name">Display name</label><input id="bootstrap-display-name" required maxlength="200" autocomplete="name">
+        <label for="bootstrap-password">Password</label><input id="bootstrap-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+        <label for="bootstrap-person-ids">Existing Person IDs (optional, comma-separated)</label><textarea id="bootstrap-person-ids" autocomplete="off"></textarea>
+        <label class="confirmation"><input id="bootstrap-owner-confirmation" type="checkbox"> I understand that every listed Person will grant this Actor full owner access.</label>
+        <button type="submit">Create administrator</button>
+      </form>
+      <p id="actor-auth-complete" hidden><a href="/workspace">Open Workspace</a></p>
+    </section>
+  </main>
+</body>
+</html>

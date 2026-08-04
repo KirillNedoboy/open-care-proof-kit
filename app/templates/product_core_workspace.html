@@ -8,7 +8,7 @@
   <script src="{{ url_for('static', path='/product_core_workspace.js') }}" defer></script>
 </head>
 <body>
-  <header><a href="/workspace">OpenCare</a><nav aria-label="Primary"><a aria-current="page" href="/workspace">Workspace</a><a href="/chat">Chat</a><a href="/vault">Vault</a></nav></header>
+  <header><a href="/workspace">OpenCare</a><nav aria-label="Primary"><a aria-current="page" href="/workspace">Workspace</a><a href="/chat">Chat</a><a href="/vault">Vault</a><a href="/family-access">Family &amp; access</a></nav></header>
   <main>
     <section><p>Visit preparation</p><h1>Visit Preparation Workspace</h1><p>Organize confirmed records and prepare for an appointment.</p><p class="note">Your signed-in account can open only the Person records assigned to it.</p></section>
     <p id="workspace-status" role="status" aria-live="polite"></p>
@@ -17,7 +17,7 @@
       <label for="person-selector">Select profile</label><select id="person-selector" disabled><option value="">Loading profiles…</option></select>
       <button id="load-workspace" type="button" disabled>Load workspace</button><button id="clear-workspace" type="button">Clear selection</button>
       <p id="selected-person" class="meta">No profile selected.</p>
-      <h3>Create profile</h3><form id="create-profile-form"><label for="create-display-name">Display name</label><input id="create-display-name" maxlength="200" required autocomplete="off"><label for="create-date-of-birth">Date of birth (optional)</label><input id="create-date-of-birth" type="date"><button type="submit">Create profile</button></form>
+      <h3>Create profile</h3><form id="create-profile-form"><label for="create-display-name">Display name</label><input id="create-display-name" maxlength="200" required autocomplete="off"><label for="create-date-of-birth">Date of birth (optional)</label><input id="create-date-of-birth" type="date"><label class="confirmation"><input id="create-owner-confirmation" type="checkbox" required> I confirm that creating this Person gives my account full owner access.</label><button type="submit">Create profile</button></form>
       <button id="edit-profile" type="button" disabled>Edit profile</button><form id="edit-profile-form" hidden><h3>Edit profile</h3><label for="edit-display-name">Display name</label><input id="edit-display-name" maxlength="200" required><label for="edit-date-of-birth">Date of birth (optional)</label><input id="edit-date-of-birth" type="date"><button type="submit">Save profile</button><button id="cancel-edit-profile" type="button">Cancel</button></form>
     </section>
     <div id="workspace-content" aria-disabled="true">

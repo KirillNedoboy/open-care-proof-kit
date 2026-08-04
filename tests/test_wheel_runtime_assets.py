@@ -35,10 +35,17 @@ def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path)
         names = set(wheel.namelist())
         quickstart = wheel.read("app/assets/docs/reviewer_quickstart.md").decode("utf-8")
 
-    assert {
-        "app/static/product_core_workspace.css",
-        "app/static/product_core_workspace.js",
-        "app/templates/product_core_workspace.html",
+        assert {
+            "app/static/actor_auth.js",
+            "app/static/family_access_workspace.js",
+            "app/static/invitation.js",
+            "app/static/product_core_workspace.css",
+            "app/static/product_core_workspace.js",
+            "app/templates/actor_bootstrap.html",
+            "app/templates/actor_login.html",
+            "app/templates/family_access_workspace.html",
+            "app/templates/invitation.html",
+            "app/templates/product_core_workspace.html",
         "app/assets/data/demo_patients/demo_patient_a.json",
         "app/assets/data/demo_patients/demo_family_vault.json",
         "app/assets/data/demo_patients/demo_patient_a_23andme.txt",
@@ -86,12 +93,13 @@ def test_wheel_contains_and_uses_runtime_assets_outside_checkout(tmp_path: Path)
                     "from app.main import APP_DIR, app",
                     "assert APP_DIR.is_relative_to(Path.cwd() / 'installed')",
                     "with TestClient(app) as client:",
-                    "    for path in ('/health', '/readyz', '/demo/chat', "
+                    "    for path in ('/health', '/readyz', '/login', '/bootstrap', "
+                    "'/invite', '/demo/chat', "
                     "'/demo/health-vault', "
                     "'/static/product_core_workspace.css', "
                     "'/static/product_core_workspace.js'):",
                     "        assert client.get(path).status_code == 200, path",
-                    "    for path in ('/workspace', '/chat', '/vault'):",
+                    "    for path in ('/workspace', '/chat', '/vault', '/family-access'):",
                     "        assert client.get(path).status_code == 401, path",
                     "    quickstart = client.get('/reviewer-quickstart')",
                     "    assert quickstart.status_code == 200",

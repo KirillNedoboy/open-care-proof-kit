@@ -99,14 +99,25 @@ app.add_exception_handler(FamilyAccessError, family_access_exception_handler)
 
 def _is_public_path(path: str) -> bool:
     return (
-        path in {"/health", "/healthz", "/readyz", "/access"}
+        path in {"/health", "/healthz", "/readyz", "/access", "/favicon.ico"}
         or path.startswith("/static/")
     )
 
 
 def _uses_actor_session_boundary(path: str) -> bool:
     return (
-        path in {"/", "/workspace", "/vault", "/chat", "/api/chat", "/invite"}
+        path
+        in {
+            "/",
+            "/workspace",
+            "/vault",
+            "/chat",
+            "/api/chat",
+            "/login",
+            "/bootstrap",
+            "/invite",
+            "/family-access",
+        }
         or path.startswith("/api/product-core/")
         or path.startswith("/api/family-access/")
     )
@@ -205,6 +216,44 @@ def _live_access_error(exc: Exception) -> JSONResponse:
     return JSONResponse({"detail": "Person was not found."}, status_code=404)
 
 
+def _actor_page(
+    request: Request,
+    template_name: str,
+    context: dict[str, object] | None = None,
+) -> HTMLResponse:
+    response = templates.TemplateResponse(
+        request=request,
+        name=template_name,
+        context=context or {},
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+@app.get("/login", response_class=HTMLResponse)
+def actor_login_page(request: Request) -> HTMLResponse:
+    return _actor_page(request, "actor_login.html")
+
+
+@app.get("/bootstrap", response_class=HTMLResponse)
+def actor_bootstrap_page(request: Request) -> HTMLResponse:
+    return _actor_page(request, "actor_bootstrap.html")
+
+
+@app.get("/invite", response_class=HTMLResponse)
+def invitation_page(request: Request) -> HTMLResponse:
+    return _actor_page(request, "invitation.html")
+
+
+@app.get("/family-access", response_class=HTMLResponse)
+def family_access_page(request: Request) -> Response:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse):
+        return access
+    return _actor_page(request, "family_access_workspace.html")
+
+
 @app.get("/workspace", response_class=HTMLResponse)
 def workspace(request: Request) -> Response:
     access = resolve_product_core_access(request)
@@ -215,7 +264,7 @@ def workspace(request: Request) -> Response:
             access.require_active_person("person.read")
         except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
             return _live_access_error(exc)
-    return templates.TemplateResponse(
+    return _actor_page(
         request,
         "product_core_workspace.html",
         {"active_person_id": access.active_person_id},
@@ -233,10 +282,10 @@ def chat_page(request: Request) -> Response:
     except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
         return _live_access_error(exc)
     settings = get_settings()
-    return templates.TemplateResponse(
-        request=request,
-        name="chat.html",
-        context={
+    return _actor_page(
+        request,
+        "chat.html",
+        {
             "vault_source_label": "Product Core",
             "vault_source_name": person.display_name,
             "family_label": person.display_name,
@@ -246,6 +295,8 @@ def chat_page(request: Request) -> Response:
                 if settings.agent_mode == "openai_responses"
                 else "Local deterministic demo"
             ),
+            "chat_endpoint": "/api/chat",
+            "live_workspace": True,
         },
     )
 
@@ -317,6 +368,8 @@ def demo_chat_page(request: Request) -> HTMLResponse:
                 if settings.agent_mode == "openai_responses"
                 else "Local deterministic demo"
             ),
+            "chat_endpoint": "/api/demo/chat",
+            "live_workspace": False,
         },
     )
 
@@ -365,6 +418,11 @@ def get_required_asset_paths(settings: Settings) -> list[Path]:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", status_code=204)
+def favicon() -> Response:
+    return Response(status_code=204)
 
 
 @app.get("/healthz")
@@ -792,11 +850,7 @@ def vault_page(request: Request) -> Response:
         person = access.runtime.people.get(person_id)
     except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
         return _live_access_error(exc)
-    return templates.TemplateResponse(
-        request=request,
-        name="product_core_vault.html",
-        context={"person": person},
-    )
+    return _actor_page(request, "product_core_vault.html", {"person": person})
 
 
 @app.get("/reviewer-quickstart")

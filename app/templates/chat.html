@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}" />
     <script defer src="{{ url_for('static', path='/chat.js') }}"></script>
   </head>
-  <body class="chat-body">
+  <body class="chat-body" data-chat-endpoint="{{ chat_endpoint }}">
     <main class="chat-workspace">
       <aside class="chat-sidebar" id="chat-sidebar" aria-label="Vault context">
         <div class="brand-row"><span class="brand-mark">O</span><strong>OpenCare</strong></div>
@@ -16,6 +16,7 @@
         <section class="context-block"><span>Family context</span><strong>{{ family_label }}</strong><small>{% for person in people %}{{ person.display_name }}{% if not loop.last %} · {% endif %}{% endfor %}</small></section>
         <section class="context-block"><span>Suggested safe questions</span><button class="prompt-button" type="button">Prepare questions for my doctor</button><button class="prompt-button" type="button">What changed since the latest recorded visit?</button><button class="prompt-button" type="button">Which information is source-backed?</button></section>
         <a class="source-link" href="/vault">Evidence &amp; sources</a>
+        {% if live_workspace %}<a class="source-link" href="/family-access">Family &amp; access</a>{% endif %}
         <div class="sidebar-boundaries"><span>Read-only</span><span>Not medical advice</span></div>
       </aside>
       <section class="chat-panel">

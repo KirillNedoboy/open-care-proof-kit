@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Sign in · OpenCare</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
+  <script src="{{ url_for('static', path='/actor_auth.js') }}" defer></script>
+</head>
+<body>
+  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/bootstrap">Set up installation</a><a href="/invite">Use invitation</a></nav></header>
+  <main>
+    <section>
+      <p>Private workspace</p>
+      <h1>Sign in</h1>
+      <p>Use your local Actor account. Installation administration does not grant access to any Person record.</p>
+      <p id="actor-auth-status" role="status" aria-live="polite"></p>
+      <form id="actor-login-form">
+        <label for="login-username">Username</label><input id="login-username" required maxlength="128" autocomplete="username">
+        <label for="login-password">Password</label><input id="login-password" type="password" required maxlength="1024" autocomplete="current-password">
+        <button type="submit">Sign in</button>
+      </form>
+      <p id="actor-auth-complete" hidden><a href="/workspace">Open Workspace</a></p>
+    </section>
+  </main>
+</body>
+</html>

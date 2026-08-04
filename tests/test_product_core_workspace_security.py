@@ -61,5 +61,5 @@ def test_workspace_uses_session_csrf_and_server_side_active_person() -> None:
 
     assert "X-OpenCare-CSRF" in script
     assert "/api/family-access/v1/active-person" in script
-    assert "confirm_owner_assignment: true" in script
+    assert "confirm_owner_assignment: byId(\"create-owner-confirmation\").checked" in script
     assert "opencare-person-vault-v2.zip" in script
