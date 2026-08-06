@@ -12,6 +12,7 @@ Use this checklist before submitting OpenCare Proof Kit for grant or reviewer ev
 - [ ] Public default branch is `main`
 - [ ] Historical submission branch `phase-1-github-grant-readiness` remains pushed
 - [ ] README links to the canonical Direction ADR, project status, capability matrix, and Product Core roadmap
+- [ ] Current `main` state and `v0.2.0` Phase 2 boundary are named consistently
 
 ## README First Screen
 
@@ -33,6 +34,7 @@ Use this checklist before submitting OpenCare Proof Kit for grant or reviewer ev
 - [ ] Artifact guarantees exists: [docs/vault_artifact_guarantees.md](vault_artifact_guarantees.md)
 - [ ] Reviewer artifact files are present under `docs/assets/health_vault/`
 - [ ] Reviewer route is clearly named as `/demo/health-vault`
+- [ ] Family access route and authorization matrix are clearly named
 - [ ] Safety boundaries are visible in reviewer-facing docs
 
 ## Validation Baseline

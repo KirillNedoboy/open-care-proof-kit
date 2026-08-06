@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-02
 - Decision owners: OpenCare maintainers
-- Implementation: Completed on the Phase 2 feature branch; unreleased
+- Implementation: Completed on `main`; published as `v0.2.0`
 
 ## Context
 

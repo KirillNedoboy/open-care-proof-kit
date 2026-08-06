@@ -1,4 +1,7 @@
-# Project Status (Historical)
+# Project Status (Legacy Chronology)
+
+> The canonical current status is [docs/project-status.md](project-status.md).
+> This underscore-named file is retained for historical chronology only.
 
 > This legacy underscore-named document is retained for chronology only. The
 > canonical current status is [docs/project-status.md](project-status.md).

@@ -7,7 +7,9 @@
 
 This roadmap is conservative. It moves OpenCare toward a privacy-first, agent-ready personal/family medical workspace without expanding the current validated repo into diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, clinical decision support, real-patient handling, or real-genetic-data handling.
 
-The latest implemented runtime phase is V1H. V1I is a docs-only grant/reviewer packaging refresh on top of that runtime state.
+The V1H/V1I entries below preserve the earlier reviewer-pack chronology. The
+current implemented runtime phase is Phase 2: Family Identity and Access
+Boundary, published on `main` as `v0.2.0`.
 
 ## Completed Foundation
 
@@ -72,7 +74,19 @@ Recommended next step after V1I:
 - run one public GitHub spot-check;
 - stop feature work before submission unless a real blocker is found.
 
-## Phase 2: Ingest And Provenance
+## Completed Runtime Phase: Phase 2 Family Identity And Access Boundary
+
+The current implementation adds local Actor identity, explicit consent,
+person-scoped permissions, deny-by-default authorization, invitations, access
+audit, person export, and offline backup/recovery boundaries. It protects the
+live workspace, vault, chat, and Product Core surfaces while keeping the
+synthetic reviewer/demo surfaces separate.
+
+Phase 2 does not add diagnosis, treatment recommendation, dosage guidance,
+clinical decision support, real genetic data, cloud synchronization, or public
+SaaS identity.
+
+## Next Roadmap: Phase 3 Ingest And Provenance
 
 Goals:
 
@@ -87,7 +101,7 @@ Boundaries:
 - no claim extraction without provenance;
 - no medical advice from imported documents.
 
-## Phase 3: Usable Non-Genetic Workspace
+## Phase 4: Usable Non-Genetic Workspace
 
 Goals:
 
@@ -101,7 +115,7 @@ Boundaries:
 - no diagnosis or treatment recommendation;
 - no automatic clinical action.
 
-## Phase 4: Future Genetics Layer
+## Phase 5: Future Genetics Layer
 
 Goals:
 

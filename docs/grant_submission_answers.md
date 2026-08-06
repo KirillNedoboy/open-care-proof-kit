@@ -8,9 +8,9 @@ Copy these answers into a Sentient Open Source AGI Grant or similar public-goods
 
 Character counts:
 
-- Short summary: 634
-- Long summary: 1243
-- Final blurb: 489
+- Short summary: 651
+- Long summary: 1155
+- Final blurb: 642
 
 ## A. Project Title
 
@@ -18,15 +18,15 @@ OpenCare Proof Kit: privacy-first personal/family medical workspace infrastructu
 
 ## B. One-Sentence Pitch
 
-OpenCare Proof Kit is an open-source, local-first foundation for a privacy-first personal/family medical workspace, demonstrated today with a synthetic Health/Family Vault, reviewer artifacts, a read-only reviewer UI, deterministic trust checks, and a narrow clinician-reviewable PGx briefing demo.
+OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first personal/family health workspace, demonstrated with a synthetic reviewer surface and an implemented Phase 2 family identity/access boundary with explicit consent, person-scoped permissions, deny-by-default authorization, audit, export, and recovery controls.
 
 ## C. Short Summary
 
-OpenCare Proof Kit is an open-source, local-first foundation for a privacy-first personal/family medical workspace. The repo now implements a synthetic Health/Family Vault with deterministic schemas, validation, read model, reviewer artifacts, a read-only `/demo/health-vault` page, a provenance trace graph, CI, and trust metrics. The existing Medication-to-Doctor Briefing / PGx demo remains intact as a reference workflow. Genetics and LLM layers are future extensions. The project is synthetic/demo-only and does not provide diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support.
+OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first personal/family health workspace. The repo implements a synthetic Health/Family Vault reviewer surface plus Phase 2 family identity and access controls: explicit consent, person-scoped permissions, deny-by-default authorization, access audit, person export, and offline backup/recovery boundaries. The existing Medication-to-Doctor Briefing / PGx demo remains a narrow reference workflow. Genetics and LLM layers are future extensions. The project does not provide diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support.
 
 ## D. Longer Summary
 
-OpenCare Proof Kit is a local-first, open-source foundation for a privacy-first personal/family medical workspace. The current repo is vault-first: it implements a synthetic Health/Family Vault with deterministic schemas, loader/validation, a provenance-preserving read model, local JSON/Markdown/manifest reviewer artifacts, a read-only `/demo/health-vault` reviewer page, a deterministic context/provenance trace graph, GitHub Actions CI, and a local trust metrics report.
+OpenCare Proof Kit is a local-first, open-source foundation for a privacy-first personal/family health workspace. The current repo is vault-first: it implements a synthetic Health/Family Vault reviewer surface and a live Phase 2 family identity/access boundary with explicit consent, person-scoped permissions, deny-by-default policy, access audit, person export, and recovery controls.
 
 The older Medication-to-Doctor Briefing / PGx demo still runs as a narrow reference workflow. Synthetic health vault data and demo genotype-like data go through local evidence packs, deterministic PGx rules, safety checks, Markdown reporting, JSON audit output, and executable evals.
 
@@ -36,7 +36,7 @@ The design rule is deterministic tools before LLM. The vault is the source of tr
 
 People and families already have useful health context before genetics enters the picture: medications, labs, visits, documents, timeline events, family relationships, and open questions. Today that context is usually scattered across PDFs, portals, notes, and memory. At the same time, generic LLM products can blur evidence, hide provenance, and produce unsafe or unsupported health language.
 
-The open-source ecosystem needs a concrete pattern for handling sensitive personal context in a way that stays local, source-grounded, auditable, and fail-closed when support is missing.
+The open-source ecosystem needs a concrete pattern for handling sensitive personal context in a way that stays local, source-grounded, auditable, person-scoped, and fail-closed when support is missing.
 
 ## F. Solution
 
@@ -47,6 +47,8 @@ OpenCare Proof Kit provides a working local reference implementation:
 - a provenance-preserving read model;
 - committed reviewer artifacts plus a read-only reviewer page;
 - a deterministic context/provenance trace graph;
+- a family identity/access boundary with explicit consent and person-scoped permissions;
+- deny-by-default authorization, access audit, person export, and offline recovery boundaries;
 - the existing Medication-to-Doctor Briefing / PGx demo for a narrow reference workflow;
 - JSON audit metadata, executable evals, CI, and deterministic trust metrics.
 
@@ -75,7 +77,7 @@ The current repo uses synthetic/demo-only data. It does not claim real-patient s
 ## I. Who Benefits
 
 - people who want a private workspace for medical and family context;
-- families who need shared context and provenance before any genetics layer exists;
+- families who need shared context, provenance, and explicit access boundaries before any genetics layer exists;
 - open-source builders working on sensitive local agents;
 - clinicians and reviewers who want visible sources, boundaries, and audit metadata;
 - grant reviewers looking for concrete trustworthy-AI infrastructure rather than a pitch deck.
@@ -91,6 +93,8 @@ The current repo uses synthetic/demo-only data. It does not claim real-patient s
 - Privacy/safety threat model, provenance semantics, and vault artifact guarantees docs.
 - Read-only local reviewer UI at `/demo/health-vault`.
 - Deterministic context/provenance trace graph in the reviewer UI.
+- Phase 2 Family Identity and Access Boundary, including family access UI and policy documentation.
+- Person-scoped permissions, deny-by-default authorization, access audit, export, and offline recovery boundaries.
 - GitHub Actions CI plus deterministic local trust metrics.
 - Existing Medication-to-Doctor Briefing / PGx demo, report output, audit output, and eval suite.
 
@@ -152,12 +156,12 @@ Grant support would help fund:
 - broader synthetic eval coverage;
 - stronger trust metrics and release hygiene;
 - clearer clinician-review handoff exports;
-- careful research on future genetics and interface layers after the vault foundation is stable.
+- careful research on future genetics and interface layers after the vault and family-access foundations are stable.
 
 ## P. 30-Day Milestones
 
-- Finish public reviewer packaging and GitHub spot-checks.
-- Tighten reviewer docs around the vault-first path and trust metrics.
+- Maintain the Phase 2 reviewer pack and GitHub release hygiene.
+- Tighten reviewer docs around vault-first behavior, family access, and trust metrics.
 - Add artifact refresh and reviewer-pack maintenance instructions.
 - Expand wording scans and packaging checks for submission hygiene.
 
@@ -171,7 +175,8 @@ Grant support would help fund:
 
 - Research optional future genetics and interface layers without breaking the vault-first architecture.
 - Define privacy, provenance, and safety requirements before any real-data or adapter work.
-- Prepare a conservative public `v0.1` release after validation and reviewer feedback.
+- Extend trust metrics around provenance gaps, access boundaries, and unsupported states.
+- Define privacy, provenance, and safety requirements before any future genetics or interface work.
 
 ## S. Risks And Mitigations
 
@@ -226,6 +231,7 @@ Inspect first:
 
 ```txt
 http://127.0.0.1:8000/demo/health-vault
+http://127.0.0.1:8000/family-access
 docs/final_reviewer_pack.md
 docs/assets/health_vault/family-vault-summary.md
 docs/assets/health_vault/family-vault-manifest.json
@@ -235,7 +241,7 @@ The existing PGx reference workflow remains available through the local demo pag
 
 ## V. Final Short Application Blurb
 
-OpenCare Proof Kit is an open-source, local-first foundation for a privacy-first personal/family medical workspace. The current repo implements a synthetic Health/Family Vault with deterministic provenance-preserving artifacts, a read-only reviewer UI, a context/provenance trace graph, CI, trust metrics, and a narrow clinician-reviewable PGx briefing demo. It is synthetic/demo-only and does not provide diagnosis, treatment recommendation, dosage guidance, or clinical decision support.
+OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first personal/family health workspace. The current repo combines a synthetic Health/Family Vault reviewer surface with a Phase 2 family identity/access boundary: explicit consent, person-scoped permissions, deny-by-default authorization, audit, export, and recovery controls. It does not provide diagnosis, treatment recommendation, dosage guidance, or clinical decision support.
 
 ## Application Wording Guardrails
 

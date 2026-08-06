@@ -35,10 +35,10 @@ product roadmap.
 
 ## Release status
 
-`v0.1.0` is the published controlled private-alpha baseline. Phase 2 Family
-Identity and Access Boundary is implemented on the current feature branch and
-is not a new release or tag. Neither status is a production-readiness or
-clinical-readiness claim.
+`v0.1.0` is the published controlled private-alpha baseline. The current
+`main` branch contains the implemented Phase 2 Family Identity and Access
+Boundary and is published as `v0.2.0`. Neither release is a
+production-readiness or clinical-readiness claim.
 
 Production Compose requires explicit persistent Product Core and backup host
 paths. Development Compose remains synthetic/demo-only and is not suitable for

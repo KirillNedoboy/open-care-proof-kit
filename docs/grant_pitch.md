@@ -6,7 +6,7 @@
 
 ## One-Liner
 
-OpenCare Proof Kit is open-source trust infrastructure for private personal agents: local-first input handling, evidence packs, deterministic policy checks, constrained reporting, audit trails, and evals, with health as the reference stress-test workflow.
+OpenCare Proof Kit is an open-source, self-hosted personal and family health workspace with local-first provenance, safety, audit, and person-scoped access controls. It is also a reusable trust-infrastructure reference for agents working with sensitive personal context.
 
 ## Problem
 
@@ -25,6 +25,11 @@ OpenCare Proof Kit provides a small, runnable trust/evidence/audit/safety substr
 - explicit safety policy with fail-closed behavior;
 - constrained Markdown output plus JSON audit metadata;
 - static-text and pipeline-backed evals for unsafe-output patterns.
+
+The current Phase 2 implementation adds the family identity and access
+boundary: local Actor sessions, explicit consent, person-scoped permissions,
+deny-by-default authorization, invitations, access audit, person export, and
+offline backup/recovery boundaries.
 
 The first reference workflow is Medication-to-Doctor Briefing. It uses a synthetic patient, demo genotype-like data, and a local demo evidence pack to produce a clinician-reviewable briefing about what to discuss with a clinician. It does not diagnose, recommend medication choice, recommend dosage, or instruct start/stop actions.
 
@@ -47,7 +52,10 @@ Health is the reference implementation because it stress-tests the pattern again
 
 Sentient-aligned open-source AI should let users and builders inspect and control the systems that act on private context. OpenCare Proof Kit supports that direction by keeping the workflow local-first, exposing evidence and audit metadata, enforcing deterministic checks before any report-writing layer, and shipping evals that can be run by reviewers.
 
-The grant case is infrastructure, not another health chatbot. The value is the reusable boundary around sensitive-agent behavior: no source, no claim; unsupported inputs produce safe no-claim output; report text must include limitations and clinician-review language; audits record policy status and raw-export status.
+The grant case is infrastructure, not another health chatbot. The value is the
+reusable boundary around sensitive-agent behavior: explicit person context,
+deny-by-default access, no source/no claim, unsupported inputs producing safe
+no-claim output, visible limitations, and audit metadata for sensitive actions.
 
 ## Private-By-Default
 
@@ -106,20 +114,19 @@ Grant funding supports public-good infrastructure rather than a closed product w
 - fail-closed safety policy enforcement;
 - audit metadata;
 - evals focused on unsafe medical-advice prevention.
+- person-scoped family access and consent boundaries for private agents.
 
 The grant would fund infrastructure that others can fork, inspect, test, and adapt without accepting a black-box health assistant.
 
 ## What Grant Funding Unlocks
 
-Funding would unlock:
+Funding would unlock the next product phase rather than retroactively complete
+the current foundation:
 
-- broader synthetic eval coverage;
-- more polished demo UX and reviewer materials;
-- additional local evidence-pack examples;
-- improved report templates;
-- stronger audit schema documentation;
-- reproducible CI validation;
-- privacy-preserving model adapter research without default raw-data upload;
-- a public demo video and maintainer documentation.
+- local ingest/provenance conventions for documents, labs, medications, visits, and notes;
+- Conditions/Labs and clinician-review handoff improvements;
+- broader synthetic evals and trust metrics around provenance gaps and access boundaries;
+- maintained reviewer artifacts and reproducible release hygiene;
+- conservative research on future genetics and interface layers after the vault and family-access foundations remain stable.
 
 The next work should deepen safety, evidence, auditability, and reviewer confidence. It should not expand into diagnosis, dosage recommendation, real patient data, WGS/FASTQ/BAM processing, SaaS auth, payments, Telegram, blockchain, or cloud raw genotype upload by default.

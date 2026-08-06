@@ -1,8 +1,9 @@
 # OpenCare current project status
 
-This is the canonical status for the Phase 2 Family Identity and Access
-Boundary feature branch as of 2026-08-04. The published `v0.1.0` tag remains
-unchanged; Phase 2 is unreleased and has not been integrated into `main`.
+This is the canonical status for the public `main` branch as of 2026-08-04.
+The published `v0.1.0` tag remains the controlled private-alpha baseline.
+Phase 2 Family Identity and Access Boundary is implemented on `main` and
+published as `v0.2.0`.
 
 ## Implemented boundary
 
@@ -62,7 +63,8 @@ The complete policy is in
 
 ## Validation baseline
 
-The most recent full validation run on this branch reported:
+The most recent full validation run recorded for the Phase 2 implementation
+reported:
 
 - pytest: `399 passed, 2 skipped`;
 - Ruff: all checks passed;
@@ -77,13 +79,13 @@ not projected here before execution.
 
 ## Preserved boundaries
 
-- published `v0.1.0` baseline;
+- published `v0.1.0` controlled private-alpha baseline and current `v0.2.0`
+  Phase 2 implementation;
 - deterministic Medication and Visit lifecycle, exports, and offline recovery;
 - guarded answer validation and medical-safety restrictions;
 - no new runtime dependency;
 - no Phase 3 ingest, OCR, Conditions/Labs lifecycle, FHIR, Sentient, EvoSkill,
-  genetics expansion, cloud synchronization, public SaaS identity, deployment,
-  or new release tag.
+  genetics expansion, cloud synchronization, or public SaaS identity.
 
 ## Remaining product limits
 

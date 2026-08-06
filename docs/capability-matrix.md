@@ -1,7 +1,8 @@
 # Capability Matrix
 
-This matrix describes the Phase 2 feature branch as of 2026-08-04. The
-published `v0.1.0` tag remains unchanged; Phase 2 is unreleased.
+This matrix describes the Phase 2 implementation on public `main` as of
+2026-08-04. The published `v0.1.0` tag remains the controlled private-alpha
+baseline; the Phase 2 boundary is published as `v0.2.0`.
 
 | Capability | Status | Repository evidence or boundary |
 |---|---|---|

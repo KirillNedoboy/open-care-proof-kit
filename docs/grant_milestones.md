@@ -1,4 +1,4 @@
-# Grant Milestones (Historical / Supporting Grant Artifact)
+# Grant Milestones (Supporting Grant Artifact)
 
 > These milestones are supporting grant context, not the canonical product
 > roadmap. Use [the Product Core roadmap](roadmap/product-core-roadmap.md) for
@@ -18,11 +18,11 @@ Goals:
 Acceptance signals:
 
 - reviewer pack, README, grant docs, and final submission docs tell the same story;
-- public README first screen matches the implemented V1H state;
+- public README first screen matches the implemented Phase 2 state;
 - generated `reports/` outputs remain ignored;
 - validation baseline and trust metrics commands are easy for reviewers to find.
 
-## Month 2: Vault-First Ingest And Provenance Improvements
+## Month 2: Evidence-Grounded Workspace Expansion
 
 Goals:
 
@@ -36,13 +36,14 @@ Acceptance signals:
 - unsupported states stay visible and fail closed;
 - exports remain clearly labeled for review, not treatment action.
 
-## Month 3: Future-Layer Research, Not Scope Jumping
+## Month 3: Evaluation And Future-Layer Preparation
 
 Goals:
 
 - research future genetics and interface layers without breaking the vault-first architecture;
 - define privacy, provenance, and safety requirements before any real-data or adapter work;
-- prepare a conservative public `v0.1` release after validation and reviewer feedback.
+- extend trust metrics around provenance gaps, access boundaries, and unsupported states;
+- define privacy, provenance, and safety requirements before future genetics or interface work.
 
 Acceptance signals:
 

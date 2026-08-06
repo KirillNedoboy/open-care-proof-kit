@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-08-04
 
 ### Added
 
@@ -31,8 +31,9 @@
 ## [0.1.0] - 2026-07-31
 
 Published as tag `v0.1.0`, the controlled private-alpha baseline. It is not
-production-ready, clinically validated, or clinical software. Phase 2 changes
-above are unreleased and do not alter this tag.
+production-ready, clinically validated, or clinical software. The Phase 2
+Family Identity and Access Boundary is published separately as `v0.2.0` and
+does not change the claims or limitations of this baseline.
 
 ### Included
 
