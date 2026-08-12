@@ -65,6 +65,28 @@ dosage-change advice in this phase. External agents remain responsible for
 their own model and provider security. OpenCare validates output but cannot
 guarantee medical correctness.
 
+## Sentient G1 Trust Envelope
+
+Sentient G1 adds a deterministic, local Trust Envelope at the boundary between
+authorized sensitive OpenCare state and a later agent-capable execution
+context. It binds one authenticated actor, explicit Person, controlled
+purpose/action, minimal evidence and provenance, live authorization snapshot,
+safety decision, tools, disclosure constraints, and expiry. G1 does not run an
+agent or provider; G2 must reauthorize before execution.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.agent_trust.cli export-envelope --demo --person-id person-alice --purpose visit_preparation --action summarize_records --requested-action "Summarize selected records." --evidence-id evidence-medication-alice --tool context.read --tool source.read --output envelope.json
+.\.venv\Scripts\python.exe -m app.agent_trust.cli verify-envelope --envelope envelope.json
+.\.venv\Scripts\python.exe -m app.agent_trust.cli inspect-envelope --envelope envelope.json
+.\.venv\Scripts\python.exe -m app.agent_trust.cli verify-receipt --receipt receipt.json --envelope envelope.json
+```
+
+G1 uses canonical UTF-8 JSON and SHA-256 content identity for deterministic
+integrity and tamper detection. It does not provide signer authenticity,
+digital signatures, PKI, blockchain, remote attestation, or encryption. The
+binding contract is
+[docs/architecture/sentient-g1-trust-envelope.md](docs/architecture/sentient-g1-trust-envelope.md).
+
 ## Reviewer Quick Links
 
 - Local reviewer route: `/demo/health-vault`

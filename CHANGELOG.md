@@ -16,6 +16,10 @@
 - Deterministic Person export v2 and schema v5 offline backup/recovery checks,
   including restored credentials and revocations without restored sessions.
 - Focused scrypt validation on Windows and Linux CPython 3.12 CI paths.
+- Sentient G1 Trust Envelope contract and `app/agent_trust/` implementation:
+  frozen versioned models, controlled actions, canonical UTF-8 JSON, SHA-256
+  content identities, trusted builders, integrity validators, OpenCare Family
+  Access adapter, synthetic fixtures/evals, and export/verify/inspect CLI tools.
 
 ### Security
 
@@ -27,6 +31,9 @@
   backups; only a hash is durable.
 - Keeps `/demo/health-vault` and reviewer routes synthetic and separate from
   actor-scoped live surfaces.
+- Treats Envelope hashes as tamper detection only, never live authorization;
+  arbitrary JSON cannot mint an authorized Envelope, and G2 must reauthorize
+  actor, Person, consent, evidence, safety, provider, and expiry before use.
 
 ## [0.1.0] - 2026-07-31
 

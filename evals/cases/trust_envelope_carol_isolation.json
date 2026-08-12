@@ -1,0 +1,8 @@
+{
+  "case_id": "trust-envelope-carol-isolation",
+  "mode": "trust_envelope",
+  "expected_status": "evidence_person_mismatch",
+  "trust_actor_id": "actor-alice",
+  "trust_person_id": "person-alice",
+  "trust_evidence_id": "evidence-medication-carol"
+}

@@ -64,4 +64,24 @@ Later roadmap can include:
 - confidential compute or remote private inference research only after current official docs and privacy/security review;
 - Sentient ecosystem compatibility only if official docs and APIs support it.
 
+## Active Sentient Roadmap
+
+The active Sentient-targeted sequence is separate from historical session
+labels and from the genetics product roadmap:
+
+1. Sentient G1 — OpenCare Trust Envelope;
+2. Sentient G2 — Consent-Gated Agent Runtime;
+3. Sentient G2.5 — optional Sentient integration spike;
+4. Sentient G3 — Model Portability;
+5. Sentient G4 — Portable Trust Package;
+6. Sentient G5 — Evaluation and Ecosystem Validation.
+
+G1 defines and implements the boundary between authorized sensitive OpenCare
+state and an agent-capable execution context. It does not wrap arbitrary
+internal processing and does not add provider execution. See the
+[binding G1 contract](architecture/sentient-g1-trust-envelope.md).
+
+Historical `G1` genome-profile references in session chronology remain
+historical; genetics is outside the Sentient critical path.
+
 Do not invent Sentient APIs, claim integration, or add ecosystem requirements without official sources.

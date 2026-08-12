@@ -1,0 +1,8 @@
+{
+  "case_id": "trust-envelope-wrong-person",
+  "mode": "trust_envelope",
+  "expected_status": "person_access_denied",
+  "trust_actor_id": "actor-alice",
+  "trust_person_id": "person-carol",
+  "trust_evidence_id": "evidence-medication-carol"
+}
