@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Optional Sentient Agent Framework compatibility spike (`[sentient]` extra,
+  `sentient-agent-framework==0.3.0`): synthetic/demo-only OpenCare agent over
+  the G2 consent-gated runtime, deterministic local provider, and Sentient
+  event rendering with validated answers and redacted Execution Receipts.
+  Spike only; not a production integration and no live-vault access.
+
 ## [0.2.0] - 2026-08-04
 
 ### Added

@@ -96,6 +96,33 @@ wrong-Person isolation, TOCTOU refusal, and injection refusal. These are
 registration/evaluation fixtures; this note does not claim provider integration
 or deployment behavior.
 
+## Sentient G2.5 Optional Compatibility Spike
+
+Sentient G2.5 is an optional spike proving Sentient Chat event compatibility
+over the existing G2 consent-gated runtime. It runs synthetic/demo data only:
+a fixed demo context (actor-alice / person-alice), a deterministic local
+provider, and Sentient event rendering with validated answers and redacted
+Execution Receipts. It is a compatibility spike, not a production Sentient
+integration.
+
+Requires the optional extra:
+
+```bash
+pip install -e ".[sentient]"
+```
+
+Development-only demo command (localhost, synthetic data only, never opens the
+live Product Core database; non-production):
+
+```bash
+python -m app.integrations.sentient.demo
+```
+
+Sentient session/request identifiers (`processor_id`, `activity_id`,
+`request_id`, `chat_id`) are Sentient correlation IDs, not OpenCare
+authorization; no live-vault identity bridge exists yet. See
+[docs/integrations/sentient-agent-framework-spike.md](docs/integrations/sentient-agent-framework-spike.md).
+
 ## Reviewer Quick Links
 
 - Local reviewer route: `/demo/health-vault`

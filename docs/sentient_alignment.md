@@ -71,7 +71,9 @@ labels and from the genetics product roadmap:
 
 1. Sentient G1 — OpenCare Trust Envelope;
 2. Sentient G2 — Consent-Gated Agent Runtime;
-3. Sentient G2.5 — optional Sentient integration spike;
+3. Sentient G2.5 — optional Sentient integration spike; implemented as an
+   optional synthetic-only compatibility spike
+   ([spike contract](integrations/sentient-agent-framework-spike.md));
 4. Sentient G3 — Model Portability;
 5. Sentient G4 — Portable Trust Package;
 6. Sentient G5 — Evaluation and Ecosystem Validation.
@@ -88,5 +90,43 @@ ecosystem integration.
 
 Historical `G1` genome-profile references in session chronology remain
 historical; genetics is outside the Sentient critical path.
+
+### Sentient G2.5 status (optional spike)
+
+#### Implemented
+
+- Optional Sentient Agent Framework compatibility spike
+  (`sentient-agent-framework==0.3.0` as the `[sentient]` extra; never a core
+  dependency).
+- Synthetic/demo OpenCare agent (`OpenCareSentientDemoAgent`) over the fixed
+  demo context (actor-alice / person-alice).
+- G2-backed deterministic execution: the adapter delegates to the existing G2
+  consent-gated runtime and a deterministic local provider.
+- Sentient event rendering: `OPENCARE_STATUS`, `SOURCES`, `FINAL_RESPONSE`,
+  and `OPENCARE_RECEIPT`, with fail-closed refusal paths.
+- Validated answer and Receipt event: only G2-validated output is surfaced,
+  together with the redacted Execution Receipt.
+
+#### Not implemented
+
+- Production Sentient Chat identity binding.
+- Live personal-vault access through Sentient.
+- Sentient as an OpenCare authorization source.
+- Sentient SDK as a core dependency.
+- External LLM integration.
+- G3 model portability.
+
+This is a compatibility spike, not a production Sentient integration.
+
+The preserved roadmap note:
+
+```txt
+G4 Portable Trust Package
+→ target Agent Plugins v1 packaging
+→ skill first
+→ optional read-only MCP adapter after safe runtime boundary
+```
+
+Agent Plugins packaging is not part of G2.5; no `plugin.json`, no `mcp.json`.
 
 Do not invent Sentient APIs, claim integration, or add ecosystem requirements without official sources.
