@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 SESSION_TTL = timedelta(hours=8)
+PENDING_EXECUTION_TTL = timedelta(minutes=5)
 
 
 def _utc_now() -> datetime:
@@ -44,14 +45,17 @@ class CreatedSession:
     credential_id: str
     expires_at: datetime
 
-
 @dataclass(frozen=True)
-class SessionRecord:
+class PendingExecution:
+    execution_id: str
     session_id: str
     actor_id: str
-    credential_id: str
-    active_person_id: str | None
-    issued_at: datetime
+    person_id: str
+    question_hash: str
+    envelope_id: str
+    provider_id: str
+    provider_hash: str
+    state: str
     expires_at: datetime
 
 
@@ -99,6 +103,23 @@ class SessionStore:
             }
             if "credential_id" not in columns:
                 connection.execute("ALTER TABLE sessions ADD COLUMN credential_id TEXT")
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pending_executions (
+                    execution_id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
+                    person_id TEXT NOT NULL,
+                    question_hash TEXT NOT NULL,
+                    envelope_id TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    provider_hash TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                )
+                """
+            )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS sessions_actor_active_idx "
                 "ON sessions(actor_id, revoked_at, expires_at)"
@@ -226,3 +247,49 @@ class SessionStore:
                 (person_id, _token_hash(session_token)),
             )
         return cursor.rowcount == 1
+    def create_pending(self, *, session_id: str, actor_id: str, person_id: str,
+                       question_hash: str, envelope_id: str, provider_id: str,
+                       provider_hash: str) -> PendingExecution:
+        now = self.clock().astimezone(UTC)
+        expires_at = now + PENDING_EXECUTION_TTL
+        execution_id = secrets.token_urlsafe(18)
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO pending_executions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (execution_id, session_id, actor_id, person_id, question_hash,
+                 envelope_id, provider_id, provider_hash, "prepared",
+                 _isoformat(now), _isoformat(expires_at)),
+            )
+        return PendingExecution(execution_id, session_id, actor_id, person_id,
+                                question_hash, envelope_id, provider_id, provider_hash,
+                                "prepared", expires_at)
+
+    def get_pending(self, execution_id: str) -> PendingExecution | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM pending_executions WHERE execution_id=?", (execution_id,)
+            ).fetchone()
+        if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
+            return None
+        return PendingExecution(*(str(row[key]) for key in (
+            "execution_id","session_id","actor_id","person_id","question_hash",
+            "envelope_id","provider_id","provider_hash","state"
+        )), _parse_datetime(str(row["expires_at"])))
+
+    def consume_pending(self, execution_id: str) -> PendingExecution | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM pending_executions WHERE execution_id=? AND state='prepared'",
+                (execution_id,),
+            ).fetchone()
+            if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
+                return None
+            if connection.execute(
+                "UPDATE pending_executions SET state='consumed' WHERE execution_id=? AND state='prepared'",
+                (execution_id,),
+            ).rowcount != 1:
+                return None
+        return PendingExecution(*(str(row[key]) for key in (
+            "execution_id","session_id","actor_id","person_id","question_hash",
+            "envelope_id","provider_id","provider_hash","state"
+        )), _parse_datetime(str(row["expires_at"])))
