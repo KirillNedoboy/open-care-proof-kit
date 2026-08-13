@@ -86,13 +86,13 @@ def test_operator_checklist_keeps_privacy_recovery_and_stop_boundaries_visible()
         assert required_text in checklist
 
 
-def test_status_and_capability_matrix_describe_phase2_without_a_release_bump() -> None:
+def test_status_and_capability_matrix_describe_phase2_release_state() -> None:
     status = _read("docs/project-status.md")
     matrix = _read("docs/capability-matrix.md")
 
     assert "phase 2" in status.lower()
     assert "`v0.1.0`" in status
-    assert "unreleased" in status.lower()
+    assert "`v0.2.0`" in status
     assert "family permissions" in matrix.lower()
     assert "`implemented`" in matrix.lower()
     assert "wheel distribution" in matrix.lower()
