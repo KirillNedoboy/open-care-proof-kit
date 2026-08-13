@@ -1,9 +1,13 @@
 # OpenCare current project status
 
-This is the canonical status for the public `main` branch as of 2026-08-04.
+This is the canonical status for the public `main` branch as of 2026-08-13.
 The published `v0.1.0` tag remains the controlled private-alpha baseline.
 Phase 2 Family Identity and Access Boundary is implemented on `main` and
-published as `v0.2.0`.
+published as `v0.2.0`. The Sentient G1–G4 trust work — G1 Trust Envelope, G2
+Consent-Gated Agent Runtime, G2.5 optional integration spike, G3 Model
+Portability, G4 Portable Trust Package — is integrated on `main` **after the
+`v0.2.0` release boundary**; it is not itself a release tag. Sentient G5
+Ecosystem Validation is an implementation branch and is not yet on `main`.
 
 ## Implemented boundary
 
@@ -77,11 +81,17 @@ Final evals, trust metrics, package installation, Uvicorn/production Compose
 smoke, and clean-worktree evidence are recorded in the implementation report,
 not projected here before execution.
 
-## Sentient G3 provider portability (working branch)
+The current G1–G5 validation state (2026-08-13, at G5 implementation
+completion) reports: pytest `570 passed, 3 skipped, 0 failed`; the G5
+reviewer (`python -m evals.g5_review`) passes with 20/20 adversarial cases
+and all eight security invariants at zero violations, state
+`READY_FOR_SECOND_CLIENT_SMOKE` (Cursor 3.0.13 verified; second independent
+client pending).
 
-On the `codex/sentient-g3-model-portability` working branch, the agent
-provider is a portability slot below the G1 Trust Envelope: a provider-
-independent G2 execution contract (`AgentProvider` Protocol plus
+## Sentient G3 provider portability (on main after v0.2.0)
+
+G3 makes the agent provider a portability slot below the G1 Trust Envelope: a
+provider-independent G2 execution contract (`AgentProvider` Protocol plus
 `ProviderDescriptor` / `ProviderExecutionRequest` / `ProviderExecutionResult`
 in `app/agent/providers/`), a deterministic baseline provider, and one
 self-hosted Ollama adapter (`app/agent/providers/ollama.py`) over stdlib
@@ -99,13 +109,12 @@ runtime is required for startup.
 G3 proves provider portability and security compatibility, not model medical
 correctness; it adds no model-quality or diagnostic benchmarking. The result
 is `READY_FOR_LIVE_SMOKE` because Ollama is not installed locally; the smoke
-never auto-installs or downloads a runtime. This branch work is not part of
-the published `v0.2.0` main baseline described elsewhere in this document.
+never auto-installs or downloads a runtime. This work is integrated on `main`
+after the published `v0.2.0` baseline; it is not itself a release tag.
 
-## Sentient G4 portable trust package (working branch)
+## Sentient G4 portable trust package (on main after v0.2.0)
 
-On the `codex/sentient-g4-portable-trust-package` working branch, the
-G1/G2/G3 trust contract is packaged for portable use. G4 is packaging and
+G4 packages the G1/G2/G3 trust contract for portable use. G4 is packaging and
 interface stabilization, not a new security model; the G1 `contract_version`
 literals (`opencare-trust-envelope/1`, `opencare-execution-receipt/1`) are
 unchanged.
@@ -140,8 +149,29 @@ unchanged.
   deferral).
 
 G4 makes no MCP claim and no multi-client validation claim; multi-client
-ecosystem validation is Sentient G5. This branch work is not part of the
-published `v0.2.0` main baseline described elsewhere in this document.
+ecosystem validation is Sentient G5. This work is integrated on `main` after
+the published `v0.2.0` baseline; it is not itself a release tag.
+
+## Sentient G5 ecosystem validation (implementation branch)
+
+On the `codex/sentient-g5-ecosystem-validation` implementation branch, G5
+evaluates the existing G1–G4 system: a deterministic, offline adversarial
+corpus (`evals/g5/corpus.json`, 20 cases) covering eight security invariant
+families, measured quality metrics, the single-reviewer command
+`python -m evals.g5_review`, and cross-client loading evidence for the
+skill-only Agent Plugins package. G5 adds no trust semantics, no schema
+version, no provider, and no network surface.
+
+Current state (2026-08-13): reviewer passes 20/20 cases with all eight
+security invariants at zero violations; deterministic replay and package
+integrity pass; quality metrics measured (context precision/recall 1.0 on the
+synthetic labelled subset, minimization 20/58 eligible evidence IDs,
+1222 → 375 evidence-identifier bytes, provenance coverage 15/15, refusal
+correctness 13/13, completed receipts 5/5). Cross-client evidence:
+Cursor 3.0.13 loaded the exact committed package with both skills discovered
+and the package unmodified; a second independent client is pending, so the
+state is `READY_FOR_SECOND_CLIENT_SMOKE`. G5 is not yet on `main` and is not
+a release tag; it will be integrated after review.
 
 ## Preserved boundaries
 
