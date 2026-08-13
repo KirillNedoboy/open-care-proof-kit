@@ -84,3 +84,14 @@ def test_http_prepare_consent_execute_receipt(tmp_path):
             r = await client.get(f"/api/chat/executions/{execution_id}/receipt", cookies=cookies)
             assert r.status_code == 200 and r.json()["receipt_id"].startswith("sha256:")
     asyncio.run(run())
+
+def test_provider_tool_mutation_is_refused_and_not_returned(tmp_path):
+    runtime, token, provider = setup(tmp_path)
+    provider.answer = lambda disclosure, question: {
+        "tool_requests": [{"tool": "context.read", "operation": "write"}]
+    }
+    prepared = runtime.prepare(token, "What is recorded?", purpose_id="visit_preparation", action_id="summarize_records")
+    runtime.grant_disclosure_consent(token, prepared.execution_id, fields=["medication.name"])
+    result = runtime.execute(token, prepared.execution_id, "What is recorded?")
+    assert result.status == "refused"
+    assert result.reason_code == "tool_not_allowed"
