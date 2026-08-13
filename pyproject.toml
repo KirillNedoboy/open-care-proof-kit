@@ -28,6 +28,9 @@ dev = [
   "mypy>=1.10.0",
   "httpx>=0.27.0",
 ]
+sentient = [
+  "sentient-agent-framework==0.3.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*", "evals*"]
@@ -47,6 +50,14 @@ ignore = []
 python_version = "3.12"
 strict = true
 packages = ["app", "evals"]
+
+[[tool.mypy.overrides]]
+module = "sentient_agent_framework.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "app.integrations.sentient.*"
+disallow_subclassing_any = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
