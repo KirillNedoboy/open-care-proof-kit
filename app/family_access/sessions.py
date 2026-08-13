@@ -55,13 +55,14 @@ class SessionRecord:
     issued_at: datetime
     expires_at: datetime
 
-
 @dataclass(frozen=True)
 class PendingExecution:
     execution_id: str
     session_id: str
     actor_id: str
     person_id: str
+    purpose_id: str
+    action_id: str
     question_hash: str
     envelope_id: str
     provider_id: str
@@ -119,6 +120,8 @@ class SessionStore:
                     session_id TEXT NOT NULL,
                     actor_id TEXT NOT NULL,
                     person_id TEXT NOT NULL,
+                    purpose_id TEXT NOT NULL DEFAULT '',
+                    action_id TEXT NOT NULL DEFAULT '',
                     question_hash TEXT NOT NULL,
                     envelope_id TEXT NOT NULL,
                     provider_id TEXT NOT NULL,
@@ -126,6 +129,49 @@ class SessionStore:
                     state TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     expires_at TEXT NOT NULL
+                )
+                """
+            )
+            pending_columns = {
+                str(row[1])
+                for row in connection.execute("PRAGMA table_info(pending_executions)")
+            }
+            for name in ("purpose_id", "action_id"):
+                if name not in pending_columns:
+                    connection.execute(
+                        f"ALTER TABLE pending_executions ADD COLUMN {name} TEXT NOT NULL DEFAULT ''"
+                    )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pending_consents (
+                    execution_id TEXT PRIMARY KEY,
+                    consent_id TEXT NOT NULL UNIQUE,
+                    actor_id TEXT NOT NULL,
+                    person_id TEXT NOT NULL,
+                    purpose_id TEXT NOT NULL,
+                    action_id TEXT NOT NULL,
+                    envelope_id TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    provider_hash TEXT NOT NULL,
+                    fields_json TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    consumed_at TEXT
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS execution_receipts (
+                    execution_id TEXT PRIMARY KEY,
+                    receipt_id TEXT NOT NULL UNIQUE,
+                    actor_id TEXT NOT NULL,
+                    person_id TEXT NOT NULL,
+                    envelope_id TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    output_hash TEXT,
+                    reason_code TEXT,
+                    created_at TEXT NOT NULL
                 )
                 """
             )
@@ -263,6 +309,8 @@ class SessionStore:
         session_id: str,
         actor_id: str,
         person_id: str,
+        purpose_id: str,
+        action_id: str,
         question_hash: str,
         envelope_id: str,
         provider_id: str,
@@ -273,46 +321,26 @@ class SessionStore:
         execution_id = secrets.token_urlsafe(18)
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO pending_executions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    execution_id,
-                    session_id,
-                    actor_id,
-                    person_id,
-                    question_hash,
-                    envelope_id,
-                    provider_id,
-                    provider_hash,
-                    "prepared",
-                    _isoformat(now),
-                    _isoformat(expires_at),
-                ),
+                """INSERT INTO pending_executions
+                (execution_id,session_id,actor_id,person_id,purpose_id,action_id,
+                 question_hash,envelope_id,provider_id,provider_hash,state,created_at,expires_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (execution_id, session_id, actor_id, person_id, purpose_id, action_id,
+                 question_hash, envelope_id, provider_id, provider_hash, "prepared",
+                 _isoformat(now), _isoformat(expires_at)),
             )
         return PendingExecution(
-            execution_id,
-            session_id,
-            actor_id,
-            person_id,
-            question_hash,
-            envelope_id,
-            provider_id,
-            provider_hash,
-            "prepared",
-            expires_at,
+            execution_id, session_id, actor_id, person_id, purpose_id, action_id,
+            question_hash, envelope_id, provider_id, provider_hash, "prepared", expires_at
         )
 
-    def get_pending(self, execution_id: str) -> PendingExecution | None:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM pending_executions WHERE execution_id=?", (execution_id,)
-            ).fetchone()
-        if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
-            return None
         return PendingExecution(
             execution_id=str(row["execution_id"]),
             session_id=str(row["session_id"]),
             actor_id=str(row["actor_id"]),
             person_id=str(row["person_id"]),
+            purpose_id=str(row["purpose_id"]),
+            action_id=str(row["action_id"]),
             question_hash=str(row["question_hash"]),
             envelope_id=str(row["envelope_id"]),
             provider_id=str(row["provider_id"]),
@@ -320,6 +348,46 @@ class SessionStore:
             state=str(row["state"]),
             expires_at=_parse_datetime(str(row["expires_at"])),
         )
+
+    def save_consent(self, data: dict[str, object]) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO pending_consents
+                (execution_id,consent_id,actor_id,person_id,purpose_id,action_id,
+                 envelope_id,provider_id,provider_hash,fields_json,expires_at,consumed_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL)""",
+                (data["execution_id"], data["consent_id"], data["actor_id"], data["person_id"],
+                 data["purpose_id"], data["action_id"], data["envelope_id"], data["provider_id"],
+                 data["provider_hash"], json.dumps(data["fields"]), data["expires_at"]),
+            )
+
+    def load_consent(self, execution_id: str) -> dict[str, object] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM pending_consents WHERE execution_id=? AND consumed_at IS NULL",
+                (execution_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def save_receipt(self, data: dict[str, object]) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO execution_receipts
+                (execution_id,receipt_id,actor_id,person_id,envelope_id,provider_id,status,
+                 output_hash,reason_code,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                tuple(data[key] for key in (
+                    "execution_id","receipt_id","actor_id","person_id","envelope_id",
+                    "provider_id","status","output_hash","reason_code","created_at")),
+            )
+
+    def get_receipt(self, execution_id: str) -> dict[str, object] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM execution_receipts WHERE execution_id=?", (execution_id,)
+            ).fetchone()
+        return None if row is None else dict(row)
 
     def consume_pending(self, execution_id: str) -> PendingExecution | None:
         with self._connect() as connection:
