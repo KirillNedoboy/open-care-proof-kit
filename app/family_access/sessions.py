@@ -280,10 +280,18 @@ class SessionStore:
             ).fetchone()
         if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
             return None
-        return PendingExecution(*(str(row[key]) for key in (
-            "execution_id","session_id","actor_id","person_id","question_hash",
-            "envelope_id","provider_id","provider_hash","state"
-        )), _parse_datetime(str(row["expires_at"])))
+        return PendingExecution(
+            execution_id=str(row["execution_id"]),
+            session_id=str(row["session_id"]),
+            actor_id=str(row["actor_id"]),
+            person_id=str(row["person_id"]),
+            question_hash=str(row["question_hash"]),
+            envelope_id=str(row["envelope_id"]),
+            provider_id=str(row["provider_id"]),
+            provider_hash=str(row["provider_hash"]),
+            state=str(row["state"]),
+            expires_at=_parse_datetime(str(row["expires_at"])),
+        )
 
     def consume_pending(self, execution_id: str) -> PendingExecution | None:
         with self._connect() as connection:
@@ -298,7 +306,15 @@ class SessionStore:
                 (execution_id,),
             ).rowcount != 1:
                 return None
-        return PendingExecution(*(str(row[key]) for key in (
-            "execution_id","session_id","actor_id","person_id","question_hash",
-            "envelope_id","provider_id","provider_hash","state"
-        )), _parse_datetime(str(row["expires_at"])))
+        return PendingExecution(
+            execution_id=str(row["execution_id"]),
+            session_id=str(row["session_id"]),
+            actor_id=str(row["actor_id"]),
+            person_id=str(row["person_id"]),
+            question_hash=str(row["question_hash"]),
+            envelope_id=str(row["envelope_id"]),
+            provider_id=str(row["provider_id"]),
+            provider_hash=str(row["provider_hash"]),
+            state=str(row["state"]),
+            expires_at=_parse_datetime(str(row["expires_at"])),
+        )
