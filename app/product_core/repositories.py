@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import date, datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from app.product_core.models import (
     CandidateFact,
@@ -812,10 +812,11 @@ class SQLiteDisclosureConsentRepository:
         )
 
     def get_by_execution(self, execution_id: str) -> sqlite3.Row | None:
-        return self.connection.execute(
+        row = self.connection.execute(
             "SELECT * FROM agent_disclosure_consents WHERE execution_id = ?",
             (execution_id,),
         ).fetchone()
+        return cast(sqlite3.Row | None, row)
 
 
 class SQLiteExecutionReceiptRepository:
@@ -836,10 +837,11 @@ class SQLiteExecutionReceiptRepository:
         )
 
     def get_by_execution(self, execution_id: str) -> sqlite3.Row | None:
-        return self.connection.execute(
+        row = self.connection.execute(
             "SELECT * FROM agent_execution_receipts WHERE execution_id = ?",
             (execution_id,),
         ).fetchone()
+        return cast(sqlite3.Row | None, row)
 
 
 def _source_from_row(row: sqlite3.Row) -> Source:
