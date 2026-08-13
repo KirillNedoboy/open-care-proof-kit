@@ -956,6 +956,59 @@ PRODUCT_MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=6,
+        statements=(
+            """
+            CREATE TABLE agent_disclosure_consents (
+                consent_id TEXT PRIMARY KEY CHECK (length(trim(consent_id)) > 0),
+                execution_id TEXT NOT NULL UNIQUE CHECK (length(trim(execution_id)) > 0),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                purpose TEXT NOT NULL CHECK (length(trim(purpose)) > 0),
+                action TEXT NOT NULL CHECK (length(trim(action)) > 0),
+                envelope_id TEXT NOT NULL CHECK (length(trim(envelope_id)) > 0),
+                provider_id TEXT NOT NULL CHECK (length(trim(provider_id)) > 0),
+                provider_descriptor_hash TEXT NOT NULL CHECK (length(provider_descriptor_hash) = 64),
+                disclosure_metadata_json TEXT NOT NULL,
+                policy_version TEXT NOT NULL CHECK (length(trim(policy_version)) > 0),
+                consented_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                consent_hash TEXT NOT NULL CHECK (length(consent_hash) = 64),
+                metadata_json TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE agent_execution_receipts (
+                receipt_id TEXT PRIMARY KEY CHECK (length(trim(receipt_id)) > 0),
+                execution_id TEXT NOT NULL UNIQUE CHECK (length(trim(execution_id)) > 0),
+                consent_id TEXT NOT NULL REFERENCES agent_disclosure_consents(consent_id),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                envelope_id TEXT NOT NULL CHECK (length(trim(envelope_id)) > 0),
+                provider_id TEXT NOT NULL CHECK (length(trim(provider_id)) > 0),
+                status TEXT NOT NULL CHECK (status IN ('completed', 'refused', 'failed')),
+                started_at TEXT NOT NULL,
+                completed_at TEXT NOT NULL,
+                used_evidence_ids_json TEXT NOT NULL,
+                used_tools_json TEXT NOT NULL,
+                output_sha256 TEXT CHECK (output_sha256 IS NULL OR length(output_sha256) = 64),
+                mutation_attempted INTEGER NOT NULL CHECK (mutation_attempted IN (0, 1)),
+                reason_codes_json TEXT NOT NULL,
+                receipt_sha256 TEXT NOT NULL CHECK (length(receipt_sha256) = 64),
+                metadata_json TEXT NOT NULL
+            )
+            """,
+            (
+                "CREATE INDEX agent_disclosure_consents_person_created_idx "
+                "ON agent_disclosure_consents(person_id, consented_at, consent_id)"
+            ),
+            (
+                "CREATE INDEX agent_execution_receipts_person_completed_idx "
+                "ON agent_execution_receipts(person_id, completed_at, receipt_id)"
+            ),
+        ),
+    ),
 )
 
 
