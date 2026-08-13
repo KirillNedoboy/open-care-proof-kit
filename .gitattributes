@@ -1,0 +1,14 @@
+# Pin canonical-artifact line endings to LF so byte-identity is reproducible on
+# every platform and checkout (overrides a machine-level core.autocrlf=true).
+#
+# The G1-G4 trust contract and the G4 package depend on byte-identical
+# canonical documents: fixtures, schemas, skill sources, and the plugin package
+# are compared byte-for-byte by the drift/identity tests and the deterministic
+# build. A Windows checkout with core.autocrlf=true converts these to CRLF,
+# which the canonical validators reject ("CR is not canonical") and which breaks
+# the byte-identity gates. These rules force LF for exactly those artifacts.
+*.json           text eol=lf
+schemas/**       text eol=lf
+fixtures/**      text eol=lf
+skills/**        text eol=lf
+agent-plugins/** text eol=lf
