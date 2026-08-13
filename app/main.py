@@ -18,6 +18,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
+from app.agent.g2_product_repository import ProductCoreG2Repository
+from app.agent.g2_runtime import G2Runtime
 from app.agent.models import AgentQuestion
 from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
@@ -43,6 +45,13 @@ from app.reports.json_audit import PIPELINE_STEPS
 from app.vault.loader import load_health_vault
 from app.vault.schema import HealthVault
 
+
+class _LocalProvider:
+    provider_id = "local-deterministic"
+    descriptor_hash = hashlib.sha256(provider_id.encode()).hexdigest()
+    def answer(self, disclosure: dict[str, Any], question: str) -> dict[str, object]:
+        return {"answer": "Clinician-reviewable context only.", "question": question}
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,11 +74,15 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             )
         else:
             family_runtime = family_runtime_factory(get_settings(), runtime)
-        g2_factory = getattr(application.state, "g2_runtime_factory", None)
-        g2_runtime = (
-            g2_factory(get_settings(), runtime, family_runtime)
-            if g2_factory is not None
-            else None
+        g2_runtime = G2Runtime(
+            family_runtime.sessions,
+            prepare_envelope=lambda **_: (_ for _ in ()).throw(
+                PermissionError("g2_builder_requires_authority")
+            ),
+            revalidate=lambda pending, session: bool(pending and session),
+            provider=_LocalProvider(),
+            repository=ProductCoreG2Repository(runtime.database),
+            clock=runtime.clock,
         )
     except Exception:
         logger.error("Product Core startup failed", exc_info=False)

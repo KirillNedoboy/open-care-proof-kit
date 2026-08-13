@@ -103,7 +103,11 @@ class ExecuteResult:
 
 
 class G2Repository(Protocol):
-    """Product Core persistence boundary for canonical execution receipts."""
+    def save_consent(
+        self, *, execution_id: str, consent_id: str, actor_id: str, person_id: str,
+        purpose_id: str, action_id: str, envelope_id: str, provider_id: str,
+        provider_hash: str, fields: list[str], expires_at: datetime,
+    ) -> None: ...
 
     def save_execution_receipt(
         self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str
@@ -187,34 +191,30 @@ class G2Runtime:
         pending = self.sessions.get_pending(execution_id)
         if session is None or pending is None or pending.session_id != session.session_id:
             raise PermissionError("pending_execution_unavailable")
-        consent_id = _hash(
-            json.dumps(
-                [
-                    execution_id,
-                    session.actor_id,
-                    pending.person_id,
-                    pending.envelope_id,
-                    pending.provider_id,
-                    pending.provider_hash,
-                    sorted(fields),
-                ]
+        consent_id = _hash(json.dumps([
+            execution_id, session.actor_id, pending.person_id, pending.purpose_id,
+            pending.action_id, pending.envelope_id, pending.provider_id,
+            pending.provider_hash, sorted(set(fields)), pending.expires_at.isoformat(),
+        ], sort_keys=True))
+        consent_fields = sorted(set(fields))
+        data: dict[str, object] = {
+            "execution_id": execution_id, "consent_id": consent_id,
+            "actor_id": session.actor_id, "person_id": pending.person_id,
+            "purpose_id": pending.purpose_id, "action_id": pending.action_id,
+            "envelope_id": pending.envelope_id, "provider_id": pending.provider_id,
+            "provider_hash": pending.provider_hash, "fields": consent_fields,
+            "expires_at": pending.expires_at.isoformat(),
+        }
+        if self.repository is not None and hasattr(self.repository, "save_consent"):
+            self.repository.save_consent(
+                execution_id=execution_id, consent_id=consent_id,
+                actor_id=session.actor_id, person_id=pending.person_id,
+                purpose_id=pending.purpose_id, action_id=pending.action_id,
+                envelope_id=pending.envelope_id, provider_id=pending.provider_id,
+                provider_hash=pending.provider_hash, fields=consent_fields,
+                expires_at=pending.expires_at,
             )
-        )
-        self.sessions.save_consent(
-            {
-                "execution_id": execution_id,
-                "consent_id": consent_id,
-                "actor_id": session.actor_id,
-                "person_id": pending.person_id,
-                "purpose_id": pending.purpose_id,
-                "action_id": pending.action_id,
-                "envelope_id": pending.envelope_id,
-                "provider_id": pending.provider_id,
-                "provider_hash": pending.provider_hash,
-                "fields": sorted(set(fields)),
-                "expires_at": pending.expires_at.isoformat(),
-            }
-        )
+        self.sessions.save_consent(data)
         return ConsentResult(execution_id, consent_id, pending.expires_at)
 
     def execute(self, session_token: str, execution_id: str, question: str) -> ExecuteResult:
