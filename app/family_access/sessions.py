@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import sqlite3
@@ -141,6 +142,40 @@ class SessionStore:
                     connection.execute(
                         f"ALTER TABLE pending_executions ADD COLUMN {name} TEXT NOT NULL DEFAULT ''"
                     )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pending_consents (
+                    execution_id TEXT PRIMARY KEY,
+                    consent_id TEXT NOT NULL UNIQUE,
+                    actor_id TEXT NOT NULL,
+                    person_id TEXT NOT NULL,
+                    purpose_id TEXT NOT NULL,
+                    action_id TEXT NOT NULL,
+                    envelope_id TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    provider_hash TEXT NOT NULL,
+                    fields_json TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    consumed_at TEXT
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS execution_receipts (
+                    execution_id TEXT PRIMARY KEY,
+                    receipt_id TEXT NOT NULL UNIQUE,
+                    actor_id TEXT NOT NULL,
+                    person_id TEXT NOT NULL,
+                    envelope_id TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    output_hash TEXT,
+                    reason_code TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS sessions_actor_active_idx "
                 "ON sessions(actor_id, revoked_at, expires_at)"
@@ -314,4 +349,75 @@ class SessionStore:
             question_hash=str(row["question_hash"]), envelope_id=str(row["envelope_id"]),
             provider_id=str(row["provider_id"]), provider_hash=str(row["provider_hash"]),
             state=str(row["state"]), expires_at=_parse_datetime(str(row["expires_at"])),
+        )
+    def save_consent(self, data: dict[str, object]) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO pending_consents
+                (execution_id,consent_id,actor_id,person_id,purpose_id,action_id,
+                 envelope_id,provider_id,provider_hash,fields_json,expires_at,consumed_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL)""",
+                (data["execution_id"], data["consent_id"], data["actor_id"], data["person_id"],
+                 data["purpose_id"], data["action_id"], data["envelope_id"], data["provider_id"],
+                 data["provider_hash"], json.dumps(data["fields"]), data["expires_at"]),
+            )
+
+    def load_consent(self, execution_id: str) -> dict[str, object] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM pending_consents WHERE execution_id=? AND consumed_at IS NULL",
+                (execution_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def save_receipt(self, data: dict[str, object]) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO execution_receipts
+                (execution_id,receipt_id,actor_id,person_id,envelope_id,provider_id,status,
+                 output_hash,reason_code,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                tuple(data[key] for key in (
+                    "execution_id","receipt_id","actor_id","person_id","envelope_id",
+                    "provider_id","status","output_hash","reason_code","created_at")),
+            )
+
+    def get_receipt(self, execution_id: str) -> dict[str, object] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM execution_receipts WHERE execution_id=?", (execution_id,)
+            ).fetchone()
+        return None if row is None else dict(row)
+
+    def consume_pending(self, execution_id: str) -> PendingExecution | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM pending_executions WHERE execution_id=? AND state='prepared'",
+                (execution_id,),
+            ).fetchone()
+            if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
+                return None
+            if (
+                connection.execute(
+                    "UPDATE pending_executions SET state='consumed' "
+                    "WHERE execution_id=? AND state='prepared'",
+                    (execution_id,),
+                ).rowcount
+                != 1
+            ):
+                return None
+        return PendingExecution(
+            execution_id=str(row["execution_id"]),
+            session_id=str(row["session_id"]),
+            actor_id=str(row["actor_id"]),
+            person_id=str(row["person_id"]),
+            purpose_id=str(row["purpose_id"]),
+            action_id=str(row["action_id"]),
+            question_hash=str(row["question_hash"]),
+            envelope_id=str(row["envelope_id"]),
+            provider_id=str(row["provider_id"]),
+            provider_hash=str(row["provider_hash"]),
+            state="consumed",
+            expires_at=_parse_datetime(str(row["expires_at"])),
         )
