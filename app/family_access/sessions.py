@@ -45,6 +45,15 @@ class CreatedSession:
     credential_id: str
     expires_at: datetime
 
+
+@dataclass(frozen=True)
+class SessionRecord:
+    session_id: str
+    actor_id: str
+    credential_id: str
+    active_person_id: str | None
+    issued_at: datetime
+    expires_at: datetime
 @dataclass(frozen=True)
 class PendingExecution:
     execution_id: str
