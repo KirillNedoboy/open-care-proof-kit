@@ -324,12 +324,15 @@ async def chat_prepare(request: Request) -> JSONResponse:
     question = payload.get("question") if isinstance(payload, dict) else None
     if not isinstance(question, str) or not question.strip():
         raise HTTPException(status_code=422, detail="A question is required.")
-    result = runtime.prepare(
-        _session_token(request),
-        question.strip(),
-        purpose_id=payload.get("purpose_id", "visit_preparation"),
-        action_id=payload.get("action_id", "summarize_records"),
-    )
+    try:
+        result = runtime.prepare(
+            _session_token(request),
+            question.strip(),
+            purpose_id=payload.get("purpose_id", "visit_preparation"),
+            action_id=payload.get("action_id", "summarize_records"),
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     return JSONResponse(jsonable_encoder(result.__dict__))
 
 
@@ -340,7 +343,10 @@ async def chat_consent(execution_id: str, request: Request) -> JSONResponse:
     fields = payload.get("fields", []) if isinstance(payload, dict) else []
     if not isinstance(fields, list) or not all(isinstance(item, str) for item in fields):
         raise HTTPException(status_code=422, detail="Disclosure fields are required.")
-    result = runtime.grant_disclosure_consent(_session_token(request), execution_id, fields=fields)
+    try:
+        result = runtime.grant_disclosure_consent(_session_token(request), execution_id, fields=fields)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     return JSONResponse(jsonable_encoder(result.__dict__))
 
 
