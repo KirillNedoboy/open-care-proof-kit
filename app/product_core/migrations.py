@@ -969,7 +969,9 @@ PRODUCT_MIGRATIONS = (
                 action TEXT NOT NULL CHECK (length(trim(action)) > 0),
                 envelope_id TEXT NOT NULL CHECK (length(trim(envelope_id)) > 0),
                 provider_id TEXT NOT NULL CHECK (length(trim(provider_id)) > 0),
-                provider_descriptor_hash TEXT NOT NULL CHECK (length(provider_descriptor_hash) = 64),
+                provider_descriptor_hash TEXT NOT NULL CHECK (
+                    length(provider_descriptor_hash) = 64
+                ),
                 disclosure_metadata_json TEXT NOT NULL,
                 policy_version TEXT NOT NULL CHECK (length(trim(policy_version)) > 0),
                 consented_at TEXT NOT NULL,

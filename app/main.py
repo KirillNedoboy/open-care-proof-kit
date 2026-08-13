@@ -9,6 +9,7 @@ from html import escape
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs, quote, urlsplit
+
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -17,7 +18,6 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
-from app.agent.context import build_product_core_agent_context
 from app.agent.models import AgentQuestion
 from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
@@ -98,9 +98,8 @@ app.add_exception_handler(FamilyAccessError, family_access_exception_handler)
 
 
 def _is_public_path(path: str) -> bool:
-    return (
-        path in {"/health", "/healthz", "/readyz", "/access", "/favicon.ico"}
-        or path.startswith("/static/")
+    return path in {"/health", "/healthz", "/readyz", "/access", "/favicon.ico"} or path.startswith(
+        "/static/"
     )
 
 
@@ -175,9 +174,7 @@ async def enforce_private_access(
     request: Request,
     call_next: RequestResponseEndpoint,
 ) -> Response:
-    if _is_public_path(request.url.path) or _uses_actor_session_boundary(
-        request.url.path
-    ):
+    if _is_public_path(request.url.path) or _uses_actor_session_boundary(request.url.path):
         return await call_next(request)
 
     try:
@@ -208,9 +205,7 @@ def index() -> RedirectResponse:
 
 def _live_access_error(exc: Exception) -> JSONResponse:
     if isinstance(exc, AccessAuditUnavailableError):
-        return JSONResponse(
-            {"detail": "Sensitive access could not be audited."}, status_code=503
-        )
+        return JSONResponse({"detail": "Sensitive access could not be audited."}, status_code=503)
     if isinstance(exc, ScopeForbiddenError):
         return JSONResponse({"detail": "Required scope is not granted."}, status_code=403)
     return JSONResponse({"detail": "Person was not found."}, status_code=404)
@@ -303,7 +298,11 @@ def chat_page(request: Request) -> Response:
 
 @app.post("/api/chat")
 async def chat_api(request: Request) -> JSONResponse:
-    return JSONResponse({"detail": "Consent-gated chat is required.", "code": "consent_required"}, status_code=410)
+    return JSONResponse(
+        {"detail": "Consent-gated chat is required.", "code": "consent_required"}, status_code=410
+    )
+
+
 def _g2_runtime_or_unavailable() -> Any:
     runtime = getattr(app.state, "g2_runtime", None)
     if runtime is None:
@@ -326,7 +325,8 @@ async def chat_prepare(request: Request) -> JSONResponse:
     if not isinstance(question, str) or not question.strip():
         raise HTTPException(status_code=422, detail="A question is required.")
     result = runtime.prepare(
-        _session_token(request), question.strip(),
+        _session_token(request),
+        question.strip(),
         purpose_id=payload.get("purpose_id", "visit_preparation"),
         action_id=payload.get("action_id", "summarize_records"),
     )
@@ -340,9 +340,7 @@ async def chat_consent(execution_id: str, request: Request) -> JSONResponse:
     fields = payload.get("fields", []) if isinstance(payload, dict) else []
     if not isinstance(fields, list) or not all(isinstance(item, str) for item in fields):
         raise HTTPException(status_code=422, detail="Disclosure fields are required.")
-    result = runtime.grant_disclosure_consent(
-        _session_token(request), execution_id, fields=fields
-    )
+    result = runtime.grant_disclosure_consent(_session_token(request), execution_id, fields=fields)
     return JSONResponse(jsonable_encoder(result.__dict__))
 
 
@@ -671,9 +669,7 @@ def _build_vault_page_context(
     trace_graph = build_vault_trace_graph(read_model) if include_trace_graph else None
     manifest = _load_health_vault_manifest() if include_trust_flags else None
     source_name = (
-        active_vault.source_basename
-        if active_vault.source_basename is not None
-        else "demo"
+        active_vault.source_basename if active_vault.source_basename is not None else "demo"
     )
 
     return {

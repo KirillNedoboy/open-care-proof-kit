@@ -54,6 +54,8 @@ class SessionRecord:
     active_person_id: str | None
     issued_at: datetime
     expires_at: datetime
+
+
 @dataclass(frozen=True)
 class PendingExecution:
     execution_id: str
@@ -107,9 +109,7 @@ class SessionStore:
                 )
                 """
             )
-            columns = {
-                str(row[1]) for row in connection.execute("PRAGMA table_info(sessions)")
-            }
+            columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(sessions)")}
             if "credential_id" not in columns:
                 connection.execute("ALTER TABLE sessions ADD COLUMN credential_id TEXT")
             connection.execute(
@@ -256,22 +256,50 @@ class SessionStore:
                 (person_id, _token_hash(session_token)),
             )
         return cursor.rowcount == 1
-    def create_pending(self, *, session_id: str, actor_id: str, person_id: str,
-                       question_hash: str, envelope_id: str, provider_id: str,
-                       provider_hash: str) -> PendingExecution:
+
+    def create_pending(
+        self,
+        *,
+        session_id: str,
+        actor_id: str,
+        person_id: str,
+        question_hash: str,
+        envelope_id: str,
+        provider_id: str,
+        provider_hash: str,
+    ) -> PendingExecution:
         now = self.clock().astimezone(UTC)
         expires_at = now + PENDING_EXECUTION_TTL
         execution_id = secrets.token_urlsafe(18)
         with self._connect() as connection:
             connection.execute(
                 "INSERT INTO pending_executions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (execution_id, session_id, actor_id, person_id, question_hash,
-                 envelope_id, provider_id, provider_hash, "prepared",
-                 _isoformat(now), _isoformat(expires_at)),
+                (
+                    execution_id,
+                    session_id,
+                    actor_id,
+                    person_id,
+                    question_hash,
+                    envelope_id,
+                    provider_id,
+                    provider_hash,
+                    "prepared",
+                    _isoformat(now),
+                    _isoformat(expires_at),
+                ),
             )
-        return PendingExecution(execution_id, session_id, actor_id, person_id,
-                                question_hash, envelope_id, provider_id, provider_hash,
-                                "prepared", expires_at)
+        return PendingExecution(
+            execution_id,
+            session_id,
+            actor_id,
+            person_id,
+            question_hash,
+            envelope_id,
+            provider_id,
+            provider_hash,
+            "prepared",
+            expires_at,
+        )
 
     def get_pending(self, execution_id: str) -> PendingExecution | None:
         with self._connect() as connection:
@@ -301,10 +329,14 @@ class SessionStore:
             ).fetchone()
             if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
                 return None
-            if connection.execute(
-                "UPDATE pending_executions SET state='consumed' WHERE execution_id=? AND state='prepared'",
-                (execution_id,),
-            ).rowcount != 1:
+            if (
+                connection.execute(
+                    "UPDATE pending_executions SET state='consumed' "
+                    "WHERE execution_id=? AND state='prepared'",
+                    (execution_id,),
+                ).rowcount
+                != 1
+            ):
                 return None
         return PendingExecution(
             execution_id=str(row["execution_id"]),
