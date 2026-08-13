@@ -1,6 +1,6 @@
 # G5 Client Interoperability — Safe Evidence (client loading)
 
-Dates: 2026-08-13 (discovery + load proof) and 2026-08-14 (behavioral-smoke attempt, re-verified load).
+Dates: 2026-08-13 (discovery + load proof) and 2026-08-14 (behavioral-smoke attempts; Kiro installed).
 Machine: Windows 10 Pro x64. Repo: sentient (branch `codex/sentient-g5-ecosystem-validation`, HEAD `b2f6593`).
 Scope: can the **exact committed package** `agent-plugins/opencare-trust/` be loaded unchanged by agent clients actually installed on this machine?
 All load/cleanup steps were reversible; no client configuration change persists; nothing committed (operator decides).
@@ -31,7 +31,7 @@ Tree identity: manifest = sorted `sha256<TAB>rel-path` lines; `SHA-256(manifest)
 `fixtures/agent-trust/allowed-envelope.json` is byte-identical to the package's bundled asset (`af77ad18…`); the Skill's synthetic fixture is already in the package (`skills/opencare-trust-envelope/assets/`), so no fixture copy is needed.
 `plugin.json` validates against the official `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json` (required `$schema`, `name`; no unknown properties). Skill frontmatter `name` matches each `skills/<name>/` directory.
 
-## 2. Detected installed clients (fresh re-detection 2026-08-14)
+## 2. Detected installed clients (re-detection 2026-08-14)
 
 | Client | Version | Detection method | Install path |
 |---|---|---|---|
@@ -39,10 +39,11 @@ Tree identity: manifest = sorted `sha256<TAB>rel-path` lines; `SHA-256(manifest)
 | Cursor | 3.0.13 | `cursor --help`; app `package.json` / `Cursor.exe` ProductVersion | `C:\Program Files\cursor\` |
 | Claude Code | 2.1.220 | `claude --version`; `where claude` | `%USERPROFILE%\.local\bin\claude.exe` |
 | omp (Oh My Pi harness) | 17.3.0 | `omp --version` | `%USERPROFILE%\.bun\bin\omp.exe` |
+| Kiro | 1.0.293 | `winget install --id Amazon.Kiro` (operator-authorized); `kiro --version` | `%LOCALAPPDATA%\Programs\Kiro\Kiro.exe` |
 | GitHub CLI | 2.87.3 | `gh --version`; `gh extension list` | `C:\Program Files\GitHub CLI\gh.exe` |
 
-Not installed (checked `where`/`Get-Command` + install dirs): VS Code (`code`, `code-insiders`), Kiro, GitHub Copilot CLI (`github-copilot`, `copilot`, no `gh copilot` extension), Gemini CLI (`gemini`), Windsurf, aider, opencode, cursor-agent binary (absent from Cursor install).
-Auth state (existence checks only): `~/.codex/auth.json` present (Codex authenticated); `~/.claude/.credentials.json` absent (Claude Code not authenticated); Cursor account signed in on free plan — **agent usage exhausted** (see §4).
+Not installed (checked `where`/`Get-Command` + install dirs): VS Code (`code`, `code-insiders`), GitHub Copilot CLI (`github-copilot`, `copilot`, no `gh copilot` extension), Gemini CLI (`gemini`), Windsurf, aider, opencode, cursor-agent binary (absent from Cursor install).
+Auth state (existence checks only): `~/.codex/auth.json` present (Codex authenticated); `~/.claude/.credentials.json` absent (Claude Code not authenticated); Cursor account signed in on free plan — **agent usage exhausted** (see §4); Kiro — **no AWS/Kiro account** (`~/.aws/` and `%APPDATA%\Kiro\` absent; `~/.kiro/` has only `settings/` + `skills/`, no credentials) → agent requires a NEW AWS sign-in.
 
 ## 3. Official compatibility findings (read-only, current docs)
 
@@ -51,47 +52,48 @@ Auth state (existence checks only): `~/.codex/auth.json` present (Codex authenti
 | Codex CLI | developers.openai.com/plugins/build/plugins; openai/codex plugin-creator skill | **No — native format.** "Every plugin has a `.codex-plugin/plugin.json` manifest." Root `plugin.json` not read; confirmed by installed `~/.codex/local-plugins/codex-slides/.codex-plugin/plugin.json`. |
 | Cursor | cursor.com/docs/plugins (Agent Plugins section) | **Yes — direct.** "A plugin that follows the Agent Plugins specification loads in Cursor without changes." Root `plugin.json` (`$schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`); local dir `%USERPROFILE%\.cursor\plugins\local\<name>\`. |
 | Claude Code | code.claude.com/docs/en/plugins + plugins-reference | **No — native format.** Manifest `.claude-plugin/plugin.json`; root `plugin.json` not documented. Ineligible also because not authenticated. |
+| Kiro | kiro.dev/docs/powers + kiro.dev/docs/powers/installation + kiro.dev/blog/powers-supports-plugins | **Yes — direct.** "Powers follow the Agent Plugins specification" (Agent Plugins 1.0.0); a power is a directory with a required root `plugin.json` + `skills/`. Install via "Add Custom Power → Import power from a folder" (local path with root `plugin.json`), or marketplace/GitHub URL. AWS is a founding member of the Agent Plugins TSC. |
 | omp harness | (internal harness; not a documented portable-plugin consumer) | N/A — harness-internal skill mechanism; excluded as non-independent (executing harness). |
 | GitHub CLI | (no agent-plugin loading; no copilot extension installed) | N/A. |
 
 Codex root-vs-`.codex-plugin` finding: **root `plugin.json` (agent-plugins.org 1.0.0) is NOT loaded by Codex; the required manifest is `.codex-plugin/plugin.json`.**
 
-## 4. Live load + behavioral smoke — Cursor 3.0.13 (only compatible installed client)
+## 4. Live load + behavioral smoke — Cursor 3.0.13 (Client A)
 
-Two independent runs, same method, same result on load/discovery; smoke blocked identically both times.
+Three independent runs (2026-08-13, and 2026-08-14 twice), same method, same result on load/discovery; smoke blocked identically each time (quota has NOT reset).
 
 - Method (officially documented): snapshot `%USERPROFILE%\.cursor\plugins\` (pre-state: `local/` empty) → copy exact committed package to `%USERPROFILE%\.cursor\plugins\local\opencare-trust\` → byte-hash verified identical to §1 manifest before launch → launch Cursor → verify → remove → verify restore.
-- Package discovered: **YES** — client log (`%APPDATA%\Cursor\logs\20260813T231638\…\Cursor Plugins.log` and `20260814T000929\…\Cursor Plugins.log`): `loadUserLocalPlugin opencare-trust loaded`; `loadUserLocalPlugins completed in …ms (1 plugins loaded)`; `loadAllPlugins … total=1 plugins, failures=0`; `Plugins reload completed: 1 plugins loaded (0 extension), 0 failures`. Zero failures across reload cycles.
+- Package discovered: **YES** — client log (`%APPDATA%\Cursor\logs\<session>\…\Cursor Plugins.log`): `loadUserLocalPlugin opencare-trust loaded`; `loadUserLocalPlugins completed in …ms (1 plugins loaded)`; `loadAllPlugins … total=1 plugins, failures=0`; `Plugins reload completed: 1 plugins loaded (0 extension), 0 failures`. Zero failures across reload cycles.
 - Root `plugin.json` used: **YES** — package contains only the root `plugin.json` (no `.cursor-plugin/`, `.codex-plugin/`, `.claude-plugin/` manifest).
-- Package not rewritten: **YES** — post-load byte-hash identical to §1 manifest (all 15 files) on both runs.
-- Both Skills discovered: **YES** — agent composer `/` menu lists `/opencare-trust-envelope` and `/opencare-health-agent` with the exact frontmatter descriptions from the committed SKILL.md files (verified 2026-08-13 and 2026-08-14).
-- POSITIVE behavioral smoke (synthetic `allowed-envelope.json`): **NOT RUN — exact blocker:** submitting the prompt in the agent composer returns **"You've hit your usage limit"** with "Get Cursor Pro for more Agent usage, unlimited Tab, and more." The installed Cursor account is on the free plan and its Agent usage is exhausted; using the agent requires the paid plan. Per constraints, no upgrade and no sign-in to a new account was performed. Skill *guidance content* (deterministic, from SKILL.md) states integrity verification != current authorization and never treats receipts as credentials, but model behavior was not exercised.
+- Package not rewritten: **YES** — post-load byte-hash identical to §1 manifest (all 15 files) on every run.
+- Both Skills discovered: **YES** — agent composer `/` menu lists `/opencare-trust-envelope` and `/opencare-health-agent` with the exact frontmatter descriptions from the committed SKILL.md files.
+- POSITIVE behavioral smoke (synthetic `allowed-envelope.json`): **NOT RUN — exact blocker:** submitting the prompt returns **"You've hit your usage limit"** with "Get Cursor Pro for more Agent usage, unlimited Tab, and more." The Cursor account is on the free plan and its Agent usage is exhausted (quota did not reset between 2026-08-13 and 2026-08-14); using the agent requires the paid plan. Per constraints, no upgrade was performed. Skill *guidance content* (deterministic, from SKILL.md) states integrity verification != current authorization and never treats receipts as credentials, but model behavior was not exercised.
 - NEGATIVE smoke (valid fixture → live vault access): **NOT RUN — same exact blocker** ("You've hit your usage limit"). Server enforcement remains the security boundary.
 - Cleanup: **VERIFIED** — Cursor process tree terminated; `opencare-trust` removed; `%USERPROFILE%\.cursor\plugins\` identical to pre-state (empty `local/`); no config file modified; only normal app log/cache runtime artifacts.
 
-## 5. Second independent client
+## 5. Second independent client — Kiro 1.0.293 (Client B, installed, operator-authorized)
 
-- **Not available on this machine.** Fresh re-detection (§2) found no second conformant root-`plugin.json` client: VS Code/Kiro/Copilot/Gemini/Windsurf/aider/opencode not installed; Codex CLI and Claude Code are installed but use native manifests (§3) and are therefore ineligible by the operator's rule; omp is the executing harness (not independent); GitHub CLI has no agent-plugin loading.
-- Per constraints, installing a full IDE (VS Code, Kiro) was NOT performed.
+- **Installed** via `winget install --id Amazon.Kiro` → 1.0.293 (`%LOCALAPPDATA%\Programs\Kiro\Kiro.exe`; `bin/kiro.cmd` is the IDE GUI launcher — no headless agent CLI in this package).
+- **Official docs confirm root `plugin.json` loading** (kiro.dev/docs/powers, /powers/installation, /blog/powers-supports-plugins): Kiro powers follow **Agent Plugins 1.0.0** — a directory with a required root `plugin.json` + `skills/<name>/SKILL.md` + optional `mcp.json`; loaded via "Powers panel → Add Custom Power → Import power from a folder" (local path) or GitHub/marketplace. This is the same portable root-`plugin.json` format as the committed package.
+- **Load + Skills discovery: NOT EXECUTED.** On first run the Kiro IDE shows "Accounts - Not signed in" and a "Get started" welcome screen with a **"Sign in"** button (AWS Customer Agreement); the Powers panel/import UI sits behind sign-in. There is no documented offline/skip path to install a local power without an account.
+- **Behavioral smoke (positive + negative): BLOCKED — account requirement.** Running the Kiro agent requires an AWS/Kiro account. No AWS/Kiro account exists on this machine (`~/.aws/` and `%APPDATA%\Kiro\` absent; `~/.kiro/` has only `settings/` + `skills/`, no credentials). Per the operator's constraint, signing into a NEW account was NOT performed (no AWS account was previously sanctioned), and no paid subscription was purchased.
 
 ## 6. Independence and status
 
 - **TWO INDEPENDENT CLIENTS WITH FULL BEHAVIORAL EVIDENCE: NOT PROVEN → READY_FOR_SECOND_CLIENT_SMOKE.**
-- One conformant client (Cursor 3.0.13) is proven for load + discovery (root `plugin.json`, package byte-identical, both Skills discovered), but its behavioral smoke is blocked by the account's exhausted free-plan Agent usage — no paid upgrade permitted.
-- No genuine contradiction found: the package conforms to the agent-plugins.org 1.0.0 schema and loads with zero failures in a conformant client.
+- Client A (Cursor 3.0.13): load + root-`plugin.json` + both-Skills discovery proven; behavioral smoke blocked by exhausted free-plan Agent usage ("You've hit your usage limit"; quota not reset as of 2026-08-14) — paid plan not authorized.
+- Client B (Kiro 1.0.293): installed + official docs confirm root `plugin.json` (Agent Plugins 1.0.0); but load + smoke require an AWS/Kiro account sign-in (new account, not sanctioned) — no offline load path.
+- No genuine contradiction found: the package conforms to the agent-plugins.org 1.0.0 schema and loads with zero failures in a conformant client (Cursor).
 
 ## 7. Exact remaining manual steps for PASS
 
-1. **Cursor behavioral smoke** (same loader; not a second independent implementation): re-run the identical load on a Cursor account with available Agent usage (paid/Pro or quota-reset free account), then run (a) the positive synthetic-envelope smoke and (b) the negative live-vault-request smoke. Requires an account with usage; a free-plan quota reset is sufficient.
-2. **Second independent conformant client** — install one of:
-   - **Kiro** (supports Agent Plugins; needs install + sign-in) — preferred documented root-`plugin.json` consumer;
-   - **VS Code + GitHub Copilot / VS Code agent skills** (not installed);
-   - **Gemini CLI / opencode / Windsurf** (not installed; verify docs for root `plugin.json` support before counting);
-   - **Codex CLI or Claude Code** — would require an explicit decision to treat their native manifests (`.codex-plugin/plugin.json` / `.claude-plugin/plugin.json`) as acceptable, which contradicts the "portable package unchanged" gate.
-3. For the chosen client: load the exact committed package (root `plugin.json`, byte-verified), confirm both Skills discoverable, run positive + negative smokes, snapshot → restore config.
+1. **Cursor behavioral smoke** (Client A; same loader): re-run the identical load on a Cursor account with available Agent usage (paid/Pro, or a free-plan quota reset). Then run (a) the positive synthetic-envelope smoke and (b) the negative live-vault-request smoke.
+2. **Kiro behavioral smoke** (Client B; second independent conformant client, now installed): sign into Kiro with an AWS/Kiro account (requires an account the operator sanctions — none currently available), then load the exact committed package via "Powers panel → Add Custom Power → Import power from a folder" (root `plugin.json`, byte-verified), confirm both Skills discoverable, and run the positive + negative smokes.
+3. Alternatively install another conformant client (VS Code + Copilot, Gemini CLI, opencode, Windsurf — verify docs for root `plugin.json` support) and repeat the full load + smoke.
+4. For each client: load the exact committed package (root `plugin.json`, byte-verified), confirm both Skills discoverable, run positive + negative smokes, snapshot → restore config.
 
 ## 8. Cleanup confirmation
 
-- `%USERPROFILE%\.cursor\plugins\local\` restored to pre-test state (empty); no persistent client configuration change (Codex/Claude configs untouched).
+- `%USERPROFILE%\.cursor\plugins\local\` restored to pre-test state (empty); no persistent client configuration change (Codex/Claude/Kiro configs untouched — no sign-in or power import performed in Kiro).
 - Package `agent-plugins/opencare-trust/` verified byte-identical to the committed tree (§1 cross-check: all 15 files match their blobs).
-- Nothing committed by this investigation; this evidence file's updates are uncommitted working-tree changes (operator decides on commit). No tokens/keys/credentials read or recorded; no accounts signed into; no paid services enabled.
+- Nothing committed by this investigation; this evidence file's updates are uncommitted working-tree changes (operator decides on commit). No tokens/keys/credentials read or recorded; no NEW accounts signed into; no paid services enabled. Kiro was installed via winget (operator-authorized) and left unsigned-in (uninstalled on request).
