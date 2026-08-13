@@ -794,6 +794,52 @@ class SQLiteVisitBriefAuditRepository:
             )
             for row in rows
         ]
+class SQLiteDisclosureConsentRepository:
+    """Append-only persistence for v6 disclosure consent records."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def insert(self, consent: dict[str, object]) -> None:
+        fields = ("consent_id", "execution_id", "actor_id", "person_id", "purpose",
+                  "action", "envelope_id", "provider_id", "provider_descriptor_hash",
+                  "disclosure_metadata_json", "policy_version", "consented_at",
+                  "expires_at", "consent_hash", "metadata_json")
+        self.connection.execute(
+            f"INSERT INTO agent_disclosure_consents ({','.join(fields)}) "
+            f"VALUES ({','.join('?' for _ in fields)})",
+            tuple(consent[name] for name in fields),
+        )
+
+    def get_by_execution(self, execution_id: str) -> sqlite3.Row | None:
+        return self.connection.execute(
+            "SELECT * FROM agent_disclosure_consents WHERE execution_id = ?",
+            (execution_id,),
+        ).fetchone()
+
+
+class SQLiteExecutionReceiptRepository:
+    """Canonical execution receipt storage linked to consent metadata."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def insert(self, receipt: dict[str, object]) -> None:
+        fields = ("receipt_id", "execution_id", "consent_id", "actor_id", "person_id",
+                  "envelope_id", "provider_id", "status", "started_at", "completed_at",
+                  "used_evidence_ids_json", "used_tools_json", "output_sha256",
+                  "mutation_attempted", "reason_codes_json", "receipt_sha256", "metadata_json")
+        self.connection.execute(
+            f"INSERT INTO agent_execution_receipts ({','.join(fields)}) "
+            f"VALUES ({','.join('?' for _ in fields)})",
+            tuple(receipt[name] for name in fields),
+        )
+
+    def get_by_execution(self, execution_id: str) -> sqlite3.Row | None:
+        return self.connection.execute(
+            "SELECT * FROM agent_execution_receipts WHERE execution_id = ?",
+            (execution_id,),
+        ).fetchone()
 
 
 def _source_from_row(row: sqlite3.Row) -> Source:
