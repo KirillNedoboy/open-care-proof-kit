@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "access_expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Access Expires At"
+    },
+    "actor_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "assignment_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "authorized_at": {
+      "format": "date-time",
+      "title": "Authorized At",
+      "type": "string"
+    },
+    "consent_event_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Consent Event Id",
+      "type": "string"
+    },
+    "credential_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Credential Id",
+      "type": "string"
+    },
+    "granted_scopes": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Granted Scopes",
+      "type": "array"
+    },
+    "person_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Person Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "required_scopes": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Required Scopes",
+      "type": "array"
+    },
+    "role": {
+      "enum": [
+        "owner",
+        "caregiver"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "required": [
+    "actor_id",
+    "credential_id",
+    "person_id",
+    "assignment_id",
+    "role",
+    "granted_scopes",
+    "required_scopes",
+    "consent_event_id",
+    "authorized_at",
+    "policy_version"
+  ],
+  "title": "AuthorizationSnapshot",
+  "type": "object"
+}

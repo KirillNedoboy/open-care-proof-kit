@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenCare portable health context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "vault_mode", "people", "relationships", "medications", "labs", "visits", "timeline", "recorded_questions", "sources", "context_items"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "vault_mode": {"type": "string", "enum": ["demo", "local_file"]},
+    "people": {"type": "array", "items": {"type": "string"}},
+    "relationships": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "medications": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "labs": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "visits": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "timeline": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "recorded_questions": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+    "context_items": {"type": "array", "items": {"$ref": "#/$defs/item"}}
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "category", "text", "evidence_status", "source_ids"],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "minLength": 1},
+        "text": {"type": "string"},
+        "evidence_status": {"enum": ["source_backed", "recorded_without_source", "unknown"]},
+        "source_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "title", "source_type"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

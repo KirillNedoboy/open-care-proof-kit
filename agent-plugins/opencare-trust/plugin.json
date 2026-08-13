@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "description": "OpenCare portable trust package: inspect Trust Envelopes and Execution Receipts, verify provenance, policy, and disclosure fields, and summarize source-backed health context. Skill-only; verification is never authorization.",
+  "keywords": [
+    "opencare",
+    "trust",
+    "envelope",
+    "receipt",
+    "health-context",
+    "skills"
+  ],
+  "license": "Apache-2.0",
+  "name": "opencare-trust",
+  "repository": "https://github.com/KirillNedoboy/open-care-proof-kit"
+}
