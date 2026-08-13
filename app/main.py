@@ -65,12 +65,18 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             )
         else:
             family_runtime = family_runtime_factory(get_settings(), runtime)
+        g2_factory = getattr(application.state, "g2_runtime_factory", None)
+        g2_runtime = (
+            g2_factory(get_settings(), runtime, family_runtime)
+            if g2_factory is not None
+            else None
+        )
     except Exception:
         logger.error("Product Core startup failed", exc_info=False)
         raise
 
     application.state.product_core_runtime = runtime
-    application.state.family_access_runtime = family_runtime
+    application.state.g2_runtime = g2_runtime
     try:
         yield
     finally:
@@ -78,6 +84,8 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             del application.state.product_core_runtime
         if hasattr(application.state, "family_access_runtime"):
             del application.state.family_access_runtime
+        if hasattr(application.state, "g2_runtime"):
+            del application.state.g2_runtime
 
 
 app = FastAPI(title="OpenCare Proof Kit", version=__version__, lifespan=product_core_lifespan)
