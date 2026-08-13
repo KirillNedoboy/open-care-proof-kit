@@ -21,6 +21,8 @@ from app import __version__
 from app.agent.g2_product_repository import ProductCoreG2Repository
 from app.agent.g2_runtime import G2Runtime
 from app.agent.models import AgentQuestion
+from app.agent.providers.contract import AgentProvider
+from app.agent.providers.deterministic import DeterministicProvider
 from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
@@ -46,11 +48,15 @@ from app.vault.loader import load_health_vault
 from app.vault.schema import HealthVault
 
 
-class _LocalProvider:
-    provider_id = "local-deterministic"
-    descriptor_hash = hashlib.sha256(provider_id.encode()).hexdigest()
-    def answer(self, disclosure: dict[str, Any], question: str) -> dict[str, object]:
-        return {"answer": "Clinician-reviewable context only.", "question": question}
+def _build_agent_provider(settings: Settings) -> AgentProvider:
+    """Operator-configured provider; deterministic remains the default."""
+    return DeterministicProvider()
+
+
+def _provider_status_label(settings: Settings) -> str:
+    if settings.agent_mode == "openai_responses":
+        return "External model configured by operator"
+    return "Local deterministic demo"
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +86,7 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
                 PermissionError("g2_builder_requires_authority")
             ),
             revalidate=lambda pending, session: bool(pending and session),
-            provider=_LocalProvider(),
+            provider=_build_agent_provider(get_settings()),
             repository=ProductCoreG2Repository(runtime.database),
             clock=runtime.clock,
         )
@@ -306,11 +312,7 @@ def chat_page(request: Request) -> Response:
             "vault_source_name": person.display_name,
             "family_label": person.display_name,
             "people": [person],
-            "provider_status": (
-                "External model configured by operator"
-                if settings.agent_mode == "openai_responses"
-                else "Local deterministic demo"
-            ),
+            "provider_status": _provider_status_label(settings),
             "chat_endpoint": "/api/chat",
             "live_workspace": True,
         },
@@ -408,11 +410,7 @@ def demo_chat_page(request: Request) -> HTMLResponse:
             "vault_source_name": active_vault.source_basename or "Synthetic demo vault",
             "family_label": active_vault.read_model.family.display_name,
             "people": active_vault.read_model.people,
-            "provider_status": (
-                "External model configured by operator"
-                if settings.agent_mode == "openai_responses"
-                else "Local deterministic demo"
-            ),
+            "provider_status": _provider_status_label(settings),
             "chat_endpoint": "/api/demo/chat",
             "live_workspace": False,
         },

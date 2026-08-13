@@ -15,6 +15,11 @@ from sentient_agent_framework.interface.request import Query  # noqa: E402
 from ulid import ULID  # noqa: E402
 
 from app.agent.policy import classify_question  # noqa: E402
+from app.agent.providers.contract import (  # noqa: E402
+    ProviderExecutionRequest,
+    ProviderExecutionResult,
+    ToolCall,
+)
 from app.agent_trust.testing import SyntheticAuthority  # noqa: E402
 from app.integrations.sentient.adapter import (  # noqa: E402
     ACTION_ID,
@@ -91,39 +96,29 @@ class _Interaction:
         self.request = SimpleNamespace(prompt=prompt)
 
 
-class MutationAttemptProvider:
+class MutationAttemptProvider(DeterministicDemoProvider):
     """Stub G2 provider that tries to escape the read-only tool bounds."""
 
-    provider_id = "opencare.deterministic.demo"
-    descriptor_hash = "provider-v1"
+    def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResult:
+        del request
+        return ProviderExecutionResult(
+            answer={"answer": "mutation attempt"},
+            provider_id=self.descriptor.provider_id,
+            model_id=None,
+            tool_calls=(ToolCall(tool="context.read", operation="write"),),
+            failure=None,
+            runtime_metadata={},
+        )
 
-    def answer(self, disclosure: dict[str, Any], question: str) -> dict[str, Any]:
-        del disclosure, question
-        return {
-            "answer": "mutation attempt",
-            "tool_requests": [{"tool": "context.read", "operation": "write"}],
-        }
-
-
-class SpyProvider:
-    """Counts answer calls and returns a valid deterministic-shaped answer."""
-
-    provider_id = "opencare.deterministic.demo"
-    descriptor_hash = "sha256:opencare-deterministic-demo-v1"
+class SpyProvider(DeterministicDemoProvider):
+    """Counts execute calls and returns a valid deterministic-shaped answer."""
 
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    def answer(self, disclosure: dict[str, Any], question: str) -> dict[str, Any]:
-        del disclosure, question
-        self.calls.append("answer")
-        return {
-            "answer": "recorded context only; no advice.",
-            "citations": [],
-            "unknowns": [],
-            "doctor_questions": [],
-            "boundary_notices": [],
-        }
+    def execute(self, request: ProviderExecutionRequest) -> Any:
+        self.calls.append("execute")
+        return super().execute(request)
 
 
 def all_text(handler: FakeResponseHandler) -> str:
@@ -354,7 +349,7 @@ def test_adapter_never_invokes_external_provider(tmp: Path) -> None:
     spy_context = make_context(tmp / "spy", provider=spy)
     handler = run_assist(spy_context, "What medications are recorded?")
     assert handler.completed is True
-    assert spy.calls == ["answer"]
+    assert spy.calls == ["execute"]
 
     import app.integrations.sentient.adapter as adapter_module
 

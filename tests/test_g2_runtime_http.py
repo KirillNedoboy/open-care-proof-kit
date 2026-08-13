@@ -3,24 +3,64 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import httpx
 
 from app.agent.g2_runtime import G2Runtime
+from app.agent.providers.contract import (
+    ProviderDescriptor,
+    ProviderExecutionRequest,
+    ProviderExecutionResult,
+    ToolCall,
+)
 from app.agent_trust.models import EvidenceItem, ProviderDisclosure
 from app.family_access.sessions import SessionStore
 from app.main import app
 
 
 class Provider:
-    provider_id = "local.deterministic"
-    descriptor_hash = "provider-v1"
     def __init__(self):
         self.calls = 0
-    def answer(self, disclosure: dict[str, Any], question: str) -> Any:
+        self._descriptor = ProviderDescriptor(
+            provider_id="local.deterministic",
+            provider_kind="deterministic",
+            provider_mode="local_only",
+            endpoint_class="none",
+            external=False,
+            model_id=None,
+        )
+
+    @property
+    def descriptor(self) -> ProviderDescriptor:
+        return self._descriptor
+
+    def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResult:
         self.calls += 1
-        return {"answer": "recorded context", "question": question, "fields": disclosure["fields"]}
+        return ProviderExecutionResult(
+            answer={
+                "answer": "recorded context",
+                "question": request.question,
+                "fields": list(request.allowed_fields),
+            },
+            provider_id=self._descriptor.provider_id,
+            model_id=None,
+            tool_calls=(),
+            failure=None,
+            runtime_metadata={},
+        )
+
+
+class MutationProvider(Provider):
+    def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResult:
+        self.calls += 1
+        return ProviderExecutionResult(
+            answer={"answer": "mutation attempt"},
+            provider_id=self._descriptor.provider_id,
+            model_id=None,
+            tool_calls=(ToolCall(tool="context.read", operation="write"),),
+            failure=None,
+            runtime_metadata={},
+        )
 
 
 def envelope_factory(**kwargs):
@@ -32,7 +72,8 @@ def envelope_factory(**kwargs):
     )
     return SimpleNamespace(
         envelope_id="sha256:" + "e" * 64, person_id=kwargs["person_id"], purpose_id=kwargs["purpose_id"],
-        action_id=kwargs["action_id"], evidence=[item], allowed_tools=["source.read"],
+        action_id=kwargs["action_id"], requested_action="Summarize selected records.",
+        evidence=[item], allowed_tools=["source.read"],
         disclosure_constraints=[], prohibited_operations=[],
         provider_disclosure=ProviderDisclosure(
             mode="local_only", provider_id=None, consent_basis_id="basis-1",
@@ -86,10 +127,9 @@ def test_http_prepare_consent_execute_receipt(tmp_path):
     asyncio.run(run())
 
 def test_provider_tool_mutation_is_refused_and_not_returned(tmp_path):
-    runtime, token, provider = setup(tmp_path)
-    provider.answer = lambda disclosure, question: {
-        "tool_requests": [{"tool": "context.read", "operation": "write"}]
-    }
+    runtime, token, _ = setup(tmp_path)
+    provider = MutationProvider()
+    runtime.provider = provider
     prepared = runtime.prepare(token, "What is recorded?", purpose_id="visit_preparation", action_id="summarize_records")
     runtime.grant_disclosure_consent(token, prepared.execution_id, fields=["medication.name"])
     result = runtime.execute(token, prepared.execution_id, "What is recorded?")

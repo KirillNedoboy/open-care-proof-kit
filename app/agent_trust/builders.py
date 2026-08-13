@@ -21,6 +21,7 @@ from app.agent_trust.models import (
     EvidenceItem,
     ExecutionReceipt,
     FinalDecision,
+    ProviderDescriptorContract,
     ProviderDisclosure,
     SafetyDecision,
     TrustEnvelope,
@@ -46,6 +47,7 @@ class EnvelopeRequest(ContractModel):
     evidence_ids: list[str] = Field(min_length=1)
     disclosure_mode: Literal["local_only", "external_provider"]
     provider_id: str | None
+    provider_descriptor: ProviderDescriptorContract | None = None
     consent_basis_id: str = Field(min_length=1, max_length=128)
     ttl_seconds: int = Field(gt=0, le=MAX_TTL_SECONDS)
 
@@ -55,10 +57,12 @@ class EnvelopeRequest(ContractModel):
             values = getattr(self, name)
             if values != sorted(set(values)):
                 raise ValueError(f"{name} must be sorted and unique")
-        if self.disclosure_mode == "local_only" and self.provider_id is not None:
-            raise ValueError("local disclosure cannot name provider")
-        if self.disclosure_mode == "external_provider" and self.provider_id is None:
-            raise ValueError("external disclosure requires provider")
+        if self.disclosure_mode == "local_only":
+            if self.provider_descriptor is not None and self.provider_descriptor.external:
+                raise ValueError("local disclosure may only name a non-external provider")
+        else:
+            if self.provider_descriptor is None or not self.provider_descriptor.external:
+                raise ValueError("external disclosure requires an external provider")
         _, action_tools = ACTION_REQUIREMENTS[self.action_id]
         if not set(self.requested_tools) <= action_tools:
             raise ValueError("requested tool is not allowed for action")
@@ -137,9 +141,14 @@ class TrustedEnvelopeBuilder:
             raise BuildRefused(["authorization_expired"])
         allowed_tools = sorted(set(request.requested_tools) & action_tools)
         allowed_fields = sorted({field for item in evidence for field in item.selected_fields})
+        descriptor = request.provider_descriptor
+        provider_id = request.provider_id or (
+            descriptor.provider_id if descriptor is not None else None
+        )
         disclosure = ProviderDisclosure(
             mode=request.disclosure_mode,
-            provider_id=request.provider_id,
+            provider_id=provider_id,
+            provider_descriptor=descriptor,
             consent_basis_id=request.consent_basis_id,
             allowed_evidence_ids=[item.evidence_id for item in evidence],
             allowed_fields=allowed_fields,
@@ -186,12 +195,27 @@ def build_execution_receipt(
     used_tools: list[ToolId],
     output: bytes | None = None,
     reason_codes: list[str],
+    model_id: str | None = None,
+    provider_kind: str | None = None,
+    external: bool | None = None,
 ) -> ExecutionReceipt:
     if not set(used_evidence_ids) <= set(envelope.provider_disclosure.allowed_evidence_ids):
         raise BuildRefused(["receipt_exceeds_envelope"])
     if not set(used_tools) <= set(envelope.allowed_tools):
         raise BuildRefused(["receipt_exceeds_envelope"])
-    if provider_id != envelope.provider_disclosure.provider_id:
+    disclosure = envelope.provider_disclosure
+    descriptor = disclosure.provider_descriptor
+    bound_provider_id = (
+        descriptor.provider_id if descriptor is not None else disclosure.provider_id
+    )
+    if provider_id != bound_provider_id:
+        raise BuildRefused(["receipt_exceeds_envelope"])
+    bound_model_id = descriptor.model_id if descriptor is not None else None
+    if model_id != bound_model_id:
+        raise BuildRefused(["receipt_exceeds_envelope"])
+    bound_kind = descriptor.provider_kind if descriptor is not None else None
+    bound_external = descriptor.external if descriptor is not None else None
+    if provider_kind != bound_kind or external != bound_external:
         raise BuildRefused(["receipt_exceeds_envelope"])
     payload = {
         "contract_version": "opencare-execution-receipt/1",
@@ -201,6 +225,9 @@ def build_execution_receipt(
         "completed_at": completed_at,
         "status": status,
         "provider_id": provider_id,
+        "model_id": model_id,
+        "provider_kind": provider_kind,
+        "external": external,
         "used_evidence_ids": sorted(used_evidence_ids),
         "used_tools": sorted(used_tools),
         "output_sha256": sha256_hex(output) if output is not None else None,

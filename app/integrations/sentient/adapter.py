@@ -15,8 +15,10 @@ from sentient_agent_framework.interface.request import Query
 from sentient_agent_framework.interface.response_handler import ResponseHandler
 from sentient_agent_framework.interface.session import Session
 
-from app.agent.g2_runtime import EnvelopeProjection, G2Provider, G2Runtime
+from app.agent.g2_runtime import EnvelopeProjection, G2Runtime
 from app.agent.policy import classify_question
+from app.agent.providers.contract import ProviderDescriptor
+from app.agent.providers.deterministic import DeterministicProvider
 from app.agent_trust.builders import BuildRefused
 from app.agent_trust.models import ExecutionReceipt
 
@@ -51,31 +53,23 @@ def _sources_payload(projection: EnvelopeProjection) -> dict[str, Any]:
     }
 
 
-class DeterministicDemoProvider(G2Provider):
-    """Local deterministic provider; the answer derives only from the disclosure."""
+class DeterministicDemoProvider(DeterministicProvider):
+    """Local deterministic demo provider; the answer derives only from the disclosure.
 
-    provider_id: str = "opencare.deterministic.demo"
-    descriptor_hash: str = "sha256:opencare-deterministic-demo-v1"
+    Conforms to the G3 ``AgentProvider`` contract; only the provider id
+    differs from the core conformance baseline.
+    """
 
-    def answer(self, disclosure: dict[str, Any], question: str) -> dict[str, Any]:
-        del question
-        evidence = disclosure.get("evidence", [])
-        fields = disclosure.get("fields", [])
-        if not isinstance(evidence, list) or not isinstance(fields, list):
-            raise ValueError("invalid disclosure shape")
-        field_text = ", ".join(sorted(str(field) for field in fields)) or "none"
-        answer_text = (
-            f"Recorded context only: {len(evidence)} evidence item(s) authorized; "
-            f"disclosed fields: {field_text}. This is recorded context only; "
-            "no diagnosis, treatment, dosage, or medication advice is provided."
+    @property
+    def descriptor(self) -> ProviderDescriptor:
+        return ProviderDescriptor(
+            provider_id="opencare.deterministic.demo",
+            provider_kind="deterministic",
+            provider_mode="local_only",
+            endpoint_class="none",
+            external=False,
+            model_id=None,
         )
-        return {
-            "answer": answer_text,
-            "citations": [],
-            "unknowns": [],
-            "doctor_questions": [],
-            "boundary_notices": [],
-        }
 
 
 async def _refuse(

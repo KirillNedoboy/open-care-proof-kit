@@ -151,9 +151,31 @@ class EvidenceItem(ContractModel):
         return self
 
 
+class ProviderDescriptorContract(ContractModel):
+    """Consent-bound provider identity recorded in disclosure and Receipt."""
+
+    provider_id: OpaqueId
+    model_id: OpaqueId | None = None
+    provider_kind: BoundedString
+    endpoint_class: BoundedString
+    external: bool
+    descriptor_hash: Digest
+
+    @model_validator(mode="after")
+    def validate_descriptor(self) -> Self:
+        if self.provider_kind not in {"deterministic", "self_hosted_http", "external_http"}:
+            raise ValueError("invalid provider kind")
+        if self.endpoint_class not in {"loopback", "non_loopback", "none"}:
+            raise ValueError("invalid endpoint class")
+        if self.external != (self.endpoint_class == "non_loopback"):
+            raise ValueError("external flag must match endpoint class")
+        return self
+
+
 class ProviderDisclosure(ContractModel):
     mode: Literal["local_only", "external_provider"]
     provider_id: OpaqueId | None = None
+    provider_descriptor: ProviderDescriptorContract | None = None
     consent_basis_id: OpaqueId
     allowed_evidence_ids: list[OpaqueId]
     allowed_fields: list[BoundedString]
@@ -165,10 +187,15 @@ class ProviderDisclosure(ContractModel):
         _require_sorted_unique(self.allowed_evidence_ids, "allowed_evidence_ids")
         _require_sorted_unique(self.allowed_fields, "allowed_fields")
         _require_sorted_unique(self.prohibited_data_classes, "prohibited_data_classes")
-        if self.mode == "local_only" and self.provider_id is not None:
-            raise ValueError("local disclosure cannot name a provider")
-        if self.mode == "external_provider" and self.provider_id is None:
-            raise ValueError("external disclosure requires provider")
+        descriptor = self.provider_descriptor
+        if self.mode == "local_only":
+            if descriptor is not None and descriptor.external:
+                raise ValueError("local disclosure may only name a non-external provider")
+        else:
+            if self.provider_id is None:
+                raise ValueError("external disclosure requires provider")
+            if descriptor is None or not descriptor.external:
+                raise ValueError("external disclosure requires an external provider")
         return self
 
 
@@ -251,6 +278,9 @@ class ExecutionReceipt(ContractModel):
     completed_at: datetime
     status: Literal["completed", "refused", "failed"]
     provider_id: OpaqueId | None = None
+    model_id: OpaqueId | None = None
+    provider_kind: BoundedString | None = None
+    external: bool | None = None
     used_evidence_ids: list[OpaqueId]
     used_tools: list[ToolId]
     output_sha256: Digest | None = None

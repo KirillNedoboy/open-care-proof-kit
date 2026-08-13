@@ -7,6 +7,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol, cast
 
+from app.agent.providers.contract import (
+    AgentProvider,
+    ProviderUnavailableError,
+    build_provider_execution_request,
+)
+from app.agent.validation import ValidationResult
 from app.agent_trust.builders import build_execution_receipt
 from app.agent_trust.canonical import (
     canonical_bytes,
@@ -23,11 +29,57 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-class G2Provider(Protocol):
-    provider_id: str
-    descriptor_hash: str
+def _bound_provider_identity(disclosure: object) -> tuple[str | None, str | None]:
+    """Provider identity bound in a disclosure: descriptor first, legacy field second."""
+    descriptor = getattr(disclosure, "provider_descriptor", None)
+    if descriptor is not None:
+        return descriptor.provider_id, descriptor.descriptor_hash
+    return getattr(disclosure, "provider_id", None), None
 
-    def answer(self, disclosure: dict[str, Any], question: str) -> Any: ...
+
+def _receipt_provider_facts(
+    envelope: TrustEnvelope,
+) -> tuple[str | None, str | None, str | None, bool | None]:
+    """Receipt identity facts: provider_id, model_id, provider_kind, external."""
+    descriptor = getattr(envelope.provider_disclosure, "provider_descriptor", None)
+    if descriptor is not None:
+        return (
+            descriptor.provider_id,
+            descriptor.model_id,
+            descriptor.provider_kind,
+            descriptor.external,
+        )
+    return getattr(envelope.provider_disclosure, "provider_id", None), None, None, None
+
+
+def _validate_provider_answer(
+    answer: dict[str, Any], projection: EnvelopeProjection
+) -> ValidationResult:
+    """Validate provider output against the Envelope before it can be returned.
+
+    Provider output remains UNTRUSTED until this passes: citations must point
+    at Envelope source IDs, and no unsafe prescriptive claims, private paths,
+    or secret patterns may be present.
+    """
+    from app.agent.models import AgentAnswer, AgentContext, ContextSource
+    from app.agent.validation import validate_answer
+
+    source_ids = sorted(
+        {str(source_id) for item in projection.evidence for source_id in item["source_ids"]}
+    )
+    context = AgentContext(
+        source_kind="envelope",
+        family_label="",
+        sources=[
+            ContextSource(source_id=source_id, title="", source_type="envelope")
+            for source_id in source_ids
+        ],
+    )
+    try:
+        answer_model = AgentAnswer.model_validate({**answer, "status": "answered"})
+    except (TypeError, ValueError):
+        return ValidationResult(False, "validation_failed")
+    return validate_answer(answer_model, context)
 
 
 @dataclass(frozen=True)
@@ -38,6 +90,7 @@ class EnvelopeProjection:
     person_id: str
     purpose_id: str
     action_id: str
+    requested_action: str
     evidence: tuple[dict[str, Any], ...]
     allowed_tools: tuple[str, ...]
     allowed_fields: tuple[str, ...]
@@ -51,8 +104,13 @@ class EnvelopeProjection:
             person_id=envelope.person_id,
             purpose_id=envelope.purpose_id,
             action_id=envelope.action_id,
+            requested_action=envelope.requested_action,
             evidence=tuple(
-                {"evidence_id": item.evidence_id, "selected_fields": tuple(item.selected_fields)}
+                {
+                    "evidence_id": item.evidence_id,
+                    "selected_fields": tuple(item.selected_fields),
+                    "source_ids": tuple(item.source_ids),
+                }
                 for item in envelope.evidence
             ),
             allowed_tools=tuple(envelope.allowed_tools),
@@ -136,7 +194,7 @@ class G2Runtime:
         *,
         prepare_envelope: Callable[..., Any],
         revalidate: Callable[..., bool],
-        provider: G2Provider,
+        provider: AgentProvider,
         repository: G2Repository | None = None,
         project: Callable[[EnvelopeProjection, str], dict[str, Any]] | None = None,
         clock: Callable[[], datetime] | None = None,
@@ -183,8 +241,8 @@ class G2Runtime:
             action_id=action_id,
             question_hash=_hash(question),
             envelope_id=envelope.envelope_id,
-            provider_id=self.provider.provider_id,
-            provider_hash=self.provider.descriptor_hash,
+            provider_id=self.provider.descriptor.provider_id,
+            provider_hash=self.provider.descriptor.descriptor_hash,
         )
         return PrepareResult(
             pending.execution_id,
@@ -208,6 +266,9 @@ class G2Runtime:
         )
         projection = EnvelopeProjection.from_envelope(envelope)
         consent_fields = sorted(set(fields))
+        bound_provider_id, bound_provider_hash = _bound_provider_identity(
+            envelope.provider_disclosure
+        )
         if (
             envelope.envelope_id != pending.envelope_id
             or getattr(envelope, "actor_id", session.actor_id) != session.actor_id
@@ -215,12 +276,12 @@ class G2Runtime:
             or getattr(envelope, "purpose_id", pending.purpose_id) != pending.purpose_id
             or getattr(envelope, "action_id", pending.action_id) != pending.action_id
             or (
-                getattr(envelope.provider_disclosure, "provider_id", None) is not None
-                and envelope.provider_disclosure.provider_id != pending.provider_id
+                bound_provider_id is not None
+                and bound_provider_id != pending.provider_id
             )
             or (
-                getattr(envelope.provider_disclosure, "descriptor_hash", None) is not None
-                and envelope.provider_disclosure.descriptor_hash != pending.provider_hash
+                bound_provider_hash is not None
+                and bound_provider_hash != pending.provider_hash
             )
             or consent_fields != sorted(projection.allowed_fields)
             or getattr(envelope, "expires_at", pending.expires_at) <= self.clock()
@@ -280,11 +341,12 @@ class G2Runtime:
             question=question,
         )
         envelope_expires_at = getattr(envelope, "expires_at", consent["expires_at"])
+        _, bound_provider_hash = _bound_provider_identity(envelope.provider_disclosure)
         if (
             envelope.envelope_id != pending.envelope_id
             or (
-                getattr(envelope.provider_disclosure, "descriptor_hash", None) is not None
-                and envelope.provider_disclosure.descriptor_hash != pending.provider_hash
+                bound_provider_hash is not None
+                and bound_provider_hash != pending.provider_hash
             )
             or envelope_expires_at != consent["expires_at"]
         ):
@@ -293,20 +355,25 @@ class G2Runtime:
         if consumed is None:
             return ExecuteResult(execution_id, "refused", None, reason_code="replay")
         projection = EnvelopeProjection.from_envelope(envelope)
-        disclosure = self.project(projection, question)
         fields = list(cast(list[str], consent["fields"]))
         if fields != sorted(projection.allowed_fields):
             return ExecuteResult(execution_id, "refused", None, reason_code="tool_not_allowed")
         started_at = self.clock()
-        disclosure["fields"] = fields
+        provider_id, model_id, provider_kind, external = _receipt_provider_facts(envelope)
         try:
-            answer = self.provider.answer(disclosure, question)
+            request = build_provider_execution_request(projection, question)
+            result = self.provider.execute(request)
+            if result.failure is not None:
+                raise ProviderUnavailableError(result.failure.message)
+            if result.answer is None:
+                raise ProviderUnavailableError("Provider returned no answer.")
         except Exception:
             completed_at = self.clock()
             receipt = build_execution_receipt(
                 envelope=envelope, started_at=started_at, completed_at=completed_at,
                 status="failed",
-                provider_id=envelope.provider_disclosure.provider_id,
+                provider_id=provider_id, model_id=model_id,
+                provider_kind=provider_kind, external=external,
                 used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
                 used_tools=[], output=None, reason_codes=["provider_failed"],
             )
@@ -323,18 +390,9 @@ class G2Runtime:
         used_tools: list[str] = []
         mutation_attempted = False
         tool_results: list[dict[str, Any]] = []
-        requests = answer.get("tool_requests", []) if isinstance(answer, dict) else []
-        if not isinstance(requests, list):
-            requests = []
-        for request in requests:
-            if not isinstance(request, dict):
-                mutation_attempted = True
-                break
-            tool = request.get("tool")
-            operation = request.get("operation", "read")
-            if not isinstance(tool, str) or not isinstance(operation, str):
-                mutation_attempted = True
-                break
+        for call in result.tool_calls:
+            tool = call.tool
+            operation = call.operation
             if operation != "read" or tool not in mediator.READ_TOOLS:
                 mutation_attempted = True
                 break
@@ -345,22 +403,32 @@ class G2Runtime:
                 break
             used_tools.append(tool)
         if mutation_attempted:
-            answer = None
+            answer: dict[str, Any] | None = None
             status = "refused"
             reasons = ["tool_not_allowed"]
             output = None
         else:
-            if tool_results and isinstance(answer, dict):
-                answer = {**answer, "tool_results": tool_results}
-            status = "completed"
-            reasons = []
-            output = json.dumps(answer, default=str, sort_keys=True, separators=(",", ":")).encode()
+            validation = _validate_provider_answer(result.answer, projection)
+            if not validation.valid:
+                answer = None
+                status = "refused"
+                reasons = [validation.reason_code or "validation_failed"]
+                output = None
+            else:
+                answer = result.answer
+                if tool_results:
+                    answer = {**answer, "tool_results": tool_results}
+                status = "completed"
+                reasons = []
+                output = json.dumps(answer, default=str, sort_keys=True,
+                                    separators=(",", ":")).encode()
         completed_at = self.clock()
         receipt = build_execution_receipt(
             envelope=envelope,
             started_at=started_at,
             completed_at=completed_at,
-            provider_id=envelope.provider_disclosure.provider_id,
+            provider_id=provider_id, model_id=model_id,
+            provider_kind=provider_kind, external=external,
             used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
             status=cast(Any, status),
             used_tools=cast(Any, sorted(set(used_tools))),

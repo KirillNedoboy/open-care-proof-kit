@@ -17,7 +17,8 @@ from typing import Any
 
 from sentient_agent_framework import DefaultServer
 
-from app.agent.g2_runtime import EnvelopeProjection, G2Provider, G2Runtime
+from app.agent.g2_runtime import EnvelopeProjection, G2Runtime
+from app.agent.providers.contract import AgentProvider
 from app.agent_trust.builders import (
     BuildRefused,
     EnvelopeRequest,
@@ -25,7 +26,7 @@ from app.agent_trust.builders import (
     TrustedEnvelopeBuilder,
 )
 from app.agent_trust.identifiers import ActionId, PurposeId
-from app.agent_trust.models import TrustEnvelope
+from app.agent_trust.models import ProviderDescriptorContract, TrustEnvelope
 from app.agent_trust.testing import SyntheticAuthority
 from app.family_access.sessions import SessionStore
 from app.integrations.sentient.adapter import (
@@ -50,9 +51,21 @@ class DemoContext:
 
     runtime: G2Runtime
     session_token: str
-    provider: G2Provider
+    provider: AgentProvider
     projection: EnvelopeProjection
     now: datetime
+
+
+def _descriptor_contract(provider: AgentProvider) -> ProviderDescriptorContract:
+    descriptor = provider.descriptor
+    return ProviderDescriptorContract(
+        provider_id=descriptor.provider_id,
+        model_id=descriptor.model_id,
+        provider_kind=descriptor.provider_kind,
+        endpoint_class=descriptor.endpoint_class,
+        external=descriptor.external,
+        descriptor_hash=descriptor.descriptor_hash,
+    )
 
 
 def build_demo_context(
@@ -60,7 +73,7 @@ def build_demo_context(
     *,
     now: datetime | None = None,
     authority: TrustAuthority | None = None,
-    provider: G2Provider | None = None,
+    provider: AgentProvider | None = None,
 ) -> DemoContext:
     """Build a fresh synthetic G2 demo context; fails closed on any problem."""
     try:
@@ -74,6 +87,9 @@ def build_demo_context(
         store.set_active_person(created.session_token, PERSON_ID)
         authority = authority or SyntheticAuthority.allowed(now=now)
         builder = TrustedEnvelopeBuilder(authority, clock=lambda: now)
+
+        provider = provider or DeterministicDemoProvider()
+        provider_descriptor = _descriptor_contract(provider)
 
         def _prepare_envelope(
             *,
@@ -97,6 +113,7 @@ def build_demo_context(
                 evidence_ids=list(EVIDENCE_IDS),
                 disclosure_mode="local_only",
                 provider_id=None,
+                provider_descriptor=provider_descriptor,
                 consent_basis_id=CONSENT_BASIS_ID,
                 ttl_seconds=TTL_SECONDS,
             )

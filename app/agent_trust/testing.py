@@ -28,14 +28,15 @@ class SyntheticAccess:
 
 
 class SyntheticAuthority:
-    def __init__(self) -> None:
+    def __init__(self, *, allow_external_disclosure: bool = False) -> None:
         self.access: dict[str, SyntheticAccess] = {}
         self.evidence: dict[str, dict[str, object]] = {}
         self.safety: SafetyDecision
+        self.allow_external_disclosure = allow_external_disclosure
 
     @classmethod
-    def allowed(cls, *, now: datetime) -> Self:
-        authority = cls()
+    def allowed(cls, *, now: datetime, allow_external_disclosure: bool = False) -> Self:
+        authority = cls(allow_external_disclosure=allow_external_disclosure)
         all_scopes = frozenset(
             {
                 "brief.read",
@@ -187,5 +188,5 @@ class SyntheticAuthority:
         return self.safety
 
     def validate_disclosure(self, request: EnvelopeRequest) -> None:
-        if request.disclosure_mode == "external_provider":
+        if request.disclosure_mode == "external_provider" and not self.allow_external_disclosure:
             raise BuildRefused(["provider_disclosure_denied"])
