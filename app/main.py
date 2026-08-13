@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs, quote, urlsplit
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -303,52 +303,70 @@ def chat_page(request: Request) -> Response:
 
 @app.post("/api/chat")
 async def chat_api(request: Request) -> JSONResponse:
-    access = resolve_product_core_access(request)
-    if isinstance(access, JSONResponse):
-        return access
-    content_type = request.headers.get("content-type", "").lower()
-    if not content_type.startswith("application/json"):
-        return JSONResponse({"detail": "JSON content type is required."}, status_code=415)
-    body = await request.body()
-    if len(body) > 10_000:
-        return JSONResponse({"detail": "Question is too long."}, status_code=413)
-    try:
-        payload = json.loads(body)
-    except json.JSONDecodeError:
-        return JSONResponse({"detail": "Malformed JSON request."}, status_code=400)
-    if (
-        not isinstance(payload, dict)
-        or set(payload) != {"question"}
-        or not isinstance(payload.get("question"), str)
-    ):
-        return JSONResponse({"detail": "A question is required."}, status_code=422)
-    question = payload["question"].strip()
-    if not question:
-        return JSONResponse({"detail": "A question is required."}, status_code=422)
-    if len(question) > 2_000:
-        return JSONResponse({"detail": "Question is too long."}, status_code=413)
-    try:
-        person_id = access.require_active_person(
-            "chat.use",
-            "person.read",
-            "source.read",
-            "medication.read",
-            "timeline.read",
-            "visit.read",
-            audit_action="chat.context",
-            required_audit=True,
-        )
-        context = build_product_core_agent_context(access.runtime, person_id)
-    except (
-        ProductCoreNotFoundError,
-        ScopeForbiddenError,
-        AccessAuditUnavailableError,
-    ) as exc:
-        return _live_access_error(exc)
-    answer = GuardedChatService.for_context(context, get_settings()).answer(
-        AgentQuestion(question=question).question
+    return JSONResponse({"detail": "Consent-gated chat is required.", "code": "consent_required"}, status_code=410)
+def _g2_runtime_or_unavailable() -> Any:
+    runtime = getattr(app.state, "g2_runtime", None)
+    if runtime is None:
+        raise HTTPException(status_code=503, detail="Consent runtime is not ready.")
+    return runtime
+
+
+def _session_token(request: Request) -> str:
+    token = request.cookies.get("opencare_session")
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    return token
+
+
+@app.post("/api/chat/prepare")
+async def chat_prepare(request: Request) -> JSONResponse:
+    runtime = _g2_runtime_or_unavailable()
+    payload = await request.json()
+    question = payload.get("question") if isinstance(payload, dict) else None
+    if not isinstance(question, str) or not question.strip():
+        raise HTTPException(status_code=422, detail="A question is required.")
+    result = runtime.prepare(
+        _session_token(request), question.strip(),
+        purpose_id=payload.get("purpose_id", "visit_preparation"),
+        action_id=payload.get("action_id", "summarize_records"),
     )
-    return JSONResponse(answer.model_dump())
+    return JSONResponse(jsonable_encoder(result.__dict__))
+
+
+@app.post("/api/chat/executions/{execution_id}/consent")
+async def chat_consent(execution_id: str, request: Request) -> JSONResponse:
+    runtime = _g2_runtime_or_unavailable()
+    payload = await request.json()
+    fields = payload.get("fields", []) if isinstance(payload, dict) else []
+    if not isinstance(fields, list) or not all(isinstance(item, str) for item in fields):
+        raise HTTPException(status_code=422, detail="Disclosure fields are required.")
+    result = runtime.grant_disclosure_consent(
+        _session_token(request), execution_id, fields=fields
+    )
+    return JSONResponse(jsonable_encoder(result.__dict__))
+
+
+@app.post("/api/chat/executions/{execution_id}/execute")
+async def chat_execute(execution_id: str, request: Request) -> JSONResponse:
+    runtime = _g2_runtime_or_unavailable()
+    payload = await request.json()
+    question = payload.get("question") if isinstance(payload, dict) else None
+    if not isinstance(question, str) or not question.strip():
+        raise HTTPException(status_code=422, detail="A question is required.")
+    result = runtime.execute(_session_token(request), execution_id, question.strip())
+    return JSONResponse(jsonable_encoder(result.__dict__))
+
+
+@app.get("/api/chat/executions/{execution_id}/receipt")
+async def chat_receipt(execution_id: str, request: Request) -> JSONResponse:
+    runtime = _g2_runtime_or_unavailable()
+    getter = getattr(runtime, "get_receipt", None)
+    if getter is None:
+        raise HTTPException(status_code=404, detail="Receipt unavailable.")
+    receipt = getter(_session_token(request), execution_id)
+    if receipt is None:
+        raise HTTPException(status_code=404, detail="Receipt unavailable.")
+    return JSONResponse(jsonable_encoder(receipt))
 
 
 @app.get("/demo/chat", response_class=HTMLResponse)
