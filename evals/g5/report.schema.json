@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "opencare-g5-eval/1",
+  "title": "OpenCare G5 Ecosystem Validation Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "summary",
+    "security_invariants",
+    "quality_metrics",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "opencare-g5-eval/1"
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "Fixed synthetic UTC timestamp; reports are byte-deterministic."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "total_cases",
+        "passed_cases",
+        "failed_cases",
+        "deterministic_replay",
+        "plugin_integrity",
+        "cross_client"
+      ],
+      "properties": {
+        "state": {
+          "enum": ["PASS", "READY_FOR_SECOND_CLIENT_SMOKE", "BLOCKED"]
+        },
+        "total_cases": {"type": "integer", "minimum": 0},
+        "passed_cases": {"type": "integer", "minimum": 0},
+        "failed_cases": {"type": "integer", "minimum": 0},
+        "deterministic_replay": {"enum": ["pass", "fail"]},
+        "plugin_integrity": {"enum": ["pass", "fail"]},
+        "cross_client": {"type": "object"}
+      }
+    },
+    "security_invariants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unauthorized_evidence_exposures",
+        "external_calls_without_consent",
+        "canonical_mutations_via_agent_path",
+        "provider_calls_after_revocation",
+        "provider_calls_after_context_change",
+        "accepted_invalid_citations",
+        "accepted_unsupported_prescriptive_claims",
+        "receipt_verification_failures_for_valid_receipts"
+      ],
+      "properties": {
+        "unauthorized_evidence_exposures": {"type": "integer", "minimum": 0},
+        "external_calls_without_consent": {"type": "integer", "minimum": 0},
+        "canonical_mutations_via_agent_path": {"type": "integer", "minimum": 0},
+        "provider_calls_after_revocation": {"type": "integer", "minimum": 0},
+        "provider_calls_after_context_change": {"type": "integer", "minimum": 0},
+        "accepted_invalid_citations": {"type": "integer", "minimum": 0},
+        "accepted_unsupported_prescriptive_claims": {"type": "integer", "minimum": 0},
+        "receipt_verification_failures_for_valid_receipts": {"type": "integer", "minimum": 0}
+      }
+    },
+    "quality_metrics": {
+      "type": "object",
+      "description": "Observational metrics with explicit numerators/denominators; no targets."
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "category", "passed", "outcome", "reason_codes"],
+        "properties": {
+          "case_id": {"type": "string", "minLength": 1},
+          "category": {"type": "string", "minLength": 1},
+          "passed": {"type": "boolean"},
+          "outcome": {"type": "string"},
+          "reason_codes": {"type": "array", "items": {"type": "string"}},
+          "provider_calls": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  }
+}
