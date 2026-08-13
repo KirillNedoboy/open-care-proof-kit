@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
+
 from app.agent_trust.builders import build_execution_receipt
 from app.agent_trust.canonical import digest_matches, receipt_id, receipt_sha256
 from app.agent_trust.models import ExecutionReceipt, TrustEnvelope
@@ -100,12 +101,17 @@ class ExecuteResult:
     receipt_id: str | None = None
     reason_code: str | None = None
 
+
 class G2Repository(Protocol):
     """Product Core persistence boundary for canonical execution receipts."""
 
-    def save_execution_receipt(self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str) -> None: ...
+    def save_execution_receipt(
+        self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str
+    ) -> None: ...
 
-    def get_execution_receipt(self, execution_id: str) -> ExecutionReceipt | dict[str, Any] | None: ...
+    def get_execution_receipt(
+        self, execution_id: str
+    ) -> ExecutionReceipt | dict[str, Any] | None: ...
 
 
 class G2Runtime:
@@ -140,6 +146,7 @@ class G2Runtime:
             ),
         )
         self.clock = clock or (lambda: datetime.now(UTC))
+        self._receipts: dict[str, ExecutionReceipt] = {}
 
     def prepare(
         self, session_token: str, question: str, *, purpose_id: str, action_id: str
@@ -254,19 +261,22 @@ class G2Runtime:
             started_at=started_at,
             completed_at=completed_at,
             status="completed",
-            provider_id=pending.provider_id,
+            provider_id=envelope.provider_disclosure.provider_id,
             used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
             used_tools=[],
             output=output,
             reason_codes=[],
         )
+        self._receipts[execution_id] = receipt
         if self.repository is not None:
             self.repository.save_execution_receipt(
                 receipt, execution_id=execution_id, consent_id=str(consent["consent_id"])
             )
         return ExecuteResult(execution_id, "answered", answer, receipt_id=receipt.receipt_id)
 
-    def get_receipt(self, session_token: str, execution_id: str) -> dict[str, object] | ExecutionReceipt | None:
+    def get_receipt(
+        self, session_token: str, execution_id: str
+    ) -> dict[str, object] | ExecutionReceipt | None:
         session = self.sessions.resolve(session_token)
         if session is None:
             return None
@@ -275,7 +285,11 @@ class G2Runtime:
             if receipt is None:
                 return None
             try:
-                parsed = receipt if isinstance(receipt, ExecutionReceipt) else ExecutionReceipt.model_validate(receipt)
+                parsed = (
+                    receipt
+                    if isinstance(receipt, ExecutionReceipt)
+                    else ExecutionReceipt.model_validate(receipt)
+                )
                 if parsed.receipt_id != receipt_id(parsed) or not digest_matches(
                     parsed.receipt_sha256, receipt_sha256(parsed)
                 ):
@@ -283,8 +297,5 @@ class G2Runtime:
             except (TypeError, ValueError):
                 return None
             return parsed
-        receipt = self.sessions.get_receipt(execution_id)
-        if session is None or receipt is None or receipt["actor_id"] != session.actor_id:
-            return None
+        receipt = self._receipts.get(execution_id)
         return receipt
-

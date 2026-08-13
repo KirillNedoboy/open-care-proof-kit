@@ -1,5 +1,5 @@
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -30,11 +30,11 @@ def envelope_factory(**kwargs):
         observed_at=datetime.now(UTC),
     )
     return SimpleNamespace(
-        envelope_id="envelope-1", person_id=kwargs["person_id"], purpose_id=kwargs["purpose_id"],
+        envelope_id="sha256:" + "e" * 64, person_id=kwargs["person_id"], purpose_id=kwargs["purpose_id"],
         action_id=kwargs["action_id"], evidence=[item], allowed_tools=["source.read"],
         disclosure_constraints=[], prohibited_operations=[],
         provider_disclosure=ProviderDisclosure(
-            mode="local_only", provider_id="local.deterministic", consent_basis_id="basis-1",
+            mode="local_only", provider_id=None, consent_basis_id="basis-1",
             allowed_evidence_ids=["evidence-1"], allowed_fields=["medication.name"],
             prohibited_data_classes=["credentials"], retention="request_only",
         ),
