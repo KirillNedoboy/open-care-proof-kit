@@ -74,8 +74,8 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
     except Exception:
         logger.error("Product Core startup failed", exc_info=False)
         raise
-
     application.state.product_core_runtime = runtime
+    application.state.family_access_runtime = family_runtime
     application.state.g2_runtime = g2_runtime
     try:
         yield
