@@ -260,20 +260,6 @@ class G2Runtime:
             output=output,
             reason_codes=[],
         )
-        self.sessions.save_receipt(
-            {
-                "execution_id": execution_id,
-                "receipt_id": receipt.receipt_id,
-                "actor_id": session.actor_id,
-                "person_id": pending.person_id,
-                "envelope_id": pending.envelope_id,
-                "provider_id": pending.provider_id,
-                "status": "completed",
-                "output_hash": receipt.output_sha256,
-                "reason_code": None,
-                "created_at": receipt.completed_at.isoformat(),
-            }
-        )
         if self.repository is not None:
             self.repository.save_execution_receipt(
                 receipt, execution_id=execution_id, consent_id=str(consent["consent_id"])
