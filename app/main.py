@@ -344,7 +344,9 @@ async def chat_consent(execution_id: str, request: Request) -> JSONResponse:
     if not isinstance(fields, list) or not all(isinstance(item, str) for item in fields):
         raise HTTPException(status_code=422, detail="Disclosure fields are required.")
     try:
-        result = runtime.grant_disclosure_consent(_session_token(request), execution_id, fields=fields)
+        result = runtime.grant_disclosure_consent(
+            _session_token(request), execution_id, fields=fields
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     return JSONResponse(jsonable_encoder(result.__dict__))

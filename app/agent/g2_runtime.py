@@ -4,10 +4,12 @@ import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.agent_trust.models import TrustEnvelope
 from app.family_access.sessions import SessionStore
+
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
@@ -18,6 +20,7 @@ class G2Provider(Protocol):
     descriptor_hash: str
 
     def answer(self, disclosure: dict[str, Any], question: str) -> Any: ...
+
 
 @dataclass(frozen=True)
 class EnvelopeProjection:
@@ -34,7 +37,7 @@ class EnvelopeProjection:
     prohibited_operations: tuple[str, ...]
 
     @classmethod
-    def from_envelope(cls, envelope: TrustEnvelope) -> "EnvelopeProjection":
+    def from_envelope(cls, envelope: TrustEnvelope) -> EnvelopeProjection:
         return cls(
             envelope_id=envelope.envelope_id,
             person_id=envelope.person_id,
@@ -65,8 +68,12 @@ class EnvelopeToolMediator:
         if tool not in self.projection.allowed_tools:
             raise PermissionError("tool_not_allowed")
         if tool == "context.read":
-            return {"person_id": self.projection.person_id, "purpose_id": self.projection.purpose_id}
+            return {
+                "person_id": self.projection.person_id,
+                "purpose_id": self.projection.purpose_id,
+            }
         return {"evidence": [dict(item) for item in self.projection.evidence]}
+
 
 @dataclass(frozen=True)
 class PrepareResult:
@@ -113,11 +120,14 @@ class G2Runtime:
         )
         self.provider, self.project = (
             provider,
-            project or (lambda projection, question: {
-                "envelope_id": projection.envelope_id,
-                "purpose_id": projection.purpose_id,
-                "action_id": projection.action_id,
-            }),
+            project
+            or (
+                lambda projection, question: {
+                    "envelope_id": projection.envelope_id,
+                    "purpose_id": projection.purpose_id,
+                    "action_id": projection.action_id,
+                }
+            ),
         )
         self.clock = clock or (lambda: datetime.now(UTC))
 
@@ -173,14 +183,21 @@ class G2Runtime:
                 ]
             )
         )
-        self.sessions.save_consent({
-            "execution_id": execution_id, "consent_id": consent_id,
-            "actor_id": session.actor_id, "person_id": pending.person_id,
-            "purpose_id": pending.purpose_id, "action_id": pending.action_id,
-            "envelope_id": pending.envelope_id, "provider_id": pending.provider_id,
-            "provider_hash": pending.provider_hash, "fields": sorted(set(fields)),
-            "expires_at": pending.expires_at.isoformat(),
-        })
+        self.sessions.save_consent(
+            {
+                "execution_id": execution_id,
+                "consent_id": consent_id,
+                "actor_id": session.actor_id,
+                "person_id": pending.person_id,
+                "purpose_id": pending.purpose_id,
+                "action_id": pending.action_id,
+                "envelope_id": pending.envelope_id,
+                "provider_id": pending.provider_id,
+                "provider_hash": pending.provider_hash,
+                "fields": sorted(set(fields)),
+                "expires_at": pending.expires_at.isoformat(),
+            }
+        )
         return ConsentResult(execution_id, consent_id, pending.expires_at)
 
     def execute(self, session_token: str, execution_id: str, question: str) -> ExecuteResult:
@@ -222,13 +239,20 @@ class G2Runtime:
         receipt_id = "sha256:" + _hash(
             execution_id + json.dumps(answer, default=str, sort_keys=True)
         )
-        self.sessions.save_receipt({
-            "execution_id": execution_id, "receipt_id": receipt_id,
-            "actor_id": session.actor_id, "person_id": pending.person_id,
-            "envelope_id": pending.envelope_id, "provider_id": pending.provider_id,
-            "status": "completed", "output_hash": _hash(json.dumps(answer, default=str)),
-            "reason_code": None, "created_at": self.clock().isoformat(),
-        })
+        self.sessions.save_receipt(
+            {
+                "execution_id": execution_id,
+                "receipt_id": receipt_id,
+                "actor_id": session.actor_id,
+                "person_id": pending.person_id,
+                "envelope_id": pending.envelope_id,
+                "provider_id": pending.provider_id,
+                "status": "completed",
+                "output_hash": _hash(json.dumps(answer, default=str)),
+                "reason_code": None,
+                "created_at": self.clock().isoformat(),
+            }
+        )
         return ExecuteResult(execution_id, "answered", answer, receipt_id=receipt_id)
 
     def get_receipt(self, session_token: str, execution_id: str) -> dict[str, object] | None:
