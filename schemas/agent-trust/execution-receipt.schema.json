@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "completed_at": {
+      "format": "date-time",
+      "title": "Completed At",
+      "type": "string"
+    },
+    "contract_version": {
+      "const": "opencare-execution-receipt/1",
+      "default": "opencare-execution-receipt/1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "envelope_id": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Envelope Id",
+      "type": "string"
+    },
+    "external": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
+    },
+    "output_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Sha256"
+    },
+    "provider_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Id"
+    },
+    "provider_kind": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Kind"
+    },
+    "reason_codes": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "receipt_id": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Receipt Sha256",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "refused",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "used_evidence_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Used Evidence Ids",
+      "type": "array"
+    },
+    "used_tools": {
+      "items": {
+        "enum": [
+          "context.read",
+          "source.read",
+          "brief.draft"
+        ],
+        "type": "string"
+      },
+      "title": "Used Tools",
+      "type": "array"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "envelope_id",
+    "started_at",
+    "completed_at",
+    "status",
+    "used_evidence_ids",
+    "used_tools",
+    "reason_codes",
+    "receipt_sha256"
+  ],
+  "title": "ExecutionReceipt",
+  "type": "object"
+}

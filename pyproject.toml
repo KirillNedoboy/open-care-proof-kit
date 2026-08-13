@@ -32,6 +32,9 @@ sentient = [
   "sentient-agent-framework==0.3.0",
 ]
 
+[project.scripts]
+opencare-trust = "app.agent_trust.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["app*", "evals*"]
 

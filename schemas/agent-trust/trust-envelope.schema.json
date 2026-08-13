@@ -1,0 +1,628 @@
+{
+  "$defs": {
+    "AuthorizationDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "allow",
+            "deny"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthorizationSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "decision",
+        "reason_codes"
+      ],
+      "title": "AuthorizationDecision",
+      "type": "object"
+    },
+    "AuthorizationSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "access_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Expires At"
+        },
+        "actor_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "assignment_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Assignment Id",
+          "type": "string"
+        },
+        "authorized_at": {
+          "format": "date-time",
+          "title": "Authorized At",
+          "type": "string"
+        },
+        "consent_event_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Consent Event Id",
+          "type": "string"
+        },
+        "credential_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Credential Id",
+          "type": "string"
+        },
+        "granted_scopes": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Granted Scopes",
+          "type": "array"
+        },
+        "person_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Person Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "required_scopes": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Scopes",
+          "type": "array"
+        },
+        "role": {
+          "enum": [
+            "owner",
+            "caregiver"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "credential_id",
+        "person_id",
+        "assignment_id",
+        "role",
+        "granted_scopes",
+        "required_scopes",
+        "consent_event_id",
+        "authorized_at",
+        "policy_version"
+      ],
+      "title": "AuthorizationSnapshot",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "properties": {
+        "content_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "evidence_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_type": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Evidence Type",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "person_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Person Id",
+          "type": "string"
+        },
+        "provenance_status": {
+          "enum": [
+            "source_backed",
+            "user_asserted"
+          ],
+          "title": "Provenance Status",
+          "type": "string"
+        },
+        "resource_scope": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Resource Scope",
+          "type": "string"
+        },
+        "selected_fields": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Selected Fields",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "evidence_type",
+        "person_id",
+        "resource_scope",
+        "content_sha256",
+        "source_ids",
+        "provenance_status",
+        "selected_fields",
+        "observed_at"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "FinalDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "allow",
+            "refuse"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision",
+        "reason_codes"
+      ],
+      "title": "FinalDecision",
+      "type": "object"
+    },
+    "ProviderDescriptorContract": {
+      "additionalProperties": false,
+      "description": "Consent-bound provider identity recorded in disclosure and Receipt.",
+      "properties": {
+        "descriptor_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Descriptor Hash",
+          "type": "string"
+        },
+        "endpoint_class": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Endpoint Class",
+          "type": "string"
+        },
+        "external": {
+          "title": "External",
+          "type": "boolean"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "provider_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Provider Id",
+          "type": "string"
+        },
+        "provider_kind": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Provider Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider_id",
+        "provider_kind",
+        "endpoint_class",
+        "external",
+        "descriptor_hash"
+      ],
+      "title": "ProviderDescriptorContract",
+      "type": "object"
+    },
+    "ProviderDisclosure": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_evidence_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Allowed Evidence Ids",
+          "type": "array"
+        },
+        "allowed_fields": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Allowed Fields",
+          "type": "array"
+        },
+        "consent_basis_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Consent Basis Id",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "local_only",
+            "external_provider"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "prohibited_data_classes": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Prohibited Data Classes",
+          "type": "array"
+        },
+        "provider_descriptor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderDescriptorContract"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provider_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Id"
+        },
+        "retention": {
+          "enum": [
+            "request_only",
+            "provider_policy"
+          ],
+          "title": "Retention",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "consent_basis_id",
+        "allowed_evidence_ids",
+        "allowed_fields",
+        "prohibited_data_classes",
+        "retention"
+      ],
+      "title": "ProviderDisclosure",
+      "type": "object"
+    },
+    "SafetyDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "allow",
+            "refuse"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "policy_version": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "required_notices": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Notices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision",
+        "reason_codes",
+        "policy_version",
+        "evaluated_at",
+        "limitations",
+        "required_notices"
+      ],
+      "title": "SafetyDecision",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_id": {
+      "enum": [
+        "answer_question",
+        "draft_visit_brief",
+        "summarize_records"
+      ],
+      "title": "Action Id",
+      "type": "string"
+    },
+    "actor_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "allowed_tools": {
+      "items": {
+        "enum": [
+          "context.read",
+          "source.read",
+          "brief.draft"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Tools",
+      "type": "array"
+    },
+    "authorization": {
+      "$ref": "#/$defs/AuthorizationDecision"
+    },
+    "contract_version": {
+      "const": "opencare-trust-envelope/1",
+      "default": "opencare-trust-envelope/1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "disclosure_constraints": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Disclosure Constraints",
+      "type": "array"
+    },
+    "envelope_id": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Envelope Id",
+      "type": "string"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "minItems": 1,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "final_decision": {
+      "$ref": "#/$defs/FinalDecision"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "person_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Person Id",
+      "type": "string"
+    },
+    "prohibited_operations": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Prohibited Operations",
+      "type": "array"
+    },
+    "provider_disclosure": {
+      "$ref": "#/$defs/ProviderDisclosure"
+    },
+    "purpose_id": {
+      "enum": [
+        "visit_preparation",
+        "record_explanation",
+        "clinician_briefing"
+      ],
+      "title": "Purpose Id",
+      "type": "string"
+    },
+    "requested_action": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Requested Action",
+      "type": "string"
+    },
+    "resource_scopes": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Resource Scopes",
+      "type": "array"
+    },
+    "safety": {
+      "$ref": "#/$defs/SafetyDecision"
+    },
+    "safety_notices": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Safety Notices",
+      "type": "array"
+    }
+  },
+  "required": [
+    "envelope_id",
+    "issued_at",
+    "expires_at",
+    "actor_id",
+    "person_id",
+    "purpose_id",
+    "action_id",
+    "requested_action",
+    "resource_scopes",
+    "authorization",
+    "safety",
+    "final_decision",
+    "evidence",
+    "provider_disclosure",
+    "allowed_tools",
+    "prohibited_operations",
+    "disclosure_constraints",
+    "limitations",
+    "safety_notices"
+  ],
+  "title": "TrustEnvelope",
+  "type": "object"
+}

@@ -11,13 +11,15 @@ from pydantic import ValidationError
 
 from app.agent_trust.builders import BuildRefused, EnvelopeRequest, TrustedEnvelopeBuilder
 from app.agent_trust.canonical import canonical_bytes, strict_json_loads
+from app.agent_trust.fixtures import default_fixtures_dir, write_fixtures
 from app.agent_trust.models import TrustEnvelope
+from app.agent_trust.schemas import default_schema_dir, write_schemas
 from app.agent_trust.testing import SyntheticAuthority
 from app.agent_trust.validation import validate_envelope_bytes, validate_receipt_bytes
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m app.agent_trust.cli")
+    parser = argparse.ArgumentParser(prog="opencare-trust")
     commands = parser.add_subparsers(dest="command", required=True)
     export = commands.add_parser("export-envelope")
     export.add_argument("--demo", action="store_true", required=True)
@@ -48,6 +50,21 @@ def build_parser() -> argparse.ArgumentParser:
     receipt.add_argument("--receipt", type=Path, required=True)
     receipt.add_argument("--envelope", type=Path, required=True)
     receipt.add_argument("--at")
+
+    schemas = commands.add_parser("export-schemas")
+    schemas.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output directory (default: <repo>/schemas/agent-trust).",
+    )
+    fixtures = commands.add_parser("regenerate-fixtures")
+    fixtures.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output directory (default: <repo>/fixtures/agent-trust).",
+    )
     return parser
 
 
@@ -61,6 +78,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _inspect(args.envelope)
     if args.command == "verify-receipt":
         return _verify_receipt(args.receipt, args.envelope, _parse_at(args.at))
+    if args.command == "export-schemas":
+        return _export_schemas(args.output)
+    if args.command == "regenerate-fixtures":
+        return _regenerate_fixtures(args.output)
     return 2
 
 
@@ -90,6 +111,42 @@ def _export(args: argparse.Namespace) -> int:
         reasons = exc.reason_codes if isinstance(exc, BuildRefused) else ["trust_envelope_failed"]
         return _print_result(False, reasons)
     return _print_result(True, [], envelope_id=envelope.envelope_id)
+
+
+def _export_schemas(output: Path | None) -> int:
+    try:
+        written = write_schemas(output if output is not None else default_schema_dir())
+    except OSError:
+        return _print_result(False, ["schema_export_failed"])
+    print(
+        json.dumps(
+            {
+                "valid": True,
+                "status": "accepted",
+                "schema_files": sorted(path.name for path in written),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _regenerate_fixtures(output: Path | None) -> int:
+    try:
+        written = write_fixtures(output if output is not None else default_fixtures_dir())
+    except OSError:
+        return _print_result(False, ["fixture_regeneration_failed"])
+    print(
+        json.dumps(
+            {
+                "valid": True,
+                "status": "accepted",
+                "fixture_files": sorted(path.name for path in written),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
 
 
 def _verify_envelope(path: Path, at: datetime) -> int:
