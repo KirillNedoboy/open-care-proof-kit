@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import sqlite3
@@ -334,21 +335,21 @@ class SessionStore:
             question_hash, envelope_id, provider_id, provider_hash, "prepared", expires_at
         )
 
+    def get_pending(self, execution_id: str) -> PendingExecution | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM pending_executions WHERE execution_id=?", (execution_id,)
+            ).fetchone()
+        if row is None or _parse_datetime(str(row["expires_at"])) <= self.clock():
+            return None
         return PendingExecution(
-            execution_id=str(row["execution_id"]),
-            session_id=str(row["session_id"]),
-            actor_id=str(row["actor_id"]),
-            person_id=str(row["person_id"]),
-            purpose_id=str(row["purpose_id"]),
-            action_id=str(row["action_id"]),
-            question_hash=str(row["question_hash"]),
-            envelope_id=str(row["envelope_id"]),
-            provider_id=str(row["provider_id"]),
-            provider_hash=str(row["provider_hash"]),
-            state=str(row["state"]),
-            expires_at=_parse_datetime(str(row["expires_at"])),
+            execution_id=str(row["execution_id"]), session_id=str(row["session_id"]),
+            actor_id=str(row["actor_id"]), person_id=str(row["person_id"]),
+            purpose_id=str(row["purpose_id"]), action_id=str(row["action_id"]),
+            question_hash=str(row["question_hash"]), envelope_id=str(row["envelope_id"]),
+            provider_id=str(row["provider_id"]), provider_hash=str(row["provider_hash"]),
+            state=str(row["state"]), expires_at=_parse_datetime(str(row["expires_at"])),
         )
-
     def save_consent(self, data: dict[str, object]) -> None:
         with self._connect() as connection:
             connection.execute(
@@ -411,10 +412,12 @@ class SessionStore:
             session_id=str(row["session_id"]),
             actor_id=str(row["actor_id"]),
             person_id=str(row["person_id"]),
+            purpose_id=str(row["purpose_id"]),
+            action_id=str(row["action_id"]),
             question_hash=str(row["question_hash"]),
             envelope_id=str(row["envelope_id"]),
             provider_id=str(row["provider_id"]),
             provider_hash=str(row["provider_hash"]),
-            state=str(row["state"]),
+            state="consumed",
             expires_at=_parse_datetime(str(row["expires_at"])),
         )
