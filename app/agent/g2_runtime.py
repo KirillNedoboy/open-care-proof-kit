@@ -4,11 +4,10 @@ import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from app.agent_trust.models import TrustEnvelope
 from app.family_access.sessions import SessionStore
-
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
@@ -20,6 +19,54 @@ class G2Provider(Protocol):
 
     def answer(self, disclosure: dict[str, Any], question: str) -> Any: ...
 
+@dataclass(frozen=True)
+class EnvelopeProjection:
+    """The only envelope data exposed to preparation/provider code."""
+
+    envelope_id: str
+    person_id: str
+    purpose_id: str
+    action_id: str
+    evidence: tuple[dict[str, Any], ...]
+    allowed_tools: tuple[str, ...]
+    allowed_fields: tuple[str, ...]
+    disclosure_constraints: tuple[str, ...]
+    prohibited_operations: tuple[str, ...]
+
+    @classmethod
+    def from_envelope(cls, envelope: TrustEnvelope) -> "EnvelopeProjection":
+        return cls(
+            envelope_id=envelope.envelope_id,
+            person_id=envelope.person_id,
+            purpose_id=envelope.purpose_id,
+            action_id=envelope.action_id,
+            evidence=tuple(
+                {"evidence_id": item.evidence_id, "selected_fields": tuple(item.selected_fields)}
+                for item in envelope.evidence
+            ),
+            allowed_tools=tuple(envelope.allowed_tools),
+            allowed_fields=tuple(envelope.provider_disclosure.allowed_fields),
+            disclosure_constraints=tuple(envelope.disclosure_constraints),
+            prohibited_operations=tuple(envelope.prohibited_operations),
+        )
+
+
+class EnvelopeToolMediator:
+    """Fail-closed mediator for the envelope's read-only tools."""
+
+    READ_TOOLS = frozenset({"context.read", "source.read"})
+
+    def __init__(self, envelope: TrustEnvelope) -> None:
+        self.projection = EnvelopeProjection.from_envelope(envelope)
+
+    def invoke(self, tool: str, *, operation: str = "read") -> dict[str, Any]:
+        if operation != "read" or tool not in self.READ_TOOLS:
+            raise PermissionError("tool_not_allowed")
+        if tool not in self.projection.allowed_tools:
+            raise PermissionError("tool_not_allowed")
+        if tool == "context.read":
+            return {"person_id": self.projection.person_id, "purpose_id": self.projection.purpose_id}
+        return {"evidence": [dict(item) for item in self.projection.evidence]}
 
 @dataclass(frozen=True)
 class PrepareResult:
@@ -56,7 +103,7 @@ class G2Runtime:
         prepare_envelope: Callable[..., Any],
         revalidate: Callable[..., bool],
         provider: G2Provider,
-        project: Callable[[Any, str], dict[str, Any]] | None = None,
+        project: Callable[[EnvelopeProjection, str], dict[str, Any]] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.sessions, self.prepare_envelope, self.revalidate = (
@@ -66,7 +113,11 @@ class G2Runtime:
         )
         self.provider, self.project = (
             provider,
-            project or (lambda envelope, question: {"envelope_id": envelope.envelope_id}),
+            project or (lambda projection, question: {
+                "envelope_id": projection.envelope_id,
+                "purpose_id": projection.purpose_id,
+                "action_id": projection.action_id,
+            }),
         )
         self.clock = clock or (lambda: datetime.now(UTC))
 
@@ -98,7 +149,7 @@ class G2Runtime:
             pending.execution_id,
             envelope.envelope_id,
             pending.question_hash,
-            self.project(envelope, question),
+            self.project(EnvelopeProjection.from_envelope(envelope), question),
             pending.expires_at,
         )
 
@@ -160,8 +211,9 @@ class G2Runtime:
         consumed = self.sessions.consume_pending(execution_id)
         if consumed is None:
             return ExecuteResult(execution_id, "refused", None, reason_code="replay")
-        disclosure = self.project(envelope, question)
-        allowed = set(getattr(envelope.provider_disclosure, "allowed_fields", []))
+        projection = EnvelopeProjection.from_envelope(envelope)
+        disclosure = self.project(projection, question)
+        allowed = set(projection.allowed_fields)
         fields = json.loads(str(consent["fields_json"]))
         if not set(fields) <= allowed:
             return ExecuteResult(execution_id, "refused", None, reason_code="tool_not_allowed")
