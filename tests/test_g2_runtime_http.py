@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
