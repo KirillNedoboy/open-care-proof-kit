@@ -162,6 +162,42 @@ This is a compatibility spike, not a production Sentient integration.
 G3 proves provider portability and security compatibility, not model medical
 correctness. No model-quality or diagnostic benchmarking is introduced.
 
+### Sentient G4 status (implemented)
+
+#### Implemented
+
+- Generic trust layer with a stable public API (`app/agent_trust/api.py`) and
+  zero OpenCare coupling: contract models, canonicalization/hashing,
+  validation, trusted builders, controlled identifiers, and the generic
+  `AuthorizationAdapter` Protocol.
+- OpenCare authorization adapter moved to `app/agent/trust_adapter.py`; it
+  implements the generic Protocol against live Family Access state and remains
+  the only health-specific authority bridge.
+- Deterministic JSON Schema export (`schemas/agent-trust/`) via
+  `scripts/export_agent_trust_schemas.py` / `opencare-trust export-schemas`
+  with a drift test; G1 `contract_version` literals unchanged, no new schema
+  version.
+- Synthetic, offline, not-authorization fixture corpus
+  (`fixtures/agent-trust/`) with deterministic regeneration
+  (`opencare-trust regenerate-fixtures`) and a drift test.
+- `opencare-trust` console entry plus `python -m app.agent_trust.cli`;
+  deterministic exit codes; schema export and fixture regeneration are pure
+  artifact generation; no live-authorization minting path.
+- Agent Plugins v1 **skill-only** package (`agent-plugins/opencare-trust/`):
+  strict 1.0.0 `plugin.json` plus its `skills/` tree (including the canonical
+  `opencare-health-agent` skill and an `opencare-trust-envelope` inspection
+  skill), deterministic packaging from the canonical skill sources, drift
+  test, no symlinks, package containment, secret/path scan, and no `mcp.json`.
+
+#### Not implemented
+
+- MCP: no `mcp.json`, no MCP server; an optional read-only MCP adapter is
+  explicitly deferred until G5 ecosystem validation.
+- Multi-client validation: no claim that any external client has loaded the
+  package (that is G5).
+- No new security model, no new schema or contract version, no live-authority
+  CLI minting, no signatures/PKI/attestation/transparency.
+
 The preserved roadmap note:
 
 ```txt
@@ -171,6 +207,8 @@ G4 Portable Trust Package
 → optional read-only MCP adapter after safe runtime boundary
 ```
 
-Agent Plugins packaging is not part of G2.5; no `plugin.json`, no `mcp.json`.
+G4 (implemented) delivers the skill-first Agent Plugins v1 packaging; the
+optional read-only MCP adapter remains deferred to G5. Agent Plugins
+packaging is not part of G2.5; no `plugin.json`, no `mcp.json` at G2.5.
 
 Do not invent Sentient APIs, claim integration, or add ecosystem requirements without official sources.

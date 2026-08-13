@@ -19,8 +19,27 @@
   check, no-redirect, and fail-closed behavior. Operator-only provider
   configuration via `OPENCARE_AGENT_MODE=ollama` and the `OPENCARE_OLLAMA_*`
   variables; the default stays deterministic/local and no model runtime is
-  required for startup. Provider-portability conformance, trust, endpoint, and
+- Provider-portability conformance, trust, endpoint, and
   live-smoke suites under `tests/provider_*`.
+- Sentient G4 portable trust package: generic trust layer with a stable public
+  API (`app/agent_trust/api.py`) and zero OpenCare coupling; the generic
+  `AuthorizationAdapter` Protocol with the OpenCare adapter moved to
+  `app/agent/trust_adapter.py`; deterministic JSON Schema export
+  (`schemas/agent-trust/` via `scripts/export_agent_trust_schemas.py` or
+  `opencare-trust export-schemas`) with a drift test; and a synthetic, offline,
+  not-authorization fixture corpus (`fixtures/agent-trust/`) with
+  deterministic regeneration (`opencare-trust regenerate-fixtures`) and a
+  drift test. G1 `contract_version` literals are unchanged; no new schema
+  version is invented.
+- Agent Plugins v1 skill-only package at `agent-plugins/opencare-trust/`
+  (strict 1.0.0 `plugin.json` plus its `skills/` tree, including the canonical
+  `opencare-health-agent` skill), packaged deterministically from the
+  canonical skill sources with a drift test, no symlinks, package containment
+  and secret/path scans, and no `mcp.json` (explicit MCP deferral).
+- `opencare-trust` console entry (`pyproject.toml` `[project.scripts]`) plus
+  the existing `python -m app.agent_trust.cli`; deterministic exit codes;
+  schema export and fixture regeneration are pure artifact generation with no
+  live-authorization minting path.
 
 ### Security
 
@@ -36,6 +55,12 @@
   passes the existing G2 validation; `ExecutionReceipt` records
   `provider_id`, `model_id`, `provider_kind`, and `external` with no separate
   model receipt.
+- G4 packaging rules: strict Agent Plugins 1.0.0 manifest conformance, skills
+  discovered only from immediate child directories, skill name matching its
+  directory, package containment (no path or symlink escape), secret/path
+  scans, deterministic builds, and no live-authority CLI minting. A historical
+  Envelope or Receipt remains a non-credential, and the committed fixtures are
+  explicitly not authorization.
 
 ## [0.2.0] - 2026-08-04
 

@@ -102,6 +102,47 @@ is `READY_FOR_LIVE_SMOKE` because Ollama is not installed locally; the smoke
 never auto-installs or downloads a runtime. This branch work is not part of
 the published `v0.2.0` main baseline described elsewhere in this document.
 
+## Sentient G4 portable trust package (working branch)
+
+On the `codex/sentient-g4-portable-trust-package` working branch, the
+G1/G2/G3 trust contract is packaged for portable use. G4 is packaging and
+interface stabilization, not a new security model; the G1 `contract_version`
+literals (`opencare-trust-envelope/1`, `opencare-execution-receipt/1`) are
+unchanged.
+
+- Generic trust layer with a stable public API (`app/agent_trust/api.py`) and
+  zero OpenCare coupling: contract models, canonicalization/hashing,
+  validation, trusted builders, controlled identifiers, and the generic
+  `AuthorizationAdapter` Protocol (no FastAPI, Product Core, Family Access,
+  SessionStore, Ollama, or Sentient imports).
+- The OpenCare authorization adapter moved to `app/agent/trust_adapter.py`;
+  it implements the generic Protocol against live Family Access state and is
+  the only health-specific authority bridge.
+- Deterministic JSON Schema export at `schemas/agent-trust/`
+  (`trust-envelope.schema.json`, `execution-receipt.schema.json`,
+  `authorization-snapshot.schema.json`) via
+  `scripts/export_agent_trust_schemas.py` or `opencare-trust export-schemas`,
+  with a drift test. No new schema version is invented.
+- Synthetic, offline, not-authorization fixture corpus at
+  `fixtures/agent-trust/` (allowed / refused / unsupported), fixed fixture
+  clock `2027-08-02T10:00:00Z`, deterministic regeneration via
+  `opencare-trust regenerate-fixtures`, and a drift test.
+- `opencare-trust` console entry (`pyproject.toml` `[project.scripts]`) plus
+  `python -m app.agent_trust.cli`, deterministic exit codes, schema export and
+  fixture regeneration as pure artifact generation, and no live-authorization
+  minting path.
+- An Agent Plugins v1 **skill-only** package at
+  `agent-plugins/opencare-trust/` (strict 1.0.0 `plugin.json` plus its
+  `skills/` tree, including the canonical `opencare-health-agent` skill and an
+  `opencare-trust-envelope` inspection skill), packaged deterministically from
+  the canonical skill sources with a drift test, no symlinks, package
+  containment and secret/path scans, and no `mcp.json` (explicit MCP
+  deferral).
+
+G4 makes no MCP claim and no multi-client validation claim; multi-client
+ecosystem validation is Sentient G5. This branch work is not part of the
+published `v0.2.0` main baseline described elsewhere in this document.
+
 ## Preserved boundaries
 
 - published `v0.1.0` controlled private-alpha baseline and current `v0.2.0`

@@ -109,12 +109,14 @@ aggregation and stabilization of the existing G1 contract surface.
 
 ## 5. Versioned schema export
 
-`schemas/agent-trust/` holds versioned JSON Schemas generated deterministically from the
-G1 contract models by `scripts/export_agent_trust_schemas.py`:
+`schemas/agent-trust/` holds JSON Schemas generated deterministically from the
+G1 contract models by `scripts/export_agent_trust_schemas.py` (also reachable as
+`opencare-trust export-schemas`; never hand-edit the committed files):
 
-- one file per contract version, named from the versioned `contract_version` literal, e.g.
-  `schemas/agent-trust/opencare-trust-envelope-1.schema.json` and
-  `schemas/agent-trust/opencare-execution-receipt-1.schema.json`;
+- `trust-envelope.schema.json` — the `TrustEnvelope` contract (`opencare-trust-envelope/1`);
+- `execution-receipt.schema.json` — the `ExecutionReceipt` contract (`opencare-execution-receipt/1`);
+- `authorization-snapshot.schema.json` — the `AuthorizationSnapshot` model embedded in an
+  Envelope;
 - the generator is deterministic: identical inputs produce identical bytes on every platform
   (same OS/locale/newline independence rule as G1 §6 canonicalization);
 - a **drift test** regenerates the schemas and asserts the committed files are byte-identical,
@@ -130,26 +132,32 @@ packagers and validators.
 ## 6. Fixture contract
 
 `fixtures/agent-trust/` is the public, committed fixture corpus for the trust contract,
-organized into the categories the trust contract can produce:
+with a README stating the fixture contract. The corpus covers the three categories the trust
+contract can produce, encoded as flat files (no subdirectories):
 
-- `allowed/` — authorized requests that yield a valid, verifiable Envelope (and matching
-  Receipt where applicable);
-- `refused/` — requests denied or refused, with the stable reason codes (G1 §10), never a
-  look-executable Envelope;
-- `unsupported/` — structurally invalid or non-canonical inputs (duplicate keys, BOM, unknown
-  fields, wrong versions) that must fail validation.
+- **allowed** — `allowed-envelope.json` (a valid synthetic Envelope that verifies) and
+  `allowed-receipt.json` (a valid `completed` Receipt linked to that Envelope identity);
+- **refused** — `refused-before-envelope-receipt.json` (a `refused` Receipt: execution did
+  not complete; no `output_sha256`; stable reason codes per G1 §10; never a
+  look-executable Envelope);
+- **unsupported** — `unsupported-action-receipt.json` (fail-closed `unsupported_action`
+  refusal bound to a placeholder Envelope identity, because an unsupported action never
+  receives an Envelope); structurally invalid or non-canonical inputs (duplicate keys, BOM,
+  unknown fields, wrong versions) remain covered by the enforcement suite in
+  `tests/fixtures/agent_trust/`.
 
 Fixture rules:
 
 - **All synthetic and offline.** No real Actor, Person, clinician, record, consent event,
-  credential material, or raw health payload appears; content is generated deterministically.
-- **Not authorization.** A fixture Envelope is a test vector, not a capability. Fixtures must
-  document (in a machine-readable header or README) that a valid hash proves only integrity
-  and deterministic identity and is not live authority — matching G1 §2 and §8. G2 rechecks
-  everything live; no fixture can be executed as if authorized.
-- **Deterministic regeneration.** A regeneration path (script and/or test) rebuilds the corpus
-  and the drift test asserts committed bytes are unchanged, so the corpus is reproducible and
-  reviewable.
+  credential material, or raw health payload appears; content is generated deterministically
+  from fixed synthetic inputs with a fixed fixture clock (`2027-08-02T10:00:00Z`).
+- **Not authorization.** A fixture Envelope is a test vector, not a capability. The corpus
+  README documents that a valid hash proves only integrity and deterministic identity and is
+  not live authority — matching G1 §2 and §8. G2 rechecks everything live; no fixture can be
+  executed as if authorized, and a Receipt alone does not prove a completed Envelope.
+- **Deterministic regeneration.** `opencare-trust regenerate-fixtures` (and the committed
+  generator) rebuilds the corpus from the fixed synthetic inputs; the drift test asserts
+  committed bytes are unchanged, so the corpus is reproducible and reviewable.
 
 The existing `tests/fixtures/agent_trust/` vectors remain the enforcement suite; the public
 `fixtures/agent-trust/` corpus is the stable, documented, versioned distribution form of the
@@ -177,9 +185,18 @@ that as an error." Layout:
 agent-plugins/opencare-trust/
 ├── plugin.json
 └── skills/
-    └── opencare-health-agent/
+    ├── opencare-health-agent/
+    │   └── SKILL.md
+    └── opencare-trust-envelope/
         └── SKILL.md
 ```
+
+Skills are discovered per Agent Plugins §7.1: each immediate child directory of `skills/`
+containing a regular `SKILL.md` is one skill; no recursive descent. The committed package
+carries the canonical `opencare-health-agent` skill (source of truth in §8) plus an
+`opencare-trust-envelope` inspection skill. Every packaged skill must satisfy the §11
+conformance rules (valid frontmatter, name matches directory), and the exact package content
+is governed by the deterministic packaging script and its drift test (§8).
 
 `plugin.json` conforms strictly to `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`:
 
@@ -248,6 +265,8 @@ usage errors. Machine output is JSON. Commands:
   identity, or arbitrary Envelope JSON (G1 §11).
 - `export-schemas` — offline, deterministic schema export to `schemas/agent-trust/`
   (§5); pure artifact generation.
+- `regenerate-fixtures` — deterministic regeneration of the synthetic fixture corpus in
+  `fixtures/agent-trust/` (§6) from the fixed synthetic inputs; pure artifact generation.
 
 There is **no live-authorization minting path** in this package: no command queries live Family
 Access or session state, and no command turns arbitrary JSON into an authorized Envelope. The
@@ -351,8 +370,8 @@ Exact quotes from the inspected upstream documents (recorded verbatim for the de
   field optional (§5.4); `additionalProperties: false` in the machine schema.
 - **Name constraints** (§5.5): 1–64 characters; character set `a-z`, `0-9`, `-`, `.`; first and
   last characters alphanumeric; no consecutive hyphens (`--`) or consecutive periods (`..`).
-  "Periods are allowed in plugin names." Schema pattern:
-  `^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$`.
+  "Periods are allowed in plugin names." Schema pattern (from `plugin.schema.json`):
+  `^(?!.*(?:--|\.\.))[a-z0-9]` followed by `(?:[a-z0-9.-]*[a-z0-9])?` and a trailing `$`.
 - **Skill-only package** (§6.2): "If a fixed component location is absent, the client MUST NOT
   treat that as an error." — `mcp.json` is therefore optional; a plugin with only skills is
   conformant.

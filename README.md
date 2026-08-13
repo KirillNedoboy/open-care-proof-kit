@@ -28,6 +28,9 @@ The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narr
 - [Family authorization matrix](docs/security/family-access-authorization-matrix.md)
 - [Family access threat model](docs/security/family-access-threat-model.md)
 - [Agent direction summary](AGENTS.product-direction.md)
+- [Sentient G4 design](docs/architecture/sentient-g4-portable-trust-package.md)
+- [Trust Envelope protocol](docs/protocol/opencare-trust-envelope.md)
+- [Agent trust integration guide](docs/integrations/agent-trust-integration-guide.md)
 
 `CHECKPOINT.md` and `SESSION_NOTES.md` are historical chronology, not current
 status sources. Grant and reviewer documents are supporting evidence, not the
@@ -122,6 +125,35 @@ Sentient session/request identifiers (`processor_id`, `activity_id`,
 `request_id`, `chat_id`) are Sentient correlation IDs, not OpenCare
 authorization; no live-vault identity bridge exists yet. See
 [docs/integrations/sentient-agent-framework-spike.md](docs/integrations/sentient-agent-framework-spike.md).
+
+## Sentient G4 Portable Trust Package
+
+Sentient G4 packages the G1/G2/G3 trust contract for portable use: a generic
+trust layer with a stable public API (`app/agent_trust/api.py`) and zero
+OpenCare coupling, a generic `AuthorizationAdapter` Protocol with the OpenCare
+adapter in `app/agent/trust_adapter.py`, deterministic JSON Schemas
+(`schemas/agent-trust/`, regenerated via `opencare-trust export-schemas`),
+synthetic offline fixtures (`fixtures/agent-trust/` — not authorization), and
+an `opencare-trust` CLI (also `python -m app.agent_trust.cli`).
+
+G4 also ships an Agent Plugins v1 **skill-only** package at
+`agent-plugins/opencare-trust/` (strict 1.0.0 `plugin.json` plus its `skills/`
+tree, including the canonical `opencare-health-agent` skill), packaged
+deterministically from the canonical skill at [skills/opencare-health-agent](skills/opencare-health-agent/).
+The package contains no `mcp.json`: MCP support is explicitly deferred, and no
+multi-client validation is claimed (that is Sentient G5).
+
+```powershell
+.\.venv\Scripts\python.exe -m app.agent_trust.cli verify-envelope --envelope fixtures/agent-trust/allowed-envelope.json --at 2027-08-02T10:00:00Z
+.\.venv\Scripts\python.exe -m app.agent_trust.cli export-schemas
+.\.venv\Scripts\python.exe -m app.agent_trust.cli regenerate-fixtures
+```
+
+See the [Trust Envelope protocol](docs/protocol/opencare-trust-envelope.md)
+(standalone, no health knowledge required), the
+[integration guide](docs/integrations/agent-trust-integration-guide.md) for
+downstream adapters, and the
+[G4 design](docs/architecture/sentient-g4-portable-trust-package.md).
 
 ## Reviewer Quick Links
 
