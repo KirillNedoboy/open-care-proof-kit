@@ -297,29 +297,86 @@ class G2Runtime:
         fields = list(cast(list[str], consent["fields"]))
         if fields != sorted(projection.allowed_fields):
             return ExecuteResult(execution_id, "refused", None, reason_code="tool_not_allowed")
-        disclosure["fields"] = fields
         started_at = self.clock()
-        answer = self.provider.answer(disclosure, question)
+        disclosure["fields"] = fields
+        try:
+            answer = self.provider.answer(disclosure, question)
+        except Exception:
+            completed_at = self.clock()
+            receipt = build_execution_receipt(
+                envelope=envelope, started_at=started_at, completed_at=completed_at,
+                status="failed",
+                provider_id=envelope.provider_disclosure.provider_id,
+                used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
+                used_tools=[], output=None, reason_codes=["provider_failed"],
+            )
+            self._receipts[execution_id] = receipt
+            if self.repository is not None:
+                self.repository.save_execution_receipt(
+                    receipt, execution_id=execution_id, consent_id=str(consent["consent_id"]),
+                    actor_id=session.actor_id, person_id=pending.person_id,
+                    mutation_attempted=False,
+                )
+            return ExecuteResult(execution_id, "refused", None,
+                                 reason_code="provider_failed", receipt_id=receipt.receipt_id)
+        mediator = EnvelopeToolMediator(envelope)
+        used_tools: list[str] = []
+        mutation_attempted = False
+        tool_results: list[dict[str, Any]] = []
+        requests = answer.get("tool_requests", []) if isinstance(answer, dict) else []
+        if not isinstance(requests, list):
+            requests = []
+        for request in requests:
+            if not isinstance(request, dict):
+                mutation_attempted = True
+                break
+            tool = request.get("tool")
+            operation = request.get("operation", "read")
+            if not isinstance(tool, str) or not isinstance(operation, str):
+                mutation_attempted = True
+                break
+            if operation != "read" or tool not in mediator.READ_TOOLS:
+                mutation_attempted = True
+                break
+            try:
+                tool_results.append(mediator.invoke(tool, operation=operation))
+            except PermissionError:
+                mutation_attempted = True
+                break
+            used_tools.append(tool)
+        if mutation_attempted:
+            answer = None
+            status = "refused"
+            reasons = ["tool_not_allowed"]
+            output = None
+        else:
+            if tool_results and isinstance(answer, dict):
+                answer = {**answer, "tool_results": tool_results}
+            status = "completed"
+            reasons = []
+            output = json.dumps(answer, default=str, sort_keys=True, separators=(",", ":")).encode()
         completed_at = self.clock()
-        output = json.dumps(answer, default=str, sort_keys=True, separators=(",", ":")).encode()
         receipt = build_execution_receipt(
             envelope=envelope,
             started_at=started_at,
             completed_at=completed_at,
-            status="completed",
             provider_id=envelope.provider_disclosure.provider_id,
             used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
-            used_tools=[],
+            status=cast(Any, status),
+            used_tools=cast(Any, sorted(set(used_tools))),
             output=output,
-            reason_codes=[],
+            reason_codes=reasons,
         )
         self._receipts[execution_id] = receipt
         if self.repository is not None:
             self.repository.save_execution_receipt(
                 receipt, execution_id=execution_id, consent_id=str(consent["consent_id"]),
                 actor_id=session.actor_id, person_id=pending.person_id,
-                mutation_attempted=False,
+                mutation_attempted=mutation_attempted,
             )
+        if status != "completed":
+            return ExecuteResult(execution_id, "refused", None, reason_code=reasons[0],
+                                 receipt_id=receipt.receipt_id)
         return ExecuteResult(execution_id, "answered", answer, receipt_id=receipt.receipt_id)
 
     def get_receipt(
