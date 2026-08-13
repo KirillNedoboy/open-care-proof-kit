@@ -9,6 +9,33 @@
   the G2 consent-gated runtime, deterministic local provider, and Sentient
   event rendering with validated answers and redacted Execution Receipts.
   Spike only; not a production integration and no live-vault access.
+- Sentient G3 model portability: provider-independent G2 execution contract
+  (`AgentProvider` Protocol plus `ProviderDescriptor` /
+  `ProviderExecutionRequest` / `ProviderExecutionResult` and a shared
+  `build_provider_execution_request` in `app/agent/providers/`), a
+  deterministic baseline provider, and one self-hosted Ollama adapter
+  (`app/agent/providers/ollama.py`) built on stdlib `urllib` with zero new
+  Python dependencies, JSON-schema `format` structured output, model-identity
+  check, no-redirect, and fail-closed behavior. Operator-only provider
+  configuration via `OPENCARE_AGENT_MODE=ollama` and the `OPENCARE_OLLAMA_*`
+  variables; the default stays deterministic/local and no model runtime is
+  required for startup. Provider-portability conformance, trust, endpoint, and
+  live-smoke suites under `tests/provider_*`.
+
+### Security
+
+- Adds loopback disclosure classification for self-hosted providers: loopback
+  (`127.0.0.1` / `localhost` / `::1`) is `external=false`; non-loopback is
+  `external=true` and requires the G2 disclosure-preview and exact per-call
+  consent flow, and owning a remote server is not a consent exemption.
+- Binds executed provider/model identity to the G2 disclosure and Receipt
+  flow, keeps provider configuration operator-owned (never chat-request
+  supplied), rejects embedded endpoint credentials, and fails closed on
+  unavailable, refused, timed-out, malformed, or unsupported provider output
+  with no cloud or second-provider fallback. Provider output is untrusted and
+  passes the existing G2 validation; `ExecutionReceipt` records
+  `provider_id`, `model_id`, `provider_kind`, and `external` with no separate
+  model receipt.
 
 ## [0.2.0] - 2026-08-04
 

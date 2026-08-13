@@ -226,6 +226,16 @@ Set `OPENCARE_AGENT_MODE=openai_responses` only with `OPENCARE_AGENT_ALLOW_EXTER
 
 Responses are buffered, policy-checked, source-validated, and fail closed when validation fails. This reduces unsupported output, but it cannot guarantee medical correctness or clinical safety.
 
+An optional self-hosted provider is available via the operator configuration:
+set `OPENCARE_AGENT_MODE=ollama` with `OPENCARE_OLLAMA_ENDPOINT` (default
+`http://127.0.0.1:11434`), `OPENCARE_OLLAMA_MODEL`,
+`OPENCARE_OLLAMA_TIMEOUT_SECONDS` (default `15.0`), and
+`OPENCARE_OLLAMA_MAX_RESPONSE_BYTES` (default `1000000`). The provider is
+opt-in, deterministic by default, uses only loopback disclosure by default
+(`external=false`), and runs no model at startup unless an operator enables it.
+Non-loopback endpoints require the G2 disclosure-preview and exact per-call
+consent. This is not clinical validation of any model's output.
+
 ### Health/Family Vault reviewer path
 
 The reviewer route is:

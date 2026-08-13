@@ -77,6 +77,31 @@ Final evals, trust metrics, package installation, Uvicorn/production Compose
 smoke, and clean-worktree evidence are recorded in the implementation report,
 not projected here before execution.
 
+## Sentient G3 provider portability (working branch)
+
+On the `codex/sentient-g3-model-portability` working branch, the agent
+provider is a portability slot below the G1 Trust Envelope: a provider-
+independent G2 execution contract (`AgentProvider` Protocol plus
+`ProviderDescriptor` / `ProviderExecutionRequest` / `ProviderExecutionResult`
+in `app/agent/providers/`), a deterministic baseline provider, and one
+self-hosted Ollama adapter (`app/agent/providers/ollama.py`) over stdlib
+`urllib` with zero new dependencies, JSON-schema `format` structured output,
+model-identity checking, no-redirect, and fail-closed behavior. Loopback
+endpoints are `external=false`; non-loopback endpoints are `external=true` and
+require the G2 disclosure-preview and exact per-call consent flow (owning a
+remote server is not a consent exemption). Every provider passes the same
+G1/G2 validation, and `ExecutionReceipt` records `provider_id`, `model_id`,
+`provider_kind`, and `external` with no separate model receipt. Provider
+configuration is operator-only (`OPENCARE_AGENT_MODE=ollama` and
+`OPENCARE_OLLAMA_*`); the default stays deterministic/local and no model
+runtime is required for startup.
+
+G3 proves provider portability and security compatibility, not model medical
+correctness; it adds no model-quality or diagnostic benchmarking. The result
+is `READY_FOR_LIVE_SMOKE` because Ollama is not installed locally; the smoke
+never auto-installs or downloads a runtime. This branch work is not part of
+the published `v0.2.0` main baseline described elsewhere in this document.
+
 ## Preserved boundaries
 
 - published `v0.1.0` controlled private-alpha baseline and current `v0.2.0`

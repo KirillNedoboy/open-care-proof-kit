@@ -114,9 +114,53 @@ historical; genetics is outside the Sentient critical path.
 - Sentient as an OpenCare authorization source.
 - Sentient SDK as a core dependency.
 - External LLM integration.
-- G3 model portability.
 
 This is a compatibility spike, not a production Sentient integration.
+
+### Sentient G3 status (implemented)
+
+#### Implemented
+
+- Provider-independent G2 execution contract: `AgentProvider` Protocol plus
+  `ProviderDescriptor` / `ProviderExecutionRequest` / `ProviderExecutionResult`
+  and a shared `build_provider_execution_request` in `app/agent/providers/`.
+- A deterministic baseline provider and one self-hosted Ollama adapter
+  (`app/agent/providers/ollama.py`), built on stdlib `urllib` with zero new
+  Python dependencies, JSON-schema `format` structured output, model-identity
+  check, no-redirect, and fail-closed behavior.
+- Loopback disclosure classification: loopback (`127.0.0.1` / `localhost` /
+  `::1`) is `external=false`; non-loopback is `external=true` and requires the
+  G2 disclosure-preview and exact per-call consent flow. Owning a remote server
+  is not a consent exemption.
+- Same G1/G2 validation and Receipts for every provider; `ExecutionReceipt`
+  records `provider_id`, `model_id`, `provider_kind`, and `external` with no
+  separate model receipt.
+- Operator-only provider configuration via
+  `OPENCARE_AGENT_MODE=ollama`, `OPENCARE_OLLAMA_ENDPOINT`,
+  `OPENCARE_OLLAMA_MODEL`, `OPENCARE_OLLAMA_TIMEOUT_SECONDS`, and
+  `OPENCARE_OLLAMA_MAX_RESPONSE_BYTES`; the default stays deterministic/local
+  and a model runtime is not required for startup.
+- Provider-portability conformance and trust suites under `tests/`
+  (`provider_conformance.py`, `provider_endpoints.py`,
+  `provider_portability_trust.py`) plus a live smoke
+  (`provider_live_smoke.py`) that skips without a real Ollama.
+- Result is `READY_FOR_LIVE_SMOKE` (Ollama is not installed locally); the
+  smoke never auto-installs or downloads a runtime.
+
+#### Not implemented
+
+- Second self-hosted runtime.
+- Generic model marketplace.
+- Model routing.
+- Automatic failover.
+- Cloud fallback.
+- Agent Plugins, MCP, A2A.
+- Production Sentient identity bridge.
+- Diagnosis/treatment AI.
+- RAG, vector DB, genetics, training/fine-tuning.
+
+G3 proves provider portability and security compatibility, not model medical
+correctness. No model-quality or diagnostic benchmarking is introduced.
 
 The preserved roadmap note:
 
