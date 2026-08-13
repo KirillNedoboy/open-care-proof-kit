@@ -23,6 +23,7 @@ from app.agent.g2_runtime import G2Runtime
 from app.agent.models import AgentQuestion
 from app.agent.providers.contract import AgentProvider
 from app.agent.providers.deterministic import DeterministicProvider
+from app.agent.providers.ollama import OllamaProvider, OllamaProviderConfig
 from app.agent.service import GuardedChatService
 from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
@@ -50,10 +51,21 @@ from app.vault.schema import HealthVault
 
 def _build_agent_provider(settings: Settings) -> AgentProvider:
     """Operator-configured provider; deterministic remains the default."""
+    if settings.agent_mode == "ollama":
+        return OllamaProvider(
+            OllamaProviderConfig(
+                endpoint_url=settings.ollama_endpoint or "http://127.0.0.1:11434",
+                model=settings.ollama_model or "",
+                timeout_seconds=settings.ollama_timeout_seconds,
+                max_response_bytes=settings.ollama_max_response_bytes,
+            )
+        )
     return DeterministicProvider()
 
 
 def _provider_status_label(settings: Settings) -> str:
+    if settings.agent_mode == "ollama":
+        return "Self-hosted model configured by operator"
     if settings.agent_mode == "openai_responses":
         return "External model configured by operator"
     return "Local deterministic demo"

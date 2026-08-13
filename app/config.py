@@ -33,6 +33,10 @@ class Settings:
     llm_responses_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+    ollama_endpoint: str | None = "http://127.0.0.1:11434"
+    ollama_model: str | None = None
+    ollama_timeout_seconds: float = 15.0
+    ollama_max_response_bytes: int = 1_000_000
     product_db_path: Path = Path("data/opencare.sqlite3")
     source_dir: Path = Path("data/sources")
     session_db_path: Path = Path(tempfile.gettempdir()) / "opencare-default" / "sessions.sqlite3"
@@ -86,12 +90,32 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         var_name="OPENCARE_ALLOW_CLOUD_LLM",
     )
     agent_mode = values.get("OPENCARE_AGENT_MODE", "demo").strip().lower()
-    if agent_mode not in {"demo", "openai_responses"}:
-        raise ConfigError("OPENCARE_AGENT_MODE must be demo or openai_responses.")
+    if agent_mode not in {"demo", "openai_responses", "ollama"}:
+        raise ConfigError(
+            "OPENCARE_AGENT_MODE must be demo, openai_responses or ollama."
+        )
     agent_allow_external_llm = _parse_bool(
         values.get("OPENCARE_AGENT_ALLOW_EXTERNAL_LLM", "false"),
         var_name="OPENCARE_AGENT_ALLOW_EXTERNAL_LLM",
     )
+    ollama_endpoint_raw = values.get("OPENCARE_OLLAMA_ENDPOINT", "http://127.0.0.1:11434")
+    ollama_endpoint = (
+        ollama_endpoint_raw.strip()
+        if ollama_endpoint_raw is not None and ollama_endpoint_raw.strip()
+        else None
+    )
+    try:
+        ollama_timeout_seconds = float(
+            values.get("OPENCARE_OLLAMA_TIMEOUT_SECONDS", "15.0")
+        )
+    except ValueError as exc:
+        raise ConfigError("OPENCARE_OLLAMA_TIMEOUT_SECONDS must be a number.") from exc
+    try:
+        ollama_max_response_bytes = int(
+            values.get("OPENCARE_OLLAMA_MAX_RESPONSE_BYTES", "1000000")
+        )
+    except ValueError as exc:
+        raise ConfigError("OPENCARE_OLLAMA_MAX_RESPONSE_BYTES must be an integer.") from exc
     vault_source = values.get("OPENCARE_VAULT_SOURCE", "demo").strip().lower()
     if vault_source not in {"demo", "local_file"}:
         raise ConfigError("OPENCARE_VAULT_SOURCE must be demo or local_file.")
@@ -140,6 +164,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         llm_responses_url=responses_url,
         llm_api_key=_read_optional_secret(values, "OPENCARE_LLM_API_KEY"),
         llm_model=_read_optional_secret(values, "OPENCARE_LLM_MODEL"),
+        ollama_endpoint=ollama_endpoint,
+        ollama_model=_read_optional_secret(values, "OPENCARE_OLLAMA_MODEL"),
+        ollama_timeout_seconds=ollama_timeout_seconds,
+        ollama_max_response_bytes=ollama_max_response_bytes,
     )
     _validate_settings(settings)
     return settings
@@ -159,6 +187,13 @@ def _validate_settings(settings: Settings) -> None:
             raise ConfigError(
                 "OPENCARE_LLM_API_KEY and OPENCARE_LLM_MODEL are required for external mode."
             )
+    if settings.agent_mode == "ollama":
+        if settings.ollama_endpoint is None or not _is_valid_responses_url(
+            settings.ollama_endpoint
+        ):
+            raise ConfigError("OPENCARE_OLLAMA_ENDPOINT must be a complete safe HTTP(S) URL.")
+        if settings.ollama_model is None or not settings.ollama_model.strip():
+            raise ConfigError("OPENCARE_OLLAMA_MODEL is required for ollama mode.")
     if settings.vault_source == "local_file":
         if settings.vault_file is None:
             raise ConfigError(
