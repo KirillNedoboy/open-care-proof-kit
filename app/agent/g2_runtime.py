@@ -5,10 +5,16 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from app.agent_trust.builders import build_execution_receipt
-from app.agent_trust.canonical import digest_matches, receipt_id, receipt_sha256
+from app.agent_trust.canonical import (
+    canonical_bytes,
+    digest_matches,
+    receipt_id,
+    receipt_sha256,
+    sha256_hex,
+)
 from app.agent_trust.models import ExecutionReceipt, TrustEnvelope
 from app.family_access.sessions import SessionStore
 
@@ -106,16 +112,19 @@ class G2Repository(Protocol):
     def save_consent(
         self, *, execution_id: str, consent_id: str, actor_id: str, person_id: str,
         purpose_id: str, action_id: str, envelope_id: str, provider_id: str,
-        provider_hash: str, fields: list[str], expires_at: datetime,
+        provider_hash: str, fields: list[str], policy_version: str,
+        consented_at: datetime, expires_at: datetime, consent_hash: str,
     ) -> None: ...
 
     def save_execution_receipt(
-        self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str
+        self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str,
+        actor_id: str, person_id: str, mutation_attempted: bool,
     ) -> None: ...
 
     def get_execution_receipt(
         self, execution_id: str
     ) -> ExecutionReceipt | dict[str, Any] | None: ...
+
 
 
 class G2Runtime:
@@ -150,6 +159,7 @@ class G2Runtime:
             ),
         )
         self.clock = clock or (lambda: datetime.now(UTC))
+        self._consents: dict[str, dict[str, object]] = {}
         self._receipts: dict[str, ExecutionReceipt] = {}
 
     def prepare(
@@ -191,41 +201,72 @@ class G2Runtime:
         pending = self.sessions.get_pending(execution_id)
         if session is None or pending is None or pending.session_id != session.session_id:
             raise PermissionError("pending_execution_unavailable")
-        consent_id = _hash(json.dumps([
-            execution_id, session.actor_id, pending.person_id, pending.purpose_id,
-            pending.action_id, pending.envelope_id, pending.provider_id,
-            pending.provider_hash, sorted(set(fields)), pending.expires_at.isoformat(),
-        ], sort_keys=True))
+        envelope = self.prepare_envelope(
+            actor_id=session.actor_id, person_id=pending.person_id,
+            purpose_id=pending.purpose_id, action_id=pending.action_id,
+            question="",
+        )
+        projection = EnvelopeProjection.from_envelope(envelope)
         consent_fields = sorted(set(fields))
-        data: dict[str, object] = {
-            "execution_id": execution_id, "consent_id": consent_id,
-            "actor_id": session.actor_id, "person_id": pending.person_id,
-            "purpose_id": pending.purpose_id, "action_id": pending.action_id,
-            "envelope_id": pending.envelope_id, "provider_id": pending.provider_id,
-            "provider_hash": pending.provider_hash, "fields": consent_fields,
-            "expires_at": pending.expires_at.isoformat(),
+        if (
+            envelope.envelope_id != pending.envelope_id
+            or getattr(envelope, "actor_id", session.actor_id) != session.actor_id
+            or getattr(envelope, "person_id", pending.person_id) != pending.person_id
+            or getattr(envelope, "purpose_id", pending.purpose_id) != pending.purpose_id
+            or getattr(envelope, "action_id", pending.action_id) != pending.action_id
+            or (
+                getattr(envelope.provider_disclosure, "provider_id", None) is not None
+                and envelope.provider_disclosure.provider_id != pending.provider_id
+            )
+            or (
+                getattr(envelope.provider_disclosure, "descriptor_hash", None) is not None
+                and envelope.provider_disclosure.descriptor_hash != pending.provider_hash
+            )
+            or consent_fields != sorted(projection.allowed_fields)
+            or getattr(envelope, "expires_at", pending.expires_at) <= self.clock()
+        ):
+            raise PermissionError("consent_contract_changed")
+        consented_at = self.clock()
+        expires_at = getattr(envelope, "expires_at", pending.expires_at)
+        policy_version = "family-access-v1"
+        contract = {
+            "execution_id": execution_id, "actor_id": session.actor_id,
+            "person_id": pending.person_id, "purpose_id": pending.purpose_id,
+            "action_id": pending.action_id, "envelope_id": pending.envelope_id,
+            "provider_id": pending.provider_id, "provider_hash": pending.provider_hash,
+            "fields": consent_fields, "policy_version": policy_version,
+            "consented_at": consented_at, "expires_at": expires_at,
         }
-        if self.repository is not None and hasattr(self.repository, "save_consent"):
+        consent_hash = sha256_hex(canonical_bytes(contract))
+        consent_id = f"sha256:{consent_hash}"
+        data: dict[str, object] = {**contract, "consent_id": consent_id,
+                                   "consent_hash": consent_hash}
+        self._consents[execution_id] = data
+        if self.repository is not None:
             self.repository.save_consent(
                 execution_id=execution_id, consent_id=consent_id,
                 actor_id=session.actor_id, person_id=pending.person_id,
                 purpose_id=pending.purpose_id, action_id=pending.action_id,
                 envelope_id=pending.envelope_id, provider_id=pending.provider_id,
                 provider_hash=pending.provider_hash, fields=consent_fields,
-                expires_at=pending.expires_at,
+                policy_version=policy_version, consented_at=consented_at,
+                expires_at=expires_at, consent_hash=consent_hash,
             )
-        self.sessions.save_consent(data)
-        return ConsentResult(execution_id, consent_id, pending.expires_at)
+        return ConsentResult(execution_id, consent_id, expires_at)
 
     def execute(self, session_token: str, execution_id: str, question: str) -> ExecuteResult:
         session = self.sessions.resolve(session_token)
         pending = self.sessions.get_pending(execution_id)
-        consent = self.sessions.load_consent(execution_id)
+        consent = self._consents.get(execution_id)
         if session is None or pending is None or consent is None:
             return ExecuteResult(execution_id, "refused", None, reason_code="context_changed")
         if (
             pending.question_hash != _hash(question)
-            or str(consent["expires_at"]) <= self.clock().isoformat()
+            or (
+                (consent["expires_at"] if isinstance(consent["expires_at"], datetime)
+                 else datetime.fromisoformat(str(consent["expires_at"])))
+                <= self.clock()
+            )
             or str(consent["envelope_id"]) != pending.envelope_id
             or str(consent["provider_hash"]) != pending.provider_hash
             or str(consent["actor_id"]) != session.actor_id
@@ -234,22 +275,27 @@ class G2Runtime:
         ):
             return ExecuteResult(execution_id, "refused", None, reason_code="context_changed")
         envelope = self.prepare_envelope(
-            actor_id=session.actor_id,
-            person_id=pending.person_id,
-            purpose_id=pending.purpose_id,
-            action_id=pending.action_id,
+            actor_id=session.actor_id, person_id=pending.person_id,
+            purpose_id=pending.purpose_id, action_id=pending.action_id,
             question=question,
         )
-        if envelope.envelope_id != pending.envelope_id:
+        envelope_expires_at = getattr(envelope, "expires_at", consent["expires_at"])
+        if (
+            envelope.envelope_id != pending.envelope_id
+            or (
+                getattr(envelope.provider_disclosure, "descriptor_hash", None) is not None
+                and envelope.provider_disclosure.descriptor_hash != pending.provider_hash
+            )
+            or envelope_expires_at != consent["expires_at"]
+        ):
             return ExecuteResult(execution_id, "refused", None, reason_code="context_changed")
         consumed = self.sessions.consume_pending(execution_id)
         if consumed is None:
             return ExecuteResult(execution_id, "refused", None, reason_code="replay")
         projection = EnvelopeProjection.from_envelope(envelope)
         disclosure = self.project(projection, question)
-        allowed = set(projection.allowed_fields)
-        fields = json.loads(str(consent["fields_json"]))
-        if not set(fields) <= allowed:
+        fields = list(cast(list[str], consent["fields"]))
+        if fields != sorted(projection.allowed_fields):
             return ExecuteResult(execution_id, "refused", None, reason_code="tool_not_allowed")
         disclosure["fields"] = fields
         started_at = self.clock()
@@ -270,7 +316,9 @@ class G2Runtime:
         self._receipts[execution_id] = receipt
         if self.repository is not None:
             self.repository.save_execution_receipt(
-                receipt, execution_id=execution_id, consent_id=str(consent["consent_id"])
+                receipt, execution_id=execution_id, consent_id=str(consent["consent_id"]),
+                actor_id=session.actor_id, person_id=pending.person_id,
+                mutation_attempted=False,
             )
         return ExecuteResult(execution_id, "answered", answer, receipt_id=receipt.receipt_id)
 

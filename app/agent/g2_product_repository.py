@@ -24,9 +24,14 @@ class ProductCoreG2Repository:
         provider_id: str,
         provider_hash: str,
         fields: list[str],
+        policy_version: str,
+        consented_at: Any,
         expires_at: Any,
+        consent_hash: str,
     ) -> None:
+        audit_id = f"g2-consent:{consent_id}"
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
             uow.consent_records.insert(
                 {
                     "consent_id": consent_id,
@@ -39,25 +44,42 @@ class ProductCoreG2Repository:
                     "provider_id": provider_id,
                     "provider_descriptor_hash": provider_hash,
                     "disclosure_metadata_json": json.dumps({"fields": fields}),
-                    "policy_version": "family-access-v1",
-                    "consented_at": expires_at.isoformat(),
+                    "policy_version": policy_version,
+                    "consented_at": consented_at.isoformat(),
                     "expires_at": expires_at.isoformat(),
-                    "consent_hash": consent_id.split(":", 1)[-1],
-                    "metadata_json": "{}",
+                    "consent_hash": consent_hash,
+                    "metadata_json": json.dumps({"access_audit_id": audit_id}),
                 }
+            )
+            uow.connection.execute(
+                """INSERT INTO access_audit_events
+                (audit_event_id, actor_id, action_code, target_class, target_id,
+                 outcome, reason_code, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (audit_id, actor_id, "agent.consent", "execution", execution_id,
+                 "success", "consent_granted", consented_at.isoformat()),
             )
 
     def save_execution_receipt(
-        self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str
+        self,
+        receipt: ExecutionReceipt,
+        *,
+        execution_id: str,
+        consent_id: str,
+        actor_id: str,
+        person_id: str,
+        mutation_attempted: bool,
     ) -> None:
+        audit_id = f"g2-receipt:{receipt.receipt_id}"
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
             uow.execution_receipts.insert(
                 {
                     "receipt_id": receipt.receipt_id,
                     "execution_id": execution_id,
                     "consent_id": consent_id,
-                    "actor_id": "unknown",
-                    "person_id": "unknown",
+                    "actor_id": actor_id,
+                    "person_id": person_id,
                     "envelope_id": receipt.envelope_id,
                     "provider_id": receipt.provider_id or "local",
                     "status": receipt.status,
@@ -66,12 +88,21 @@ class ProductCoreG2Repository:
                     "used_evidence_ids_json": json.dumps(receipt.used_evidence_ids),
                     "used_tools_json": json.dumps(receipt.used_tools),
                     "output_sha256": receipt.output_sha256,
-                    "mutation_attempted": 0,
+                    "mutation_attempted": int(mutation_attempted),
                     "reason_codes_json": json.dumps(receipt.reason_codes),
                     "receipt_sha256": receipt.receipt_sha256,
-                    "metadata_json": "{}",
+                    "metadata_json": json.dumps({"access_audit_id": audit_id}),
                 }
             )
+            uow.connection.execute(
+                """INSERT INTO access_audit_events
+                (audit_event_id, actor_id, action_code, target_class, target_id,
+                 outcome, reason_code, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (audit_id, actor_id, "agent.execute", "execution", execution_id,
+                 receipt.status, "execution_observed", receipt.completed_at.isoformat()),
+            )
+
 
     def get_execution_receipt(self, execution_id: str) -> dict[str, object] | None:
         with self.database.uow() as uow:
