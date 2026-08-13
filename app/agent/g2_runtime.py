@@ -6,8 +6,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
-
-from app.agent_trust.models import TrustEnvelope
+from app.agent_trust.builders import build_execution_receipt
+from app.agent_trust.canonical import digest_matches, receipt_id, receipt_sha256
+from app.agent_trust.models import ExecutionReceipt, TrustEnvelope
 from app.family_access.sessions import SessionStore
 
 
@@ -99,6 +100,13 @@ class ExecuteResult:
     receipt_id: str | None = None
     reason_code: str | None = None
 
+class G2Repository(Protocol):
+    """Product Core persistence boundary for canonical execution receipts."""
+
+    def save_execution_receipt(self, receipt: ExecutionReceipt, *, execution_id: str, consent_id: str) -> None: ...
+
+    def get_execution_receipt(self, execution_id: str) -> ExecutionReceipt | dict[str, Any] | None: ...
+
 
 class G2Runtime:
     """Consent gate; authority and context are supplied by narrow callbacks."""
@@ -110,6 +118,7 @@ class G2Runtime:
         prepare_envelope: Callable[..., Any],
         revalidate: Callable[..., bool],
         provider: G2Provider,
+        repository: G2Repository | None = None,
         project: Callable[[EnvelopeProjection, str], dict[str, Any]] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -118,6 +127,7 @@ class G2Runtime:
             prepare_envelope,
             revalidate,
         )
+        self.repository = repository
         self.provider, self.project = (
             provider,
             project
@@ -235,29 +245,60 @@ class G2Runtime:
         if not set(fields) <= allowed:
             return ExecuteResult(execution_id, "refused", None, reason_code="tool_not_allowed")
         disclosure["fields"] = fields
+        started_at = self.clock()
         answer = self.provider.answer(disclosure, question)
-        receipt_id = "sha256:" + _hash(
-            execution_id + json.dumps(answer, default=str, sort_keys=True)
+        completed_at = self.clock()
+        output = json.dumps(answer, default=str, sort_keys=True, separators=(",", ":")).encode()
+        receipt = build_execution_receipt(
+            envelope=envelope,
+            started_at=started_at,
+            completed_at=completed_at,
+            status="completed",
+            provider_id=pending.provider_id,
+            used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
+            used_tools=[],
+            output=output,
+            reason_codes=[],
         )
         self.sessions.save_receipt(
             {
                 "execution_id": execution_id,
-                "receipt_id": receipt_id,
+                "receipt_id": receipt.receipt_id,
                 "actor_id": session.actor_id,
                 "person_id": pending.person_id,
                 "envelope_id": pending.envelope_id,
                 "provider_id": pending.provider_id,
                 "status": "completed",
-                "output_hash": _hash(json.dumps(answer, default=str)),
+                "output_hash": receipt.output_sha256,
                 "reason_code": None,
-                "created_at": self.clock().isoformat(),
+                "created_at": receipt.completed_at.isoformat(),
             }
         )
-        return ExecuteResult(execution_id, "answered", answer, receipt_id=receipt_id)
+        if self.repository is not None:
+            self.repository.save_execution_receipt(
+                receipt, execution_id=execution_id, consent_id=str(consent["consent_id"])
+            )
+        return ExecuteResult(execution_id, "answered", answer, receipt_id=receipt.receipt_id)
 
-    def get_receipt(self, session_token: str, execution_id: str) -> dict[str, object] | None:
+    def get_receipt(self, session_token: str, execution_id: str) -> dict[str, object] | ExecutionReceipt | None:
         session = self.sessions.resolve(session_token)
+        if session is None:
+            return None
+        if self.repository is not None:
+            receipt = self.repository.get_execution_receipt(execution_id)
+            if receipt is None:
+                return None
+            try:
+                parsed = receipt if isinstance(receipt, ExecutionReceipt) else ExecutionReceipt.model_validate(receipt)
+                if parsed.receipt_id != receipt_id(parsed) or not digest_matches(
+                    parsed.receipt_sha256, receipt_sha256(parsed)
+                ):
+                    return None
+            except (TypeError, ValueError):
+                return None
+            return parsed
         receipt = self.sessions.get_receipt(execution_id)
         if session is None or receipt is None or receipt["actor_id"] != session.actor_id:
             return None
         return receipt
+
