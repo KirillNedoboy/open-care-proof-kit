@@ -7,7 +7,7 @@
 
 ## Project Title
 
-OpenCare Proof Kit: privacy-first personal/family medical workspace infrastructure with deterministic provenance, safety, audit, and evals.
+OpenCare Proof Kit: self-hosted personal/family health workspace infrastructure with deterministic provenance, safety, audit, and person-scoped access.
 
 ## Related Submission Docs
 
@@ -18,17 +18,28 @@ OpenCare Proof Kit: privacy-first personal/family medical workspace infrastructu
 
 ## Short Pitch
 
-OpenCare Proof Kit is not a medical chatbot. It is an open-source, local-first foundation for a privacy-first personal/family medical workspace, demonstrated today with a synthetic Health/Family Vault, reviewer artifacts, a read-only reviewer UI, a provenance trace graph, CI, trust metrics, and a narrow clinician-reviewable PGx briefing demo.
+OpenCare Proof Kit is not a medical chatbot. It is an open-source, self-hosted personal/family health workspace with a synthetic reviewer surface and an implemented Phase 2 family identity/access boundary: explicit consent, person-scoped permissions, deny-by-default authorization, audit, export, and recovery controls.
 
 ## Long Pitch
 
-The strongest current story is vault first. OpenCare should be useful before DNA enters the picture. The repo now proves that with a synthetic/demo-only Health/Family Vault: deterministic schemas, deterministic loader/validation, a provenance-preserving read model, local reviewer artifacts, a read-only `/demo/health-vault` reviewer page, and a deterministic context/provenance trace graph.
+The strongest current story is vault first. OpenCare should be useful before DNA enters the picture. The repo proves that with a synthetic/demo-only Health/Family Vault and a live local family workspace: deterministic schemas, provenance-preserving read models, reviewer artifacts, a read-only `/demo/health-vault` page, and a Phase 2 family identity/access boundary.
 
-That vault layer is paired with visible review infrastructure: a privacy/safety threat model, provenance semantics, artifact guarantees, GitHub Actions CI, and a local trust metrics report. A reviewer can inspect the docs, the artifacts, the route, and the validation outputs directly.
+That vault layer is paired with visible review infrastructure: privacy/safety threat models, provenance semantics, artifact guarantees, an authorization matrix, GitHub Actions CI, and trust metrics. A reviewer can inspect the docs, artifacts, routes, access policy, and validation evidence directly.
 
 The existing Medication-to-Doctor Briefing / PGx path remains intact as a narrow reference workflow. It is useful here because it stress-tests evidence, safety, audit, and eval behavior. But it is no longer the main product framing. Genetics is still a future enhancement layer. Any future LLM remains an interface layer, not the source of truth.
 
 The repo is synthetic/demo-only. It does not claim real-patient support, real-genetic-data support, diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop medication advice, clinical decision support, or clinical validation.
+
+## Origin Story
+
+OpenCare grew out of a practical family need. As a parent managing recurring
+health needs across several family members and coordinating information from
+different clinicians and care settings, I found that existing tools were
+fragmented, cloud-dependent, and poorly suited to preserving context,
+provenance, permissions, and privacy. The project is being built first for my
+own family, then as open-source infrastructure that other families can inspect,
+adapt, and use. This motivation is intentionally described without publishing
+diagnoses or identifying medical details about family members.
 
 ## Problem
 
@@ -42,6 +53,8 @@ OpenCare Proof Kit provides:
 - deterministic provenance-preserving builders;
 - committed reviewer artifacts plus a read-only reviewer UI;
 - a deterministic context/provenance trace graph;
+- a local Actor/family access boundary with explicit consent and person-scoped permissions;
+- deny-by-default authorization, access audit, person export, and offline recovery boundaries;
 - CI, evals, and trust metrics;
 - the existing PGx briefing path as a narrow evidence/safety reference workflow.
 
@@ -67,12 +80,15 @@ The repo is designed so reviewers can inspect the system locally without cloud d
 Inspect first:
 
 - `http://127.0.0.1:8000/demo/health-vault`
+- `http://127.0.0.1:8000/family-access`
 - `docs/final_reviewer_pack.md`
 - `docs/assets/health_vault/family-vault-summary.md`
 - `docs/assets/health_vault/family-vault-manifest.json`
 - `docs/privacy_safety_threat_model.md`
 - `docs/provenance_semantics.md`
 - `docs/vault_artifact_guarantees.md`
+- `docs/security/family-access-authorization-matrix.md`
+- `docs/security/family-access-threat-model.md`
 
 The reviewer can inspect:
 
@@ -133,6 +149,7 @@ GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics on `pu
 ### Implemented now
 
 - synthetic Health/Family Vault Core
+- Phase 2 Family Identity and Access Boundary
 - deterministic loader/validation
 - deterministic read model
 - deterministic local artifacts
@@ -143,12 +160,12 @@ GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics on `pu
 - CI and trust metrics
 - Medication-to-Doctor Briefing / PGx reference workflow
 
-### Next
+### Next grant-funded work
 
-- public reviewer-pack spot-check and merge
-- vault-first ingest/provenance improvements
-- clinician-review handoff improvements
-- future genetics/interface research only after the vault foundation remains safe and inspectable
+- local ingest/provenance conventions for documents, labs, medications, visits, and notes;
+- Conditions/Labs and clinician-review handoff improvements;
+- broader evals and trust metrics around provenance gaps and access boundaries;
+- future genetics/interface research only after the vault and family-access foundations remain safe and inspectable.
 
 ## Requested Support / Use Of Funds
 

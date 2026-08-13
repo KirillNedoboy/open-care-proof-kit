@@ -41,7 +41,7 @@ Use this checklist before tagging a release, opening a grant review branch, or p
 ## Documentation
 
 - [ ] README reflects current commands, eval metrics, and boundaries.
-- [ ] `docs/project_status.md` reflects latest commit and validation state.
+- [ ] `docs/project-status.md` reflects latest release and validation state.
 - [ ] `CHECKPOINT.md` reflects current phase and next step.
 - [ ] `SESSION_NOTES.md` records what changed.
 - [ ] `CONTRIBUTING.md` and `SECURITY.md` remain accurate.

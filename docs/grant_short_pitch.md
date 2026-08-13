@@ -6,21 +6,22 @@
 
 ## 15-Second Pitch
 
-OpenCare Proof Kit is not a medical chatbot. It is an open-source, local-first foundation for a privacy-first personal/family medical workspace, with a synthetic Health/Family Vault, reviewer artifacts, a read-only reviewer UI, and deterministic trust checks.
+OpenCare Proof Kit is not a medical chatbot. It is an open-source, self-hosted personal and family health workspace with local-first provenance, safety, audit, and person-scoped access controls.
 
 ## 30-Second Pitch
 
-OpenCare Proof Kit is a vault-first repo for trustworthy personal health AI infrastructure. The current implementation is a synthetic/demo-only Health/Family Vault with deterministic schemas, validation, read model, reviewer artifacts, a read-only `/demo/health-vault` page, a context/provenance trace graph, CI, and trust metrics. The older Medication-to-Doctor Briefing / PGx demo still runs as a narrow reference workflow. Genetics comes later. The LLM is an interface layer, not the source of truth.
+OpenCare Proof Kit is a vault-first repo for trustworthy personal and family health-agent infrastructure. The current implementation combines a synthetic reviewer surface with live Actor sessions, explicit consent, person-scoped permissions, deny-by-default family access, audit, export, backup/recovery boundaries, CI, and trust metrics. Genetics comes later; the LLM is an interface layer, not the source of truth.
 
 ## 60-Second Pitch
 
-OpenCare Proof Kit is not trying to be an AI doctor. It is building the foundation that should exist before that kind of claim is even discussed: a privacy-first personal/family medical workspace with provenance, safety boundaries, auditability, and visible unsupported states. Today the repo implements that foundation with synthetic/demo-only Health/Family Vault data, deterministic loaders and read models, committed reviewer artifacts, a read-only reviewer UI, a context/provenance trace graph, CI, and trust metrics. Reviewers can inspect the artifacts, UI, threat model, provenance semantics, and validation outputs directly. The existing Medication-to-Doctor Briefing / PGx path remains as the narrow demo workflow. No diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support is added.
+OpenCare Proof Kit is not trying to be an AI doctor. It is building the foundation that should exist before that kind of claim is even discussed: a privacy-first personal/family health workspace with provenance, safety boundaries, auditability, explicit consent, and person-scoped access. Today the repo includes the Health/Family Vault reviewer surface and a Phase 2 family identity/access boundary with deny-by-default authorization, audit, export, and recovery controls. Reviewers can inspect the artifacts, UI, threat models, authorization matrix, and validation evidence directly. Genetics remains later, and no diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support is added.
 
 ## 5-Bullet Reviewer Summary
 
-- OpenCare is a privacy-first personal/family medical workspace foundation.
+- OpenCare is an open-source, self-hosted personal/family health workspace.
+- Phase 2 adds explicit family identity, consent, and person-scoped access.
 - The current repo is vault-first and useful without DNA.
-- Reviewers can inspect artifacts, the read-only reviewer UI, the trace graph, the threat model, CI, and trust metrics.
+- Reviewers can inspect artifacts, reviewer routes, authorization docs, threat models, CI, and trust metrics.
 - The existing Medication-to-Doctor Briefing / PGx demo remains intact as a narrow reference workflow.
 - The repo is synthetic/demo-only and does not claim real-patient, real-genetic, or clinical-decision capability.
 
