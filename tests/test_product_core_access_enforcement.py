@@ -651,103 +651,36 @@ def test_live_pages_require_session_and_revalidate_active_person(
         assert "demo" not in response.text.lower()
 
 
-def test_chat_uses_only_active_product_core_person_and_strict_body(
-    access_harness: AccessHarness,
-) -> None:
-    client = access_harness.client
-
-    def add_medication(username: str, person_id: str, display_name: str) -> str:
-        access_harness.login(username)
-        source = client.post(
-            "/api/product-core/v1/sources/manual-medication",
-            json={
-                "person_id": person_id,
-                "medication": {"display_name": display_name},
-            },
-        )
-        assert source.status_code == 201, source.text
-        source_id = source.json()["source"]["source_id"]
-        candidate = client.post(
-            "/api/product-core/v1/candidates/medications",
-            json={
-                "person_id": person_id,
-                "source_id": source_id,
-                "display_name": display_name,
-            },
-        )
-        assert candidate.status_code == 201, candidate.text
-        confirmed = client.post(
-            f"/api/product-core/v1/candidates/{candidate.json()['id']}/confirm", json={}
-        )
-        assert confirmed.status_code == 200, confirmed.text
-        return source_id
-
-    alice_source = add_medication("alice", "alice-person", "Alice-only medicine")
-    bob_source = add_medication("bob", "bob-person", "Bob-only medicine")
-
+def test_legacy_chat_requires_consent_gate(access_harness: AccessHarness) -> None:
     access_harness.login("bob")
-    access_harness.select("alice-person")
-    alice_answer = client.post(
-        "/api/chat", json={"question": "Which medications are recorded in this vault?"}
-    )
-    assert alice_answer.status_code == 200, alice_answer.text
-    assert "Alice-only medicine" in alice_answer.json()["answer"]
-    assert "Bob-only medicine" not in alice_answer.text
-    assert {item["source_id"] for item in alice_answer.json()["citations"]} == {
-        alice_source
-    }
-
     access_harness.select("bob-person")
-    bob_answer = client.post(
-        "/api/chat", json={"question": "Which medications are recorded in this vault?"}
+    response = access_harness.client.post(
+        "/api/chat", json={"question": "Which medications are recorded?"}
     )
-    assert bob_answer.status_code == 200, bob_answer.text
-    assert "Bob-only medicine" in bob_answer.json()["answer"]
-    assert "Alice-only medicine" not in bob_answer.text
-    assert {item["source_id"] for item in bob_answer.json()["citations"]} == {bob_source}
-
-    extra_context = client.post(
-        "/api/chat",
-        json={
-            "question": "Which medications are recorded?",
-            "person_id": "alice-person",
-            "actor_id": access_harness.actor_ids["alice"],
-            "context": {"raw": "forbidden"},
-        },
-    )
-    assert extra_context.status_code == 422
-    assert "alice-person" not in extra_context.text
+    assert response.status_code == 410
+    assert response.json()["code"] == "consent_required"
 
 
-def test_chat_audit_failure_releases_no_context_or_answer(
+def test_legacy_chat_gate_does_not_call_provider(
     access_harness: AccessHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     access_harness.login("bob")
     access_harness.select("bob-person")
-    client = access_harness.client
-    family_service = main_module.app.state.family_access_runtime.service
     provider_calls = 0
-
-    def fail_audit(*_args: object, **_kwargs: object) -> None:
-        raise OSError("forced chat audit failure")
 
     def forbidden_service(*_args: object, **_kwargs: object) -> object:
         nonlocal provider_calls
         provider_calls += 1
-        raise AssertionError("chat service must not receive unaudited context")
+        raise AssertionError("legacy chat must not invoke provider")
 
-    monkeypatch.setattr(family_service, "audit_writer", fail_audit)
     monkeypatch.setattr(
         main_module.GuardedChatService,
         "for_context",
         classmethod(forbidden_service),
         raising=False,
     )
-
-    response = client.post("/api/chat", json={"question": "What is recorded?"})
-
-    assert response.status_code == 503
-    assert response.json() == {"detail": "Sensitive access could not be audited."}
+    response = access_harness.client.post("/api/chat", json={"question": "What is recorded?"})
+    assert response.status_code == 410
     assert provider_calls == 0
 
 
