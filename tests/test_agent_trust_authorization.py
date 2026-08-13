@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.agent_trust.authorization import OpenCareAuthorizationAdapter
+from app.agent.trust_adapter import OpenCareAuthorizationAdapter
 from app.family_access.service import FamilyAccessService
 from app.product_core.sqlite import SQLiteDatabase
 
