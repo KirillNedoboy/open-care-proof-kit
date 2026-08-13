@@ -87,6 +87,15 @@ digital signatures, PKI, blockchain, remote attestation, or encryption. The
 binding contract is
 [docs/architecture/sentient-g1-trust-envelope.md](docs/architecture/sentient-g1-trust-envelope.md).
 
+## Sentient G2 Consent-Gated Runtime
+
+The repository now registers ten named G2 trust-evaluation fixtures covering
+minimal disclosure, exact consent binding and replay refusal, provider/tool
+allow-lists, output refusal, receipt/audit linkage, stale recovery,
+wrong-Person isolation, TOCTOU refusal, and injection refusal. These are
+registration/evaluation fixtures; this note does not claim provider integration
+or deployment behavior.
+
 ## Reviewer Quick Links
 
 - Local reviewer route: `/demo/health-vault`

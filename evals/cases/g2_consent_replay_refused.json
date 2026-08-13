@@ -1,0 +1,1 @@
+{"case_id":"g2-consent-replay-refused","mode":"trust_envelope","expected_status":"authorization_revoked","trust_actor_id":"actor-revoked","trust_person_id":"person-alice","trust_evidence_id":"evidence-medication-alice"}

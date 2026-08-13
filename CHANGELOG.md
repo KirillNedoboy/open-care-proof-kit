@@ -20,6 +20,9 @@
   frozen versioned models, controlled actions, canonical UTF-8 JSON, SHA-256
   content identities, trusted builders, integrity validators, OpenCare Family
   Access adapter, synthetic fixtures/evals, and export/verify/inspect CLI tools.
+- Ten named Sentient G2 trust-evaluation fixtures and eval-registration
+  coverage for consent, mediation, refusal, isolation, TOCTOU, and audit
+  acceptance categories. These fixtures do not claim external integration.
 
 ### Security
 

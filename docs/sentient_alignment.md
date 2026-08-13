@@ -81,6 +81,11 @@ state and an agent-capable execution context. It does not wrap arbitrary
 internal processing and does not add provider execution. See the
 [binding G1 contract](architecture/sentient-g1-trust-envelope.md).
 
+The G2 implementation work also registers ten named trust-evaluation fixtures
+for the binding runtime acceptance categories. They document intended
+fail-closed checks; they are not evidence of external provider or Sentient
+ecosystem integration.
+
 Historical `G1` genome-profile references in session chronology remain
 historical; genetics is outside the Sentient critical path.
 

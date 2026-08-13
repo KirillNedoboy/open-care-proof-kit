@@ -1,0 +1,1 @@
+{"case_id":"g2-output-validation-refusal","mode":"trust_envelope","expected_status":"provenance_missing","trust_actor_id":"actor-alice","trust_person_id":"person-alice","trust_evidence_id":"evidence-missing-provenance"}

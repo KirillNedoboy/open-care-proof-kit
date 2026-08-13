@@ -1,0 +1,1 @@
+{"case_id":"g2-recovery-stale-envelope","mode":"trust_envelope","expected_status":"authorization_expired","trust_actor_id":"actor-expired","trust_person_id":"person-alice","trust_evidence_id":"evidence-medication-alice"}

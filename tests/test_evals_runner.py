@@ -27,6 +27,18 @@ def test_eval_suite_includes_phase_14_evidence_cases() -> None:
     assert "no_source_no_claim" in case_ids
     assert "demo_only_disclosure_required" in case_ids
     assert "coverage_limitations_required" in case_ids
+    assert {
+        "g2-runtime-minimal-disclosure",
+        "g2-exact-consent-binding",
+        "g2-consent-replay-refused",
+        "g2-provider-tool-allowlist",
+        "g2-output-validation-refusal",
+        "g2-receipt-audit-linkage",
+        "g2-recovery-stale-envelope",
+        "g2-wrong-person-revocation",
+        "g2-toctou-context-changed",
+        "g2-injection-refusal",
+    } <= case_ids
 
 
 def test_static_text_eval_mode_still_passes() -> None:

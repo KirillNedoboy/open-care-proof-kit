@@ -31,6 +31,11 @@
 
 ## 4. Synthetic acceptance flow
 
+For G2 acceptance, review the ten named trust eval fixtures and record their
+individual outcomes. Treat them as local deterministic checks only; do not
+interpret passing registration/evaluation fixtures as evidence that an external
+provider, deployment, or ecosystem integration is available.
+
 - [ ] Create a Person only with the explicit owner-assignment confirmation;
   verify the creating Actor becomes that Person's owner atomically.
 - [ ] Create a caregiver invitation through `/invite`, transfer its code out of
