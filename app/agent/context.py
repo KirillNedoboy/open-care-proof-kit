@@ -63,6 +63,18 @@ def build_product_core_agent_context(
             ),
             key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
         )
+        conditions = sorted(
+            uow.canonical_records.list_for_person(
+                person_id, include_inactive=False, fact_type="condition"
+            ),
+            key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+        )
+        labs = sorted(
+            uow.canonical_records.list_for_person(
+                person_id, include_inactive=False, fact_type="lab"
+            ),
+            key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+        )
         timeline = sorted(
             uow.timeline_events.list_for_person(person_id),
             key=lambda event: (isoformat_utc(event.event_at), event.id),
@@ -100,6 +112,43 @@ def build_product_core_agent_context(
             provenance_status="source_backed",
         )
         for record in medications
+    )
+    items.extend(
+        ContextItem(
+            id=record.id,
+            kind="condition",
+            text=" | ".join(
+                value
+                for value in (record.display_name, record.detail.status_text)
+                if value
+            ),
+            source_ids=[record.source_id],
+            provenance_status="source_backed",
+        )
+        for record in conditions
+    )
+    items.extend(
+        ContextItem(
+            id=record.id,
+            kind="lab",
+            text=" | ".join(
+                value
+                for value in (
+                    record.detail.test_name,
+                    record.detail.result_text,
+                    record.detail.unit_text,
+                    (
+                        f"flag {record.detail.source_flag_text} (as reported)"
+                        if record.detail.source_flag_text
+                        else None
+                    ),
+                )
+                if value
+            ),
+            source_ids=[record.source_id],
+            provenance_status="source_backed",
+        )
+        for record in labs
     )
     items.extend(
         ContextItem(
