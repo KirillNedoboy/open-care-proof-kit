@@ -170,6 +170,7 @@ def test_recovery_preserves_lifecycle_brief_hashes_and_backup_audit_rows(tmp_pat
         display_name="Synthetic medication",
         schedule_text=None,
         note=None,
+        provenance_locator={"kind": "span", "start": 0, "end": 16},
     )
     record = lifecycle.confirm(candidate.id)
     visits = VisitPlanningService(database)
@@ -191,7 +192,7 @@ def test_recovery_preserves_lifecycle_brief_hashes_and_backup_audit_rows(tmp_pat
     assert verify_recovered_installation(target).valid is True
     with sqlite3.connect(target / "database.sqlite3") as connection:
         assert (
-            connection.execute("SELECT COUNT(*) FROM canonical_medication_records").fetchone()
+            connection.execute("SELECT COUNT(*) FROM canonical_records").fetchone()
             == (1,)
         )
         assert connection.execute("SELECT COUNT(*) FROM visit_brief_revisions").fetchone() == (1,)

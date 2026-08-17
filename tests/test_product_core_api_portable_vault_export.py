@@ -49,7 +49,7 @@ def test_person_portable_vault_export_returns_verified_zip(
         )
         vault = json.loads(archive.read("vault.json"))
     assert vault["person"]["person_id"] == "person-1"
-    assert vault["format_version"] == 2
+    assert vault["format_version"] == 3
     assert "relative_path" not in response.text
     assert "visit_brief_audit_events" not in response.text
 

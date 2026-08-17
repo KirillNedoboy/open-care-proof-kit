@@ -458,7 +458,31 @@ def _validate_lifecycle(connection: sqlite3.Connection) -> None:
         WHERE candidate.person_id <> source.person_id LIMIT 1
         """,
         """
-        SELECT 1 FROM canonical_medication_records AS record
+        SELECT 1 FROM candidate_facts AS candidate
+        JOIN candidate_facts AS predecessor
+          ON predecessor.id = candidate.predecessor_candidate_id
+        WHERE candidate.predecessor_candidate_id IS NOT NULL
+          AND predecessor.person_id <> candidate.person_id LIMIT 1
+        """,
+        """
+        SELECT 1 FROM candidate_facts AS candidate
+        WHERE candidate.provenance_locator_json IS NOT NULL
+          AND json_valid(candidate.provenance_locator_json) <> 1 LIMIT 1
+        """,
+        """
+        SELECT 1 FROM candidate_facts AS candidate
+        JOIN sources AS source ON source.id = candidate.source_id
+        WHERE candidate.provenance_locator_json LIKE '%"kind":"span"%'
+          AND (
+              json_extract(candidate.provenance_locator_json, '$.start') < 0
+              OR json_extract(candidate.provenance_locator_json, '$.end')
+                 <= json_extract(candidate.provenance_locator_json, '$.start')
+              OR json_extract(candidate.provenance_locator_json, '$.end') > source.size_bytes
+          )
+        LIMIT 1
+        """,
+        """
+        SELECT 1 FROM canonical_records AS record
         JOIN candidate_facts AS candidate ON candidate.id = record.candidate_id
         JOIN sources AS source ON source.id = record.source_id
         WHERE record.person_id <> candidate.person_id
@@ -466,16 +490,31 @@ def _validate_lifecycle(connection: sqlite3.Connection) -> None:
            OR candidate.status <> 'confirmed' LIMIT 1
         """,
         """
+        SELECT 1 FROM canonical_records AS record
+        JOIN canonical_records AS replacement
+          ON replacement.id = record.superseded_by_record_id
+        WHERE record.superseded_by_record_id IS NOT NULL
+          AND (
+              replacement.person_id <> record.person_id
+              OR replacement.fact_type <> record.fact_type
+          )
+        LIMIT 1
+        """,
+        """
         SELECT 1 FROM candidate_facts AS candidate
         WHERE candidate.status = 'confirmed'
           AND NOT EXISTS (
-              SELECT 1 FROM canonical_medication_records AS record
+              SELECT 1 FROM canonical_records AS record
               WHERE record.candidate_id = candidate.id
           ) LIMIT 1
         """,
         """
+        SELECT 1 FROM canonical_records AS record
+        WHERE record.is_active = 0 AND record.superseded_by_record_id IS NULL LIMIT 1
+        """,
+        """
         SELECT 1 FROM timeline_events AS event
-        JOIN canonical_medication_records AS record ON record.id = event.canonical_record_id
+        JOIN canonical_records AS record ON record.id = event.canonical_record_id
         JOIN sources AS source ON source.id = event.source_id
         WHERE event.person_id <> record.person_id OR event.person_id <> source.person_id LIMIT 1
         """,
@@ -498,7 +537,7 @@ def _validate_lifecycle(connection: sqlite3.Connection) -> None:
         JOIN visit_brief_revisions AS revision ON revision.revision_id = selection.revision_id
         JOIN visit_briefs AS brief ON brief.brief_id = revision.brief_id
         JOIN visits AS visit ON visit.visit_id = brief.visit_id
-        JOIN canonical_medication_records AS record ON record.id = selection.canonical_record_id
+        JOIN canonical_records AS record ON record.id = selection.canonical_record_id
         JOIN sources AS source ON source.id = selection.source_id
         WHERE visit.person_id <> record.person_id OR visit.person_id <> source.person_id LIMIT 1
         """,

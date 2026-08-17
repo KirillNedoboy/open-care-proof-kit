@@ -57,7 +57,7 @@ def test_backup_and_offline_verify_create_a_complete_installation_artifact(
     )
     manifest = json.loads(manifest_bytes)
     assert manifest["format_version"] == 1
-    assert manifest["product_core_schema_version"] == 6
+    assert manifest["product_core_schema_version"] == 7
     assert manifest["created_at"] == "2026-07-30T12:00:00+00:00"
     assert manifest["sources"][0]["source_id"] == source.id
     assert (destination / "sources" / source.id / "payload.bin").is_file()
@@ -253,6 +253,7 @@ def test_backup_includes_populated_lifecycle_and_brief_audit_rows(tmp_path: Path
         display_name="Synthetic medication",
         schedule_text=None,
         note=None,
+        provenance_locator={"kind": "span", "start": 0, "end": 16},
     )
     record = lifecycle.confirm(candidate.id)
     visits = VisitPlanningService(database)
@@ -284,6 +285,7 @@ def test_backup_rejects_corrupted_persisted_brief_before_completion(tmp_path: Pa
         display_name="Synthetic medication",
         schedule_text=None,
         note=None,
+        provenance_locator={"kind": "span", "start": 0, "end": 16},
     )
     record = lifecycle.confirm(candidate.id)
     visits = VisitPlanningService(database)

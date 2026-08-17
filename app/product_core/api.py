@@ -238,8 +238,8 @@ _QUESTION_PATH_SCOPES: dict[str, tuple[str, ...]] = {
 }
 _CANDIDATE_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_get_candidate": ("candidate.read",),
-    "product_core_confirm_candidate": ("candidate.review", "medication.write"),
     "product_core_reject_candidate": ("candidate.review",),
+    "product_core_unsupported_candidate": ("candidate.review",),
     "product_core_correct_candidate": ("candidate.review",),
 }
 _BODY_PERSON_SCOPES: dict[str, tuple[str, ...]] = {
@@ -260,6 +260,7 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_create_medication_candidate",
     "product_core_confirm_candidate",
     "product_core_reject_candidate",
+    "product_core_unsupported_candidate",
     "product_core_correct_candidate",
     "product_core_initialize_persisted_visit_brief",
     "product_core_generate_persisted_visit_brief_revision",
@@ -295,6 +296,11 @@ async def _authorize_route_request(
             access.preflight_question(
                 str(request.path_params["question_id"]),
                 *_QUESTION_PATH_SCOPES[operation_id],
+            )
+            return
+        if operation_id == "product_core_confirm_candidate":
+            access.preflight_candidate_review(
+                str(request.path_params["candidate_id"]),
             )
             return
         if operation_id in _CANDIDATE_PATH_SCOPES:
@@ -530,6 +536,7 @@ def _candidate_response(candidate: Any) -> CandidateResponse:
         created_at=candidate.created_at,
         reviewed_at=candidate.reviewed_at,
         predecessor_candidate_id=candidate.predecessor_candidate_id,
+        provenance_locator=candidate.provenance_locator,
     )
 
 
@@ -553,6 +560,7 @@ def _timeline_response(event: Any) -> TimelineEventResponse:
         person_id=event.person_id,
         canonical_record_id=event.canonical_record_id,
         source_id=event.source_id,
+        fact_type=event.fact_type,
         event_type=event.event_type,
         event_at=event.event_at,
         title=event.title,
@@ -955,6 +963,7 @@ def create_medication_candidate(
         display_name=payload.display_name,
         schedule_text=payload.schedule_text,
         note=payload.note,
+        provenance_locator=payload.provenance_locator,
         authorize=access.combine_mutation_authorizers(
             access.authorize_person_mutation(
                 payload.person_id, "candidate.review", action="candidate.create"
@@ -1017,10 +1026,8 @@ def confirm_candidate(
     return _canonical_response(
         runtime.lifecycle.confirm(
             candidate_id,
-            authorize=access.authorize_candidate_mutation(
+            authorize=access.authorize_candidate_review_mutation(
                 candidate_id,
-                "candidate.review",
-                "medication.write",
                 action="candidate.confirm",
             ),
         )
@@ -1050,6 +1057,28 @@ def reject_candidate(
 
 
 @router.post(
+    "/candidates/{candidate_id}/unsupported",
+    response_model=CandidateResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    operation_id="product_core_unsupported_candidate",
+)
+def unsupported_candidate(
+    candidate_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    _payload: Annotated[EmptyActionRequest | None, Body()] = None,
+) -> CandidateResponse:
+    return _candidate_response(
+        runtime.lifecycle.unsupported(
+            candidate_id,
+            authorize=access.authorize_candidate_mutation(
+                candidate_id, "candidate.review", action="candidate.unsupported"
+            ),
+        )
+    )
+
+
+@router.post(
     "/candidates/{candidate_id}/correct",
     response_model=CandidateResponse,
     responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
@@ -1067,6 +1096,7 @@ def correct_candidate(
         display_name=payload.display_name,
         schedule_text=payload.schedule_text,
         note=payload.note,
+        provenance_locator=payload.provenance_locator,
         authorize=access.authorize_candidate_mutation(
             candidate_id, "candidate.review", action="candidate.correct"
         ),

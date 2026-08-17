@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Callable
 from datetime import date, datetime
 from typing import Protocol, cast
 
+from app.product_core.errors import IntegrityStorageError
 from app.product_core.models import (
+    CandidateDetail,
     CandidateFact,
     CandidateStatus,
-    CanonicalMedicationRecord,
+    CanonicalRecord,
+    ConditionCandidateDetail,
+    LabCandidateDetail,
+    MedicationCandidateDetail,
     PersistedVisitBrief,
     PersistedVisitBriefRevision,
     Person,
@@ -108,6 +114,7 @@ class CandidateRepository(Protocol):
         self,
         person_id: str,
         status: CandidateStatus | None = None,
+        fact_type: str | None = None,
     ) -> list[CandidateFact]: ...
 
     def insert(self, candidate: CandidateFact) -> None: ...
@@ -121,19 +128,26 @@ class CandidateRepository(Protocol):
 
 
 class CanonicalRepository(Protocol):
-    def get(self, record_id: str) -> CanonicalMedicationRecord | None: ...
+    def get(self, record_id: str) -> CanonicalRecord | None: ...
 
-    def get_by_candidate(self, candidate_id: str) -> CanonicalMedicationRecord | None: ...
+    def get_by_candidate(self, candidate_id: str) -> CanonicalRecord | None: ...
 
-    def insert(self, record: CanonicalMedicationRecord) -> None: ...
+    def insert(self, record: CanonicalRecord) -> None: ...
 
-    def list_active_for_person(self, person_id: str) -> list[CanonicalMedicationRecord]: ...
+    def supersede(self, record_id: str, superseded_by_record_id: str) -> None: ...
+
+    def list_active_for_person(
+        self,
+        person_id: str,
+        fact_type: str | None = None,
+    ) -> list[CanonicalRecord]: ...
 
     def list_for_person(
         self,
         person_id: str,
         include_inactive: bool = False,
-    ) -> list[CanonicalMedicationRecord]: ...
+        fact_type: str | None = None,
+    ) -> list[CanonicalRecord]: ...
 
 
 class TimelineRepository(Protocol):
@@ -283,30 +297,38 @@ class SQLiteCandidateRepository:
         row = self.connection.execute(
             "SELECT * FROM candidate_facts WHERE id = ?", (candidate_id,)
         ).fetchone()
-        return None if row is None else _candidate_from_row(row)
+        if row is None:
+            return None
+        return _candidate_from_row(row, self._load_detail(str(row["fact_type"]), candidate_id))
 
     def list_for_person(
         self,
         person_id: str,
         status: CandidateStatus | None = None,
+        fact_type: str | None = None,
     ) -> list[CandidateFact]:
         query = "SELECT * FROM candidate_facts WHERE person_id = ?"
-        parameters: tuple[str, ...] = (person_id,)
+        parameters: list[object] = [person_id]
         if status is not None:
             query += " AND status = ?"
-            parameters += (status,)
+            parameters.append(status)
+        if fact_type is not None:
+            query += " AND fact_type = ?"
+            parameters.append(fact_type)
         query += " ORDER BY created_at DESC, id ASC"
         rows = self.connection.execute(query, parameters).fetchall()
-        return [_candidate_from_row(row) for row in rows]
+        return [
+            _candidate_from_row(row, self._load_detail(str(row["fact_type"]), str(row["id"])))
+            for row in rows
+        ]
 
     def insert(self, candidate: CandidateFact) -> None:
         self.connection.execute(
             """
             INSERT INTO candidate_facts (
-                id, person_id, source_id, fact_type, status, display_name,
-                normalized_name, schedule_text, note, created_at, reviewed_at,
-                predecessor_candidate_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, person_id, source_id, fact_type, status, created_at,
+                reviewed_at, predecessor_candidate_id, provenance_locator_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 candidate.id,
@@ -314,15 +336,17 @@ class SQLiteCandidateRepository:
                 candidate.source_id,
                 candidate.fact_type,
                 candidate.status,
-                candidate.display_name,
-                candidate.normalized_name,
-                candidate.schedule_text,
-                candidate.note,
                 candidate.created_at.isoformat(),
                 None if candidate.reviewed_at is None else candidate.reviewed_at.isoformat(),
                 candidate.predecessor_candidate_id,
+                None
+                if candidate.provenance_locator is None
+                else json.dumps(
+                    candidate.provenance_locator, ensure_ascii=False, sort_keys=True
+                ),
             ),
         )
+        self._insert_detail(candidate)
 
     def update_status(
         self,
@@ -339,64 +363,244 @@ class SQLiteCandidateRepository:
             (status, reviewed_at.isoformat(), candidate_id),
         )
 
+    def _load_detail(self, fact_type: str, candidate_id: str) -> CandidateDetail:
+        table, mapper = _DETAIL_LOADERS.get(fact_type, (None, None))
+        if table is None:
+            raise IntegrityStorageError(f"unsupported candidate fact type: {fact_type}")
+        row = self.connection.execute(
+            f"SELECT * FROM {table} WHERE candidate_id = ?", (candidate_id,)
+        ).fetchone()
+        if row is None:
+            raise IntegrityStorageError(f"candidate detail is missing: {candidate_id}")
+        return mapper(row)
+
+    def _insert_detail(self, candidate: CandidateFact) -> None:
+        if candidate.fact_type == "medication":
+            assert isinstance(candidate.detail, MedicationCandidateDetail)
+            detail = candidate.detail
+            self.connection.execute(
+                """
+                INSERT INTO candidate_medication_details (
+                    candidate_id, display_name, normalized_name, schedule_text, note
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.id,
+                    detail.display_name,
+                    detail.normalized_name,
+                    detail.schedule_text,
+                    detail.note,
+                ),
+            )
+            return
+        if candidate.fact_type == "condition":
+            assert isinstance(candidate.detail, ConditionCandidateDetail)
+            detail = candidate.detail
+            self.connection.execute(
+                """
+                INSERT INTO candidate_condition_details (
+                    candidate_id, display_name, normalized_name, status_text,
+                    onset_date, note
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.id,
+                    detail.display_name,
+                    detail.normalized_name,
+                    detail.status_text,
+                    None if detail.onset_date is None else detail.onset_date.isoformat(),
+                    detail.note,
+                ),
+            )
+            return
+        if candidate.fact_type == "lab":
+            assert isinstance(candidate.detail, LabCandidateDetail)
+            detail = candidate.detail
+            self.connection.execute(
+                """
+                INSERT INTO candidate_lab_details (
+                    candidate_id, test_name, normalized_test_name, result_text,
+                    unit_text, reference_range_text, observed_date,
+                    source_flag_text, note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.id,
+                    detail.test_name,
+                    detail.normalized_test_name,
+                    detail.result_text,
+                    detail.unit_text,
+                    detail.reference_range_text,
+                    None if detail.observed_date is None else detail.observed_date.isoformat(),
+                    detail.source_flag_text,
+                    detail.note,
+                ),
+            )
+            return
+        raise IntegrityStorageError(f"unsupported candidate fact type: {candidate.fact_type}")
+
 
 class SQLiteCanonicalRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self.connection = connection
 
-    def get(self, record_id: str) -> CanonicalMedicationRecord | None:
+    def get(self, record_id: str) -> CanonicalRecord | None:
         row = self.connection.execute(
-            "SELECT * FROM canonical_medication_records WHERE id = ?", (record_id,)
+            "SELECT * FROM canonical_records WHERE id = ?", (record_id,)
         ).fetchone()
-        return None if row is None else _canonical_from_row(row)
+        if row is None:
+            return None
+        return _canonical_from_row(row, self._load_detail(str(row["fact_type"]), record_id))
 
-    def get_by_candidate(self, candidate_id: str) -> CanonicalMedicationRecord | None:
+    def get_by_candidate(self, candidate_id: str) -> CanonicalRecord | None:
         row = self.connection.execute(
-            "SELECT * FROM canonical_medication_records WHERE candidate_id = ?",
+            "SELECT * FROM canonical_records WHERE candidate_id = ?",
             (candidate_id,),
         ).fetchone()
-        return None if row is None else _canonical_from_row(row)
+        if row is None:
+            return None
+        return _canonical_from_row(row, self._load_detail(str(row["fact_type"]), str(row["id"])))
 
-    def insert(self, record: CanonicalMedicationRecord) -> None:
+    def insert(self, record: CanonicalRecord) -> None:
         self.connection.execute(
             """
-            INSERT INTO canonical_medication_records (
-                id, person_id, candidate_id, source_id, display_name,
-                normalized_name, schedule_text, note, confirmed_at, is_active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO canonical_records (
+                id, person_id, candidate_id, source_id, fact_type,
+                confirmed_at, is_active, superseded_by_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record.id,
                 record.person_id,
                 record.candidate_id,
                 record.source_id,
-                record.display_name,
-                record.normalized_name,
-                record.schedule_text,
-                record.note,
+                record.fact_type,
                 record.confirmed_at.isoformat(),
                 int(record.is_active),
+                record.superseded_by_record_id,
             ),
         )
+        self._insert_detail(record)
 
-    def list_active_for_person(self, person_id: str) -> list[CanonicalMedicationRecord]:
-        return self.list_for_person(person_id)
+    def supersede(self, record_id: str, superseded_by_record_id: str) -> None:
+        cursor = self.connection.execute(
+            """
+            UPDATE canonical_records
+            SET is_active = 0, superseded_by_record_id = ?
+            WHERE id = ? AND is_active = 1
+            """,
+            (superseded_by_record_id, record_id),
+        )
+        if cursor.rowcount != 1:
+            raise IntegrityStorageError(
+                f"active canonical record cannot be superseded: {record_id}"
+            )
+
+    def list_active_for_person(
+        self,
+        person_id: str,
+        fact_type: str | None = None,
+    ) -> list[CanonicalRecord]:
+        return self.list_for_person(person_id, fact_type=fact_type)
 
     def list_for_person(
         self,
         person_id: str,
         include_inactive: bool = False,
-    ) -> list[CanonicalMedicationRecord]:
-        query = "SELECT * FROM canonical_medication_records WHERE person_id = ?"
-        parameters: tuple[str, ...] = (person_id,)
+        fact_type: str | None = None,
+    ) -> list[CanonicalRecord]:
+        query = "SELECT * FROM canonical_records WHERE person_id = ?"
+        parameters: list[object] = [person_id]
         if not include_inactive:
             query += " AND is_active = 1"
+        if fact_type is not None:
+            query += " AND fact_type = ?"
+            parameters.append(fact_type)
         query += " ORDER BY confirmed_at ASC, id ASC"
         rows = self.connection.execute(
             query,
             parameters,
         ).fetchall()
-        return [_canonical_from_row(row) for row in rows]
+        return [
+            _canonical_from_row(row, self._load_detail(str(row["fact_type"]), str(row["id"])))
+            for row in rows
+        ]
+
+    def _load_detail(self, fact_type: str, record_id: str) -> CandidateDetail:
+        table, mapper = _CANONICAL_DETAIL_LOADERS.get(fact_type, (None, None))
+        if table is None:
+            raise IntegrityStorageError(f"unsupported canonical record fact type: {fact_type}")
+        row = self.connection.execute(
+            f"SELECT * FROM {table} WHERE record_id = ?", (record_id,)
+        ).fetchone()
+        if row is None:
+            raise IntegrityStorageError(f"canonical record detail is missing: {record_id}")
+        return mapper(row)
+
+    def _insert_detail(self, record: CanonicalRecord) -> None:
+        if record.fact_type == "medication":
+            assert isinstance(record.detail, MedicationCandidateDetail)
+            detail = record.detail
+            self.connection.execute(
+                """
+                INSERT INTO canonical_medication_details (
+                    record_id, display_name, normalized_name, schedule_text, note
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    record.id,
+                    detail.display_name,
+                    detail.normalized_name,
+                    detail.schedule_text,
+                    detail.note,
+                ),
+            )
+            return
+        if record.fact_type == "condition":
+            assert isinstance(record.detail, ConditionCandidateDetail)
+            detail = record.detail
+            self.connection.execute(
+                """
+                INSERT INTO canonical_condition_details (
+                    record_id, display_name, normalized_name, status_text,
+                    onset_date, note
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.id,
+                    detail.display_name,
+                    detail.normalized_name,
+                    detail.status_text,
+                    None if detail.onset_date is None else detail.onset_date.isoformat(),
+                    detail.note,
+                ),
+            )
+            return
+        if record.fact_type == "lab":
+            assert isinstance(record.detail, LabCandidateDetail)
+            detail = record.detail
+            self.connection.execute(
+                """
+                INSERT INTO canonical_lab_details (
+                    record_id, test_name, normalized_test_name, result_text,
+                    unit_text, reference_range_text, observed_date,
+                    source_flag_text, note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.id,
+                    detail.test_name,
+                    detail.normalized_test_name,
+                    detail.result_text,
+                    detail.unit_text,
+                    detail.reference_range_text,
+                    None if detail.observed_date is None else detail.observed_date.isoformat(),
+                    detail.source_flag_text,
+                    detail.note,
+                ),
+            )
+            return
+        raise IntegrityStorageError(f"unsupported canonical record fact type: {record.fact_type}")
 
 
 class SQLiteTimelineRepository:
@@ -407,15 +611,16 @@ class SQLiteTimelineRepository:
         self.connection.execute(
             """
             INSERT INTO timeline_events (
-                id, person_id, canonical_record_id, source_id,
+                id, person_id, canonical_record_id, source_id, fact_type,
                 event_type, event_at, title
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event.id,
                 event.person_id,
                 event.canonical_record_id,
                 event.source_id,
+                event.fact_type,
                 event.event_type,
                 event.event_at.isoformat(),
                 event.title,
@@ -871,38 +1076,88 @@ def _person_from_row(row: sqlite3.Row) -> Person:
     )
 
 
-def _candidate_from_row(row: sqlite3.Row) -> CandidateFact:
+def _candidate_from_row(row: sqlite3.Row, detail: CandidateDetail) -> CandidateFact:
     return CandidateFact(
         id=row["id"],
         person_id=row["person_id"],
         source_id=row["source_id"],
         fact_type=row["fact_type"],
         status=row["status"],
-        display_name=row["display_name"],
-        normalized_name=row["normalized_name"],
-        schedule_text=row["schedule_text"],
-        note=row["note"],
+        detail=detail,
         created_at=parse_utc_datetime(row["created_at"]),
         reviewed_at=(
             None if row["reviewed_at"] is None else parse_utc_datetime(row["reviewed_at"])
         ),
         predecessor_candidate_id=row["predecessor_candidate_id"],
+        provenance_locator=(
+            None
+            if row["provenance_locator_json"] is None
+            else json.loads(row["provenance_locator_json"])
+        ),
     )
 
 
-def _canonical_from_row(row: sqlite3.Row) -> CanonicalMedicationRecord:
-    return CanonicalMedicationRecord(
+def _canonical_from_row(row: sqlite3.Row, detail: CandidateDetail) -> CanonicalRecord:
+    return CanonicalRecord(
         id=row["id"],
         person_id=row["person_id"],
         candidate_id=row["candidate_id"],
         source_id=row["source_id"],
+        fact_type=row["fact_type"],
+        detail=detail,
+        confirmed_at=parse_utc_datetime(row["confirmed_at"]),
+        is_active=bool(row["is_active"]),
+        superseded_by_record_id=row["superseded_by_record_id"],
+    )
+
+
+def _medication_detail_from_row(row: sqlite3.Row) -> MedicationCandidateDetail:
+    return MedicationCandidateDetail(
         display_name=row["display_name"],
         normalized_name=row["normalized_name"],
         schedule_text=row["schedule_text"],
         note=row["note"],
-        confirmed_at=parse_utc_datetime(row["confirmed_at"]),
-        is_active=bool(row["is_active"]),
     )
+
+
+def _condition_detail_from_row(row: sqlite3.Row) -> ConditionCandidateDetail:
+    return ConditionCandidateDetail(
+        display_name=row["display_name"],
+        normalized_name=row["normalized_name"],
+        status_text=row["status_text"],
+        onset_date=(
+            None if row["onset_date"] is None else date.fromisoformat(row["onset_date"])
+        ),
+        note=row["note"],
+    )
+
+
+def _lab_detail_from_row(row: sqlite3.Row) -> LabCandidateDetail:
+    return LabCandidateDetail(
+        test_name=row["test_name"],
+        normalized_test_name=row["normalized_test_name"],
+        result_text=row["result_text"],
+        unit_text=row["unit_text"],
+        reference_range_text=row["reference_range_text"],
+        observed_date=(
+            None if row["observed_date"] is None else date.fromisoformat(row["observed_date"])
+        ),
+        source_flag_text=row["source_flag_text"],
+        note=row["note"],
+    )
+
+
+_DETAIL_LOADERS: dict[str, tuple[str, Callable[[sqlite3.Row], CandidateDetail]]] = {
+    "medication": ("candidate_medication_details", _medication_detail_from_row),
+    "condition": ("candidate_condition_details", _condition_detail_from_row),
+    "lab": ("candidate_lab_details", _lab_detail_from_row),
+}
+
+_CANONICAL_DETAIL_LOADERS: dict[str, tuple[str, Callable[[sqlite3.Row], CandidateDetail]]] = {
+    "medication": ("canonical_medication_details", _medication_detail_from_row),
+    "condition": ("canonical_condition_details", _condition_detail_from_row),
+    "lab": ("canonical_lab_details", _lab_detail_from_row),
+}
 
 
 def _timeline_from_row(row: sqlite3.Row) -> TimelineEvent:
@@ -911,6 +1166,7 @@ def _timeline_from_row(row: sqlite3.Row) -> TimelineEvent:
         person_id=row["person_id"],
         canonical_record_id=row["canonical_record_id"],
         source_id=row["source_id"],
+        fact_type=row["fact_type"],
         event_type=row["event_type"],
         event_at=parse_utc_datetime(row["event_at"]),
         title=row["title"],

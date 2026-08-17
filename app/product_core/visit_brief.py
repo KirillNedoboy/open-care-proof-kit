@@ -38,7 +38,9 @@ class VisitBriefService:
                     records.append(record)
                 records.sort(key=lambda item: (item.confirmed_at, item.id))
             else:
-                records = uow.canonical_records.list_active_for_person(request.person_id)
+                records = uow.canonical_records.list_active_for_person(
+                    request.person_id, fact_type="medication"
+                )
 
         medications = [
             VisitBriefMedication(

@@ -323,6 +323,89 @@ class ProductCoreAccess:
             action=action,
         )
 
+    def preflight_candidate_review(self, candidate_id: str) -> str:
+        """Preflight a review decision with the fact-type-typed write scope."""
+        with self.runtime.database.uow() as uow:
+            assert uow.connection is not None
+            return self._require_candidate_review_in_connection(
+                uow.connection, candidate_id
+            )
+
+    def authorize_candidate_review_mutation(
+        self,
+        candidate_id: str,
+        *,
+        action: str,
+    ) -> MutationAuthorizer:
+        """Authorize a review decision inside the mutation transaction.
+
+        The required write scope is derived from the candidate's fact_type in
+        the same transaction (candidate.review + {fact_type}.write), so a
+        reviewer can never confirm a fact family they were not granted.
+        """
+
+        def authorize(connection: sqlite3.Connection) -> None:
+            person_id = self._require_candidate_review_in_connection(connection, candidate_id)
+            self.family_runtime.service._audit(
+                connection,
+                self.actor_id,
+                action,
+                "person",
+                person_id,
+                "scope_granted",
+            )
+
+        return authorize
+
+    def _require_candidate_review_in_connection(
+        self,
+        connection: sqlite3.Connection,
+        candidate_id: str,
+    ) -> str:
+        row = connection.execute(
+            """
+            SELECT c.person_id, c.fact_type
+            FROM candidate_facts AS c
+            JOIN people AS p ON p.person_id = c.person_id AND p.is_active = 1
+            WHERE c.id = ?
+            """,
+            (candidate_id,),
+        ).fetchone()
+        person_id = None if row is None else str(row["person_id"])
+        # Always execute the assignment lookup, even for a missing resource, so a
+        # hidden real identifier and an unknown identifier follow the same SQL shape.
+        assignment_state = self._active_assignment_state(connection, person_id)
+        if person_id is None or assignment_state is None:
+            raise CandidateNotFoundError("Record was not found.")
+        role, scopes = assignment_state
+        mapping = {
+            "actor_id": self.actor_id,
+            "person_id": person_id,
+            "role": role,
+            "scopes": scopes,
+            "is_active": True,
+        }
+        fact_type = str(row["fact_type"])
+        write_scope = {
+            "medication": "medication.write",
+            "condition": "condition.write",
+            "lab": "lab.write",
+        }.get(fact_type)
+        if write_scope is None:
+            raise CandidateNotFoundError("Record was not found.")
+        required_scopes = ("candidate.review", write_scope)
+        if not all(
+            self.policy.authorize(
+                actor_id=self.actor_id,
+                person_id=person_id,
+                required_scope=scope,
+                assignment=mapping,
+            ).allowed
+            for scope in required_scopes
+        ):
+            raise ScopeForbiddenError("Required scope is not granted.")
+        return person_id
+
     def authorize_visit_mutation(
         self,
         visit_id: str,

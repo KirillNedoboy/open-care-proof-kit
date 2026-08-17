@@ -107,7 +107,7 @@ def test_confirmation_atomically_creates_canonical_and_timeline_and_is_idempoten
     assert first.is_active is True
     with database.connect() as connection:
         assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_medication_records"
+            "SELECT COUNT(*) FROM canonical_records"
         ).fetchone()[0] == 1
         assert connection.execute("SELECT COUNT(*) FROM timeline_events").fetchone()[0] == 1
         assert connection.execute(
@@ -226,7 +226,7 @@ def test_confirmation_rolls_back_when_timeline_insert_fails(tmp_path: Path) -> N
     assert lifecycle.get_candidate(candidate_id).status == "pending"
     with database.connect() as connection:
         assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_medication_records"
+            "SELECT COUNT(*) FROM canonical_records"
         ).fetchone()[0] == 0
 
 

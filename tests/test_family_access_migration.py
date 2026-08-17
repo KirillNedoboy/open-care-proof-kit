@@ -195,7 +195,7 @@ def test_v5_migration_preserves_v4_people_and_adds_empty_access_schema(tmp_path:
         )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
-    assert versions == [1, 2, 3, 4, 5, 6]
+    assert versions == [1, 2, 3, 4, 5, 6, 7]
     assert tables >= ACCESS_TABLES
     assert counts == dict.fromkeys(ACCESS_TABLES, 0)
 

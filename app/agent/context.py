@@ -58,7 +58,9 @@ def build_product_core_agent_context(
             key=lambda source: (isoformat_utc(source.created_at), source.id),
         )
         medications = sorted(
-            uow.canonical_records.list_for_person(person_id, include_inactive=False),
+            uow.canonical_records.list_for_person(
+                person_id, include_inactive=False, fact_type="medication"
+            ),
             key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
         )
         timeline = sorted(

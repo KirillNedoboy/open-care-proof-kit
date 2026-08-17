@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.product_core.models import ensure_utc_datetime
 
-CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected"]
+CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected", "unsupported"]
+FactType = Literal["medication", "condition", "lab"]
 
 MAX_ID_LENGTH = 128
 MAX_DISPLAY_NAME_LENGTH = 200
@@ -122,6 +123,7 @@ class MedicationCandidateRequest(APIModel):
     display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
     schedule_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
     note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
 
     @field_validator("person_id", "source_id")
     @classmethod
@@ -147,6 +149,7 @@ class CorrectCandidateRequest(APIModel):
     display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
     schedule_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
     note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
 
     @field_validator("display_name")
     @classmethod
@@ -272,14 +275,15 @@ class CandidateResponse(APIModel):
     id: str
     person_id: str
     source_id: str
-    fact_type: Literal["medication"]
+    fact_type: Literal["medication", "condition", "lab"]
     status: CandidateStatus
-    display_name: str
-    schedule_text: str | None
-    note: str | None
+    display_name: str | None = None
+    schedule_text: str | None = None
+    note: str | None = None
     created_at: datetime
-    reviewed_at: datetime | None
-    predecessor_candidate_id: str | None
+    reviewed_at: datetime | None = None
+    predecessor_candidate_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
 
 
 class CandidateListResponse(APIModel):
@@ -307,6 +311,7 @@ class TimelineEventResponse(APIModel):
     person_id: str
     canonical_record_id: str
     source_id: str
+    fact_type: Literal["medication", "condition", "lab"]
     event_type: str
     event_at: datetime
     title: str

@@ -50,7 +50,7 @@ def test_empty_person_export_has_canonical_bundle_and_manifest_checksum(tmp_path
         assert archive.read("manifest.sha256").decode("ascii") == hashlib.sha256(
             manifest
         ).hexdigest()
-    assert vault["format_version"] == 2
+    assert vault["format_version"] == 3
     assert vault["person"]["person_id"] == "person-1"
     assert vault["sources"] == []
     assert "relative_path" not in manifest.decode("utf-8")
@@ -121,14 +121,15 @@ def test_populated_export_is_person_scoped_and_has_stable_canonical_payloads(
             "size_bytes": len(vault_bytes),
         }
     assert vault["person"]["person_id"] == "person-1"
-    assert vault["canonical_medication_records"][0]["canonical_record_id"] == record.id
+    assert vault["canonical_records"][0]["canonical_record_id"] == record.id
     assert vault["visit_questions"][0]["question_id"] == question.question_id
     assert vault["visit_brief_revisions"][0]["revision_number"] == 1
     serialized = first.vault_json.decode("utf-8")
     assert unrelated.id not in serialized
     assert "relative_path" not in serialized
-    assert "normalized_name" not in serialized
     assert "visit_brief_audit_events" not in serialized
+    assert '"fact_type":"medication"' in serialized
+    assert '"provenance_locator"' in serialized
 
     with sqlite3.connect(database.path) as connection:
         connection.execute(
@@ -162,6 +163,7 @@ def test_export_fails_closed_when_reached_source_is_missing(tmp_path: Path) -> N
         display_name="Aspirin",
         schedule_text=None,
         note=None,
+        provenance_locator={"kind": "span", "start": 0, "end": 8},
     )
     (tmp_path / "sources" / source.relative_path).unlink()
 
@@ -203,6 +205,7 @@ def test_export_rejects_invalid_reached_source_storage(
         display_name="Aspirin",
         schedule_text=None,
         note=None,
+        provenance_locator={"kind": "span", "start": 0, "end": 8},
     )
     path = tmp_path / "sources" / source.relative_path
     if mutation == "size":

@@ -147,8 +147,9 @@ def test_visit_brief_rejects_inactive_records_and_naive_generated_at(tmp_path: P
     database, _, brief_service, records = setup_records(tmp_path)
     with database.connect() as connection:
         connection.execute(
-            "UPDATE canonical_medication_records SET is_active=0 WHERE id=?",
-            (records[0].id,),
+            "UPDATE canonical_records SET is_active=0, superseded_by_record_id=? "
+            "WHERE id=?",
+            (records[1].id, records[0].id),
         )
 
     with pytest.raises(SelectionError):

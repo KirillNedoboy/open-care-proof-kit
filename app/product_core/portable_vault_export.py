@@ -10,9 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from app.product_core.errors import IntegrityStorageError, PersonNotFoundError
+from app.product_core.migrations import PRODUCT_MIGRATIONS
 from app.product_core.models import (
     CandidateFact,
-    CanonicalMedicationRecord,
+    CanonicalRecord,
+    ConditionCandidateDetail,
+    LabCandidateDetail,
+    MedicationCandidateDetail,
     PersistedVisitBrief,
     PersistedVisitBriefRevision,
     Person,
@@ -27,8 +31,8 @@ from app.product_core.persisted_visit_briefs import verify_persisted_visit_brief
 from app.product_core.services import ImmutableSourceStore
 from app.product_core.sqlite import SQLiteDatabase
 
-PORTABLE_VAULT_FORMAT_VERSION = 2
-PRODUCT_CORE_SCHEMA_VERSION = 5
+PORTABLE_VAULT_FORMAT_VERSION = 3
+PRODUCT_CORE_SCHEMA_VERSION = PRODUCT_MIGRATIONS[-1].version
 
 
 @dataclass(frozen=True)
@@ -185,7 +189,37 @@ class PortableVaultExportService:
                 "person": _person_dto(person),
                 "sources": [_source_dto(source) for source in sources],
                 "candidate_facts": [_candidate_dto(item) for item in candidates],
-                "canonical_medication_records": [_canonical_record_dto(item) for item in records],
+                "candidate_medication_details": [
+                    _candidate_medication_detail_dto(item)
+                    for item in candidates
+                    if item.fact_type == "medication"
+                ],
+                "candidate_condition_details": [
+                    _candidate_condition_detail_dto(item)
+                    for item in candidates
+                    if item.fact_type == "condition"
+                ],
+                "candidate_lab_details": [
+                    _candidate_lab_detail_dto(item)
+                    for item in candidates
+                    if item.fact_type == "lab"
+                ],
+                "canonical_records": [_canonical_record_dto(item) for item in records],
+                "canonical_medication_details": [
+                    _canonical_medication_detail_dto(item)
+                    for item in records
+                    if item.fact_type == "medication"
+                ],
+                "canonical_condition_details": [
+                    _canonical_condition_detail_dto(item)
+                    for item in records
+                    if item.fact_type == "condition"
+                ],
+                "canonical_lab_details": [
+                    _canonical_lab_detail_dto(item)
+                    for item in records
+                    if item.fact_type == "lab"
+                ],
                 "timeline_events": [_timeline_event_dto(item) for item in events],
                 "visits": [_visit_dto(item) for item in visits],
                 "visit_questions": [
@@ -301,28 +335,115 @@ def _candidate_dto(candidate: CandidateFact) -> dict[str, object]:
         "source_id": candidate.source_id,
         "fact_type": candidate.fact_type,
         "status": candidate.status,
-        "display_name": candidate.display_name,
-        "schedule_text": candidate.schedule_text,
-        "note": candidate.note,
         "created_at": isoformat_utc(candidate.created_at),
         "reviewed_at": (
             None if candidate.reviewed_at is None else isoformat_utc(candidate.reviewed_at)
         ),
         "predecessor_candidate_id": candidate.predecessor_candidate_id,
+        "provenance_locator": candidate.provenance_locator,
     }
 
 
-def _canonical_record_dto(record: CanonicalMedicationRecord) -> dict[str, object]:
+def _candidate_medication_detail_dto(candidate: CandidateFact) -> dict[str, object]:
+    detail = candidate.detail
+    assert isinstance(detail, MedicationCandidateDetail)
+    return {
+        "candidate_id": candidate.id,
+        "display_name": detail.display_name,
+        "normalized_name": detail.normalized_name,
+        "schedule_text": detail.schedule_text,
+        "note": detail.note,
+    }
+
+
+def _candidate_condition_detail_dto(candidate: CandidateFact) -> dict[str, object]:
+    detail = candidate.detail
+    assert isinstance(detail, ConditionCandidateDetail)
+    return {
+        "candidate_id": candidate.id,
+        "display_name": detail.display_name,
+        "normalized_name": detail.normalized_name,
+        "status_text": detail.status_text,
+        "onset_date": (
+            None if detail.onset_date is None else detail.onset_date.isoformat()
+        ),
+        "note": detail.note,
+    }
+
+
+def _candidate_lab_detail_dto(candidate: CandidateFact) -> dict[str, object]:
+    detail = candidate.detail
+    assert isinstance(detail, LabCandidateDetail)
+    return {
+        "candidate_id": candidate.id,
+        "test_name": detail.test_name,
+        "normalized_test_name": detail.normalized_test_name,
+        "result_text": detail.result_text,
+        "unit_text": detail.unit_text,
+        "reference_range_text": detail.reference_range_text,
+        "observed_date": (
+            None if detail.observed_date is None else detail.observed_date.isoformat()
+        ),
+        "source_flag_text": detail.source_flag_text,
+        "note": detail.note,
+    }
+
+
+def _canonical_record_dto(record: CanonicalRecord) -> dict[str, object]:
     return {
         "canonical_record_id": record.id,
         "person_id": record.person_id,
         "candidate_id": record.candidate_id,
         "source_id": record.source_id,
-        "display_name": record.display_name,
-        "schedule_text": record.schedule_text,
-        "note": record.note,
+        "fact_type": record.fact_type,
         "confirmed_at": isoformat_utc(record.confirmed_at),
         "is_active": record.is_active,
+        "superseded_by_record_id": record.superseded_by_record_id,
+    }
+
+
+def _canonical_medication_detail_dto(record: CanonicalRecord) -> dict[str, object]:
+    detail = record.detail
+    assert isinstance(detail, MedicationCandidateDetail)
+    return {
+        "record_id": record.id,
+        "display_name": detail.display_name,
+        "normalized_name": detail.normalized_name,
+        "schedule_text": detail.schedule_text,
+        "note": detail.note,
+    }
+
+
+def _canonical_condition_detail_dto(record: CanonicalRecord) -> dict[str, object]:
+    detail = record.detail
+    assert isinstance(detail, ConditionCandidateDetail)
+    return {
+        "record_id": record.id,
+        "display_name": detail.display_name,
+        "normalized_name": detail.normalized_name,
+        "status_text": detail.status_text,
+        "onset_date": (
+            None if detail.onset_date is None else detail.onset_date.isoformat()
+        ),
+        "note": detail.note,
+    }
+
+
+def _canonical_lab_detail_dto(record: CanonicalRecord) -> dict[str, object]:
+    detail = record.detail
+    assert isinstance(detail, LabCandidateDetail)
+    return {
+        "record_id": record.id,
+        "test_name": detail.test_name,
+        "normalized_test_name": detail.normalized_test_name,
+        "result_text": detail.result_text,
+        "unit_text": detail.unit_text,
+        "reference_range_text": detail.reference_range_text,
+        "observed_date": (
+            None if detail.observed_date is None else detail.observed_date.isoformat()
+        ),
+        "source_flag_text": detail.source_flag_text,
+        "note": detail.note,
     }
 
 
@@ -332,6 +453,7 @@ def _timeline_event_dto(event: TimelineEvent) -> dict[str, object]:
         "person_id": event.person_id,
         "canonical_record_id": event.canonical_record_id,
         "source_id": event.source_id,
+        "fact_type": event.fact_type,
         "event_type": event.event_type,
         "event_at": isoformat_utc(event.event_at),
         "title": event.title,

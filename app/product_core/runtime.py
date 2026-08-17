@@ -55,6 +55,7 @@ def create_product_core_runtime(
             database,
             clock=clock,
             id_factory=id_factory,
+            source_reader=sources.store.read,
         ),
         visit_briefs=VisitBriefService(database),
         persisted_visit_briefs=PersistedVisitBriefService(

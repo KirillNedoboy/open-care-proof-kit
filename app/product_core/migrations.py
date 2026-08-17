@@ -1011,6 +1011,282 @@ PRODUCT_MIGRATIONS = (
             ),
         ),
     ),
+    Migration(
+        version=7,
+        statements=(
+            "PRAGMA defer_foreign_keys=ON",
+            """
+            CREATE TABLE candidate_facts_v7 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN ('medication', 'condition', 'lab')
+                ),
+                status TEXT NOT NULL CHECK (
+                    status IN ('pending', 'confirmed', 'corrected', 'rejected', 'unsupported')
+                ),
+                created_at TEXT NOT NULL,
+                reviewed_at TEXT,
+                predecessor_candidate_id TEXT REFERENCES candidate_facts_v7(id),
+                provenance_locator_json TEXT CHECK (
+                    provenance_locator_json IS NULL
+                    OR json_valid(provenance_locator_json)
+                ),
+                CHECK (
+                    predecessor_candidate_id IS NULL OR predecessor_candidate_id <> id
+                ),
+                CHECK (
+                    (status = 'pending' AND reviewed_at IS NULL)
+                    OR (status <> 'pending' AND reviewed_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE TABLE candidate_medication_details (
+                candidate_id TEXT PRIMARY KEY REFERENCES candidate_facts_v7(id),
+                display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+                normalized_name TEXT NOT NULL CHECK (length(trim(normalized_name)) > 0),
+                schedule_text TEXT,
+                note TEXT
+            )
+            """,
+            """
+            CREATE TABLE candidate_condition_details (
+                candidate_id TEXT PRIMARY KEY REFERENCES candidate_facts_v7(id),
+                display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+                normalized_name TEXT NOT NULL CHECK (length(trim(normalized_name)) > 0),
+                status_text TEXT,
+                onset_date TEXT CHECK (
+                    onset_date IS NULL OR (
+                        length(onset_date) = 10 AND date(onset_date) = onset_date
+                    )
+                ),
+                note TEXT
+            )
+            """,
+            """
+            CREATE TABLE candidate_lab_details (
+                candidate_id TEXT PRIMARY KEY REFERENCES candidate_facts_v7(id),
+                test_name TEXT NOT NULL CHECK (length(trim(test_name)) > 0),
+                normalized_test_name TEXT NOT NULL CHECK (
+                    length(trim(normalized_test_name)) > 0
+                ),
+                result_text TEXT NOT NULL,
+                unit_text TEXT,
+                reference_range_text TEXT,
+                observed_date TEXT CHECK (
+                    observed_date IS NULL OR (
+                        length(observed_date) = 10 AND date(observed_date) = observed_date
+                    )
+                ),
+                source_flag_text TEXT,
+                note TEXT
+            )
+            """,
+            """
+            CREATE TABLE canonical_records_v7 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                candidate_id TEXT NOT NULL UNIQUE REFERENCES candidate_facts_v7(id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN ('medication', 'condition', 'lab')
+                ),
+                confirmed_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                superseded_by_record_id TEXT REFERENCES canonical_records_v7(id),
+                CHECK (
+                    superseded_by_record_id IS NULL OR superseded_by_record_id <> id
+                ),
+                CHECK (
+                    (is_active = 1 AND superseded_by_record_id IS NULL)
+                    OR (is_active = 0 AND superseded_by_record_id IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE TABLE canonical_medication_details (
+                record_id TEXT PRIMARY KEY REFERENCES canonical_records_v7(id),
+                display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+                normalized_name TEXT NOT NULL CHECK (length(trim(normalized_name)) > 0),
+                schedule_text TEXT,
+                note TEXT
+            )
+            """,
+            """
+            CREATE TABLE canonical_condition_details (
+                record_id TEXT PRIMARY KEY REFERENCES canonical_records_v7(id),
+                display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+                normalized_name TEXT NOT NULL CHECK (length(trim(normalized_name)) > 0),
+                status_text TEXT,
+                onset_date TEXT CHECK (
+                    onset_date IS NULL OR (
+                        length(onset_date) = 10 AND date(onset_date) = onset_date
+                    )
+                ),
+                note TEXT
+            )
+            """,
+            """
+            CREATE TABLE canonical_lab_details (
+                record_id TEXT PRIMARY KEY REFERENCES canonical_records_v7(id),
+                test_name TEXT NOT NULL CHECK (length(trim(test_name)) > 0),
+                normalized_test_name TEXT NOT NULL CHECK (
+                    length(trim(normalized_test_name)) > 0
+                ),
+                result_text TEXT NOT NULL,
+                unit_text TEXT,
+                reference_range_text TEXT,
+                observed_date TEXT CHECK (
+                    observed_date IS NULL OR (
+                        length(observed_date) = 10 AND date(observed_date) = observed_date
+                    )
+                ),
+                source_flag_text TEXT,
+                note TEXT
+            )
+            """,
+            """
+            CREATE TABLE timeline_events_v7 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                canonical_record_id TEXT NOT NULL REFERENCES canonical_records_v7(id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN ('medication', 'condition', 'lab')
+                ),
+                event_type TEXT NOT NULL CHECK (length(trim(event_type)) > 0),
+                event_at TEXT NOT NULL,
+                title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+                UNIQUE (canonical_record_id, event_type)
+            )
+            """,
+            """
+            CREATE TABLE visit_brief_evidence_selections_v7 (
+                revision_id TEXT NOT NULL REFERENCES visit_brief_revisions(revision_id),
+                position INTEGER NOT NULL CHECK (position >= 0),
+                canonical_record_id TEXT NOT NULL REFERENCES canonical_records_v7(id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                snapshot_json TEXT NOT NULL,
+                PRIMARY KEY (revision_id, position),
+                UNIQUE (revision_id, canonical_record_id)
+            )
+            """,
+            """
+            INSERT INTO candidate_facts_v7 (
+                id, person_id, source_id, fact_type, status, created_at,
+                reviewed_at, predecessor_candidate_id, provenance_locator_json
+            )
+            SELECT candidate.id, candidate.person_id, candidate.source_id,
+                   'medication', candidate.status, candidate.created_at,
+                   candidate.reviewed_at, candidate.predecessor_candidate_id,
+                   CASE WHEN source.source_type = 'manual_entry'
+                        THEN '{"kind":"structured_field","path":"medication"}'
+                        ELSE NULL END
+            FROM candidate_facts AS candidate
+            JOIN sources AS source ON source.id = candidate.source_id
+            """,
+            """
+            INSERT INTO candidate_medication_details (
+                candidate_id, display_name, normalized_name, schedule_text, note
+            )
+            SELECT id, display_name, normalized_name, schedule_text, note
+            FROM candidate_facts
+            """,
+            """
+            INSERT INTO canonical_records_v7 (
+                id, person_id, candidate_id, source_id, fact_type,
+                confirmed_at, is_active, superseded_by_record_id
+            )
+            SELECT id, person_id, candidate_id, source_id, 'medication',
+                   confirmed_at, is_active, NULL
+            FROM canonical_medication_records
+            """,
+            """
+            INSERT INTO canonical_medication_details (
+                record_id, display_name, normalized_name, schedule_text, note
+            )
+            SELECT id, display_name, normalized_name, schedule_text, note
+            FROM canonical_medication_records
+            """,
+            """
+            INSERT INTO timeline_events_v7 (
+                id, person_id, canonical_record_id, source_id, fact_type,
+                event_type, event_at, title
+            )
+            SELECT id, person_id, canonical_record_id, source_id, 'medication',
+                   event_type, event_at, title
+            FROM timeline_events
+            """,
+            """
+            INSERT INTO visit_brief_evidence_selections_v7 (
+                revision_id, position, canonical_record_id, source_id, snapshot_json
+            )
+            SELECT revision_id, position, canonical_record_id, source_id, snapshot_json
+            FROM visit_brief_evidence_selections
+            """,
+            """
+            ALTER TABLE person_access_assignments
+            ADD COLUMN scope_generation TEXT NOT NULL DEFAULT 'family-access-v1'
+                CHECK (length(trim(scope_generation)) > 0)
+            """,
+            "DROP TABLE visit_brief_evidence_selections",
+            "DROP TABLE timeline_events",
+            "DROP TABLE canonical_medication_records",
+            "DROP TABLE candidate_facts",
+            "ALTER TABLE candidate_facts_v7 RENAME TO candidate_facts",
+            (
+                "ALTER TABLE canonical_records_v7 RENAME TO canonical_records"
+            ),
+            "ALTER TABLE timeline_events_v7 RENAME TO timeline_events",
+            (
+                "ALTER TABLE visit_brief_evidence_selections_v7 "
+                "RENAME TO visit_brief_evidence_selections"
+            ),
+            """
+            CREATE TRIGGER candidate_facts_predecessor_same_person_insert
+            BEFORE INSERT ON candidate_facts
+            WHEN NEW.predecessor_candidate_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM candidate_facts AS predecessor
+                WHERE predecessor.id = NEW.predecessor_candidate_id
+                  AND predecessor.person_id <> NEW.person_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'predecessor_candidate_person_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER candidate_facts_predecessor_same_person_update
+            BEFORE UPDATE OF person_id, predecessor_candidate_id ON candidate_facts
+            WHEN NEW.predecessor_candidate_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM candidate_facts AS predecessor
+                WHERE predecessor.id = NEW.predecessor_candidate_id
+                  AND predecessor.person_id <> NEW.person_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'predecessor_candidate_person_mismatch');
+            END
+            """,
+            "CREATE INDEX candidate_facts_person_status_idx ON candidate_facts(person_id, status)",
+            (
+                "CREATE INDEX canonical_records_person_active_idx "
+                "ON canonical_records(person_id, is_active)"
+            ),
+            (
+                "CREATE INDEX canonical_records_candidate_idx "
+                "ON canonical_records(candidate_id)"
+            ),
+            (
+                "CREATE INDEX timeline_events_person_event_at_idx "
+                "ON timeline_events(person_id, event_at, id)"
+            ),
+            (
+                "CREATE INDEX visit_brief_evidence_revision_position_idx "
+                "ON visit_brief_evidence_selections(revision_id, position)"
+            ),
+        ),
+    ),
 )
 
 

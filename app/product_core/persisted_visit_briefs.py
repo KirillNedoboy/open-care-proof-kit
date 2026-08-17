@@ -130,7 +130,9 @@ class PersistedVisitBriefService:
     def list_eligible_evidence(self, visit_id: str) -> list[dict[str, object]]:
         with self.database.uow() as uow:
             visit = self._visit_or_raise(uow, visit_id)
-            records = uow.canonical_records.list_active_for_person(visit.person_id)
+            records = uow.canonical_records.list_active_for_person(
+                visit.person_id, fact_type="medication"
+            )
             return [
                 self._evidence_preview(record, self._source_or_raise(uow, record.source_id))
                 for record in records

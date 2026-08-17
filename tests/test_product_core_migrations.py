@@ -24,7 +24,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2, 3, 4, 5, 6]
+        ] == [1, 2, 3, 4, 5, 6, 7]
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         table_names = {
             row[0]
@@ -37,7 +37,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
         "people",
         "sources",
         "candidate_facts",
-        "canonical_medication_records",
+        "canonical_records",
         "timeline_events",
         "visits",
         "visit_questions",
@@ -104,7 +104,7 @@ def test_phase_1c_upgrade_backfills_people_and_preserves_records(tmp_path: Path)
         assert source_people == [("legacy-one",)]
         assert candidate_people == [("legacy-two",)]
         assert [tuple(row) for row in connection.execute(
-            "SELECT person_id FROM canonical_medication_records"
+            "SELECT person_id FROM canonical_records"
         ).fetchall()] == [("legacy-three",)]
         assert [tuple(row) for row in connection.execute(
             "SELECT person_id FROM timeline_events"
@@ -149,7 +149,7 @@ def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path
     with database.connect() as connection:
         assert [row[0] for row in connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version"
-        ).fetchall()] == [1, 2, 3, 4, 5, 6]
+        ).fetchall()] == [1, 2, 3, 4, 5, 6, 7]
         person_name = connection.execute(
             "SELECT display_name FROM people WHERE person_id = 'person-1'"
         ).fetchone()[0]
@@ -311,9 +311,128 @@ finally:
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
         ]
-        assert versions == [1, 2, 3, 4, 5, 6]
+        assert versions == [1, 2, 3, 4, 5, 6, 7]
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
         ).fetchone() is not None
     finally:
         connection.close()
+
+
+def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Path) -> None:
+    """A populated v6 database (Person, source, candidates, canonical,
+    timeline, Visit Brief with medication evidence) survives the v7 cutover
+    with identical identity/values and a usable medication lifecycle."""
+    import json
+
+    from app.product_core.models import Person
+    from app.product_core.services import MedicationLifecycleService, SourceService
+
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    MigrationRunner(database.connect, migrations=PRODUCT_MIGRATIONS[:6]).migrate()
+    timestamp = "2026-07-26T10:00:00+00:00"
+    with database.connect() as connection:
+        connection.execute("BEGIN")
+        connection.execute(
+            "INSERT INTO people VALUES (?, ?, ?, ?, ?, ?)",
+            ("person-1", "Ada", None, timestamp, timestamp, 1),
+        )
+        connection.execute(
+            "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("src-1", "person-1", "manual_entry", "src-1.json", "a" * 64, 1,
+             "application/json", timestamp, json.dumps({"entry_method": "manual"})),
+        )
+        connection.execute(
+            "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("cand-1", "person-1", "src-1", "medication", "pending", "Aspirin",
+             "aspirin", None, None, timestamp, None, None),
+        )
+        connection.execute(
+            "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("cand-2", "person-1", "src-1", "medication", "confirmed", "Ibuprofen",
+             "ibuprofen", "daily", None, timestamp, timestamp, None),
+        )
+        connection.execute(
+            "INSERT INTO canonical_medication_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("rec-1", "person-1", "cand-2", "src-1", "Ibuprofen", "ibuprofen",
+             "daily", None, timestamp, 1),
+        )
+        connection.execute(
+            "INSERT INTO timeline_events VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("ev-1", "person-1", "rec-1", "src-1", "medication_confirmed",
+             timestamp, "Medication confirmed: Ibuprofen"),
+        )
+        connection.execute(
+            "INSERT INTO visits VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("v-1", "person-1", "Review", None, None, timestamp, timestamp),
+        )
+        connection.execute(
+            "INSERT INTO visit_briefs VALUES (?, ?, ?, ?, ?)",
+            ("b-1", "v-1", "rev-1", timestamp, timestamp),
+        )
+        connection.execute(
+            "INSERT INTO visit_brief_revisions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("rev-1", "b-1", 1, "deterministic_generation", None, 1, 1,
+             json.dumps({"medications": []}), "# brief", "c" * 64, timestamp),
+        )
+        connection.execute(
+            "INSERT INTO visit_brief_evidence_selections VALUES (?, ?, ?, ?, ?)",
+            ("rev-1", 0, "rec-1", "src-1", json.dumps({"fingerprint": "x"})),
+        )
+        connection.execute("COMMIT")
+
+    database.migrate()
+
+    with database.connect() as connection:
+        assert [row[0] for row in connection.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        ).fetchall()] == [1, 2, 3, 4, 5, 6, 7]
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute(
+            "SELECT COUNT(*) FROM canonical_records WHERE id = 'rec-1'"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM canonical_medication_details WHERE record_id = 'rec-1'"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM candidate_medication_details WHERE candidate_id = 'cand-2'"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM candidate_condition_details"
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM candidate_lab_details"
+        ).fetchone()[0] == 0
+        assert tuple(connection.execute(
+            "SELECT fact_type, event_type FROM timeline_events WHERE id = 'ev-1'"
+        ).fetchone()) == ("medication", "medication_confirmed")
+        assert connection.execute(
+            "SELECT provenance_locator_json FROM candidate_facts WHERE id = 'cand-1'"
+        ).fetchone()[0] == '{"kind":"structured_field","path":"medication"}'
+        assert connection.execute(
+            "SELECT COUNT(*) FROM visit_brief_evidence_selections WHERE revision_id = 'rev-1'"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM visit_brief_revisions WHERE revision_id = 'rev-1'"
+        ).fetchone()[0] == 1
+
+    # The medication lifecycle remains fully usable against the v7 schema.
+    from datetime import UTC, datetime as dt
+
+    clock = lambda: dt(2026, 7, 26, 12, tzinfo=UTC)
+    ids = iter(["src-new", "cand-new", "canon-new", "event-new", "spare-1"])
+    sources = SourceService(database, tmp_path / "sources", clock=clock, id_factory=lambda: next(ids))
+    lifecycle = MedicationLifecycleService(
+        database, clock=clock, id_factory=lambda: next(ids), source_reader=sources.store.read
+    )
+    source = sources.register_manual_entry("person-1", "Omeprazole")
+    candidate = lifecycle.create_candidate(
+        person_id="person-1", source_id=source.id, display_name="Omeprazole"
+    )
+    record = lifecycle.confirm(candidate.id)
+    assert record.is_active is True
+    assert record.display_name == "Omeprazole"
+    with database.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM canonical_records WHERE person_id = 'person-1'"
+        ).fetchone()[0] == 2
