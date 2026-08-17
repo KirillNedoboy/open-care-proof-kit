@@ -18,7 +18,10 @@ from app.product_core.errors import (
     VisitNotFoundError,
 )
 from app.product_core.models import (
-    CanonicalMedicationRecord,
+    CanonicalRecord,
+    ConditionCandidateDetail,
+    LabCandidateDetail,
+    MedicationCandidateDetail,
     PersistedVisitBrief,
     PersistedVisitBriefRevision,
     Source,
@@ -40,8 +43,12 @@ from app.product_core.services import (
 )
 from app.product_core.sqlite import SQLiteDatabase, UnitOfWork
 
-CONTENT_SCHEMA_VERSION = 1
+CONTENT_SCHEMA_VERSION = 2
 RENDER_VERSION = 1
+#: Content schema versions this runtime can read. v1 is the medication-only
+#: schema; v2 adds the generic typed "records" envelope. Old immutable v1
+#: revisions are never rewritten and remain readable.
+SUPPORTED_CONTENT_SCHEMA_VERSIONS = frozenset({1, 2})
 MAX_PREPARATION_NOTES_LENGTH = 2_000
 SourceReader = Callable[[Source], bytes]
 
@@ -130,9 +137,7 @@ class PersistedVisitBriefService:
     def list_eligible_evidence(self, visit_id: str) -> list[dict[str, object]]:
         with self.database.uow() as uow:
             visit = self._visit_or_raise(uow, visit_id)
-            records = uow.canonical_records.list_active_for_person(
-                visit.person_id, fact_type="medication"
-            )
+            records = uow.canonical_records.list_active_for_person(visit.person_id)
             return [
                 self._evidence_preview(record, self._source_or_raise(uow, record.source_id))
                 for record in records
@@ -421,7 +426,7 @@ class PersistedVisitBriefService:
                     continue
                 preview = self._evidence_preview(record, source)
                 if preview["fingerprint"] != selection.snapshot["fingerprint"]:
-                    stale.append("medication_or_source_changed")
+                    stale.append("record_or_source_changed")
                 event_fingerprint = _canonical_hash(
                     [
                         _timeline_snapshot(event)
@@ -477,7 +482,7 @@ class PersistedVisitBriefService:
             for selection in selections
         ]
         selections[:] = enriched_selections
-        medications = [selection.snapshot for selection in selections]
+        records = [selection.snapshot for selection in selections]
         return {
             "content_schema_version": CONTENT_SCHEMA_VERSION,
             "visit": {
@@ -491,7 +496,7 @@ class PersistedVisitBriefService:
             },
             "questions": [_question_snapshot(question) for question in questions],
             "questions_fingerprint": _questions_fingerprint(questions),
-            "medications": medications,
+            "records": records,
             "timeline_events": derived_events,
             "source_references": list(
                 dict.fromkeys(selection.source_id for selection in selections)
@@ -501,7 +506,7 @@ class PersistedVisitBriefService:
             ),
             "preparation_notes": preparation_notes,
             "unresolved": (
-                ["No confirmed medication evidence was selected."] if not selections else []
+                ["No confirmed record evidence was selected."] if not selections else []
             ),
             "revision": {
                 "revision_number": revision_number,
@@ -605,7 +610,7 @@ class PersistedVisitBriefService:
             self.source_reader(source)
 
     @staticmethod
-    def _evidence_preview(record: CanonicalMedicationRecord, source: Source) -> dict[str, object]:
+    def _evidence_preview(record: CanonicalRecord, source: Source) -> dict[str, object]:
         source_snapshot = {
             "source_id": source.id,
             "source_type": source.source_type,
@@ -614,14 +619,48 @@ class PersistedVisitBriefService:
         }
         preview: dict[str, object] = {
             "canonical_record_id": record.id,
-            "record_type": "confirmed_medication",
-            "display_name": record.display_name,
-            "schedule_text": record.schedule_text,
-            "note": record.note,
+            "record_type": f"confirmed_{record.fact_type}",
+            "fact_type": record.fact_type,
             "confirmed_at": isoformat_utc(record.confirmed_at),
             "confirmation_status": "confirmed",
             "source": source_snapshot,
         }
+        detail = record.detail
+        if isinstance(detail, MedicationCandidateDetail):
+            preview.update(
+                {
+                    "display_name": detail.display_name,
+                    "schedule_text": detail.schedule_text,
+                    "note": detail.note,
+                }
+            )
+        elif isinstance(detail, ConditionCandidateDetail):
+            preview.update(
+                {
+                    "display_name": detail.display_name,
+                    "status_text": detail.status_text,
+                    "onset_date": (
+                        None if detail.onset_date is None else detail.onset_date.isoformat()
+                    ),
+                    "note": detail.note,
+                }
+            )
+        elif isinstance(detail, LabCandidateDetail):
+            preview.update(
+                {
+                    "test_name": detail.test_name,
+                    "result_text": detail.result_text,
+                    "unit_text": detail.unit_text,
+                    "reference_range_text": detail.reference_range_text,
+                    "observed_date": (
+                        None if detail.observed_date is None else detail.observed_date.isoformat()
+                    ),
+                    "source_flag_text": detail.source_flag_text,
+                    "note": detail.note,
+                }
+            )
+        else:
+            raise VisitBriefValidationError("unsupported canonical record detail")
         preview["fingerprint"] = _canonical_hash(preview)
         return preview
 
@@ -656,11 +695,18 @@ def verify_persisted_visit_brief_revision(
     revision: PersistedVisitBriefRevision,
 ) -> None:
     """Verify a persisted revision before it is rendered, exported, or reused."""
-    if revision.content_schema_version != CONTENT_SCHEMA_VERSION:
+    if revision.content_schema_version not in SUPPORTED_CONTENT_SCHEMA_VERSIONS:
         raise VisitBriefIntegrityError("unsupported visit brief content schema version")
     if revision.render_version != RENDER_VERSION:
         raise VisitBriefIntegrityError("unsupported visit brief render version")
-    if _content_hash(revision.content, revision.rendered_markdown) != revision.content_hash:
+    if (
+        _content_hash(
+            revision.content,
+            revision.rendered_markdown,
+            content_schema_version=revision.content_schema_version,
+        )
+        != revision.content_hash
+    ):
         raise VisitBriefIntegrityError("visit brief content integrity failed")
 
 
@@ -672,10 +718,17 @@ def _canonical_hash(value: object) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
-def _content_hash(content: dict[str, object], markdown: str) -> str:
+def _content_hash(
+    content: dict[str, object],
+    markdown: str,
+    *,
+    content_schema_version: int = CONTENT_SCHEMA_VERSION,
+) -> str:
+    """Canonical content hash. The schema version is part of the envelope, so
+    verifying an old immutable revision must use THAT revision's version."""
     return _canonical_hash(
         {
-            "content_schema_version": CONTENT_SCHEMA_VERSION,
+            "content_schema_version": content_schema_version,
             "render_version": RENDER_VERSION,
             "content": content,
             "rendered_markdown": markdown,
@@ -724,9 +777,16 @@ def _preparation_notes(value: str) -> str:
 def _render_markdown(content: dict[str, Any]) -> str:
     visit = content["visit"]
     questions = content["questions"]
-    medications = content["medications"]
     events = content["timeline_events"]
     notes = content["preparation_notes"]
+    records = content.get("records")
+    if records is None:
+        # v1-era content shape (medication-only) rendered for completeness;
+        # in practice old revisions carry their stored rendered_markdown.
+        records = [
+            {**record, "record_type": "confirmed_medication"}
+            for record in content.get("medications", [])
+        ]
     lines = [
         "# Visit Brief",
         "",
@@ -735,22 +795,24 @@ def _render_markdown(content: dict[str, Any]) -> str:
         f"- Scheduled date: {visit['scheduled_date'] or 'Unknown'}",
         f"- Generated at: {content['revision']['generated_at']}",
         "",
-        "## Confirmed medications",
-        "",
     ]
-    if medications:
-        for medication in medications:
-            lines.extend(
-                [
-                    f"### {medication['display_name']}",
-                    f"- Schedule: {medication['schedule_text'] or 'Unknown'}",
-                    f"- Note: {medication['note'] or 'Unknown'}",
-                    f"- Source: {medication['source']['source_id']}",
-                    "",
-                ]
-            )
+    if not records:
+        lines.extend(["- No confirmed record evidence was selected.", ""])
     else:
-        lines.extend(["- No confirmed medication evidence was selected.", ""])
+        sections: list[tuple[str, str]] = []
+        for record in records:
+            if record["record_type"] == "confirmed_medication":
+                sections.append(("## Medications", _medication_section(record)))
+            elif record["record_type"] == "confirmed_condition":
+                sections.append(("## Recorded conditions", _condition_section(record)))
+            elif record["record_type"] == "confirmed_lab":
+                sections.append(("## Recent/selected lab records", _lab_section(record)))
+            else:
+                raise VisitBriefValidationError(
+                    f"unsupported record type: {record.get('record_type')}"
+                )
+        for heading, body in sections:
+            lines.extend([heading, "", *body, ""])
     lines.extend(["## Timeline changes", ""])
     if events:
         for event in events:
@@ -766,3 +828,48 @@ def _render_markdown(content: dict[str, Any]) -> str:
     lines.extend(["", "## Preparation notes", "", notes or "- No preparation notes.", ""])
     lines.extend(["## Boundary", "", f"- {content['boundary']}", ""])
     return "\n".join(lines)
+
+
+def _medication_section(record: dict[str, Any]) -> list[str]:
+    return [
+        f"### {record['display_name']}",
+        f"- Schedule: {record.get('schedule_text') or 'Unknown'}",
+        f"- Note: {record.get('note') or 'Unknown'}",
+        f"- Source: {record['source']['source_id']}",
+        "",
+    ]
+
+
+def _condition_section(record: dict[str, Any]) -> list[str]:
+    lines = [f"### {record['display_name']}"]
+    status_text = record.get("status_text")
+    if status_text:
+        lines.append(f"- Status (as recorded): {status_text}")
+    onset_date = record.get("onset_date")
+    if onset_date:
+        lines.append(f"- Onset date (as recorded): {onset_date}")
+    if record.get("note"):
+        lines.append(f"- Note: {record['note']}")
+    lines.append(f"- Source: {record['source']['source_id']}")
+    lines.append("")
+    return lines
+
+
+def _lab_section(record: dict[str, Any]) -> list[str]:
+    lines = [f"### {record['test_name']}"]
+    result = record.get("result_text")
+    if result:
+        flag = record.get("source_flag_text")
+        label = f" (flag {flag} as reported)" if flag else ""
+        lines.append(f"- Result: {result}{label}")
+    if record.get("unit_text"):
+        lines.append(f"- Unit (as recorded): {record['unit_text']}")
+    if record.get("reference_range_text"):
+        lines.append(f"- Reference range (as recorded): {record['reference_range_text']}")
+    if record.get("observed_date"):
+        lines.append(f"- Observed date (as recorded): {record['observed_date']}")
+    if record.get("note"):
+        lines.append(f"- Note: {record['note']}")
+    lines.append(f"- Source: {record['source']['source_id']}")
+    lines.append("")
+    return lines
