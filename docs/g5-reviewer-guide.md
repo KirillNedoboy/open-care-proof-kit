@@ -15,6 +15,24 @@ demonstrate — deterministically, offline, on synthetic data — that those
 boundaries hold when attacked, and that the exact G4 package
 (`agent-plugins/opencare-trust/`) loads unchanged in independent clients.
 
+## Final status (2026-08-17)
+
+- Engineering/security validation: **COMPLETE** — 20/20 adversarial cases,
+  eight security-invariant counters at zero, deterministic replay and plugin
+  integrity green.
+- Agent Skills cross-client interoperability: **PROVEN — OMP + Hermes** —
+  byte-identical committed Skills (`opencare-trust-envelope`,
+  `opencare-health-agent`) discovered and behaviorally smoke-tested in OMP
+  17.3.5 (local child session) and Hermes Agent v0.19.0 (remote VPS); see
+  [docs/assets/g5/client-interop-evidence.md](assets/g5/client-interop-evidence.md) §9.
+- Root Agent Plugins two-client validation: **PENDING external ecosystem
+  evidence** — Cursor 3.0.13 root `plugin.json` loading proven (behavioral
+  smoke blocked by quota); Kiro root-plugin evidence blocked by
+  account/sign-in; the machine gate still reports
+  `READY_FOR_SECOND_CLIENT_SMOKE`.
+
+Closure decision: [docs/adr/0006-g5-engineering-closure.md](adr/0006-g5-engineering-closure.md).
+
 ## Run ONE command
 
 ```text
@@ -111,15 +129,19 @@ descriptions, zero load failures across 4 reload cycles, cleanup verified.
 
 Limitations (recorded, not defects):
 
-- **A second independent client is not yet proven** → state is
-  `READY_FOR_SECOND_CLIENT_SMOKE`. Codex CLI (0.141.0) and Claude Code
-  (2.1.220) are installed but use native manifests
-  (`.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`) and do not load
-  the portable root `plugin.json`; VS Code, Kiro, and other documented
-  portable-plugin clients are not installed on this machine.
-- **Model behavior was not exercised**: the Cursor agent account hit its
-  usage limit, so the behavioral smoke (skill guidance followed, negative
-  request refused) was not run. Server-side enforcement remains the security
-  boundary; skill guidance content is deterministic text from `SKILL.md`.
+- **Root Agent Plugins two-client loading is not yet proven** → the machine
+  state is `READY_FOR_SECOND_CLIENT_SMOKE`. Codex CLI (0.141.0) and Claude
+  Code (2.1.220) use native manifests (`.codex-plugin/plugin.json`,
+  `.claude-plugin/plugin.json`) and do not load the portable root
+  `plugin.json`; Kiro 1.0.293 is installed but its local power import
+  requires an AWS/Kiro account sign-in (not sanctioned).
+- **Cursor model behavior was not exercised**: the Cursor agent account hit
+  its usage limit, so the Cursor behavioral smoke was not run. Server-side
+  enforcement remains the security boundary; skill guidance content is
+  deterministic text from `SKILL.md`.
+- **Agent Skills behavior was exercised on OMP + Hermes** (2026-08-17): both
+  clients discovered both Skills from byte-identical committed files and
+  passed the Trust positive, Trust negative, and Health safety smokes —
+  evidence doc §9.
 - The reviewer validates committed evidence records; it does not re-drive the
   clients.

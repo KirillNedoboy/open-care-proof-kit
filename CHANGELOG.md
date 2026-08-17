@@ -40,6 +40,14 @@
   the existing `python -m app.agent_trust.cli`; deterministic exit codes;
   schema export and fixture regeneration are pure artifact generation with no
   live-authorization minting path.
+- Sentient G5 ecosystem validation: deterministic offline adversarial corpus
+  (`evals/g5/corpus.json`, 20 cases, eight security-invariant families),
+  quality metrics, the `python -m evals.g5_review` single-reviewer route, an
+  OWASP taxonomy mapping, and plugin supply-chain checks. Agent Skills
+  interoperability is verified on OMP 17.3.5 (local) and Hermes Agent v0.19.0
+  (remote VPS) with byte-identical committed Skills. Root Agent Plugins
+  `plugin.json` two-client validation remains pending external ecosystem
+  evidence (Cursor quota; Kiro account).
 
 ### Security
 

@@ -5,9 +5,9 @@ The published `v0.1.0` tag remains the controlled private-alpha baseline.
 Phase 2 Family Identity and Access Boundary is implemented on `main` and
 published as `v0.2.0`. The Sentient G1–G4 trust work — G1 Trust Envelope, G2
 Consent-Gated Agent Runtime, G2.5 optional integration spike, G3 Model
-Portability, G4 Portable Trust Package — is integrated on `main` **after the
-`v0.2.0` release boundary**; it is not itself a release tag. Sentient G5
-Ecosystem Validation is an implementation branch and is not yet on `main`.
+G3 Model Portability, G4 Portable Trust Package, and G5 Ecosystem Validation
+are integrated on `main` **after the `v0.2.0` release boundary**; none of them
+is itself a release tag.
 
 ## Implemented boundary
 
@@ -152,26 +152,38 @@ G4 makes no MCP claim and no multi-client validation claim; multi-client
 ecosystem validation is Sentient G5. This work is integrated on `main` after
 the published `v0.2.0` baseline; it is not itself a release tag.
 
-## Sentient G5 ecosystem validation (implementation branch)
+## Sentient G5 ecosystem validation (integrated on main after v0.2.0)
 
-On the `codex/sentient-g5-ecosystem-validation` implementation branch, G5
-evaluates the existing G1–G4 system: a deterministic, offline adversarial
+G5 evaluates the existing G1–G4 system: a deterministic, offline adversarial
 corpus (`evals/g5/corpus.json`, 20 cases) covering eight security invariant
 families, measured quality metrics, the single-reviewer command
-`python -m evals.g5_review`, and cross-client loading evidence for the
-skill-only Agent Plugins package. G5 adds no trust semantics, no schema
-version, no provider, and no network surface.
+`python -m evals.g5_review`, an OWASP taxonomy mapping, package supply-chain
+checks, and cross-client loading evidence for the skill-only Agent Plugins
+package. G5 adds no trust semantics, no schema version, no provider, and no
+network surface.
 
-Current state (2026-08-13): reviewer passes 20/20 cases with all eight
-security invariants at zero violations; deterministic replay and package
-integrity pass; quality metrics measured (context precision/recall 1.0 on the
-synthetic labelled subset, minimization 20/58 eligible evidence IDs,
-1222 → 375 evidence-identifier bytes, provenance coverage 15/15, refusal
-correctness 13/13, completed receipts 5/5). Cross-client evidence:
-Cursor 3.0.13 loaded the exact committed package with both skills discovered
-and the package unmodified; a second independent client is pending, so the
-state is `READY_FOR_SECOND_CLIENT_SMOKE`. G5 is not yet on `main` and is not
-a release tag; it will be integrated after review.
+Engineering and security validation is complete: the reviewer passes 20/20
+cases with all eight security invariants at zero violations; deterministic
+replay and package integrity pass; quality metrics are measured (context
+precision/recall 1.0 on the synthetic labelled subset, minimization 20/58
+eligible evidence IDs, 1222 → 375 evidence-identifier bytes, provenance
+coverage 15/15, refusal correctness 13/13, completed receipts 5/5).
+
+Agent Skills interoperability is proven on two independent real clients with
+byte-identical committed Skill files: **OMP (Oh My Pi) 17.3.5** locally and
+**Hermes Agent v0.19.0** on a remote VPS both discover
+`opencare-trust-envelope` and `opencare-health-agent` and both pass the
+Trust-positive, Trust-negative, and Health-safety behavioral smokes (evidence:
+`docs/assets/g5/client-interop-evidence.md` §9; decision:
+`docs/adr/0006-g5-engineering-closure.md`).
+
+The remaining limitation is two-client root **Agent Plugins `plugin.json`**
+interoperability: Cursor 3.0.13 root-plugin loading is proven but its
+behavioral smoke is blocked by usage quota; Kiro's root-plugin evidence is
+blocked by account/sign-in. This is documented external ecosystem validation
+pending, not an internal security defect; the machine gate therefore still
+reports `READY_FOR_SECOND_CLIENT_SMOKE`. This work is integrated on `main`
+after the published `v0.2.0` baseline; it is not itself a release tag.
 
 ## Preserved boundaries
 
