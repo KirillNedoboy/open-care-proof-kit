@@ -193,6 +193,91 @@ class ManualConditionSourceRequest(APIModel):
         return _validate_identifier(value)
 
 
+class ManualLabDetail(APIModel):
+    test_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    result_text: str = Field(default="", max_length=MAX_NOTE_LENGTH)
+    unit_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    reference_range_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    observed_date: date | None = None
+    source_flag_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+
+    @field_validator("test_name")
+    @classmethod
+    def validate_test_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("unit_text", "reference_range_text", "source_flag_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+
+class ManualLabSourceRequest(APIModel):
+    person_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    lab: ManualLabDetail
+
+    @field_validator("person_id")
+    @classmethod
+    def validate_person_id(cls, value: str) -> str:
+        return _validate_identifier(value)
+
+
+class LabCandidateRequest(APIModel):
+    person_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    source_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    test_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    result_text: str = Field(default="", max_length=MAX_NOTE_LENGTH)
+    unit_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    reference_range_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    observed_date: date | None = None
+    source_flag_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("person_id", "source_id")
+    @classmethod
+    def validate_identifier(cls, value: str) -> str:
+        return _validate_identifier(value)
+
+    @field_validator("test_name")
+    @classmethod
+    def validate_test_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("unit_text", "reference_range_text", "source_flag_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+
+class LabCorrectRequest(APIModel):
+    test_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    result_text: str = Field(default="", max_length=MAX_NOTE_LENGTH)
+    unit_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    reference_range_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    observed_date: date | None = None
+    source_flag_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    source_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("test_name")
+    @classmethod
+    def validate_test_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("unit_text", "reference_range_text", "source_flag_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_identifier(value)
+
+
 class EmptyActionRequest(APIModel):
     pass
 
@@ -410,16 +495,62 @@ class ConditionRecordListResponse(APIModel):
     conditions: list[ConditionRecordResponse]
 
 
+class LabCandidateResponse(APIModel):
+    id: str
+    person_id: str
+    source_id: str
+    fact_type: Literal["lab"] = "lab"
+    status: CandidateStatus
+    test_name: str
+    result_text: str
+    unit_text: str | None = None
+    reference_range_text: str | None = None
+    observed_date: date | None = None
+    source_flag_text: str | None = None
+    note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+    predecessor_candidate_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+
+
+class LabCandidateListResponse(APIModel):
+    candidates: list[LabCandidateResponse]
+
+
+class LabRecordResponse(APIModel):
+    id: str
+    person_id: str
+    candidate_id: str
+    source_id: str
+    test_name: str
+    result_text: str
+    unit_text: str | None = None
+    reference_range_text: str | None = None
+    observed_date: date | None = None
+    source_flag_text: str | None = None
+    note: str | None = None
+    confirmed_at: datetime
+    is_active: bool
+    superseded_by_record_id: str | None = None
+
+
+class LabRecordListResponse(APIModel):
+    labs: list[LabRecordResponse]
+
+
 class CanonicalMedicationResponse(APIModel):
     id: str
     person_id: str
     candidate_id: str
     source_id: str
-    display_name: str
-    schedule_text: str | None
-    note: str | None
+    fact_type: Literal["medication", "condition", "lab"]
+    display_name: str | None = None
+    schedule_text: str | None = None
+    note: str | None = None
     confirmed_at: datetime
     is_active: bool
+    superseded_by_record_id: str | None = None
 
 
 class CanonicalMedicationListResponse(APIModel):

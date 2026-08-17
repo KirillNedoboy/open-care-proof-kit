@@ -31,7 +31,14 @@ from app.product_core.api_models import (
     CorrectCandidateRequest,
     EmptyActionRequest,
     ErrorResponse,
+    LabCandidateListResponse,
+    LabCandidateRequest,
+    LabCandidateResponse,
+    LabCorrectRequest,
+    LabRecordListResponse,
+    LabRecordResponse,
     ManualConditionSourceRequest,
+    ManualLabSourceRequest,
     ManualSourceRequest,
     MedicationCandidateRequest,
     PeopleListResponse,
@@ -94,7 +101,7 @@ from app.product_core.errors import (
     VisitQuestionNotFoundError,
     VisitValidationError,
 )
-from app.product_core.models import ConditionCandidateInput, VisitBriefRequest
+from app.product_core.models import ConditionCandidateInput, LabCandidateInput, VisitBriefRequest
 from app.product_core.runtime import ProductCoreRuntime
 
 ProductCoreIdentifier = Annotated[
@@ -230,6 +237,8 @@ _PERSON_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_list_medications": ("medication.read",),
     "product_core_list_conditions": ("condition.read",),
     "product_core_list_condition_candidates": ("condition.read",),
+    "product_core_list_labs": ("lab.read",),
+    "product_core_list_lab_candidates": ("lab.read",),
     "product_core_list_timeline": ("timeline.read",),
     "product_core_generate_visit_brief": ("brief.write",),
 }
@@ -258,18 +267,25 @@ _CANDIDATE_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_unsupported_candidate": ("candidate.review",),
     "product_core_correct_candidate": ("candidate.review",),
     "product_core_correct_condition_candidate": ("candidate.review",),
+    "product_core_correct_lab_candidate": ("candidate.review",),
 }
 _CONDITION_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_get_condition_record": ("condition.read",),
     "product_core_get_condition_candidate": ("condition.read",),
 }
+_LAB_PATH_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_get_lab_record": ("lab.read",),
+    "product_core_get_lab_candidate": ("lab.read",),
+}
 _BODY_PERSON_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_create_visit": ("visit.write",),
     "product_core_register_manual_medication_source": ("source.write",),
     "product_core_register_manual_condition_source": ("source.write",),
+    "product_core_register_manual_lab_source": ("source.write",),
     "product_core_register_plain_text_source": ("source.write",),
     "product_core_create_medication_candidate": ("candidate.review",),
     "product_core_create_condition_candidate": ("candidate.review",),
+    "product_core_create_lab_candidate": ("candidate.review",),
 }
 _CANDIDATE_CREATE_OPERATIONS = frozenset(
     {
@@ -287,14 +303,17 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_delete_visit_question",
     "product_core_register_manual_medication_source",
     "product_core_register_manual_condition_source",
+    "product_core_register_manual_lab_source",
     "product_core_register_plain_text_source",
     "product_core_create_medication_candidate",
     "product_core_create_condition_candidate",
+    "product_core_create_lab_candidate",
     "product_core_confirm_candidate",
     "product_core_reject_candidate",
     "product_core_unsupported_candidate",
     "product_core_correct_candidate",
     "product_core_correct_condition_candidate",
+    "product_core_correct_lab_candidate",
     "product_core_initialize_persisted_visit_brief",
     "product_core_generate_persisted_visit_brief_revision",
     "product_core_save_persisted_visit_brief_user_edit",
@@ -406,6 +425,18 @@ async def _authorize_route_request(
             access.require_condition_record(
                 str(request.path_params["record_id"]),
                 *_CONDITION_PATH_SCOPES[operation_id],
+            )
+        return
+    if operation_id in _LAB_PATH_SCOPES:
+        if operation_id == "product_core_get_lab_candidate":
+            access.require_lab_candidate(
+                str(request.path_params["candidate_id"]),
+                *_LAB_PATH_SCOPES[operation_id],
+            )
+        else:
+            access.require_lab_record(
+                str(request.path_params["record_id"]),
+                *_LAB_PATH_SCOPES[operation_id],
             )
         return
     if operation_id not in _BODY_PERSON_SCOPES:
@@ -591,11 +622,13 @@ def _canonical_response(record: Any) -> CanonicalMedicationResponse:
         person_id=record.person_id,
         candidate_id=record.candidate_id,
         source_id=record.source_id,
+        fact_type=record.fact_type,
         display_name=record.display_name,
         schedule_text=record.schedule_text,
         note=record.note,
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
+        superseded_by_record_id=record.superseded_by_record_id,
     )
 
 
@@ -625,6 +658,45 @@ def _condition_record_response(record: Any) -> ConditionRecordResponse:
         display_name=record.display_name,
         status_text=record.detail.status_text,
         onset_date=record.detail.onset_date,
+        note=record.note,
+        confirmed_at=record.confirmed_at,
+        is_active=record.is_active,
+        superseded_by_record_id=record.superseded_by_record_id,
+    )
+
+
+def _lab_candidate_response(candidate: Any) -> LabCandidateResponse:
+    return LabCandidateResponse(
+        id=candidate.id,
+        person_id=candidate.person_id,
+        source_id=candidate.source_id,
+        status=candidate.status,
+        test_name=candidate.detail.test_name,
+        result_text=candidate.detail.result_text,
+        unit_text=candidate.detail.unit_text,
+        reference_range_text=candidate.detail.reference_range_text,
+        observed_date=candidate.detail.observed_date,
+        source_flag_text=candidate.detail.source_flag_text,
+        note=candidate.note,
+        created_at=candidate.created_at,
+        reviewed_at=candidate.reviewed_at,
+        predecessor_candidate_id=candidate.predecessor_candidate_id,
+        provenance_locator=candidate.provenance_locator,
+    )
+
+
+def _lab_record_response(record: Any) -> LabRecordResponse:
+    return LabRecordResponse(
+        id=record.id,
+        person_id=record.person_id,
+        candidate_id=record.candidate_id,
+        source_id=record.source_id,
+        test_name=record.detail.test_name,
+        result_text=record.detail.result_text,
+        unit_text=record.detail.unit_text,
+        reference_range_text=record.detail.reference_range_text,
+        observed_date=record.detail.observed_date,
+        source_flag_text=record.detail.source_flag_text,
         note=record.note,
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
@@ -1363,6 +1435,191 @@ def get_condition_candidate(
     access.require_condition_candidate(candidate_id, "condition.read")
     candidate = runtime.lifecycle.get_candidate(candidate_id)
     return _condition_candidate_response(candidate)
+
+
+@router.post(
+    "/sources/manual-lab",
+    response_model=SourceRegistrationResponse,
+    responses={
+        200: {"model": SourceRegistrationResponse, "description": "Deduplicated source."},
+        422: {"model": ErrorResponse},
+    },
+    status_code=201,
+    operation_id="product_core_register_manual_lab_source",
+)
+def register_manual_lab_source(
+    payload: ManualLabSourceRequest,
+    response: Response,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> SourceRegistrationResponse:
+    result = runtime.sources.register_structured_manual_entry_result(
+        payload.person_id,
+        "lab",
+        {
+            "test_name": payload.lab.test_name,
+            "result_text": payload.lab.result_text,
+            "unit_text": payload.lab.unit_text,
+            "reference_range_text": payload.lab.reference_range_text,
+            "observed_date": (
+                None if payload.lab.observed_date is None else payload.lab.observed_date.isoformat()
+            ),
+            "source_flag_text": payload.lab.source_flag_text,
+            "note": payload.lab.note,
+        },
+        authorize=access.authorize_person_mutation(
+            payload.person_id, "source.write", action="source.create"
+        ),
+    )
+    response.status_code = 201 if result.created else 200
+    return SourceRegistrationResponse(
+        created=result.created,
+        source=_source_response(result.source),
+    )
+
+
+@router.post(
+    "/candidates/labs",
+    response_model=LabCandidateResponse,
+    responses={422: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_create_lab_candidate",
+)
+def create_lab_candidate(
+    payload: LabCandidateRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> LabCandidateResponse:
+    candidate = runtime.lifecycle.create_fact_candidate(
+        person_id=payload.person_id,
+        source_id=payload.source_id,
+        fact_type="lab",
+        detail_input=LabCandidateInput(
+            test_name=payload.test_name,
+            result_text=payload.result_text,
+            unit_text=payload.unit_text,
+            reference_range_text=payload.reference_range_text,
+            observed_date=payload.observed_date,
+            source_flag_text=payload.source_flag_text,
+            note=payload.note,
+        ),
+        provenance_locator=payload.provenance_locator,
+        authorize=access.combine_mutation_authorizers(
+            access.authorize_person_mutation(
+                payload.person_id, "candidate.review", action="candidate.create"
+            ),
+            access.authorize_source_mutation(
+                payload.source_id,
+                payload.person_id,
+                "source.read",
+                action="source.read",
+            ),
+        ),
+    )
+    return _lab_candidate_response(candidate)
+
+
+@router.get(
+    "/people/{person_id}/labs",
+    response_model=LabRecordListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_labs",
+)
+def list_labs(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    include_inactive: Annotated[bool, Query()] = False,
+) -> LabRecordListResponse:
+    access.require_person(person_id, "lab.read")
+    records = runtime.lifecycle.list_fact_canonical(
+        person_id, include_inactive=include_inactive, fact_type="lab"
+    )
+    return LabRecordListResponse(labs=[_lab_record_response(record) for record in records])
+
+
+@router.get(
+    "/labs/{record_id}",
+    response_model=LabRecordResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_lab_record",
+)
+def get_lab_record(
+    record_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> LabRecordResponse:
+    access.require_lab_record(record_id, "lab.read")
+    return _lab_record_response(runtime.lifecycle.get_canonical(record_id))
+
+
+@router.get(
+    "/people/{person_id}/lab-candidates",
+    response_model=LabCandidateListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_lab_candidates",
+)
+def list_lab_candidates(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    status: Annotated[CandidateStatus | None, Query()] = None,
+) -> LabCandidateListResponse:
+    access.require_person(person_id, "lab.read")
+    candidates = runtime.lifecycle.list_fact_candidates(
+        person_id, status, fact_type="lab"
+    )
+    return LabCandidateListResponse(
+        candidates=[_lab_candidate_response(item) for item in candidates]
+    )
+
+
+@router.get(
+    "/candidates/labs/{candidate_id}",
+    response_model=LabCandidateResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_lab_candidate",
+)
+def get_lab_candidate(
+    candidate_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> LabCandidateResponse:
+    access.require_lab_candidate(candidate_id, "lab.read")
+    return _lab_candidate_response(runtime.lifecycle.get_candidate(candidate_id))
+
+
+@router.post(
+    "/candidates/{candidate_id}/correct:lab",
+    response_model=LabCandidateResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_correct_lab_candidate",
+)
+def correct_lab_candidate(
+    candidate_id: ProductCoreIdentifier,
+    payload: LabCorrectRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> LabCandidateResponse:
+    replacement = runtime.lifecycle.correct_fact_candidate(
+        candidate_id,
+        detail_input=LabCandidateInput(
+            test_name=payload.test_name,
+            result_text=payload.result_text,
+            unit_text=payload.unit_text,
+            reference_range_text=payload.reference_range_text,
+            observed_date=payload.observed_date,
+            source_flag_text=payload.source_flag_text,
+            note=payload.note,
+        ),
+        source_id=payload.source_id,
+        provenance_locator=payload.provenance_locator,
+        authorize=access.authorize_candidate_mutation(
+            candidate_id, "candidate.review", action="candidate.correct"
+        ),
+    )
+    return _lab_candidate_response(replacement)
 
 
 @router.get(

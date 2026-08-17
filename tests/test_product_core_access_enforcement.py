@@ -862,3 +862,140 @@ def test_condition_review_requires_candidate_review_and_condition_write(
     listed = client.get("/api/product-core/v1/people/alice-person/conditions")
     assert listed.status_code == 200
     assert listed.json()["conditions"][0]["display_name"] == "Eczema"
+
+
+def test_wrong_person_lab_scopes_deny_and_hide_without_silent_expansion(
+    access_harness: AccessHarness,
+) -> None:
+    """Bob (caregiver) with a legacy family-access-v1 grant must never read
+    Alice's labs: visible Person -> 403, hidden Person -> 404."""
+    import json as _json
+
+    from app.family_access.policy import CAREGIVER_BASE_SCOPES_V1
+
+    client = access_harness.client
+    access_harness.login("alice")
+    source = client.post(
+        "/api/product-core/v1/sources/manual-lab",
+        json={
+            "person_id": "alice-person",
+            "lab": {"test_name": "Hemoglobin", "result_text": "13.8"},
+        },
+        headers=json_headers(),
+    )
+    assert source.status_code == 201, source.text
+    candidate = client.post(
+        "/api/product-core/v1/candidates/labs",
+        json={
+            "person_id": "alice-person",
+            "source_id": source.json()["source"]["source_id"],
+            "test_name": "Hemoglobin",
+            "result_text": "13.8",
+        },
+        headers=json_headers(),
+    )
+    assert candidate.status_code == 201, candidate.text
+    candidate_id = candidate.json()["id"]
+    record = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+    assert record.status_code == 200, record.text
+    record_id = record.json()["id"]
+
+    from app.product_core.sqlite import SQLiteDatabase
+    from app.config import get_settings
+
+    settings = get_settings()
+    database = SQLiteDatabase(settings.product_db_path)
+    with database.uow(begin_mode="IMMEDIATE") as uow:
+        assert uow.connection is not None
+        uow.connection.execute(
+            """
+            UPDATE person_access_assignments
+            SET scopes_json = ?
+            WHERE actor_id = ? AND person_id = ? AND is_active = 1
+            """,
+            (
+                _json.dumps(sorted(CAREGIVER_BASE_SCOPES_V1), separators=(",", ":")),
+                access_harness.actor_ids["bob"],
+                "alice-person",
+            ),
+        )
+
+    access_harness.login("bob")
+    visible = client.get("/api/product-core/v1/people/alice-person/labs")
+    hidden = client.get("/api/product-core/v1/people/carol-person/labs")
+    missing = client.get("/api/product-core/v1/people/missing-person/labs")
+    hidden_record = client.get(f"/api/product-core/v1/labs/{record_id}")
+    missing_record = client.get("/api/product-core/v1/labs/missing-record")
+    hidden_candidate = client.get(f"/api/product-core/v1/candidates/labs/{candidate_id}")
+    missing_candidate = client.get("/api/product-core/v1/candidates/labs/missing-candidate")
+
+    assert visible.status_code == 403
+    assert hidden.status_code == missing.status_code == 404
+    assert hidden.content == missing.content
+    assert hidden_record.status_code == 403
+    assert missing_record.status_code == 404
+    assert hidden_candidate.status_code == 403
+    assert missing_candidate.status_code == 404
+
+
+def test_lab_review_requires_candidate_review_and_lab_write(
+    access_harness: AccessHarness,
+) -> None:
+    """Carol has candidate.review but NOT lab.write: confirming a lab candidate
+    is denied. Bob (v2 base) lacks candidate.review and is likewise denied."""
+    client = access_harness.client
+    access_harness.login("alice")
+    source = client.post(
+        "/api/product-core/v1/sources/manual-lab",
+        json={
+            "person_id": "alice-person",
+            "lab": {"test_name": "Glucose", "result_text": "95"},
+        },
+        headers=json_headers(),
+    )
+    candidate = client.post(
+        "/api/product-core/v1/candidates/labs",
+        json={
+            "person_id": "alice-person",
+            "source_id": source.json()["source"]["source_id"],
+            "test_name": "Glucose",
+            "result_text": "95",
+        },
+        headers=json_headers(),
+    )
+    candidate_id = candidate.json()["id"]
+
+    access_harness.login("carol")
+    assert (
+        client.post(
+            f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+            json={},
+            headers=json_headers(),
+        ).status_code
+        == 403
+    )
+    access_harness.login("bob")
+    assert (
+        client.post(
+            f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+            json={},
+            headers=json_headers(),
+        ).status_code
+        == 403
+    )
+
+    access_harness.login("alice")
+    confirmed = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+    assert confirmed.status_code == 200
+    access_harness.login("bob")
+    listed = client.get("/api/product-core/v1/people/alice-person/labs")
+    assert listed.status_code == 200
+    assert listed.json()["labs"][0]["test_name"] == "Glucose"
