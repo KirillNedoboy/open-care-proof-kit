@@ -1458,7 +1458,12 @@ def test_legacy_v1_grant_cannot_use_condition_or_lab_scopes(tmp_path: Path) -> N
         person_ids=("existing-person",),
         confirm_full_owner_access=True,
     )
-    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    caregiver = service.create_local_actor(
+        owner.actor_id,
+        username="caregiver",
+        display_name="Caregiver",
+        password="caregiver password",
+    )
     _insert_v1_assignment(
         service,
         recipient_actor_id=caregiver.actor_id,
@@ -1582,7 +1587,12 @@ def test_caregiver_generation_upgrade_is_explicit_and_grants_exact_v2_set(
         person_ids=("existing-person",),
         confirm_full_owner_access=True,
     )
-    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    caregiver = service.create_local_actor(
+        owner.actor_id,
+        username="caregiver",
+        display_name="Caregiver",
+        password="caregiver password",
+    )
     assignment_id = _insert_v1_assignment(
         service,
         recipient_actor_id=caregiver.actor_id,
@@ -1627,7 +1637,7 @@ def test_caregiver_generation_upgrade_is_explicit_and_grants_exact_v2_set(
             ).fetchone()[0]
             == 1
         )
-        assert CAREGIVER_OPTIONAL_SCOPES_V2 >= {"condition.write", "lab.write"}
+        assert {"condition.write", "lab.write"} <= CAREGIVER_OPTIONAL_SCOPES_V2
 
 
 def test_routine_caregiver_revision_does_not_silently_upgrade_generation(
@@ -1646,7 +1656,12 @@ def test_routine_caregiver_revision_does_not_silently_upgrade_generation(
         person_ids=("existing-person",),
         confirm_full_owner_access=True,
     )
-    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    caregiver = service.create_local_actor(
+        owner.actor_id,
+        username="caregiver",
+        display_name="Caregiver",
+        password="caregiver password",
+    )
     assignment_id = _insert_v1_assignment(
         service,
         recipient_actor_id=caregiver.actor_id,
@@ -1698,7 +1713,10 @@ def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
         assignment_id = str(row[0])
         uow.connection.execute(
             "UPDATE person_access_assignments SET scopes_json = ? WHERE assignment_id = ?",
-            (__import__("json").dumps(sorted(OWNER_SCOPES_V1), separators=(",", ":")), assignment_id),
+            (
+                __import__("json").dumps(sorted(OWNER_SCOPES_V1), separators=(",", ":")),
+                assignment_id,
+            ),
         )
     with pytest.raises(ConfirmationRequiredError):
         service.upgrade_owner_generation(
@@ -1744,7 +1762,6 @@ def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
 def test_revoked_v2_assignment_immediately_denies_new_record_scopes(
     tmp_path: Path,
 ) -> None:
-    from app.family_access.policy import CAREGIVER_BASE_SCOPES_V2
 
     service = _service(tmp_path)
     owner = service.bootstrap(
@@ -1754,7 +1771,12 @@ def test_revoked_v2_assignment_immediately_denies_new_record_scopes(
         person_ids=("existing-person",),
         confirm_full_owner_access=True,
     )
-    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    caregiver = service.create_local_actor(
+        owner.actor_id,
+        username="caregiver",
+        display_name="Caregiver",
+        password="caregiver password",
+    )
     service.grant_assignment(
         owner.actor_id,
         "existing-person",

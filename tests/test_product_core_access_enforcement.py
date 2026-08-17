@@ -762,8 +762,8 @@ def test_wrong_person_condition_scopes_deny_and_hide_without_silent_expansion(
 
     # Rewrite Bob's caregiver grant on alice-person to the frozen v1 scope set
     # (simulating a pre-P1 grant; scope_generation defaults to v1).
-    from app.product_core.sqlite import SQLiteDatabase
     from app.config import get_settings
+    from app.product_core.sqlite import SQLiteDatabase
 
     settings = get_settings()
     database = SQLiteDatabase(settings.product_db_path)
@@ -904,8 +904,8 @@ def test_wrong_person_lab_scopes_deny_and_hide_without_silent_expansion(
     assert record.status_code == 200, record.text
     record_id = record.json()["id"]
 
-    from app.product_core.sqlite import SQLiteDatabase
     from app.config import get_settings
+    from app.product_core.sqlite import SQLiteDatabase
 
     settings = get_settings()
     database = SQLiteDatabase(settings.product_db_path)

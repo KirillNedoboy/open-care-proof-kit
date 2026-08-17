@@ -38,14 +38,15 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.family_access.service import FamilyAccessService
+from app.product_core.errors import ProvenanceValidationError
 from app.product_core.installation_backup import InstallationBackupService
 from app.product_core.installation_recovery import (
     InstallationRecoveryService,
     verify_recovered_installation,
 )
-from app.product_core.errors import ProvenanceValidationError
 from app.product_core.models import (
     ConditionCandidateInput,
+    LabCandidateDetail,
     LabCandidateInput,
     Person,
 )
@@ -227,7 +228,10 @@ def run_review() -> tuple[int, dict[str, str]]:
         detail_input=ConditionCandidateInput(display_name="Asthma (seasonal)"),
         source_id=corrected_source.id,
     )
-    checks.check(successor.predecessor_candidate_id == cond_candidate.id, "condition lineage broken")
+    checks.check(
+        successor.predecessor_candidate_id == cond_candidate.id,
+        "condition lineage broken",
+    )
     new_cond_record = lifecycle.confirm(successor.id)
     superseded_cond = lifecycle.get_canonical(cond_record.id)
     checks.check(
@@ -256,10 +260,12 @@ def run_review() -> tuple[int, dict[str, str]]:
         ),
     )
     lab_record = lifecycle.confirm(lab_candidate.id)
+    lab_detail = lab_record.detail
+    assert isinstance(lab_detail, LabCandidateDetail)
     checks.check(
         lab_record.fact_type == "lab"
-        and lab_record.detail.result_text == "13.8"
-        and lab_record.detail.source_flag_text == "H",
+        and lab_detail.result_text == "13.8"
+        and lab_detail.source_flag_text == "H",
         "lab confirmation or source flag preservation failed",
     )
     lines["lab lifecycle"] = "pass"
@@ -361,15 +367,15 @@ def run_review() -> tuple[int, dict[str, str]]:
             fact_type="condition",
             detail_input=ConditionCandidateInput(display_name="Rhinitis"),
         )
-        from app.product_core.access import ProductCoreAccess
         from app.family_access.api import AuthenticatedSession
         from app.family_access.sessions import SessionRecord
+        from app.product_core.access import ProductCoreAccess
 
         actor = family.get_actor(bob.actor_id)
         assert actor is not None
         access = ProductCoreAccess(
-            runtime=_RuntimeShim(database),
-            family_runtime=_FamilyShim(family),
+            runtime=_RuntimeShim(database),  # type: ignore[arg-type]  # shim exposes runtime.database
+            family_runtime=_FamilyShim(family),  # type: ignore[arg-type]  # shim exposes .service
             authenticated=AuthenticatedSession(
                 actor=actor,
                 record=SessionRecord(
@@ -459,6 +465,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     from app.product_core.models import PersistedVisitBriefRevision, parse_utc_datetime
 
     with database.uow() as uow:
+        assert uow.connection is not None
         row = uow.connection.execute(
             "SELECT * FROM visit_brief_revisions WHERE revision_id = ?",
             (revision.revision_id,),
@@ -483,7 +490,11 @@ def run_review() -> tuple[int, dict[str, str]]:
     # ------------------------------------------------------------------ #
     # Export + backup/recovery round trip preserving P1 entities.
     # ------------------------------------------------------------------ #
-    exported = json.loads(PortableVaultExportService(database, sources.store).export("alice-person").vault_json)
+    exported = json.loads(
+        PortableVaultExportService(database, sources.store)
+        .export("alice-person")
+        .vault_json
+    )
     checks.check(
         exported["format_version"] == 3
         and exported["canonical_condition_details"]

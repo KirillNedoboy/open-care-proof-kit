@@ -42,16 +42,19 @@ class VisitBriefService:
                     request.person_id, fact_type="medication"
                 )
 
-        medications = [
-            VisitBriefMedication(
-                id=record.id,
-                display_name=record.display_name,
-                schedule_text=record.schedule_text,
-                note=record.note,
-                source_id=record.source_id,
+        medications = []
+        for record in records:
+            display_name = record.display_name
+            assert display_name is not None  # medication records always carry a name
+            medications.append(
+                VisitBriefMedication(
+                    id=record.id,
+                    display_name=display_name,
+                    schedule_text=record.schedule_text,
+                    note=record.note,
+                    source_id=record.source_id,
+                )
             )
-            for record in records
-        ]
         source_references = list(dict.fromkeys(record.source_id for record in records))
         markdown = _render_markdown(request, records)
         return VisitBrief(

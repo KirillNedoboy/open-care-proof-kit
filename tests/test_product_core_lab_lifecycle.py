@@ -232,11 +232,11 @@ def test_lab_person_isolation_and_missing_ids(
 ) -> None:
     source_id = create_lab_source(product_core_client, person_id="person-1")
     candidate_id = create_lab_candidate(product_core_client, source_id)
-    record_id = product_core_client.post(
+    product_core_client.post(
         f"/api/product-core/v1/candidates/{candidate_id}/confirm",
         json={},
         headers=json_headers(),
-    ).json()["id"]
+    )
 
     other = product_core_client.get("/api/product-core/v1/people/person-2/labs")
     missing = product_core_client.get("/api/product-core/v1/labs/missing-record")

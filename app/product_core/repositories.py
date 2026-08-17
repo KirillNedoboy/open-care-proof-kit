@@ -364,8 +364,17 @@ class SQLiteCandidateRepository:
         )
 
     def _load_detail(self, fact_type: str, candidate_id: str) -> CandidateDetail:
-        table, mapper = _DETAIL_LOADERS.get(fact_type, (None, None))
-        if table is None:
+        mapper: Callable[[sqlite3.Row], CandidateDetail]
+        if fact_type == "medication":
+            table = "candidate_medication_details"
+            mapper = _medication_detail_from_row
+        elif fact_type == "condition":
+            table = "candidate_condition_details"
+            mapper = _condition_detail_from_row
+        elif fact_type == "lab":
+            table = "candidate_lab_details"
+            mapper = _lab_detail_from_row
+        else:
             raise IntegrityStorageError(f"unsupported candidate fact type: {fact_type}")
         row = self.connection.execute(
             f"SELECT * FROM {table} WHERE candidate_id = ?", (candidate_id,)
@@ -375,9 +384,8 @@ class SQLiteCandidateRepository:
         return mapper(row)
 
     def _insert_detail(self, candidate: CandidateFact) -> None:
-        if candidate.fact_type == "medication":
-            assert isinstance(candidate.detail, MedicationCandidateDetail)
-            detail = candidate.detail
+        detail: CandidateDetail = candidate.detail
+        if isinstance(detail, MedicationCandidateDetail):
             self.connection.execute(
                 """
                 INSERT INTO candidate_medication_details (
@@ -393,9 +401,7 @@ class SQLiteCandidateRepository:
                 ),
             )
             return
-        if candidate.fact_type == "condition":
-            assert isinstance(candidate.detail, ConditionCandidateDetail)
-            detail = candidate.detail
+        if isinstance(detail, ConditionCandidateDetail):
             self.connection.execute(
                 """
                 INSERT INTO candidate_condition_details (
@@ -413,9 +419,7 @@ class SQLiteCandidateRepository:
                 ),
             )
             return
-        if candidate.fact_type == "lab":
-            assert isinstance(candidate.detail, LabCandidateDetail)
-            detail = candidate.detail
+        if isinstance(detail, LabCandidateDetail):
             self.connection.execute(
                 """
                 INSERT INTO candidate_lab_details (
@@ -527,8 +531,17 @@ class SQLiteCanonicalRepository:
         ]
 
     def _load_detail(self, fact_type: str, record_id: str) -> CandidateDetail:
-        table, mapper = _CANONICAL_DETAIL_LOADERS.get(fact_type, (None, None))
-        if table is None:
+        mapper: Callable[[sqlite3.Row], CandidateDetail]
+        if fact_type == "medication":
+            table = "canonical_medication_details"
+            mapper = _medication_detail_from_row
+        elif fact_type == "condition":
+            table = "canonical_condition_details"
+            mapper = _condition_detail_from_row
+        elif fact_type == "lab":
+            table = "canonical_lab_details"
+            mapper = _lab_detail_from_row
+        else:
             raise IntegrityStorageError(f"unsupported canonical record fact type: {fact_type}")
         row = self.connection.execute(
             f"SELECT * FROM {table} WHERE record_id = ?", (record_id,)
@@ -538,9 +551,8 @@ class SQLiteCanonicalRepository:
         return mapper(row)
 
     def _insert_detail(self, record: CanonicalRecord) -> None:
-        if record.fact_type == "medication":
-            assert isinstance(record.detail, MedicationCandidateDetail)
-            detail = record.detail
+        detail: CandidateDetail = record.detail
+        if isinstance(detail, MedicationCandidateDetail):
             self.connection.execute(
                 """
                 INSERT INTO canonical_medication_details (
@@ -556,9 +568,7 @@ class SQLiteCanonicalRepository:
                 ),
             )
             return
-        if record.fact_type == "condition":
-            assert isinstance(record.detail, ConditionCandidateDetail)
-            detail = record.detail
+        if isinstance(detail, ConditionCandidateDetail):
             self.connection.execute(
                 """
                 INSERT INTO canonical_condition_details (
@@ -576,9 +586,7 @@ class SQLiteCanonicalRepository:
                 ),
             )
             return
-        if record.fact_type == "lab":
-            assert isinstance(record.detail, LabCandidateDetail)
-            detail = record.detail
+        if isinstance(detail, LabCandidateDetail):
             self.connection.execute(
                 """
                 INSERT INTO canonical_lab_details (
@@ -1145,19 +1153,6 @@ def _lab_detail_from_row(row: sqlite3.Row) -> LabCandidateDetail:
         source_flag_text=row["source_flag_text"],
         note=row["note"],
     )
-
-
-_DETAIL_LOADERS: dict[str, tuple[str, Callable[[sqlite3.Row], CandidateDetail]]] = {
-    "medication": ("candidate_medication_details", _medication_detail_from_row),
-    "condition": ("candidate_condition_details", _condition_detail_from_row),
-    "lab": ("candidate_lab_details", _lab_detail_from_row),
-}
-
-_CANONICAL_DETAIL_LOADERS: dict[str, tuple[str, Callable[[sqlite3.Row], CandidateDetail]]] = {
-    "medication": ("canonical_medication_details", _medication_detail_from_row),
-    "condition": ("canonical_condition_details", _condition_detail_from_row),
-    "lab": ("canonical_lab_details", _lab_detail_from_row),
-}
 
 
 def _timeline_from_row(row: sqlite3.Row) -> TimelineEvent:

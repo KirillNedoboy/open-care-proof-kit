@@ -799,7 +799,7 @@ def _render_markdown(content: dict[str, Any]) -> str:
     if not records:
         lines.extend(["- No confirmed record evidence was selected.", ""])
     else:
-        sections: list[tuple[str, str]] = []
+        sections: list[tuple[str, list[str]]] = []
         for record in records:
             if record["record_type"] == "confirmed_medication":
                 sections.append(("## Medications", _medication_section(record)))

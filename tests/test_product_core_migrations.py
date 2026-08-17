@@ -326,7 +326,7 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
     import hashlib
     import json
 
-    from app.product_core.models import PersistedVisitBriefRevision, Person, parse_utc_datetime
+    from app.product_core.models import PersistedVisitBriefRevision, parse_utc_datetime
 
     def _v1_brief_content_hash(content_json: str, rendered_markdown: str) -> str:
         return hashlib.sha256(
@@ -445,8 +445,8 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
              timestamp),
         )
         connection.execute(
-            "INSERT INTO person_access_consent_history VALUES (?, 'grant', ?, ?, ?, 'caregiver', ?, "
-            "'caregiver_grant', ?)",
+            "INSERT INTO person_access_consent_history VALUES "
+            "(?, 'grant', ?, ?, ?, 'caregiver', ?, 'caregiver_grant', ?)",
             ("consent-2", "actor-owner", "actor-caregiver", "person-1",
              json.dumps(sorted({"person.read", "source.read", "candidate.read",
                                 "medication.read", "timeline.read", "visit.read",
@@ -454,7 +454,8 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
              timestamp),
         )
         connection.execute(
-            "INSERT INTO person_access_assignments VALUES (?, ?, ?, 'owner', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
+            "INSERT INTO person_access_assignments VALUES "
+            "(?, ?, ?, 'owner', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
             ("assignment-1", "actor-owner", "person-1",
              json.dumps(sorted({"person.read", "source.read", "candidate.read",
                                 "medication.read", "medication.write", "timeline.read",
@@ -466,7 +467,8 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
              "consent-1", "actor-owner", timestamp),
         )
         connection.execute(
-            "INSERT INTO person_access_assignments VALUES (?, ?, ?, 'caregiver', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
+            "INSERT INTO person_access_assignments VALUES "
+            "(?, ?, ?, 'caregiver', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
             ("assignment-2", "actor-caregiver", "person-1",
              json.dumps(sorted({"person.read", "source.read", "candidate.read",
                                 "medication.read", "timeline.read", "visit.read",
@@ -565,7 +567,6 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         ).fetchone()[0] == 1
         # The legacy v1 Brief revision still renders.
         from app.product_core.persisted_visit_briefs import (
-            PersistedVisitBriefService,
             verify_persisted_visit_brief_revision,
         )
 
@@ -590,13 +591,22 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         assert "# brief" in str(revision["rendered_markdown"])
 
     # The medication lifecycle remains fully usable against the v7 schema.
-    from datetime import UTC, datetime as dt
+    from datetime import UTC
+    from datetime import datetime as dt
 
-    clock = lambda: dt(2026, 7, 26, 12, tzinfo=UTC)
+    def clock() -> dt:
+        return dt(2026, 7, 26, 12, tzinfo=UTC)
+
     ids = iter(["src-new", "cand-new", "canon-new", "event-new", "spare-1"])
-    sources = SourceService(database, tmp_path / "sources", clock=clock, id_factory=lambda: next(ids))
+
+    def next_id() -> str:
+        return next(ids)
+
+    sources = SourceService(
+        database, tmp_path / "sources", clock=clock, id_factory=next_id
+    )
     lifecycle = MedicationLifecycleService(
-        database, clock=clock, id_factory=lambda: next(ids), source_reader=sources.store.read
+        database, clock=clock, id_factory=next_id, source_reader=sources.store.read
     )
     source = sources.register_manual_entry("person-1", "Omeprazole")
     candidate = lifecycle.create_candidate(

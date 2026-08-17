@@ -33,6 +33,7 @@ from app.product_core.models import (
     CanonicalRecord,
     ConditionCandidateDetail,
     ConditionCandidateInput,
+    FactType,
     LabCandidateDetail,
     LabCandidateInput,
     MedicationCandidateDetail,
@@ -44,7 +45,7 @@ from app.product_core.models import (
     ensure_utc_datetime,
     normalize_medication_name,
 )
-from app.product_core.sqlite import SQLiteDatabase
+from app.product_core.sqlite import SQLiteDatabase, UnitOfWork
 
 Clock = Callable[[], datetime]
 IdFactory = Callable[[], str]
@@ -571,7 +572,7 @@ class FactLifecycleService:
         *,
         person_id: str,
         source_id: str,
-        fact_type: str,
+        fact_type: FactType,
         detail_input: object,
         provenance_locator: dict[str, object] | None = None,
         authorize: MutationAuthorizer | None = None,
@@ -889,7 +890,9 @@ class FactLifecycleService:
             }
         else:
             if client_locator is None:
-                raise ProvenanceValidationError("provenance locator is required for plain-text sources")
+                raise ProvenanceValidationError(
+                    "provenance locator is required for plain-text sources"
+                )
             locator = client_locator
             if (
                 locator.get("kind") != "span"
@@ -982,11 +985,11 @@ class FactLifecycleService:
             raise ProvenanceValidationError("provenance span does not match the recorded name")
 
     def _verify_source_and_locator(
-        self, uow: object, candidate: CandidateFact
+        self, uow: UnitOfWork, candidate: CandidateFact
     ) -> None:
         if self.source_reader is None:
             return
-        source = uow.sources.get(candidate.source_id)  # type: ignore[attr-defined]
+        source = uow.sources.get(candidate.source_id)
         if source is None:
             raise IntegrityStorageError(f"candidate source is missing: {candidate.source_id}")
         payload = self.source_reader(source)
@@ -1000,17 +1003,15 @@ class FactLifecycleService:
             )
 
     @staticmethod
-    def _find_superseded(uow: object, candidate: CandidateFact) -> CanonicalRecord | None:
+    def _find_superseded(
+        uow: UnitOfWork, candidate: CandidateFact
+    ) -> CanonicalRecord | None:
         if candidate.predecessor_candidate_id is None:
             return None
-        predecessor = uow.candidates.get(  # type: ignore[attr-defined]
-            candidate.predecessor_candidate_id
-        )
+        predecessor = uow.candidates.get(candidate.predecessor_candidate_id)
         if predecessor is None or predecessor.status != "confirmed":
             return None
-        existing = uow.canonical_records.get_by_candidate(  # type: ignore[attr-defined]
-            predecessor.id
-        )
+        existing = uow.canonical_records.get_by_candidate(predecessor.id)
         if existing is None or not existing.is_active:
             return None
         return existing
@@ -1033,7 +1034,7 @@ class MedicationLifecycleService(FactLifecycleService):
     ) -> None:
         super().__init__(database, clock=clock, id_factory=id_factory, source_reader=source_reader)
 
-    def create_candidate(
+    def create_candidate(  # type: ignore[override]  # medication-only facade surface
         self,
         *,
         person_id: str,
@@ -1065,7 +1066,7 @@ class MedicationLifecycleService(FactLifecycleService):
         *,
         person_id: str,
         source_id: str,
-        fact_type: str,
+        fact_type: FactType,
         detail_input: object,
         provenance_locator: dict[str, object] | None = None,
         authorize: MutationAuthorizer | None = None,
@@ -1098,7 +1099,7 @@ class MedicationLifecycleService(FactLifecycleService):
             authorize=authorize,
         )
 
-    def list_candidates(
+    def list_candidates(  # type: ignore[override]  # medication facade keeps the generic listing surface
         self,
         person_id: str,
         status: CandidateStatus | None = None,
@@ -1123,7 +1124,7 @@ class MedicationLifecycleService(FactLifecycleService):
     ) -> CanonicalRecord:
         return super().confirm(candidate_id, authorize=authorize)
 
-    def correct(
+    def correct(  # type: ignore[override]  # medication-only facade surface
         self,
         candidate_id: str,
         *,
@@ -1162,7 +1163,9 @@ class MedicationLifecycleService(FactLifecycleService):
     ) -> CandidateFact:
         return super().unsupported(candidate_id, authorize=authorize)
 
-    def list_active(self, person_id: str) -> list[CanonicalRecord]:
+    def list_active(  # type: ignore[override]  # medication-only facade surface
+        self, person_id: str
+    ) -> list[CanonicalRecord]:
         return super().list_active(person_id, fact_type="medication")
 
     def list_fact_canonical(
@@ -1177,7 +1180,7 @@ class MedicationLifecycleService(FactLifecycleService):
             person_id, include_inactive=include_inactive, fact_type=fact_type
         )
 
-    def list_canonical(
+    def list_canonical(  # type: ignore[override]  # medication-only facade surface
         self,
         person_id: str,
         *,

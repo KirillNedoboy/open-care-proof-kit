@@ -3,7 +3,11 @@ from typing import Any
 from app.agent.models import AgentContext, ContextItem, ContextSource
 from app.health_vault.runtime_loader import ActiveVault
 from app.product_core.errors import PersonNotFoundError
-from app.product_core.models import isoformat_utc
+from app.product_core.models import (
+    ConditionCandidateDetail,
+    LabCandidateDetail,
+    isoformat_utc,
+)
 from app.product_core.runtime import ProductCoreRuntime
 
 
@@ -113,43 +117,47 @@ def build_product_core_agent_context(
         )
         for record in medications
     )
-    items.extend(
-        ContextItem(
-            id=record.id,
-            kind="condition",
-            text=" | ".join(
-                value
-                for value in (record.display_name, record.detail.status_text)
-                if value
-            ),
-            source_ids=[record.source_id],
-            provenance_status="source_backed",
+    for record in conditions:
+        detail = record.detail
+        assert isinstance(detail, ConditionCandidateDetail)
+        items.append(
+            ContextItem(
+                id=record.id,
+                kind="condition",
+                text=" | ".join(
+                    value
+                    for value in (record.display_name, detail.status_text)
+                    if value
+                ),
+                source_ids=[record.source_id],
+                provenance_status="source_backed",
+            )
         )
-        for record in conditions
-    )
-    items.extend(
-        ContextItem(
-            id=record.id,
-            kind="lab",
-            text=" | ".join(
-                value
-                for value in (
-                    record.detail.test_name,
-                    record.detail.result_text,
-                    record.detail.unit_text,
-                    (
-                        f"flag {record.detail.source_flag_text} (as reported)"
-                        if record.detail.source_flag_text
-                        else None
-                    ),
-                )
-                if value
-            ),
-            source_ids=[record.source_id],
-            provenance_status="source_backed",
+    for record in labs:
+        detail = record.detail
+        assert isinstance(detail, LabCandidateDetail)
+        items.append(
+            ContextItem(
+                id=record.id,
+                kind="lab",
+                text=" | ".join(
+                    value
+                    for value in (
+                        detail.test_name,
+                        detail.result_text,
+                        detail.unit_text,
+                        (
+                            f"flag {detail.source_flag_text} (as reported)"
+                            if detail.source_flag_text
+                            else None
+                        ),
+                    )
+                    if value
+                ),
+                source_ids=[record.source_id],
+                provenance_status="source_backed",
+            )
         )
-        for record in labs
-    )
     items.extend(
         ContextItem(
             id=event.id,
