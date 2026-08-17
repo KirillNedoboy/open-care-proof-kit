@@ -999,3 +999,55 @@ def test_lab_review_requires_candidate_review_and_lab_write(
     listed = client.get("/api/product-core/v1/people/alice-person/labs")
     assert listed.status_code == 200
     assert listed.json()["labs"][0]["test_name"] == "Glucose"
+
+
+def test_condition_confirm_audit_failure_rolls_back_canonical_and_timeline(
+    access_harness: AccessHarness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Condition confirmation runs authorize + canonical + typed detail +
+    timeline + status flip + audit in ONE transaction: an audit persistence
+    failure rolls everything back (design §10 transactional review invariant)."""
+    client = access_harness.client
+    access_harness.login("alice")
+    source = client.post(
+        "/api/product-core/v1/sources/manual-condition",
+        json={"person_id": "alice-person", "condition": {"display_name": "Asthma"}},
+        headers=json_headers(),
+    )
+    candidate = client.post(
+        "/api/product-core/v1/candidates/conditions",
+        json={
+            "person_id": "alice-person",
+            "source_id": source.json()["source"]["source_id"],
+            "display_name": "Asthma",
+        },
+        headers=json_headers(),
+    )
+    candidate_id = candidate.json()["id"]
+
+    family_service = main_module.app.state.family_access_runtime.service
+
+    def fail_audit(*_args: object, **_kwargs: object) -> None:
+        raise OSError("forced audit persistence failure")
+
+    monkeypatch.setattr(family_service, "audit_writer", fail_audit)
+    confirm = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+
+    assert confirm.status_code == 503
+    database = main_module.app.state.product_core_runtime.database
+    with database.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM timeline_events"
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT status FROM candidate_facts WHERE id = ?",
+            (candidate_id,),
+        ).fetchone()[0] == "pending"

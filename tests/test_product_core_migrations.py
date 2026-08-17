@@ -323,9 +323,25 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
     """A populated v6 database (Person, source, candidates, canonical,
     timeline, Visit Brief with medication evidence) survives the v7 cutover
     with identical identity/values and a usable medication lifecycle."""
+    import hashlib
     import json
 
-    from app.product_core.models import Person
+    from app.product_core.models import PersistedVisitBriefRevision, Person, parse_utc_datetime
+
+    def _v1_brief_content_hash(content_json: str, rendered_markdown: str) -> str:
+        return hashlib.sha256(
+            json.dumps(
+                {
+                    "content_schema_version": 1,
+                    "render_version": 1,
+                    "content": json.loads(content_json),
+                    "rendered_markdown": rendered_markdown,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
     from app.product_core.services import MedicationLifecycleService, SourceService
 
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
@@ -353,6 +369,21 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
              "ibuprofen", "daily", None, timestamp, timestamp, None),
         )
         connection.execute(
+            "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("cand-3", "person-1", "src-1", "medication", "rejected", "Paracetamol",
+             "paracetamol", None, "note", timestamp, timestamp, None),
+        )
+        connection.execute(
+            "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("cand-4", "person-1", "src-1", "medication", "corrected", "Aspirin",
+             "aspirin", None, None, timestamp, timestamp, None),
+        )
+        connection.execute(
+            "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("cand-5", "person-1", "src-1", "medication", "pending", "Aspirin (low dose)",
+             "aspirin low dose", None, None, timestamp, None, "cand-4"),
+        )
+        connection.execute(
             "INSERT INTO canonical_medication_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("rec-1", "person-1", "cand-2", "src-1", "Ibuprofen", "ibuprofen",
              "daily", None, timestamp, 1),
@@ -367,17 +398,104 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
             ("v-1", "person-1", "Review", None, None, timestamp, timestamp),
         )
         connection.execute(
+            "INSERT INTO visit_questions VALUES (?, ?, ?, ?, ?, ?)",
+            ("q-1", "v-1", "What should I ask?", 0, timestamp, timestamp),
+        )
+        connection.execute(
             "INSERT INTO visit_briefs VALUES (?, ?, ?, ?, ?)",
             ("b-1", "v-1", "rev-1", timestamp, timestamp),
         )
         connection.execute(
             "INSERT INTO visit_brief_revisions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("rev-1", "b-1", 1, "deterministic_generation", None, 1, 1,
-             json.dumps({"medications": []}), "# brief", "c" * 64, timestamp),
+             json.dumps({"medications": []}), "# brief",
+             _v1_brief_content_hash(json.dumps({"medications": []}), "# brief"), timestamp),
         )
         connection.execute(
             "INSERT INTO visit_brief_evidence_selections VALUES (?, ?, ?, ?, ?)",
             ("rev-1", 0, "rec-1", "src-1", json.dumps({"fingerprint": "x"})),
+        )
+        # Actors, owner + caregiver assignments, append-only consent events.
+        connection.execute(
+            "INSERT INTO actors VALUES (?, ?, ?, 'active', ?, NULL, NULL)",
+            ("actor-owner", "owner", "Owner", timestamp),
+        )
+        connection.execute(
+            "INSERT INTO actor_credentials VALUES (?, ?, 'local_password', 'scrypt', 1, "
+            "x'00000000000000000000000000000000', x'"
+            + "0" * 128
+            + "', ?, NULL, NULL)",
+            ("cred-owner", "actor-owner", timestamp),
+        )
+        connection.execute(
+            "INSERT INTO actors VALUES (?, ?, ?, 'active', ?, NULL, NULL)",
+            ("actor-caregiver", "caregiver", "Caregiver", timestamp),
+        )
+        connection.execute(
+            "INSERT INTO person_access_consent_history VALUES (?, 'grant', ?, ?, ?, 'owner', ?, "
+            "'bootstrap_owner_grant', ?)",
+            ("consent-1", "actor-owner", "actor-owner", "person-1",
+             json.dumps(sorted({"person.read", "source.read", "candidate.read",
+                                "medication.read", "medication.write", "timeline.read",
+                                "visit.read", "brief.read", "chat.use",
+                                "person.update", "source.write", "candidate.review",
+                                "brief.write", "brief.export", "vault.export",
+                                "visit.write", "relationship.read", "relationship.manage",
+                                "access.read", "access.manage"})),
+             timestamp),
+        )
+        connection.execute(
+            "INSERT INTO person_access_consent_history VALUES (?, 'grant', ?, ?, ?, 'caregiver', ?, "
+            "'caregiver_grant', ?)",
+            ("consent-2", "actor-owner", "actor-caregiver", "person-1",
+             json.dumps(sorted({"person.read", "source.read", "candidate.read",
+                                "medication.read", "timeline.read", "visit.read",
+                                "brief.read", "relationship.read", "chat.use"})),
+             timestamp),
+        )
+        connection.execute(
+            "INSERT INTO person_access_assignments VALUES (?, ?, ?, 'owner', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
+            ("assignment-1", "actor-owner", "person-1",
+             json.dumps(sorted({"person.read", "source.read", "candidate.read",
+                                "medication.read", "medication.write", "timeline.read",
+                                "visit.read", "brief.read", "chat.use",
+                                "person.update", "source.write", "candidate.review",
+                                "brief.write", "brief.export", "vault.export",
+                                "visit.write", "relationship.read", "relationship.manage",
+                                "access.read", "access.manage"})),
+             "consent-1", "actor-owner", timestamp),
+        )
+        connection.execute(
+            "INSERT INTO person_access_assignments VALUES (?, ?, ?, 'caregiver', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
+            ("assignment-2", "actor-caregiver", "person-1",
+             json.dumps(sorted({"person.read", "source.read", "candidate.read",
+                                "medication.read", "timeline.read", "visit.read",
+                                "brief.read", "relationship.read", "chat.use"})),
+             "consent-2", "actor-owner", timestamp),
+        )
+        # Access audit rows (append-only).
+        connection.execute(
+            "INSERT INTO access_audit_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("audit-1", "actor-owner", "bootstrap", "installation", None, "success",
+             "bootstrap", timestamp),
+        )
+        connection.execute(
+            "INSERT INTO access_audit_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("audit-2", "actor-owner", "assignment.create", "assignment", "assignment-1",
+             "success", "bootstrap_owner_grant", timestamp),
+        )
+        # G2 disclosure consent + execution receipt (v6 tables).
+        connection.execute(
+            "INSERT INTO agent_disclosure_consents VALUES (?, ?, ?, ?, 'purpose', 'action', "
+            "'env-1', 'provider', ?, '{}', 'family-access-v1', ?, ?, ?, '{}')",
+            ("g2-consent-1", "exec-1", "actor-owner", "person-1", "d" * 64,
+             timestamp, timestamp, "e" * 64),
+        )
+        connection.execute(
+            "INSERT INTO agent_execution_receipts VALUES (?, ?, ?, ?, ?, 'env-1', 'provider', "
+            "'completed', ?, ?, '[]', '[]', NULL, 0, '[]', ?, '{}')",
+            ("g2-receipt-1", "exec-1", "g2-consent-1", "actor-owner", "person-1",
+             timestamp, timestamp, "f" * 64),
         )
         connection.execute("COMMIT")
 
@@ -415,6 +533,61 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         assert connection.execute(
             "SELECT COUNT(*) FROM visit_brief_revisions WHERE revision_id = 'rev-1'"
         ).fetchone()[0] == 1
+        # Correction lineage preserved (successor points at corrected original).
+        assert tuple(connection.execute(
+            "SELECT status, predecessor_candidate_id FROM candidate_facts WHERE id = 'cand-5'"
+        ).fetchone()) == ("pending", "cand-4")
+        assert connection.execute(
+            "SELECT COUNT(*) FROM candidate_facts WHERE id = 'cand-4' AND status = 'corrected'"
+        ).fetchone()[0] == 1
+        # Visit Question preserved.
+        assert connection.execute(
+            "SELECT question_text FROM visit_questions WHERE question_id = 'q-1'"
+        ).fetchone()[0] == "What should I ask?"
+        # Actors, assignments, consent history, audit, G2 consent/receipt preserved.
+        assert connection.execute(
+            "SELECT COUNT(*) FROM actors WHERE actor_id IN ('actor-owner', 'actor-caregiver')"
+        ).fetchone()[0] == 2
+        assert connection.execute(
+            "SELECT COUNT(*) FROM person_access_assignments WHERE is_active = 1"
+        ).fetchone()[0] == 2
+        assert connection.execute(
+            "SELECT COUNT(*) FROM person_access_consent_history"
+        ).fetchone()[0] == 2
+        assert connection.execute(
+            "SELECT COUNT(*) FROM access_audit_events"
+        ).fetchone()[0] == 2
+        assert connection.execute(
+            "SELECT COUNT(*) FROM agent_disclosure_consents"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM agent_execution_receipts"
+        ).fetchone()[0] == 1
+        # The legacy v1 Brief revision still renders.
+        from app.product_core.persisted_visit_briefs import (
+            PersistedVisitBriefService,
+            verify_persisted_visit_brief_revision,
+        )
+
+        revision = connection.execute(
+            "SELECT * FROM visit_brief_revisions WHERE revision_id = 'rev-1'"
+        ).fetchone()
+        verify_persisted_visit_brief_revision(
+            PersistedVisitBriefRevision(
+                revision_id=revision["revision_id"],
+                brief_id=revision["brief_id"],
+                revision_number=revision["revision_number"],
+                origin=revision["origin"],
+                parent_revision_id=revision["parent_revision_id"],
+                content_schema_version=revision["content_schema_version"],
+                render_version=revision["render_version"],
+                content=json.loads(revision["content_json"]),
+                rendered_markdown=revision["rendered_markdown"],
+                content_hash=revision["content_hash"],
+                created_at=parse_utc_datetime(revision["created_at"]),
+            )
+        )
+        assert "# brief" in str(revision["rendered_markdown"])
 
     # The medication lifecycle remains fully usable against the v7 schema.
     from datetime import UTC, datetime as dt
