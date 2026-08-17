@@ -5,7 +5,7 @@ The published `v0.1.0` tag remains the controlled private-alpha baseline.
 Phase 2 Family Identity and Access Boundary is implemented on `main` and
 published as `v0.2.0`. The Sentient G1–G4 trust work — G1 Trust Envelope, G2
 Consent-Gated Agent Runtime, G2.5 optional integration spike, G3 Model
-G3 Model Portability, G4 Portable Trust Package, and G5 Ecosystem Validation
+Portability, G4 Portable Trust Package, and G5 Ecosystem Validation
 are integrated on `main` **after the `v0.2.0` release boundary**; none of them
 is itself a release tag.
 
@@ -18,9 +18,15 @@ is itself a release tag.
   metadata-only access audit, the generic evidence lifecycle
   (medication/condition/lab candidates and canonical records), and versioned
   Family Access scope generations.
-- A centralized `family-access-v1` policy protects live `/workspace`, `/vault`,
-  `/api/product-core/v1`, `/chat`, and `/api/chat`. Resource ownership is
-  resolved server-side and authorization is deny-by-default.
+- A generation-aware Family Access policy protects live `/workspace`, `/vault`,
+  `/api/product-core/v1`, `/chat`, and `/api/chat`: `family-access-v1` scope
+  sets are frozen verbatim for legacy grants, and the current
+  `family-access-v2` generation adds `condition.read/write` and
+  `lab.read/write`. An assignment's generation is inferred from its stored
+  scopes, so existing delegated consent never automatically gains new
+  capabilities (no silent privilege expansion); upgrades are explicit
+  owner/caregiver actions. Resource ownership is resolved server-side and
+  authorization is deny-by-default.
 - Installation administration grants no Person access. The final active owner
   of each Person and the final active installation administrator are protected
   by independent service and database invariants.
@@ -248,8 +254,10 @@ deterministic reviewer: `python -m evals.p1_review` (guide:
 - deterministic Medication and Visit lifecycle, exports, and offline recovery;
 - guarded answer validation and medical-safety restrictions;
 - no new runtime dependency;
-- no Phase 3 ingest, OCR, Conditions/Labs lifecycle, FHIR, Sentient, EvoSkill,
-  genetics expansion, cloud synchronization, or public SaaS identity.
+- on `main` (P1 branch adds the source-backed Conditions/Labs lifecycle per the
+  section above): no Phase 3 ingest, OCR, Conditions/Labs lifecycle, FHIR,
+  Sentient, EvoSkill, genetics expansion, cloud synchronization, or public
+  SaaS identity.
 
 ## Remaining product limits
 
