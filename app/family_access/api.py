@@ -15,6 +15,7 @@ from app.family_access.api_models import (
     ActivePersonRequest,
     AssignmentCreateRequest,
     AssignmentReviseRequest,
+    AssignmentUpgradeRequest,
     BootstrapRequest,
     EmptyRequest,
     FamilyCreateRequest,
@@ -548,6 +549,28 @@ def revise_assignment(
             person_id,
             assignment_id,
             payload.optional_scopes,
+            policy_generation=payload.policy_generation,
+        )
+    )
+
+
+@router.post(
+    "/people/{person_id}/access-assignments/{assignment_id}:upgrade-generation",
+    status_code=200,
+)
+def upgrade_assignment_generation(
+    person_id: str,
+    assignment_id: str,
+    payload: AssignmentUpgradeRequest,
+    runtime: RuntimeDependency,
+    authenticated: UnsafeAuthenticatedDependency,
+) -> dict[str, Any]:
+    return asdict(
+        runtime.service.upgrade_owner_generation(
+            authenticated.actor.actor_id,
+            person_id,
+            assignment_id,
+            confirm_full_owner_access=payload.confirm_full_owner_access,
         )
     )
 

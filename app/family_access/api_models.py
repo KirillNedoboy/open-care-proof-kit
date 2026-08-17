@@ -149,6 +149,7 @@ class AssignmentCreateRequest(APIModel):
 
 class AssignmentReviseRequest(APIModel):
     optional_scopes: set[str] = Field(default_factory=set, max_length=20)
+    policy_generation: Literal["family-access-v1", "family-access-v2"] | None = None
 
     @field_validator("optional_scopes")
     @classmethod
@@ -156,6 +157,10 @@ class AssignmentReviseRequest(APIModel):
         if not value <= CAREGIVER_OPTIONAL_SCOPES:
             raise ValueError("caregiver scope is not permitted")
         return value
+
+
+class AssignmentUpgradeRequest(APIModel):
+    confirm_full_owner_access: bool = Field(default=False, strict=True)
 
 
 class InvitationCreateRequest(APIModel):

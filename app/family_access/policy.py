@@ -4,9 +4,19 @@ from collections.abc import Mapping, Set
 from dataclasses import dataclass
 from typing import Literal
 
-POLICY_VERSION = "family-access-v1"
+#: The current policy generation. New grants use this generation; the
+#: generation under which an assignment was granted is inferred from its
+#: stored scopes (see ``infer_generation``), so old consent events are never
+#: rewritten and never silently gain new capabilities.
+POLICY_VERSION = "family-access-v2"
+V1_POLICY_VERSION = "family-access-v1"
 
-OWNER_SCOPES = frozenset(
+# --------------------------------------------------------------------------- #
+# family-access-v1: frozen verbatim from the pre-P1 scope model.
+# Assignments granted under v1 keep EXACTLY this authority forever; they never
+# inherit the v2 record-family scopes.
+# --------------------------------------------------------------------------- #
+OWNER_SCOPES_V1 = frozenset(
     {
         "person.read",
         "person.update",
@@ -31,7 +41,7 @@ OWNER_SCOPES = frozenset(
     }
 )
 
-CAREGIVER_BASE_SCOPES = frozenset(
+CAREGIVER_BASE_SCOPES_V1 = frozenset(
     {
         "person.read",
         "source.read",
@@ -45,7 +55,7 @@ CAREGIVER_BASE_SCOPES = frozenset(
     }
 )
 
-CAREGIVER_OPTIONAL_SCOPES = frozenset(
+CAREGIVER_OPTIONAL_SCOPES_V1 = frozenset(
     {
         "source.write",
         "candidate.review",
@@ -57,7 +67,53 @@ CAREGIVER_OPTIONAL_SCOPES = frozenset(
     }
 )
 
-ALL_SCOPES = OWNER_SCOPES
+# --------------------------------------------------------------------------- #
+# family-access-v2: v1 plus explicit record-family capabilities. These scope
+# strings exist ONLY in v2 sets; any stored assignment containing them is
+# inferred as v2 and validated against the v2 sets.
+# --------------------------------------------------------------------------- #
+RECORD_READ_SCOPES = frozenset({"condition.read", "lab.read"})
+RECORD_WRITE_SCOPES = frozenset({"condition.write", "lab.write"})
+V2_ONLY_SCOPES = RECORD_READ_SCOPES | RECORD_WRITE_SCOPES
+
+OWNER_SCOPES_V2 = OWNER_SCOPES_V1 | RECORD_READ_SCOPES | RECORD_WRITE_SCOPES
+CAREGIVER_BASE_SCOPES_V2 = CAREGIVER_BASE_SCOPES_V1 | RECORD_READ_SCOPES
+CAREGIVER_OPTIONAL_SCOPES_V2 = CAREGIVER_OPTIONAL_SCOPES_V1 | RECORD_WRITE_SCOPES
+
+# Current-generation aliases: new grants and display surfaces use these.
+OWNER_SCOPES = OWNER_SCOPES_V2
+CAREGIVER_BASE_SCOPES = CAREGIVER_BASE_SCOPES_V2
+CAREGIVER_OPTIONAL_SCOPES = CAREGIVER_OPTIONAL_SCOPES_V2
+
+_GENERATION_SETS: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
+    V1_POLICY_VERSION: (
+        OWNER_SCOPES_V1,
+        CAREGIVER_BASE_SCOPES_V1,
+        CAREGIVER_OPTIONAL_SCOPES_V1,
+    ),
+    POLICY_VERSION: (
+        OWNER_SCOPES_V2,
+        CAREGIVER_BASE_SCOPES_V2,
+        CAREGIVER_OPTIONAL_SCOPES_V2,
+    ),
+}
+
+
+def infer_generation(scopes: object) -> str:
+    """Infer an assignment's policy generation purely from its stored scopes.
+
+    This is the authoritative derivation (REFINEMENT 1): a stored scope set
+    containing any v2-only scope string is a v2 grant; anything else is v1.
+    The ``scope_generation`` column on assignments is derived metadata only
+    and must always equal this value.
+    """
+    if not isinstance(scopes, (set, frozenset, list, tuple)):
+        return V1_POLICY_VERSION
+    if not all(isinstance(scope, str) for scope in scopes):
+        return V1_POLICY_VERSION
+    if frozenset(scopes) & V2_ONLY_SCOPES:
+        return POLICY_VERSION
+    return V1_POLICY_VERSION
 
 
 def valid_role_scopes(role: object, scopes: object) -> bool:
@@ -66,12 +122,14 @@ def valid_role_scopes(role: object, scopes: object) -> bool:
     if not all(isinstance(scope, str) for scope in scopes):
         return False
     normalized = frozenset(scopes)
+    generation = infer_generation(normalized)
+    owner_scopes, base_scopes, optional_scopes = _GENERATION_SETS[generation]
     if role == "owner":
-        return normalized == OWNER_SCOPES
+        return normalized == owner_scopes
     if role == "caregiver":
         return (
-            normalized >= CAREGIVER_BASE_SCOPES
-            and normalized <= CAREGIVER_BASE_SCOPES | CAREGIVER_OPTIONAL_SCOPES
+            normalized >= base_scopes
+            and normalized <= base_scopes | optional_scopes
         )
     return False
 
@@ -79,16 +137,27 @@ def valid_role_scopes(role: object, scopes: object) -> bool:
 def build_scopes(
     role: Literal["owner", "caregiver"],
     optional_scopes: Set[str] | None = None,
+    *,
+    generation: str = POLICY_VERSION,
 ) -> frozenset[str]:
+    """Build the scope set for a NEW grant under the chosen generation.
+
+    New grants default to the current generation; an explicit generation is
+    honored only for controlled upgrade/revision paths that record a new
+    consent event.
+    """
+    if generation not in _GENERATION_SETS:
+        raise ValueError("unsupported policy generation")
+    _owner_scopes, base_scopes, optional_scope_set = _GENERATION_SETS[generation]
     requested = frozenset(optional_scopes or ())
     if role == "owner":
-        return OWNER_SCOPES
+        return _owner_scopes
     if role != "caregiver":
         raise ValueError("unsupported access role")
-    disallowed = requested - CAREGIVER_OPTIONAL_SCOPES
+    disallowed = requested - optional_scope_set
     if disallowed:
         raise ValueError("caregiver scope is not permitted")
-    return CAREGIVER_BASE_SCOPES | requested
+    return base_scopes | requested
 
 
 @dataclass(frozen=True)
@@ -114,7 +183,7 @@ class PersonAccessPolicy:
         has_own_person_link: bool = False,
     ) -> PolicyDecision:
         del is_installation_admin, has_family_membership, has_relationship, has_own_person_link
-        if required_scope not in ALL_SCOPES or assignment is None:
+        if assignment is None:
             return PolicyDecision(allowed=False)
         role = assignment.get("role")
         scopes_value = assignment.get("scopes")
@@ -122,6 +191,12 @@ class PersonAccessPolicy:
             return PolicyDecision(allowed=False, reason_code="invalid_assignment_scopes")
         assert isinstance(scopes_value, (set, frozenset, list, tuple))
         scopes = frozenset(scopes_value)
+        generation = infer_generation(scopes)
+        owner_scopes, _base_scopes, _optional_scopes = _GENERATION_SETS[generation]
+        if required_scope not in owner_scopes:
+            # A scope string outside the assignment's generation's universe is
+            # never satisfiable (e.g. condition.read for a v1 assignment).
+            return PolicyDecision(allowed=False)
         matches = (
             assignment.get("actor_id") == actor_id
             and assignment.get("person_id") == person_id

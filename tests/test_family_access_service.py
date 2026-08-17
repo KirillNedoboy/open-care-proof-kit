@@ -1397,3 +1397,433 @@ def test_archive_empty_family_rechecks_active_creator_inside_transaction(
 
     with pytest.raises(AuthenticationError):
         service.archive_family(actor.actor_id, family.family_id)
+
+
+def _insert_v1_assignment(
+    service: FamilyAccessService,
+    *,
+    recipient_actor_id: str,
+    person_id: str,
+    role: str,
+    scopes: frozenset[str],
+    granted_by_actor_id: str,
+) -> str:
+    """Insert a legacy (pre-P1) assignment directly, exactly as a v1-era
+    installation would have stored it (scope_generation defaults to v1)."""
+    import json as _json
+
+    now = NOW.isoformat()
+    assignment_id = f"legacy-assignment-{recipient_actor_id}"
+    with service.database.uow(begin_mode="IMMEDIATE") as uow:
+        assert uow.connection is not None
+        consent_id = f"legacy-consent-{recipient_actor_id}"
+        uow.connection.execute(
+            """
+            INSERT INTO person_access_consent_history (
+                consent_event_id, event_type, acting_owner_actor_id,
+                recipient_actor_id, person_id, role, scopes_json, reason_code, created_at
+            ) VALUES (?, 'grant', ?, ?, ?, ?, ?, 'legacy_grant', ?)
+            """,
+            (consent_id, granted_by_actor_id, recipient_actor_id, person_id, role,
+             _json.dumps(sorted(scopes), separators=(",", ":")), now),
+        )
+        uow.connection.execute(
+            """
+            INSERT INTO person_access_assignments (
+                assignment_id, actor_id, person_id, role, scopes_json,
+                consent_event_id, granted_by_actor_id, is_active, granted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+            """,
+            (assignment_id, recipient_actor_id, person_id, role,
+             _json.dumps(sorted(scopes), separators=(",", ":")), consent_id,
+             granted_by_actor_id, now),
+        )
+    return assignment_id
+
+
+def test_legacy_v1_grant_cannot_use_condition_or_lab_scopes(tmp_path: Path) -> None:
+    """A pre-P1 (family-access-v1) grant keeps exactly its grant-time
+    authority: condition/lab scopes are denied without any silent expansion."""
+    from app.family_access.policy import (
+        CAREGIVER_BASE_SCOPES_V1,
+        OWNER_SCOPES_V1,
+        infer_generation,
+    )
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    _insert_v1_assignment(
+        service,
+        recipient_actor_id=caregiver.actor_id,
+        person_id="existing-person",
+        role="caregiver",
+        scopes=CAREGIVER_BASE_SCOPES_V1,
+        granted_by_actor_id=owner.actor_id,
+    )
+
+    assert infer_generation(CAREGIVER_BASE_SCOPES_V1) == "family-access-v1"
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "medication.read"
+    ).allowed is True
+    for scope in ("condition.read", "lab.read", "condition.write", "lab.write"):
+        assert service.authorize_person(
+            caregiver.actor_id, "existing-person", scope
+        ).allowed is False
+    with service.database.connect() as connection:
+        stored = connection.execute(
+            "SELECT scopes_json FROM person_access_assignments "
+            "WHERE actor_id = ?",
+            (caregiver.actor_id,),
+        ).fetchone()[0]
+        assert infer_generation(__import__("json").loads(stored)) == "family-access-v1"
+        # Consent history is byte-identical: the v1 consent event still exists.
+        assert connection.execute(
+            "SELECT COUNT(*) FROM person_access_consent_history WHERE reason_code = 'legacy_grant'"
+        ).fetchone()[0] == 1
+
+    with service.database.uow(begin_mode="IMMEDIATE") as uow:
+        assert uow.connection is not None
+        uow.connection.execute(
+            "UPDATE person_access_assignments SET scopes_json = ? "
+            "WHERE actor_id = ? AND person_id = ? AND is_active = 1",
+            (__import__("json").dumps(sorted(OWNER_SCOPES_V1), separators=(",", ":")),
+             owner.actor_id, "existing-person"),
+        )
+    assert service.authorize_person(
+        owner.actor_id, "existing-person", "condition.read"
+    ).allowed is False
+
+
+def test_legacy_v1_invitation_redeemed_after_p1_stays_v1(tmp_path: Path) -> None:
+    """A legacy v1 invitation redeemed after P1 produces a v1 assignment with
+    exactly the invitation's v1 scopes; it never inherits v2."""
+    import hashlib as _hashlib
+    import json as _json
+    import secrets as _secrets
+
+    from app.family_access.policy import CAREGIVER_BASE_SCOPES_V1, infer_generation
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    v1_scopes = CAREGIVER_BASE_SCOPES_V1 | {"vault.export"}
+    secret = _secrets.token_urlsafe(32)
+    invitation_id = "legacy-invitation-1"
+    now = NOW.isoformat()
+    with service.database.uow(begin_mode="IMMEDIATE") as uow:
+        assert uow.connection is not None
+        uow.connection.execute(
+            """
+            INSERT INTO access_invitations (
+                invitation_id, secret_hash, inviter_actor_id, person_id, role,
+                scopes_json, state, created_at, expires_at
+            ) VALUES (?, ?, ?, ?, 'caregiver', ?, 'active', ?, ?)
+            """,
+            (invitation_id, _hashlib.sha256(secret.encode()).digest(), owner.actor_id,
+             "existing-person", _json.dumps(sorted(v1_scopes), separators=(",", ":")),
+             now, (NOW + timedelta(days=1)).isoformat()),
+        )
+    preview = service.preview_invitation(secret)
+    assert preview.scopes == v1_scopes
+    caregiver = service.register_invitation(
+        secret,
+        username="legacy-caregiver",
+        display_name="Legacy caregiver",
+        password="caregiver password",
+        confirm_full_owner_access=False,
+    )
+    with service.database.connect() as connection:
+        row = connection.execute(
+            "SELECT scopes_json FROM person_access_assignments "
+            "WHERE actor_id = ? AND person_id = ? AND is_active = 1",
+            (caregiver.actor_id, "existing-person"),
+        ).fetchone()
+    stored_scopes = set(__import__("json").loads(str(row[0])))
+    assert stored_scopes == set(v1_scopes)
+    assert infer_generation(stored_scopes) == "family-access-v1"
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "vault.export"
+    ).allowed is True
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "condition.read"
+    ).allowed is False
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "lab.read"
+    ).allowed is False
+
+
+def test_caregiver_generation_upgrade_is_explicit_and_grants_exact_v2_set(
+    tmp_path: Path,
+) -> None:
+    from app.family_access.policy import (
+        CAREGIVER_BASE_SCOPES_V1,
+        CAREGIVER_BASE_SCOPES_V2,
+        CAREGIVER_OPTIONAL_SCOPES_V2,
+        infer_generation,
+    )
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    assignment_id = _insert_v1_assignment(
+        service,
+        recipient_actor_id=caregiver.actor_id,
+        person_id="existing-person",
+        role="caregiver",
+        scopes=CAREGIVER_BASE_SCOPES_V1,
+        granted_by_actor_id=owner.actor_id,
+    )
+
+    upgraded = service.revise_assignment(
+        owner.actor_id,
+        "existing-person",
+        assignment_id,
+        optional_scopes={"vault.export"},
+        policy_generation="family-access-v2",
+    )
+    assert upgraded.scopes == CAREGIVER_BASE_SCOPES_V2 | {"vault.export"}
+    assert infer_generation(upgraded.scopes) == "family-access-v2"
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "condition.read"
+    ).allowed is True
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "lab.read"
+    ).allowed is True
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "lab.write"
+    ).allowed is False
+    with service.database.connect() as connection:
+        consent = connection.execute(
+            "SELECT event_type, reason_code, scopes_json FROM person_access_consent_history "
+            "WHERE reason_code = 'caregiver_scope_generation_upgrade'"
+        ).fetchone()
+        assert consent is not None
+        assert consent[0] == "revise"
+        assert set(__import__("json").loads(consent[2])) == set(
+            CAREGIVER_BASE_SCOPES_V2 | {"vault.export"}
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM person_access_consent_history "
+                "WHERE reason_code = 'legacy_grant'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert CAREGIVER_OPTIONAL_SCOPES_V2 >= {"condition.write", "lab.write"}
+
+
+def test_routine_caregiver_revision_does_not_silently_upgrade_generation(
+    tmp_path: Path,
+) -> None:
+    from app.family_access.policy import (
+        CAREGIVER_BASE_SCOPES_V1,
+        infer_generation,
+    )
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    assignment_id = _insert_v1_assignment(
+        service,
+        recipient_actor_id=caregiver.actor_id,
+        person_id="existing-person",
+        role="caregiver",
+        scopes=CAREGIVER_BASE_SCOPES_V1 | {"vault.export"},
+        granted_by_actor_id=owner.actor_id,
+    )
+
+    revised = service.revise_assignment(
+        owner.actor_id,
+        "existing-person",
+        assignment_id,
+        optional_scopes=set(),
+    )
+    assert infer_generation(revised.scopes) == "family-access-v1"
+    assert "condition.read" not in revised.scopes
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "condition.read"
+    ).allowed is False
+    with service.database.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM person_access_consent_history "
+            "WHERE reason_code = 'caregiver_scope_revision'"
+        ).fetchone()[0] == 1
+
+
+def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
+    tmp_path: Path,
+) -> None:
+    from app.family_access.policy import OWNER_SCOPES_V1, OWNER_SCOPES_V2, infer_generation
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    assignment_id = None
+    with service.database.uow(begin_mode="IMMEDIATE") as uow:
+        assert uow.connection is not None
+        row = uow.connection.execute(
+            "SELECT assignment_id FROM person_access_assignments "
+            "WHERE actor_id = ? AND person_id = ? AND is_active = 1",
+            (owner.actor_id, "existing-person"),
+        ).fetchone()
+        assignment_id = str(row[0])
+        uow.connection.execute(
+            "UPDATE person_access_assignments SET scopes_json = ? WHERE assignment_id = ?",
+            (__import__("json").dumps(sorted(OWNER_SCOPES_V1), separators=(",", ":")), assignment_id),
+        )
+    with pytest.raises(ConfirmationRequiredError):
+        service.upgrade_owner_generation(
+            owner.actor_id,
+            "existing-person",
+            assignment_id,
+            confirm_full_owner_access=False,
+        )
+
+    upgraded = service.upgrade_owner_generation(
+        owner.actor_id,
+        "existing-person",
+        assignment_id,
+        confirm_full_owner_access=True,
+    )
+    assert upgraded.scopes == OWNER_SCOPES_V2
+    assert infer_generation(upgraded.scopes) == "family-access-v2"
+    assert service.authorize_person(
+        owner.actor_id, "existing-person", "condition.read"
+    ).allowed is True
+    assert service.authorize_person(
+        owner.actor_id, "existing-person", "lab.write"
+    ).allowed is True
+    with service.database.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM person_access_consent_history "
+            "WHERE reason_code = 'owner_generation_upgrade' AND event_type = 'revise'"
+        ).fetchone()[0] == 1
+        # Old v1 consent events are untouched (bootstrap grant remains).
+        assert connection.execute(
+            "SELECT COUNT(*) FROM person_access_consent_history "
+            "WHERE reason_code = 'bootstrap_owner_grant' AND event_type = 'grant'"
+        ).fetchone()[0] == 1
+    with pytest.raises(ConflictError):
+        service.upgrade_owner_generation(
+            owner.actor_id,
+            "existing-person",
+            assignment_id,
+            confirm_full_owner_access=True,
+        )
+
+
+def test_revoked_v2_assignment_immediately_denies_new_record_scopes(
+    tmp_path: Path,
+) -> None:
+    from app.family_access.policy import CAREGIVER_BASE_SCOPES_V2
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    caregiver = service.create_local_actor(owner.actor_id, username="caregiver", display_name="Caregiver", password="caregiver password")
+    service.grant_assignment(
+        owner.actor_id,
+        "existing-person",
+        caregiver.actor_id,
+        role="caregiver",
+        optional_scopes=set(),
+        confirm_full_owner_access=False,
+    )
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "condition.read"
+    ).allowed is True
+    service.revoke_assignment(owner.actor_id, "existing-person", caregiver.actor_id)
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "condition.read"
+    ).allowed is False
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "lab.read"
+    ).allowed is False
+
+
+def test_installation_admin_and_membership_never_grant_condition_lab_scopes(
+    tmp_path: Path,
+) -> None:
+    """Admin status, family membership, relationships, and own-Person links are
+    context, never grants: a member without an assignment cannot read
+    condition/lab scopes, and no context flag flips the policy."""
+    service = _service(tmp_path)
+    admin = service.bootstrap(
+        username="admin",
+        display_name="Admin",
+        password="admin password value",
+        person_ids=(),
+        confirm_full_owner_access=True,
+    )
+    assert service.authorize_person(
+        admin.actor_id, "existing-person", "condition.read"
+    ).allowed is False
+    assert service.authorize_person(
+        admin.actor_id, "existing-person", "lab.read"
+    ).allowed is False
+
+    from app.family_access.policy import CAREGIVER_BASE_SCOPES_V2, PersonAccessPolicy
+
+    policy = PersonAccessPolicy()
+    decision = policy.authorize(
+        actor_id="actor-1",
+        person_id="person-1",
+        required_scope="condition.read",
+        assignment={
+            "actor_id": "actor-1",
+            "person_id": "person-1",
+            "role": "caregiver",
+            "scopes": CAREGIVER_BASE_SCOPES_V2,
+            "is_active": True,
+        },
+        is_installation_admin=True,
+        has_family_membership=True,
+        has_relationship=True,
+        has_own_person_link=True,
+    )
+    assert decision.allowed is True  # scope genuinely granted, context flags ignored
+    denied = policy.authorize(
+        actor_id="actor-1",
+        person_id="person-1",
+        required_scope="condition.read",
+        assignment=None,
+        is_installation_admin=True,
+        has_family_membership=True,
+        has_relationship=True,
+        has_own_person_link=True,
+    )
+    assert denied.allowed is False

@@ -142,7 +142,7 @@ class SyntheticAuthority:
                 consent_event_id=access.consent_event_id,
                 authorized_at=authorized_at,
                 access_expires_at=access.expires_at,
-                policy_version="family-access-v1",
+                policy_version="family-access-v2",
             ),
         )
 

@@ -43,9 +43,12 @@ from app.family_access.models import (
     RelationshipRecord,
 )
 from app.family_access.policy import (
+    POLICY_VERSION,
+    V1_POLICY_VERSION,
     PersonAccessPolicy,
     PolicyDecision,
     build_scopes,
+    infer_generation,
     valid_role_scopes,
 )
 from app.family_access.repository import FamilyAccessRepository, parse_utc
@@ -612,8 +615,17 @@ class FamilyAccessService:
         person_id: str,
         assignment_id: str,
         optional_scopes: Set[str],
+        policy_generation: str | None = None,
     ) -> AssignmentRecord:
-        scopes = build_scopes("caregiver", optional_scopes)
+        """Revise a caregiver assignment.
+
+        The resulting scopes are built under the assignment's inferred
+        generation by default, so a routine revision NEVER silently moves a
+        v1 caregiver to v2. Passing an explicit ``policy_generation`` of
+        ``family-access-v2`` for a v1 assignment is the controlled upgrade
+        path: it produces a new consent event recording the full resulting
+        scope set.
+        """
         now = self._timestamp()
         with self._access_uow(acting_actor_id, begin_mode="IMMEDIATE") as connection:
             self._require_person_access_in_connection(
@@ -630,6 +642,20 @@ class FamilyAccessService:
                 raise NotFoundError("assignment is unavailable")
             if str(current["role"]) != "caregiver":
                 raise ValidationError("owner assignments cannot be revised")
+            inferred_generation = infer_generation(
+                json.loads(str(current["scopes_json"]))
+            )
+            generation = policy_generation or inferred_generation
+            if generation not in (V1_POLICY_VERSION, POLICY_VERSION):
+                raise ValidationError("unsupported policy generation")
+            scopes = build_scopes("caregiver", optional_scopes, generation=generation)
+            is_upgrade = (
+                inferred_generation == V1_POLICY_VERSION
+                and generation == POLICY_VERSION
+            )
+            reason_code = (
+                "caregiver_scope_generation_upgrade" if is_upgrade else "caregiver_scope_revision"
+            )
             connection.execute(
                 """
                 UPDATE person_access_assignments
@@ -646,7 +672,7 @@ class FamilyAccessService:
                 role="caregiver",
                 scopes=scopes,
                 event_type="revise",
-                reason_code="caregiver_scope_revision",
+                reason_code=reason_code,
                 now=now,
                 revision_of_assignment_id=assignment_id,
             )
@@ -655,6 +681,87 @@ class FamilyAccessService:
             actor_id=str(current["actor_id"]),
             person_id=person_id,
             role="caregiver",
+            scopes=frozenset(scopes),
+            is_active=True,
+        )
+
+    def upgrade_owner_generation(
+        self,
+        acting_actor_id: str,
+        person_id: str,
+        assignment_id: str,
+        *,
+        confirm_full_owner_access: bool,
+    ) -> AssignmentRecord:
+        """Explicitly upgrade an owner assignment to the current generation.
+
+        Requires the owner high-risk confirmation and an actor with
+        ``access.manage``. The active assignment's scopes are replaced in
+        place (the unique active-assignment index forbids a revoke+regrant
+        for the same actor), a NEW append-only consent event records the full
+        v2 scope set, and the old v1 consent event stays byte-identical in
+        history. This is never automatic: it is the owner's explicit action.
+        """
+        if not confirm_full_owner_access:
+            raise ConfirmationRequiredError("owner_confirmation_required")
+        now = self._timestamp()
+        with self._access_uow(acting_actor_id, begin_mode="IMMEDIATE") as connection:
+            self._require_person_access_in_connection(
+                connection, acting_actor_id, person_id, "access.manage"
+            )
+            current = connection.execute(
+                """
+                SELECT * FROM person_access_assignments
+                WHERE assignment_id = ? AND person_id = ? AND is_active = 1
+                """,
+                (assignment_id, person_id),
+            ).fetchone()
+            if current is None:
+                raise NotFoundError("assignment is unavailable")
+            if str(current["role"]) != "owner":
+                raise ValidationError("owner upgrade requires an owner assignment")
+            if infer_generation(json.loads(str(current["scopes_json"]))) == POLICY_VERSION:
+                raise ConflictError("assignment is already on the current generation")
+            scopes = build_scopes("owner", generation=POLICY_VERSION)
+            consent_id = self._insert_consent(
+                connection,
+                acting_actor_id=acting_actor_id,
+                recipient_actor_id=str(current["actor_id"]),
+                person_id=person_id,
+                role="owner",
+                scopes=scopes,
+                event_type="revise",
+                reason_code="owner_generation_upgrade",
+                now=now,
+            )
+            connection.execute(
+                """
+                UPDATE person_access_assignments
+                SET scopes_json = ?, consent_event_id = ?, granted_by_actor_id = ?,
+                    scope_generation = ?
+                WHERE assignment_id = ?
+                """,
+                (
+                    self._scopes_json(scopes),
+                    consent_id,
+                    acting_actor_id,
+                    POLICY_VERSION,
+                    assignment_id,
+                ),
+            )
+            self._audit(
+                connection,
+                acting_actor_id,
+                "assignment.revise",
+                "assignment",
+                assignment_id,
+                "owner_generation_upgrade",
+            )
+        return AssignmentRecord(
+            assignment_id=assignment_id,
+            actor_id=str(current["actor_id"]),
+            person_id=person_id,
+            role="owner",
             scopes=frozenset(scopes),
             is_active=True,
         )
@@ -1595,13 +1702,16 @@ class FamilyAccessService:
             now=now,
         )
         assignment_id = self._id()
+        # scope_generation is DERIVED metadata: it always equals the value
+        # inferred from the stored scopes (REFINEMENT 1).
+        scope_generation = infer_generation(frozenset(scopes))
         connection.execute(
             """
             INSERT INTO person_access_assignments (
                 assignment_id, actor_id, person_id, role, scopes_json,
                 consent_event_id, granted_by_actor_id, is_active, granted_at,
-                revision_of_assignment_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                revision_of_assignment_id, scope_generation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
             """,
             (
                 assignment_id,
@@ -1613,6 +1723,7 @@ class FamilyAccessService:
                 acting_actor_id,
                 now,
                 revision_of_assignment_id,
+                scope_generation,
             ),
         )
         self._audit(

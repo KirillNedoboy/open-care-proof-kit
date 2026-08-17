@@ -22,6 +22,7 @@ from app.agent_trust.canonical import (
     sha256_hex,
 )
 from app.agent_trust.models import ExecutionReceipt, TrustEnvelope
+from app.family_access.policy import POLICY_VERSION
 from app.family_access.sessions import SessionStore
 
 
@@ -289,7 +290,7 @@ class G2Runtime:
             raise PermissionError("consent_contract_changed")
         consented_at = self.clock()
         expires_at = getattr(envelope, "expires_at", pending.expires_at)
-        policy_version = "family-access-v1"
+        policy_version = POLICY_VERSION
         contract = {
             "execution_id": execution_id, "actor_id": session.actor_id,
             "person_id": pending.person_id, "purpose_id": pending.purpose_id,
