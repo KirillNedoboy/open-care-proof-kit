@@ -14,11 +14,13 @@ from pathlib import Path
 
 from app.product_core.errors import (
     CandidateNotFoundError,
+    CanonicalRecordNotFoundError,
     IntegrityStorageError,
     InvalidTransitionError,
     PersonMismatchError,
     PersonNotFoundError,
     PersonValidationError,
+    ProvenanceValidationError,
     SourceCorruptionError,
     SourceNotFoundError,
     SourcePublicationError,
@@ -396,6 +398,62 @@ class SourceService:
             authorize=authorize,
         )
 
+    def register_structured_manual_entry_result(
+        self,
+        person_id: str,
+        fact_type: str,
+        data: dict[str, object],
+        *,
+        provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> SourceRegistrationResult:
+        """Register a schema_version 2 structured manual source.
+
+        The payload carries fact_type plus typed data; old schema_version 1
+        sources remain byte-immutable and are never rewritten.
+        """
+        if not person_id.strip():
+            raise ValueError("person_id must not be empty")
+        if fact_type not in ("medication", "condition", "lab"):
+            raise ValueError(f"unsupported fact type: {fact_type}")
+        payload = json.dumps(
+            {
+                "schema_version": 2,
+                "source_type": "manual_entry",
+                "fact_type": fact_type,
+                "data": {fact_type: data},
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return self._register(
+            person_id=person_id,
+            source_type="manual_entry",
+            payload=payload,
+            media_type="application/json",
+            suffix="json",
+            provenance=provenance or {"entry_method": "manual"},
+            authorize=authorize,
+        )
+
+    def register_structured_manual_entry(
+        self,
+        person_id: str,
+        fact_type: str,
+        data: dict[str, object],
+        *,
+        provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> Source:
+        return self.register_structured_manual_entry_result(
+            person_id,
+            fact_type,
+            data,
+            provenance=provenance,
+            authorize=authorize,
+        ).source
+
     def get(self, source_id: str) -> Source:
         with self.database.uow() as uow:
             source = uow.sources.get(source_id)
@@ -751,6 +809,13 @@ class FactLifecycleService:
                 raise PersonNotFoundError(f"person not found: {person_id}")
             return uow.canonical_records.list_active_for_person(person_id, fact_type)
 
+    def get_canonical(self, record_id: str) -> CanonicalRecord:
+        with self.database.uow() as uow:
+            record = uow.canonical_records.get(record_id)
+        if record is None:
+            raise CanonicalRecordNotFoundError(f"canonical record not found: {record_id}")
+        return record
+
     def list_canonical(
         self,
         person_id: str,
@@ -824,14 +889,14 @@ class FactLifecycleService:
             }
         else:
             if client_locator is None:
-                raise ValueError("provenance locator is required for plain-text sources")
+                raise ProvenanceValidationError("provenance locator is required for plain-text sources")
             locator = client_locator
             if (
                 locator.get("kind") != "span"
                 or not isinstance(locator.get("start"), int)
                 or not isinstance(locator.get("end"), int)
             ):
-                raise ValueError(
+                raise ProvenanceValidationError(
                     "provenance locator must be a span with integer start/end offsets"
                 )
         if self.source_reader is not None:
@@ -848,7 +913,7 @@ class FactLifecycleService:
         try:
             parsed = json.loads(payload)
         except (ValueError, UnicodeDecodeError):
-            raise ValueError("manual source payload is not valid JSON") from None
+            raise ProvenanceValidationError("manual source payload is not valid JSON") from None
         if isinstance(parsed, dict) and parsed.get("schema_version") == 2:
             name_field = "test_name" if fact_type == "lab" else "display_name"
             return f"data.{fact_type}.{name_field}"
@@ -867,14 +932,14 @@ class FactLifecycleService:
             try:
                 parsed = json.loads(payload)
             except (ValueError, UnicodeDecodeError):
-                raise ValueError("manual source payload is not valid JSON") from None
+                raise ProvenanceValidationError("manual source payload is not valid JSON") from None
             path = locator.get("path")
             if not isinstance(path, str):
-                raise ValueError("structured provenance locator requires a path")
+                raise ProvenanceValidationError("structured provenance locator requires a path")
             value: object = parsed
             for part in path.split("."):
                 if not isinstance(value, dict) or part not in value:
-                    raise ValueError(
+                    raise ProvenanceValidationError(
                         f"provenance locator path does not exist in source: {path}"
                     )
                 value = value[part]
@@ -887,7 +952,7 @@ class FactLifecycleService:
             schema_version = parsed.get("schema_version") if isinstance(parsed, dict) else None
             if schema_version == 2:
                 if not matches:
-                    raise ValueError(
+                    raise ProvenanceValidationError(
                         f"provenance locator value does not match {fact_type} name"
                     )
             elif not (
@@ -900,7 +965,7 @@ class FactLifecycleService:
                 # normalization differing from the registered source name,
                 # because the two-step source-then-candidate flow predates P1
                 # and is preserved byte-compatibly.
-                raise ValueError(
+                raise ProvenanceValidationError(
                     "provenance locator does not point at a recorded name field"
                 )
             return
@@ -910,11 +975,11 @@ class FactLifecycleService:
         try:
             text = payload.decode("utf-8")
         except UnicodeDecodeError:
-            raise ValueError("plain-text source is not valid UTF-8") from None
+            raise ProvenanceValidationError("plain-text source is not valid UTF-8") from None
         if start < 0 or end <= start or end > len(text):
-            raise ValueError("provenance span is out of range")
+            raise ProvenanceValidationError("provenance span is out of range")
         if text[start:end].strip() != expected:
-            raise ValueError("provenance span does not match the recorded name")
+            raise ProvenanceValidationError("provenance span does not match the recorded name")
 
     def _verify_source_and_locator(
         self, uow: object, candidate: CandidateFact
@@ -995,12 +1060,60 @@ class MedicationLifecycleService(FactLifecycleService):
     def get_candidate(self, candidate_id: str) -> CandidateFact:
         return super().get_candidate(candidate_id)
 
+    def create_fact_candidate(
+        self,
+        *,
+        person_id: str,
+        source_id: str,
+        fact_type: str,
+        detail_input: object,
+        provenance_locator: dict[str, object] | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> CandidateFact:
+        """Generic fact-family candidate creation (condition/lab)."""
+        return super().create_candidate(
+            person_id=person_id,
+            source_id=source_id,
+            fact_type=fact_type,
+            detail_input=detail_input,
+            provenance_locator=provenance_locator,
+            authorize=authorize,
+        )
+
+    def correct_fact_candidate(
+        self,
+        candidate_id: str,
+        *,
+        detail_input: object,
+        source_id: str | None = None,
+        provenance_locator: dict[str, object] | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> CandidateFact:
+        """Generic correction for non-medication fact families."""
+        return super().correct(
+            candidate_id,
+            detail_input=detail_input,
+            source_id=source_id,
+            provenance_locator=provenance_locator,
+            authorize=authorize,
+        )
+
     def list_candidates(
         self,
         person_id: str,
         status: CandidateStatus | None = None,
     ) -> list[CandidateFact]:
         return super().list_candidates(person_id, status)
+
+    def list_fact_candidates(
+        self,
+        person_id: str,
+        status: CandidateStatus | None = None,
+        *,
+        fact_type: str,
+    ) -> list[CandidateFact]:
+        """Generic fact-family candidate listing (condition/lab)."""
+        return super().list_candidates(person_id, status, fact_type=fact_type)
 
     def confirm(
         self,
@@ -1051,6 +1164,18 @@ class MedicationLifecycleService(FactLifecycleService):
 
     def list_active(self, person_id: str) -> list[CanonicalRecord]:
         return super().list_active(person_id, fact_type="medication")
+
+    def list_fact_canonical(
+        self,
+        person_id: str,
+        *,
+        include_inactive: bool = False,
+        fact_type: str,
+    ) -> list[CanonicalRecord]:
+        """Generic fact-family canonical listing (condition/lab)."""
+        return super().list_canonical(
+            person_id, include_inactive=include_inactive, fact_type=fact_type
+        )
 
     def list_canonical(
         self,

@@ -18,7 +18,7 @@ from app.config import clear_settings_cache
 from app.family_access.runtime import create_family_access_runtime
 from app.product_core.models import Person
 from app.product_core.runtime import create_product_core_runtime
-from tests.product_core_api_support import FixedClock, SequenceIds
+from tests.product_core_api_support import FixedClock, SequenceIds, json_headers
 
 SAME_ORIGIN = {"origin": "http://testserver"}
 
@@ -721,3 +721,144 @@ def test_brief_export_requires_scope_and_durable_access_audit(
     assert failed.status_code == 503
     assert failed.headers["content-type"].startswith("application/json")
     assert "#" not in failed.text
+
+
+def test_wrong_person_condition_scopes_deny_and_hide_without_silent_expansion(
+    access_harness: AccessHarness,
+) -> None:
+    """Bob (caregiver) with a legacy family-access-v1 grant must never read
+    Alice's conditions: visible Person -> 403, hidden Person -> 404, guessed
+    record/candidate IDs -> 403 (visible person, missing scope)."""
+    import json as _json
+
+    from app.family_access.policy import CAREGIVER_BASE_SCOPES_V1
+
+    client = access_harness.client
+    access_harness.login("alice")
+    source = client.post(
+        "/api/product-core/v1/sources/manual-condition",
+        json={"person_id": "alice-person", "condition": {"display_name": "Asthma"}},
+        headers=json_headers(),
+    )
+    assert source.status_code == 201, source.text
+    candidate = client.post(
+        "/api/product-core/v1/candidates/conditions",
+        json={
+            "person_id": "alice-person",
+            "source_id": source.json()["source"]["source_id"],
+            "display_name": "Asthma",
+        },
+        headers=json_headers(),
+    )
+    assert candidate.status_code == 201, candidate.text
+    record = client.post(
+        f"/api/product-core/v1/candidates/{candidate.json()['id']}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+    assert record.status_code == 200, record.text
+    record_id = record.json()["id"]
+    candidate_id = candidate.json()["id"]
+
+    # Rewrite Bob's caregiver grant on alice-person to the frozen v1 scope set
+    # (simulating a pre-P1 grant; scope_generation defaults to v1).
+    from app.product_core.sqlite import SQLiteDatabase
+    from app.config import get_settings
+
+    settings = get_settings()
+    database = SQLiteDatabase(settings.product_db_path)
+    with database.uow(begin_mode="IMMEDIATE") as uow:
+        assert uow.connection is not None
+        uow.connection.execute(
+            """
+            UPDATE person_access_assignments
+            SET scopes_json = ?
+            WHERE actor_id = ? AND person_id = ? AND is_active = 1
+            """,
+            (
+                _json.dumps(sorted(CAREGIVER_BASE_SCOPES_V1), separators=(",", ":")),
+                access_harness.actor_ids["bob"],
+                "alice-person",
+            ),
+        )
+
+    access_harness.login("bob")
+    visible = client.get("/api/product-core/v1/people/alice-person/conditions")
+    hidden = client.get("/api/product-core/v1/people/carol-person/conditions")
+    missing = client.get("/api/product-core/v1/people/missing-person/conditions")
+    hidden_record = client.get(f"/api/product-core/v1/conditions/{record_id}")
+    missing_record = client.get("/api/product-core/v1/conditions/missing-record")
+    hidden_candidate = client.get(
+        f"/api/product-core/v1/candidates/conditions/{candidate_id}"
+    )
+    missing_candidate = client.get(
+        "/api/product-core/v1/candidates/conditions/missing-candidate"
+    )
+    list_candidates = client.get(
+        "/api/product-core/v1/people/alice-person/condition-candidates"
+    )
+
+    assert visible.status_code == 403
+    assert hidden.status_code == missing.status_code == 404
+    assert hidden.content == missing.content
+    # Alice's real record/candidate are visible-person resources Bob lacks the
+    # condition scope for -> 403; nonexistent IDs are 404.
+    assert hidden_record.status_code == 403
+    assert missing_record.status_code == 404
+    assert hidden_candidate.status_code == 403
+    assert missing_candidate.status_code == 404
+    assert list_candidates.status_code == 403
+
+
+def test_condition_review_requires_candidate_review_and_condition_write(
+    access_harness: AccessHarness,
+) -> None:
+    """Carol has candidate.review but NOT condition.write: confirming a
+    condition candidate is denied. Bob (v2 base) lacks candidate.review and is
+    likewise denied. No client-supplied Person ID grants authority."""
+    client = access_harness.client
+    access_harness.login("alice")
+    source = client.post(
+        "/api/product-core/v1/sources/manual-condition",
+        json={"person_id": "alice-person", "condition": {"display_name": "Eczema"}},
+        headers=json_headers(),
+    )
+    candidate = client.post(
+        "/api/product-core/v1/candidates/conditions",
+        json={
+            "person_id": "alice-person",
+            "source_id": source.json()["source"]["source_id"],
+            "display_name": "Eczema",
+        },
+        headers=json_headers(),
+    )
+    candidate_id = candidate.json()["id"]
+
+    access_harness.login("carol")
+    carol_confirm = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+    assert carol_confirm.status_code == 403
+    access_harness.login("bob")
+    bob_confirm = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+    assert bob_confirm.status_code == 403
+
+    # The owner (v2 full scope set) can confirm.
+    access_harness.login("alice")
+    confirmed = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/confirm",
+        json={},
+        headers=json_headers(),
+    )
+    assert confirmed.status_code == 200
+    # Bob can now LIST conditions under the v2 caregiver base (condition.read).
+    access_harness.login("bob")
+    listed = client.get("/api/product-core/v1/people/alice-person/conditions")
+    assert listed.status_code == 200
+    assert listed.json()["conditions"][0]["display_name"] == "Eczema"

@@ -159,6 +159,32 @@ class ProductCoreAccess:
             CandidateNotFoundError,
         )
 
+    def require_condition_record(self, record_id: str, *required_scopes: str) -> str:
+        return self._require_query(
+            """
+            SELECT r.person_id
+            FROM canonical_records AS r
+            JOIN people AS p ON p.person_id = r.person_id AND p.is_active = 1
+            WHERE r.id = ? AND r.fact_type = 'condition'
+            """,
+            (record_id,),
+            required_scopes,
+            NotFoundError,
+        )
+
+    def require_condition_candidate(self, candidate_id: str, *required_scopes: str) -> str:
+        return self._require_query(
+            """
+            SELECT c.person_id
+            FROM candidate_facts AS c
+            JOIN people AS p ON p.person_id = c.person_id AND p.is_active = 1
+            WHERE c.id = ? AND c.fact_type = 'condition'
+            """,
+            (candidate_id,),
+            required_scopes,
+            CandidateNotFoundError,
+        )
+
     def require_visit(self, visit_id: str, *required_scopes: str) -> str:
         return self._require_query(
             """

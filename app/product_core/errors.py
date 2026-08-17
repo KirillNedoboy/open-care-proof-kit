@@ -90,6 +90,11 @@ class PersonMismatchError(ProductCoreError):
     """Raised when related Product Core records belong to different people."""
 
 
+class ProvenanceValidationError(ProductCoreError, ValueError):
+    """Raised when a provenance locator is missing, malformed, or does not
+    match the immutable source content."""
+
+
 class RuntimeNotReadyError(ProductCoreError):
     """Raised when the application runtime was not initialized at startup."""
 

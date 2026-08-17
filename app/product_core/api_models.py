@@ -63,6 +63,23 @@ class ManualMedicationRequest(APIModel):
         return None if value is None else _reject_control_characters(value, "text")
 
 
+class ManualConditionDetail(APIModel):
+    display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    status_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    onset_date: date | None = None
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("status_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+
 class ManualSourceRequest(APIModel):
     person_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
     medication: ManualMedicationRequest
@@ -141,6 +158,41 @@ class MedicationCandidateRequest(APIModel):
         return None if value is None else _reject_control_characters(value, "text")
 
 
+class ConditionCandidateRequest(APIModel):
+    person_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    source_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    status_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    onset_date: date | None = None
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("person_id", "source_id")
+    @classmethod
+    def validate_identifier(cls, value: str) -> str:
+        return _validate_identifier(value)
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("status_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+
+class ManualConditionSourceRequest(APIModel):
+    person_id: str = Field(min_length=1, max_length=MAX_ID_LENGTH)
+    condition: ManualConditionDetail
+
+    @field_validator("person_id")
+    @classmethod
+    def validate_person_id(cls, value: str) -> str:
+        return _validate_identifier(value)
+
+
 class EmptyActionRequest(APIModel):
     pass
 
@@ -149,6 +201,7 @@ class CorrectCandidateRequest(APIModel):
     display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
     schedule_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
     note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    source_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
     provenance_locator: dict[str, Any] | None = Field(default=None)
 
     @field_validator("display_name")
@@ -160,6 +213,35 @@ class CorrectCandidateRequest(APIModel):
     @classmethod
     def validate_text(cls, value: str | None) -> str | None:
         return None if value is None else _reject_control_characters(value, "text")
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_identifier(value)
+
+
+class ConditionCorrectRequest(APIModel):
+    display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    status_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    onset_date: date | None = None
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    source_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("status_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_identifier(value)
 
 
 class VisitBriefGenerateRequest(APIModel):
@@ -288,6 +370,44 @@ class CandidateResponse(APIModel):
 
 class CandidateListResponse(APIModel):
     candidates: list[CandidateResponse]
+
+
+class ConditionCandidateResponse(APIModel):
+    id: str
+    person_id: str
+    source_id: str
+    fact_type: Literal["condition"] = "condition"
+    status: CandidateStatus
+    display_name: str
+    status_text: str | None = None
+    onset_date: date | None = None
+    note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+    predecessor_candidate_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+
+
+class ConditionCandidateListResponse(APIModel):
+    candidates: list[ConditionCandidateResponse]
+
+
+class ConditionRecordResponse(APIModel):
+    id: str
+    person_id: str
+    candidate_id: str
+    source_id: str
+    display_name: str
+    status_text: str | None = None
+    onset_date: date | None = None
+    note: str | None = None
+    confirmed_at: datetime
+    is_active: bool
+    superseded_by_record_id: str | None = None
+
+
+class ConditionRecordListResponse(APIModel):
+    conditions: list[ConditionRecordResponse]
 
 
 class CanonicalMedicationResponse(APIModel):

@@ -101,9 +101,11 @@ def test_product_core_openapi_is_stable_and_public_only(product_core_client: Tes
         if isinstance(operation, dict) and "operationId" in operation
     ]
 
-    assert len(paths) == 29
+    assert len(paths) == 36
     assert len(operation_ids) == len(set(operation_ids))
     assert "product_core_unsupported_candidate" in operation_ids
+    assert "product_core_create_condition_candidate" in operation_ids
+    assert "product_core_correct_condition_candidate" in operation_ids
     assert all("relative_path" not in str(value) for value in schema.values())
     assert "SourceRegistrationResponse" in schema["components"]["schemas"]
     assert "PersonResponse" in schema["components"]["schemas"]

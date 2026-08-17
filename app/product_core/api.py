@@ -22,9 +22,16 @@ from app.product_core.api_models import (
     CandidateStatus,
     CanonicalMedicationListResponse,
     CanonicalMedicationResponse,
+    ConditionCandidateListResponse,
+    ConditionCandidateRequest,
+    ConditionCandidateResponse,
+    ConditionCorrectRequest,
+    ConditionRecordListResponse,
+    ConditionRecordResponse,
     CorrectCandidateRequest,
     EmptyActionRequest,
     ErrorResponse,
+    ManualConditionSourceRequest,
     ManualSourceRequest,
     MedicationCandidateRequest,
     PeopleListResponse,
@@ -70,6 +77,7 @@ from app.product_core.errors import (
     PersonNotFoundError,
     PersonValidationError,
     ProductCoreError,
+    ProvenanceValidationError,
     RuntimeNotReadyError,
     ScopeForbiddenError,
     SelectionError,
@@ -86,7 +94,7 @@ from app.product_core.errors import (
     VisitQuestionNotFoundError,
     VisitValidationError,
 )
-from app.product_core.models import VisitBriefRequest
+from app.product_core.models import ConditionCandidateInput, VisitBriefRequest
 from app.product_core.runtime import ProductCoreRuntime
 
 ProductCoreIdentifier = Annotated[
@@ -175,6 +183,12 @@ def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
             "person_mismatch",
             "Related records belong to different people.",
         )
+    if isinstance(exc, ProvenanceValidationError):
+        return _error_response(
+            422,
+            "provenance_validation_failed",
+            "The provenance locator is missing, malformed, or does not match the source.",
+        )
     if isinstance(exc, SelectionError):
         return _error_response(422, "invalid_visit_brief_selection", "The selection is invalid.")
     if isinstance(exc, (SourceCorruptionError, UnsafeSourcePathError, IntegrityStorageError)):
@@ -214,6 +228,8 @@ _PERSON_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_list_visits": ("visit.read",),
     "product_core_list_candidates": ("candidate.read",),
     "product_core_list_medications": ("medication.read",),
+    "product_core_list_conditions": ("condition.read",),
+    "product_core_list_condition_candidates": ("condition.read",),
     "product_core_list_timeline": ("timeline.read",),
     "product_core_generate_visit_brief": ("brief.write",),
 }
@@ -241,13 +257,27 @@ _CANDIDATE_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_reject_candidate": ("candidate.review",),
     "product_core_unsupported_candidate": ("candidate.review",),
     "product_core_correct_candidate": ("candidate.review",),
+    "product_core_correct_condition_candidate": ("candidate.review",),
+}
+_CONDITION_PATH_SCOPES: dict[str, tuple[str, ...]] = {
+    "product_core_get_condition_record": ("condition.read",),
+    "product_core_get_condition_candidate": ("condition.read",),
 }
 _BODY_PERSON_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_create_visit": ("visit.write",),
     "product_core_register_manual_medication_source": ("source.write",),
+    "product_core_register_manual_condition_source": ("source.write",),
     "product_core_register_plain_text_source": ("source.write",),
     "product_core_create_medication_candidate": ("candidate.review",),
+    "product_core_create_condition_candidate": ("candidate.review",),
 }
+_CANDIDATE_CREATE_OPERATIONS = frozenset(
+    {
+        "product_core_create_medication_candidate",
+        "product_core_create_condition_candidate",
+        "product_core_create_lab_candidate",
+    }
+)
 _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_update_person",
     "product_core_create_visit",
@@ -256,12 +286,15 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_update_visit_question",
     "product_core_delete_visit_question",
     "product_core_register_manual_medication_source",
+    "product_core_register_manual_condition_source",
     "product_core_register_plain_text_source",
     "product_core_create_medication_candidate",
+    "product_core_create_condition_candidate",
     "product_core_confirm_candidate",
     "product_core_reject_candidate",
     "product_core_unsupported_candidate",
     "product_core_correct_candidate",
+    "product_core_correct_condition_candidate",
     "product_core_initialize_persisted_visit_brief",
     "product_core_generate_persisted_visit_brief_revision",
     "product_core_save_persisted_visit_brief_user_edit",
@@ -321,7 +354,7 @@ async def _authorize_route_request(
         except ValueError:
             return
         access.preflight_person(person_id, *_BODY_PERSON_SCOPES[operation_id])
-        if operation_id == "product_core_create_medication_candidate" and isinstance(
+        if operation_id in _CANDIDATE_CREATE_OPERATIONS and isinstance(
             payload.get("source_id"), str
         ):
             try:
@@ -363,6 +396,18 @@ async def _authorize_route_request(
             str(request.path_params["candidate_id"]), *_CANDIDATE_PATH_SCOPES[operation_id]
         )
         return
+    if operation_id in _CONDITION_PATH_SCOPES:
+        if operation_id == "product_core_get_condition_candidate":
+            access.require_condition_candidate(
+                str(request.path_params["candidate_id"]),
+                *_CONDITION_PATH_SCOPES[operation_id],
+            )
+        else:
+            access.require_condition_record(
+                str(request.path_params["record_id"]),
+                *_CONDITION_PATH_SCOPES[operation_id],
+            )
+        return
     if operation_id not in _BODY_PERSON_SCOPES:
         return
     try:
@@ -377,7 +422,7 @@ async def _authorize_route_request(
     except ValueError:
         return
     access.require_person(person_id, *_BODY_PERSON_SCOPES[operation_id])
-    if operation_id == "product_core_create_medication_candidate" and isinstance(
+    if operation_id in _CANDIDATE_CREATE_OPERATIONS and isinstance(
         payload.get("source_id"), str
     ):
         try:
@@ -551,6 +596,39 @@ def _canonical_response(record: Any) -> CanonicalMedicationResponse:
         note=record.note,
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
+    )
+
+
+def _condition_candidate_response(candidate: Any) -> ConditionCandidateResponse:
+    return ConditionCandidateResponse(
+        id=candidate.id,
+        person_id=candidate.person_id,
+        source_id=candidate.source_id,
+        status=candidate.status,
+        display_name=candidate.display_name,
+        status_text=candidate.detail.status_text,
+        onset_date=candidate.detail.onset_date,
+        note=candidate.note,
+        created_at=candidate.created_at,
+        reviewed_at=candidate.reviewed_at,
+        predecessor_candidate_id=candidate.predecessor_candidate_id,
+        provenance_locator=candidate.provenance_locator,
+    )
+
+
+def _condition_record_response(record: Any) -> ConditionRecordResponse:
+    return ConditionRecordResponse(
+        id=record.id,
+        person_id=record.person_id,
+        candidate_id=record.candidate_id,
+        source_id=record.source_id,
+        display_name=record.display_name,
+        status_text=record.detail.status_text,
+        onset_date=record.detail.onset_date,
+        note=record.note,
+        confirmed_at=record.confirmed_at,
+        is_active=record.is_active,
+        superseded_by_record_id=record.superseded_by_record_id,
     )
 
 
@@ -1096,12 +1174,195 @@ def correct_candidate(
         display_name=payload.display_name,
         schedule_text=payload.schedule_text,
         note=payload.note,
+        source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
         authorize=access.authorize_candidate_mutation(
             candidate_id, "candidate.review", action="candidate.correct"
         ),
     )
     return _candidate_response(replacement)
+
+
+@router.post(
+    "/sources/manual-condition",
+    response_model=SourceRegistrationResponse,
+    responses={
+        200: {"model": SourceRegistrationResponse, "description": "Deduplicated source."},
+        422: {"model": ErrorResponse},
+    },
+    status_code=201,
+    operation_id="product_core_register_manual_condition_source",
+)
+def register_manual_condition_source(
+    payload: ManualConditionSourceRequest,
+    response: Response,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> SourceRegistrationResponse:
+    result = runtime.sources.register_structured_manual_entry_result(
+        payload.person_id,
+        "condition",
+        {
+            "display_name": payload.condition.display_name,
+            "status_text": payload.condition.status_text,
+            "onset_date": (
+                None
+                if payload.condition.onset_date is None
+                else payload.condition.onset_date.isoformat()
+            ),
+            "note": payload.condition.note,
+        },
+        authorize=access.authorize_person_mutation(
+            payload.person_id, "source.write", action="source.create"
+        ),
+    )
+    response.status_code = 201 if result.created else 200
+    return SourceRegistrationResponse(
+        created=result.created,
+        source=_source_response(result.source),
+    )
+
+
+@router.post(
+    "/candidates/conditions",
+    response_model=ConditionCandidateResponse,
+    responses={422: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_create_condition_candidate",
+)
+def create_condition_candidate(
+    payload: ConditionCandidateRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> ConditionCandidateResponse:
+    candidate = runtime.lifecycle.create_fact_candidate(
+        person_id=payload.person_id,
+        source_id=payload.source_id,
+        fact_type="condition",
+        detail_input=ConditionCandidateInput(
+            display_name=payload.display_name,
+            status_text=payload.status_text,
+            onset_date=payload.onset_date,
+            note=payload.note,
+        ),
+        provenance_locator=payload.provenance_locator,
+        authorize=access.combine_mutation_authorizers(
+            access.authorize_person_mutation(
+                payload.person_id, "candidate.review", action="candidate.create"
+            ),
+            access.authorize_source_mutation(
+                payload.source_id,
+                payload.person_id,
+                "source.read",
+                action="source.read",
+            ),
+        ),
+    )
+    return _condition_candidate_response(candidate)
+
+
+@router.get(
+    "/people/{person_id}/conditions",
+    response_model=ConditionRecordListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_conditions",
+)
+def list_conditions(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    include_inactive: Annotated[bool, Query()] = False,
+) -> ConditionRecordListResponse:
+    access.require_person(person_id, "condition.read")
+    records = runtime.lifecycle.list_fact_canonical(
+        person_id, include_inactive=include_inactive, fact_type="condition"
+    )
+    return ConditionRecordListResponse(
+        conditions=[_condition_record_response(record) for record in records]
+    )
+
+
+@router.get(
+    "/conditions/{record_id}",
+    response_model=ConditionRecordResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_condition_record",
+)
+def get_condition_record(
+    record_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> ConditionRecordResponse:
+    access.require_condition_record(record_id, "condition.read")
+    record = runtime.lifecycle.get_canonical(record_id)
+    return _condition_record_response(record)
+
+
+@router.post(
+    "/candidates/{candidate_id}/correct:condition",
+    response_model=ConditionCandidateResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_correct_condition_candidate",
+)
+def correct_condition_candidate(
+    candidate_id: ProductCoreIdentifier,
+    payload: ConditionCorrectRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> ConditionCandidateResponse:
+    replacement = runtime.lifecycle.correct_fact_candidate(
+        candidate_id,
+        detail_input=ConditionCandidateInput(
+            display_name=payload.display_name,
+            status_text=payload.status_text,
+            onset_date=payload.onset_date,
+            note=payload.note,
+        ),
+        source_id=payload.source_id,
+        provenance_locator=payload.provenance_locator,
+        authorize=access.authorize_candidate_mutation(
+            candidate_id, "candidate.review", action="candidate.correct"
+        ),
+    )
+    return _condition_candidate_response(replacement)
+
+
+@router.get(
+    "/people/{person_id}/condition-candidates",
+    response_model=ConditionCandidateListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_condition_candidates",
+)
+def list_condition_candidates(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    status: Annotated[CandidateStatus | None, Query()] = None,
+) -> ConditionCandidateListResponse:
+    access.require_person(person_id, "condition.read")
+    candidates = runtime.lifecycle.list_fact_candidates(
+        person_id, status, fact_type="condition"
+    )
+    return ConditionCandidateListResponse(
+        candidates=[_condition_candidate_response(item) for item in candidates]
+    )
+
+
+@router.get(
+    "/candidates/conditions/{candidate_id}",
+    response_model=ConditionCandidateResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_condition_candidate",
+)
+def get_condition_candidate(
+    candidate_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> ConditionCandidateResponse:
+    access.require_condition_candidate(candidate_id, "condition.read")
+    candidate = runtime.lifecycle.get_candidate(candidate_id)
+    return _condition_candidate_response(candidate)
 
 
 @router.get(
