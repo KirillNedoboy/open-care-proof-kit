@@ -1,11 +1,37 @@
 # P1: Evidence-Grounded Ingest (Conditions + Labs)
 
-- Status: Proposed (design checkpoint — no implementation yet)
+- Status: Implemented on `codex/p1-evidence-grounded-ingest` (implementation complete; remains branch work until integration)
 - Branch: `codex/p1-evidence-grounded-ingest` (from `e8d2d680ea07cf3fb0b1712618bfc641aad2a606`)
 - Decision owners: OpenCare maintainers
 - Scope: generalize the existing medication-only evidence lifecycle (Source → CandidateFact → human review → canonical record → timeline/downstream) into ONE reusable lifecycle for three fact families — `medication`, `condition`, `lab` — with typed, strongly validated detail, preserving full medication backward compatibility.
 
 This document is the implementation contract for P1. Every acceptance criterion at the end is judged against the concrete decisions below.
+
+## Implementation status
+
+The design contract above is implemented on this branch (not yet integrated to
+`main`). Implementation commits (oldest → newest):
+
+- `ea48065` refactor: generalize Product Core evidence lifecycle (migration v7,
+  generic candidate/canonical base + typed detail, medication facade,
+  fact-type-typed review authorization, export v3, generalized backup/recovery)
+- `d3420ec` feat: version health record access scopes (family-access-v1 frozen
+  + family-access-v2, generation inferred from stored scopes, no silent
+  expansion, explicit upgrades)
+- `077f6ee` feat: add source-backed condition lifecycle
+- `88a6195` feat: add source-backed lab lifecycle
+- `4e17195` feat: extend visit brief evidence lifecycle (content schema v2,
+  v1 revisions readable)
+- `73b7a1f` feat: allow confirmed condition and lab evidence in agent context
+- `1e95026` test: harden P1 provenance and person isolation
+- `61d5b4b` feat: add deterministic P1 reviewer (`python -m evals.p1_review`)
+
+Deviations recorded during implementation (also noted in the commit messages):
+legacy v1 manual-source locators validate path existence only (the two-step
+source-then-candidate flow predates P1); Visit Brief evidence uses content
+schema v2 while old v1 revisions stay readable; the corrected timeline event
+references the superseded canonical; export format v3 keeps the historical v2
+meaning; `evals/g5/authority.py` keeps its historical v1 policy stamp.
 
 ---
 

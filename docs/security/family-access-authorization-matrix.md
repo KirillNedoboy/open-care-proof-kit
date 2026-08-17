@@ -2,8 +2,9 @@
 
 ## Boundary
 
-This is the implemented `family-access-v1` policy for the live Workspace,
-Product Core HTTP API, live vault, and chat. The server resolves the Actor,
+This is the implemented versioned Family Access policy for the live Workspace,
+Product Core HTTP API, live vault, and chat (P1 branch: `family-access-v2`
+current generation; `family-access-v1` frozen). The server resolves the Actor,
 active Person, and resource ownership; a client-supplied Person or resource ID
 never grants access. Installation administration, Family membership,
 relationships, and an own-Person link are not authorization inputs.
@@ -13,11 +14,29 @@ live-data policy. Offline `backup`, `verify`, `preflight`, and `recover` are
 installation-operator commands and require no Actor session or Person
 impersonation.
 
+## Policy generations
+
+The scope model is versioned (see `app/family_access/policy.py`):
+
+- `family-access-v1` — the pre-P1 scope sets, frozen verbatim. An assignment
+  granted under v1 keeps exactly its grant-time authority forever.
+- `family-access-v2` (current) — v1 plus `condition.read`, `condition.write`,
+  `lab.read`, `lab.write` (owner set; caregiver base gains the read scopes;
+  caregiver optional gains the write scopes).
+
+An assignment's generation is inferred purely from its stored `scopes_json`
+(any v2-only scope string → v2, else v1) and validated against that
+generation's frozen sets; the `scope_generation` column is derived metadata
+only. Existing delegated consent never automatically gains Conditions/Labs
+access; upgrades are explicit owner/caregiver actions that record new
+append-only consent events.
+
 ## Fixed role scopes
 
-An owner always receives the complete owner set. A caregiver always receives
-the base set and may receive only the listed optional scopes. Partial owner
-assignments and caregiver-to-owner scope revisions are invalid durable state.
+An owner always receives the complete owner set for its generation. A caregiver
+always receives the base set and may receive only the listed optional scopes.
+Partial owner assignments and caregiver-to-owner scope revisions are invalid
+durable state.
 
 | Scope | Owner | Caregiver base | Caregiver optional | Protected action |
 |---|:---:|:---:|:---:|---|
@@ -26,25 +45,30 @@ assignments and caregiver-to-owner scope revisions are invalid durable state.
 | `source.read` | Yes | Yes | — | Resolve source metadata needed by an authorized record operation. |
 | `source.write` | Yes | No | Yes | Register a manual or plain-text source. |
 | `candidate.read` | Yes | Yes | — | Read or list candidate facts. |
-| `candidate.review` | Yes | No | Yes | Create, correct, reject, or review a candidate. |
+| `candidate.review` | Yes | No | Yes | Create, correct, reject, unsupported, or review a candidate. |
 | `medication.read` | Yes | Yes | — | Read confirmed medication records. |
 | `medication.write` | Yes | No | Yes | Confirm a medication candidate into canonical state. |
+| `condition.read` | Yes | Yes (v2 only) | — | Read recorded condition candidates and canonical records. |
+| `condition.write` | Yes | No | Yes (v2 only) | Confirm a condition candidate into canonical state. |
+| `lab.read` | Yes | Yes (v2 only) | — | Read lab candidates and canonical records. |
+| `lab.write` | Yes | No | Yes (v2 only) | Confirm a lab candidate into canonical state. |
 | `timeline.read` | Yes | Yes | — | Read Person timeline events. |
 | `visit.read` | Yes | Yes | — | Read Visits and Visit Questions. |
 | `visit.write` | Yes | No | Yes | Create or update Visits and Questions. |
 | `brief.read` | Yes | Yes | — | Read Brief state, revisions, and eligible evidence. |
 | `brief.write` | Yes | No | Yes | Initialize, generate, edit, validate, or restore a Brief. |
 | `brief.export` | Yes | No | Yes | Export the current Visit Brief. |
-| `vault.export` | Yes | No | Yes | Create deterministic Person export v2. |
+| `vault.export` | Yes | No | Yes | Create deterministic Person export (format v3). |
 | `relationship.read` | Yes | Yes | — | Read visible Family context for accessible People. |
 | `relationship.manage` | Yes | No | No | Create/end memberships and relationships or archive a visible Family. |
 | `access.read` | Yes | No | No | Read assignment, consent, and access-audit history for a Person. |
-| `access.manage` | Yes | No | No | Grant, revise, revoke, invite, or manage Person access. |
+| `access.manage` | Yes | No | No | Grant, revise, revoke, invite, or manage Person access (including generation upgrades). |
 | `chat.use` | Yes | Yes | — | Ask a question using server-built context for the active Person. |
 
 Where an operation needs more than one scope, every listed scope is required.
-Medication confirmation, for example, requires both `candidate.review` and
-`medication.write`.
+Confirmation, for example, requires both `candidate.review` and the
+fact-type write scope (`medication.write`, `condition.write`, or `lab.write`
+matched to the candidate's fact type).
 
 ## Access-management rules
 

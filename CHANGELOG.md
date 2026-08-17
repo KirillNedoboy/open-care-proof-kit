@@ -4,6 +4,23 @@
 
 ### Added
 
+- Sentient P1 evidence-grounded ingest (implementation branch
+  `codex/p1-evidence-grounded-ingest`): one generic evidence lifecycle for
+  medication/condition/lab facts — migration v7 (generic `candidate_facts` and
+  `canonical_records` with typed detail tables, `unsupported` review status,
+  correction supersession lineage, provenance locators, `scope_generation` on
+  assignments); source-backed condition and lab lifecycles with validated
+  immutable-source provenance and deterministic timeline events; Family Access
+  scope generations (`family-access-v1` frozen, `family-access-v2` adds
+  condition/lab scopes, generation inferred from stored scopes with no silent
+  privilege expansion); Visit Brief content schema v2 with condition/lab
+  evidence selections while v1 revisions remain readable; confirmed
+  condition/lab records in the agent context; portable export format v3;
+  backup/verify/preflight/recover on schema v7; and the deterministic offline
+  reviewer `python -m evals.p1_review` with six zero-required security
+  counters. P1 adds no OCR/upload/model extraction, no FHIR/EHR sync, and no
+  diagnosis/treatment/interpretation. Root-plugin G5 limitation unchanged.
+
 - Optional Sentient Agent Framework compatibility spike (`[sentient]` extra,
   `sentient-agent-framework==0.3.0`): synthetic/demo-only OpenCare agent over
   the G2 consent-gated runtime, deterministic local provider, and Sentient

@@ -11,11 +11,13 @@ is itself a release tag.
 
 ## Implemented boundary
 
-- Product Core schema v5 preserves the Medication/Visit lifecycle and adds
+- Product Core schema v7 (P1 branch) preserves the Medication/Visit lifecycle and adds
   durable Actors, versioned scrypt credentials, installation administrators,
   Families, memberships, relationships, append-only consent, explicit Person
-  assignments, one-to-one own-Person links, hash-only invitations, and
-  metadata-only access audit.
+  assignments, one-to-one own-Person links, hash-only invitations,
+  metadata-only access audit, the generic evidence lifecycle
+  (medication/condition/lab candidates and canonical records), and versioned
+  Family Access scope generations.
 - A centralized `family-access-v1` policy protects live `/workspace`, `/vault`,
   `/api/product-core/v1`, `/chat`, and `/api/chat`. Resource ownership is
   resolved server-side and authorization is deny-by-default.
@@ -46,7 +48,7 @@ is itself a release tag.
   are excluded.
 - Offline `backup`, `verify`, `preflight`, and `recover` remain operator
   workflows with no Actor session or Person impersonation. They preserve and
-  verify durable schema v5 access state. Recovery restores credentials and
+  verify durable schema v7 access state. Recovery restores credentials and
   revocations but no sessions, so every Actor logs in again.
 - `/demo/health-vault`, reviewer routes, and the frozen PGx workflow remain
   synthetic and separate from live actor-scoped data.
@@ -184,6 +186,60 @@ blocked by account/sign-in. This is documented external ecosystem validation
 pending, not an internal security defect; the machine gate therefore still
 reports `READY_FOR_SECOND_CLIENT_SMOKE`. This work is integrated on `main`
 after the published `v0.2.0` baseline; it is not itself a release tag.
+
+## Sentient P1 evidence-grounded ingest (implementation branch)
+
+P1 generalizes the medication-only evidence lifecycle into ONE reusable
+lifecycle for three fact families — `medication`, `condition`, `lab` — with
+typed strongly-validated detail. It is implemented on the
+`codex/p1-evidence-grounded-ingest` branch (not yet integrated to `main`); per
+the status conventions above it is branch work until integration. Design and
+acceptance contract: `docs/architecture/p1-evidence-grounded-ingest.md`;
+deterministic reviewer: `python -m evals.p1_review` (guide:
+`docs/p1-reviewer-guide.md`).
+
+- **Migration v7** generalizes the schema (never edits v1–v6): generic
+  `candidate_facts` and `canonical_records` with typed detail tables for
+  medication/condition/lab, `timeline_events` and Visit Brief evidence
+  selections retargeted to `canonical_records`, an `unsupported` review status,
+  correction supersession lineage, provenance locators, and a
+  `scope_generation` column on assignments (derived metadata). Populated
+  v6 → v7 fixtures (People, sources, medication candidates incl. a corrected
+  chain, canonical medication, timeline, Visit + Question + Brief with
+  medication evidence, actors/assignments/consent history, audit, G2
+  consent/receipt) survive with row identity preserved, `foreign_key_check`
+  empty, and a usable medication lifecycle.
+- **Condition and lab lifecycles** are source-backed records: structured
+  manual sources (schema_version 2) or plain-text sources, human review
+  (confirm/reject/unsupported/correct) before any canonicalization, typed
+  detail (condition: display_name/status_text/onset_date/note; lab:
+  test_name/result_text/unit_text/reference_range_text/observed_date/
+  source_flag_text/note with source-preserving text and source-provided flags
+  only), immutable-source provenance locators required and validated, and
+  deterministic timeline events (`{fact_type}_confirmed`/`_corrected`).
+- **Family Access generations**: `family-access-v1` frozen verbatim;
+  `family-access-v2` adds `condition.read/write` and `lab.read/write`. The
+  generation is inferred from the stored scopes (no silent privilege
+  expansion); upgrades are explicit owner/caregiver actions with new
+  append-only consent events. Existing delegated consent never automatically
+  gains Conditions/Labs access.
+- **Visit Brief** content schema v2 carries typed condition/lab evidence
+  selections with neutral wording ("Recorded conditions", "Recent/selected lab
+  records"); v1 revisions remain readable and medication-only Briefs remain
+  valid.
+- **Agent context** includes confirmed active condition/lab canonical records
+  as bounded evidence items; pending/rejected/unsupported facts never reach
+  context. No Trust Envelope contract version change.
+- **Export/recovery**: portable export format v3 with condition/lab entities;
+  backup/verify/preflight/recover operate on schema v7 and preserve the new
+  state; sessions still do not survive.
+- The deterministic P1 reviewer asserts six security counters at zero
+  (canonical_without_review, canonical_without_source,
+  cross_person_record_exposure, cross_person_source_exposure,
+  unauthorized_confirmation, provenance_mismatch_accepted).
+- P1 adds no OCR/upload/model extraction, no FHIR/EHR sync, no
+  diagnosis/treatment/dosage interpretation, and no reference-range or
+  abnormality inference.
 
 ## Preserved boundaries
 
