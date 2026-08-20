@@ -2,12 +2,13 @@
 
 This is the canonical status for the public `main` branch as of 2026-08-13.
 The published `v0.1.0` tag remains the controlled private-alpha baseline.
-Phase 2 Family Identity and Access Boundary is implemented on `main` and
-published as `v0.2.0`. The Sentient G1–G4 trust work — G1 Trust Envelope, G2
-Consent-Gated Agent Runtime, G2.5 optional integration spike, G3 Model
-Portability, G4 Portable Trust Package, and G5 Ecosystem Validation
-are integrated on `main` **after the `v0.2.0` release boundary**; none of them
-is itself a release tag.
+Phase 2 Family Identity and Access Boundary is implemented on public `main`
+and published as `v0.2.0`. P1 and P2 are integrated on public `main` after the
+`v0.2.0` boundary; neither has a separate release tag. The Sentient G1–G4
+trust work — G1 Trust Envelope, G2 Consent-Gated Agent Runtime, G2.5 optional
+integration spike, G3 Model Portability, G4 Portable Trust Package, and G5
+Ecosystem Validation — is integrated on `main` **after the `v0.2.0` release
+boundary**; none of it is itself a release tag.
 
 ## Implemented boundary
 
@@ -250,8 +251,7 @@ deterministic reviewer: `python -m evals.p1_review` (guide:
 - P1 adds no OCR/upload/model extraction, no FHIR/EHR sync, no
   diagnosis/treatment/dosage interpretation, and no reference-range or
   abnormality inference.
-
-## P2 usable family workspace (implemented on `codex/p2-usable-family-workspace`; pending integration into public `main`)
+## P2 usable family workspace (integrated on public `main` after v0.2.0)
 
 P2 reframes `/workspace` as the OpenCare Health Workspace with capability-aware
 Person switching, all-three-type Review Inbox and Timeline surfaces,
@@ -264,6 +264,17 @@ zero: `cross_person_workspace_exposures`,
 `stale_person_render_acceptances`, `unauthorized_ui_backed_mutations`,
 `hidden_record_count_exposures`, `hidden_source_metadata_exposures`, and
 `legacy_scope_expansions`.
+
+## D1 evidence document ingest (implemented on branch; pending integration)
+
+D1 is implemented on `codex/d1-evidence-document-ingest` and is pending
+integration into public `main`. It accepts only authenticated Person-scoped
+PDF/TXT uploads, preserves immutable source bytes, and performs bounded
+embedded-text extraction. Review remains human-controlled for medication,
+condition, and lab records. OCR, automated clinical/model extraction, and
+genetics workflows remain out of scope. Family Access v1/v2 remain frozen;
+branch-only v3 adds explicit document scopes. Portable export v4 is
+branch-only pending integration.
 
 ## Preserved boundaries
 

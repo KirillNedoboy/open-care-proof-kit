@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+- D1 evidence document ingest is implemented branch-only on
+  `codex/d1-evidence-document-ingest` pending integration: authenticated
+  Person-scoped PDF/TXT upload, immutable source bytes, bounded embedded-text
+  extraction, and human-reviewed medication/condition/lab provenance.
+  OCR, automated clinical/model extraction, and genetics remain out of scope;
+  Family Access v1/v2 stay frozen while branch-only v3 adds explicit document
+  scopes, and portable export v4 remains branch-only. See
+  `docs/d1-reviewer-guide.md` and run `python -m evals.d1_review`.
 
 - P2 usable family workspace is implemented on
   `codex/p2-usable-family-workspace` and pending integration into public `main`

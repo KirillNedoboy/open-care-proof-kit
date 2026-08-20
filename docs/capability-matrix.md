@@ -1,14 +1,14 @@
 # Capability Matrix
 
-This matrix describes the current P2 workspace implemented on
-`codex/p2-usable-family-workspace` (pending integration into public `main`) and
-the integrated P1 Product Core implementation on public `main` after the
-published `v0.2.0` boundary. The published `v0.1.0` tag remains the controlled
-private-alpha baseline; P1 and P2 have no separate release tag.
+This matrix describes the integrated P1/P2 Product Core and workspace boundary
+on public `main` after the published `v0.2.0` boundary, plus the branch-only
+D1 document-ingest implementation on `codex/d1-evidence-document-ingest`.
+The published `v0.1.0` tag remains the controlled private-alpha baseline; P1
+and P2 have no separate release tag.
 
 The historical Phase-2 date above is preserved. P1's source-backed
-medication/condition/lab lifecycle and P2's workspace updates are marked
-inline below.
+medication/condition/lab lifecycle and P2's workspace updates are integrated
+on public `main`; D1 status is explicitly branch-only pending integration.
 
 | Capability | Status | Repository evidence or boundary |
 |---|---|---|
@@ -17,9 +17,9 @@ inline below.
 | Health vault entities | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/loader.py`, `app/health_vault/read_model.py` |
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
 | Persistent editable vault | `PARTIAL` | Product Core medication/condition/lab and Visit lifecycle, active People, Family permissions, and actor-scoped JSON API are implemented; other fact families remain out of scope. |
-| Document upload | `OUT_OF_SCOPE` | No upload route or handler in `app/main.py`; document upload remains outside P2. |
-| Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests |
-| Extraction | `PARTIAL` | Explicit plain-text and structured source registration exists; no document extraction, OCR, or model extraction. |
+| Document upload | `IMPLEMENTED` (D1 branch-only) | `codex/d1-evidence-document-ingest`: authenticated Person-scoped PDF/TXT upload only; exact raw bytes are immutable and D1 remains pending integration into public `main`. |
+| Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests; D1 documents preserve exact bytes and SHA-256. |
+| Extraction | `IMPLEMENTED` (D1 branch-only) | Bounded deterministic extraction of embedded PDF text and strict UTF-8 TXT; OCR, image-only PDF interpretation, and automated clinical/model extraction are out of scope. |
 | Review inbox | `IMPLEMENTED` | P2 workspace: unified medication + condition + lab candidate review at `/workspace`; broader fact families remain unsupported. |
 | Canonical confirmed records | `IMPLEMENTED` | P1/P2: all three fact families (medication/condition/lab) confirm transactionally into `canonical_records` with typed detail; no other fact families. |
 | Timeline | `IMPLEMENTED` | P2 workspace: medication/condition/lab confirmation and correction events with readable current/history presentation; demo read model remains separate. |
@@ -39,15 +39,16 @@ inline below.
 | Multi-client ecosystem validation | `PLANNED` | Sentient G5: install and evaluate the skill-only package in independent clients; not claimed by G4 |
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |
 | Audit | `IMPLEMENTED` | Metadata-only agent/report audit plus atomic schema v7 access audit for sensitive mutations and exports; denial-audit failure preserves denial. |
-| Evaluations | `IMPLEMENTED` | `evals/runner.py`, `evals/cases/`, `evals/trust_metrics.py`, `tests/test_evals_runner.py`, `tests/test_trust_metrics.py`; deterministic P1 reviewer `python -m evals.p1_review` and P2 reviewer `python -m evals.p2_review` with focused reviewer tests and guides. |
+| Evaluations | `IMPLEMENTED` | `evals/runner.py`, `evals/cases/`, `evals/trust_metrics.py`; deterministic P1/P2/D1 reviewers with focused reviewer tests and guides. |
 | Wheel distribution | `IMPLEMENTED` | The source checkout and non-editable wheel startup have accepted validation evidence; runtime assets are packaged. |
 | Constrained Python 3.12 | `IMPLEMENTED` | `constraints/python312.txt` pins the accepted Python 3.12 release/test environment. |
 | PGx | `DEMO_ONLY` | `app/pgx/`, `app/demo_pipeline.py`, `data/evidence_packs/pgx_demo_pack.json`, `tests/test_pgx_matcher.py`, `tests/test_demo_pipeline.py` |
-| Genetics | `DEMO_ONLY` | Demo parser only in `app/genetics/`, `data/demo_patients/demo_patient_a_23andme.txt`, `tests/test_genotype_parser.py`; no Product Core genetics workflow |
+| Genetics | `DEMO_ONLY` | Demo parser only in `app/genetics/`, `data/demo_patients/demo_patient_a_23andme.txt`, `tests/test_genotype_parser.py`; no Product Core genetics workflow and D1 does not expand it. |
 | Deployment | `PARTIAL` | Production Compose persists Product Core and backups while keeping `OPENCARE_SESSION_DB_PATH` on non-persistent `/run/opencare` tmpfs; this is not a deployment or production-readiness claim. |
-| Backup and export | `PARTIAL` | Person export format v3 with condition/lab entities and offline schema backup/verify/preflight/recover on schema v7 preserve durable access state but no sessions. No import, merge, encryption, or populated-target recovery exists. |
+| Backup and export | `PARTIAL` | P1/P2 portable export format v3 is integrated on public `main`; D1 portable format v4 is branch-only and includes authorized document payloads plus immutable extraction metadata, pending integration. |
 | Agent tools | `PARTIAL` | Portable context and answer validation CLI in `app/agent/cli.py`, `app/agent/portable.py`, `skills/opencare-health-agent/`; no read-only Product Core tool surface |
-| Family permissions | `IMPLEMENTED` | Versioned scope generations — `family-access-v1` frozen verbatim, `family-access-v2` current and adds `condition.read/write` and `lab.read/write`; generation inferred from stored scopes (no silent privilege expansion); explicit caregiver/owner upgrades; fixed owner/caregiver scopes, explicit consent/assignments, high-risk owner confirmation, private invitations, last-owner/admin invariants, and filtered management UI/API. |
+| Family permissions | `IMPLEMENTED` | `family-access-v1` and `family-access-v2` remain frozen; D1 branch-only `family-access-v3` adds explicit `document.read`/`document.write` upgrades without silent expansion. |
+
 
 ## Reading rules
 

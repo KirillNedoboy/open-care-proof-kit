@@ -1,13 +1,13 @@
 # Family access authorization matrix
 
-## Boundary
-
 This is the implemented versioned Family Access policy for the live Workspace,
-Product Core HTTP API, live vault, and chat (`family-access-v2` is the current
-generation; `family-access-v1` is frozen). The server resolves the Actor,
-active Person, and resource ownership; a client-supplied Person or resource ID
-never grants access. Installation administration, Family membership,
-relationships, and an own-Person link are not authorization inputs.
+Product Core HTTP API, live vault, and chat. `family-access-v1` and
+`family-access-v2` are frozen; `family-access-v3` is current only on the
+branch-only D1 implementation pending integration into public `main`. The
+server resolves the Actor, active Person, and resource ownership; a
+client-supplied Person or resource ID never grants access. Installation
+administration, Family membership, relationships, and an own-Person link are
+not authorization inputs.
 
 The synthetic `/demo/health-vault` and reviewer routes remain outside this
 live-data policy. Offline `backup`, `verify`, `preflight`, and `recover` are
@@ -18,18 +18,20 @@ impersonation.
 
 The scope model is versioned (see `app/family_access/policy.py`):
 
-- `family-access-v1` — the pre-P1 scope sets, frozen verbatim. An assignment
-  granted under v1 keeps exactly its grant-time authority forever.
-- `family-access-v2` (current) — v1 plus `condition.read`, `condition.write`,
-  `lab.read`, `lab.write` (owner set; caregiver base gains the read scopes;
-  caregiver optional gains the write scopes).
+- `family-access-v1` — pre-P1 scope sets, frozen verbatim.
+- `family-access-v2` — P1/P2 scope sets, frozen; v1 plus
+  `condition.read`, `condition.write`, `lab.read`, and `lab.write`.
+- `family-access-v3` — D1 branch-only current generation; v2 plus
+  `document.read` and `document.write` with the owner/base/optional split
+  below.
 
 An assignment's generation is inferred purely from its stored `scopes_json`
-(any v2-only scope string → v2, else v1) and validated against that
-generation's frozen sets; the `scope_generation` column is derived metadata
-only. Existing delegated consent never automatically gains Conditions/Labs
-access; upgrades are explicit owner/caregiver actions that record new
-append-only consent events.
+(any generation-only scope string identifies that generation) and validated
+against that generation's frozen sets; `scope_generation` is derived metadata
+only. Existing delegated consent never automatically gains new access.
+Owner/caregiver upgrades are explicit, audited assignment updates recording
+the exact selected scopes. A role name, policy version, `source.read`, or
+fact-family write scope never silently expands document access.
 
 ## Fixed role scopes
 
@@ -44,6 +46,8 @@ durable state.
 | `person.update` | Yes | No | No | Change an accessible Person profile. |
 | `source.read` | Yes | Yes | — | Resolve source metadata needed by an authorized record operation. |
 | `source.write` | Yes | No | Yes | Register a manual or plain-text source. |
+| `document.read` | Yes (v3 only) | Yes (v3 only) | — | Read authorized document metadata and persisted extracted text; never raw bytes. |
+| `document.write` | Yes (v3 only) | No | Yes (v3 only) | Upload an authenticated Person-scoped PDF/TXT document. |
 | `candidate.read` | Yes | Yes | — | Read or list candidate facts. |
 | `candidate.review` | Yes | No | Yes | Create, correct, reject, unsupported, or review a candidate. |
 | `medication.read` | Yes | Yes | — | Read confirmed medication records. |
@@ -69,6 +73,19 @@ Where an operation needs more than one scope, every listed scope is required.
 Confirmation, for example, requires both `candidate.review` and the
 fact-type write scope (`medication.write`, `condition.write`, or `lab.write`
 matched to the candidate's fact type).
+## Document metadata versus content
+
+`source.read` authorizes source metadata needed by an already authorized
+record operation; it is not a content oracle. Document metadata (safe filename,
+media type, size, hash, upload time, page count, and extraction status) and
+persisted extracted text are distinct surfaces. The latter requires
+`document.read`, which is checked dynamically for document detail and
+document-backed candidate operations. D1 exposes no raw-document download.
+
+Creating or reviewing a document-backed candidate requires `document.read` plus
+the applicable fact-family review/write scopes. Ingestion itself creates no
+candidate and no canonical record.
+
 
 ## Access-management rules
 
@@ -76,6 +93,9 @@ matched to the candidate's fact type).
   `confirm_full_owner_access: true` and always use the complete owner set.
 - Caregivers cannot create, upgrade, revise, or revoke owners and cannot manage
   any assignment or invitation.
+- D1 document scope upgrades are explicit owner/caregiver assignment updates,
+  audited with the exact selected scopes. Existing v1/v2 assignments remain
+  unchanged; no silent expansion occurs.
 - Person creation is a bounded private-alpha exception: any authenticated,
   active Actor may submit `confirm_owner_assignment: true`. One transaction
   creates the Person, self-granted owner consent, complete owner assignment,
