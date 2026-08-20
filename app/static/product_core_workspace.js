@@ -8,7 +8,25 @@
   const div = (id) => { const node = document.createElement("div"); node.id = id; return node; };
   const clear = (node) => node.replaceChildren();
   const status = (message, kind = "") => { const target = byId("workspace-status"); target.textContent = message; target.className = kind; };
-  const safeError = (response, body) => response.status === 422 ? "Check the entered values and try again." : response.status === 404 ? "That profile or record is not available." : response.status === 409 ? "This record changed. Refresh and try again." : body?.error?.code === "product_core_storage_unavailable" ? "Local storage is temporarily unavailable." : "The request could not be completed. Try again.";
+  const safeError = (response, body) => {
+    if (response.status === 401) return "Your session has expired. Sign in again.";
+    if (response.status === 403) return "This action is no longer available.";
+    if (response.status === 404) return "This profile or record is not available.";
+    if (response.status === 409) return "This record changed. Refresh to see the latest version.";
+    if (response.status === 422) return "Check the entered values and try again.";
+    if (body?.error?.code === "product_core_integrity_failure") return "Integrity: stored evidence could not be verified.";
+    if (body?.error?.code === "product_core_storage_unavailable") return "Local Product Core storage is unavailable. Try again shortly.";
+    return "The request could not be completed. Try again.";
+  };
+  class WorkspaceRequestError extends Error {
+    constructor(response, body) {
+      super(safeError(response, body));
+      this.name = "WorkspaceRequestError";
+      this.status = response.status;
+      this.code = body?.error?.code || "";
+    }
+  }
+  const isMutation = (options) => ["POST", "PUT", "PATCH", "DELETE"].includes((options.method || "GET").toUpperCase());
   const csrfToken = () => document.cookie.split("; ").find((item) => item.startsWith("opencare_csrf="))?.split("=").slice(1).join("=") || "";
   const securedOptions = (options = {}) => {
     const method = (options.method || "GET").toUpperCase();
@@ -25,7 +43,11 @@
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
     let body;
     try { body = await response.json(); } catch (_) {}
-    if (!response.ok) throw Error(safeError(response, body));
+    if (!response.ok) {
+      const error = new WorkspaceRequestError(response, body);
+      if (personContext && isMutation(options)) await refreshCapabilitiesAfterDenial(error, personContext);
+      throw error;
+    }
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
     return body;
   }
@@ -33,7 +55,13 @@
   async function requestText(path, options = {}, personContext = null) {
     const response = await fetch(api + path, { credentials: "same-origin", ...securedOptions(options), ...(personContext?.signal ? { signal: personContext.signal } : {}) });
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
-    if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
+    if (!response.ok) {
+      let body;
+      try { body = await response.json(); } catch (_) {}
+      const error = new WorkspaceRequestError(response, body);
+      if (personContext && isMutation(options)) await refreshCapabilitiesAfterDenial(error, personContext);
+      throw error;
+    }
     const text = await response.text();
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
     return text;
@@ -42,10 +70,45 @@
   async function requestBlob(path, options = {}, personContext = null) {
     const response = await fetch(api + path, { credentials: "same-origin", ...securedOptions(options), ...(personContext?.signal ? { signal: personContext.signal } : {}) });
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
-    if (!response.ok) { let body; try { body = await response.json(); } catch (_) {} throw Error(safeError(response, body)); }
+    if (!response.ok) {
+      let body;
+      try { body = await response.json(); } catch (_) {}
+      const error = new WorkspaceRequestError(response, body);
+      if (personContext && isMutation(options)) await refreshCapabilitiesAfterDenial(error, personContext);
+      throw error;
+    }
     const blob = await response.blob();
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
     return { blob, response };
+  }
+
+  function pruneWorkspaceToCapabilities() {
+    if (!state.capabilities.medication_read) Object.assign(state, { candidates: [], medications: [] });
+    if (!state.capabilities.condition_read) Object.assign(state, { conditionCandidates: [], conditions: [] });
+    if (!state.capabilities.lab_read) Object.assign(state, { labCandidates: [], labs: [] });
+    state.conditionEnabled = Boolean(state.capabilities.condition_read);
+    state.labEnabled = Boolean(state.capabilities.lab_read);
+    if (!state.capabilities.timeline_read) state.timeline = [];
+    if (!state.capabilities.visit_read) Object.assign(state, { visits: [], visit: null, questions: [], editingQuestion: null });
+    if (!state.capabilities.brief_read) Object.assign(state, { persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false });
+    if (!Object.values(state.capabilities).some(Boolean)) state.sources = new Map();
+  }
+
+  async function refreshCapabilitiesAfterDenial(error, personContext) {
+    if (!OpenCareWorkspaceState.shouldRefreshCapabilities(error.status)) return;
+    if (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id) return;
+    let capabilities = {};
+    try {
+      const response = await request(`/people/${encodeURIComponent(personContext.personId)}/workspace-capabilities`, {}, personContext);
+      if (response.person_id === personContext.personId) capabilities = response.capabilities;
+    } catch (refreshError) {
+      if (refreshError.name === "AbortError") return;
+    }
+    if (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id) return;
+    state.capabilities = capabilities;
+    pruneWorkspaceToCapabilities();
+    render();
+    if (!Object.values(capabilities).some(Boolean)) enableWorkspace(false);
   }
 
   function enableWorkspace(enabled) {
@@ -159,29 +222,45 @@
     if (!response.ok) throw Error("That profile is not available.");
   }
 
+  function humanSourceLocator(locator) {
+    if (!locator || typeof locator !== "object") return "Whole source";
+    if (locator.kind === "structured_field" && typeof locator.path === "string") {
+      const fields = {
+        medication: "Medication name in a manual entry",
+        "data.medication.display_name": "Medication name in a manual entry",
+        "data.condition.display_name": "Recorded condition name in a manual entry",
+        "data.lab.test_name": "Lab test name in a manual entry",
+      };
+      return fields[locator.path] || "Recorded field in a manual entry";
+    }
+    if (locator.kind === "span" && Number.isInteger(locator.start) && Number.isInteger(locator.end) && locator.start >= 0 && locator.end > locator.start) {
+      return `Plain-text characters ${locator.start + 1}–${locator.end}`;
+    }
+    return "Specific location recorded in the source";
+  }
+
   function provenanceDetails(item) {
     const details = document.createElement("details"), summary = make("summary", "Source & provenance");
     const source = state.sources.get(item.source_id);
-    details.append(summary);
+    details.append(summary, make("p", `Source ID: ${item.source_id}`));
     if (source) {
       details.append(
         make("p", `Source type: ${source.source_type === "manual_entry" ? "Manual entry" : "Plain text"}`),
-        make("p", `Created: ${source.created_at}`),
+        make("p", `Registered: ${source.created_at}`),
         make("p", `SHA-256: ${source.content_hash}`),
+        make("p", `Size: ${source.size_bytes} bytes`),
+        make("p", `Media type: ${source.media_type}`),
         make("p", source.integrity_verified ? "Integrity verified" : "Integrity not verified"),
       );
     } else details.append(make("p", "Source metadata unavailable."));
-    const locator = item.provenance_locator;
-    if (!locator || typeof locator !== "object") details.append(make("p", "Location: whole source"));
-    else {
-      const parts = Object.keys(locator).sort().flatMap((key) => {
-        const value = locator[key];
-        return ["string", "number", "boolean"].includes(typeof value) ? [`${key.replaceAll("_", " ")}: ${value}`] : [];
-      });
-      details.append(make("p", `Location: ${parts.length ? parts.join(" · ") : "specific source location"}`));
+    details.append(make("p", `Source location: ${humanSourceLocator(item.provenance_locator)}`));
+    if (item.predecessor_candidate_id) {
+      const lineage = Object.hasOwn(item, "status")
+        ? "Correction lineage: correction of an earlier reviewed candidate."
+        : "Correction lineage: confirmed from a reviewed correction of an earlier record.";
+      details.append(make("p", lineage));
     }
-    if (item.predecessor_candidate_id) details.append(make("p", "Correction lineage: follows an earlier candidate."));
-    if (item.superseded_by_record_id) details.append(make("p", "Correction lineage: followed by a newer confirmed record."));
+    if (item.superseded_by_record_id) details.append(make("p", "Correction lineage: superseded by a newer confirmed record."));
     return details;
   }
 
@@ -200,7 +279,7 @@
       if (state.capabilities.candidate_review && familyWrite) {
         const confirm = make("button", "Confirm record"); confirm.type = "button"; confirm.addEventListener("click", () => transition(candidate, "confirm", confirm)); card.append(confirm);
       }
-      if (familyWrite) { const correct = make("button", "Create correction"); correct.type = "button"; correct.addEventListener("click", () => openCorrection(candidate, correct)); card.append(correct); }
+      if (state.capabilities.candidate_review && familyWrite) { const correct = make("button", "Create correction"); correct.type = "button"; correct.addEventListener("click", () => openCorrection(candidate, correct)); card.append(correct); }
       if (state.capabilities.candidate_review) {
         const reject = make("button", "Reject candidate"), unsupported = make("button", "Mark unsupported by source");
         reject.type = unsupported.type = "button"; reject.addEventListener("click", () => transition(candidate, "reject", reject)); unsupported.addEventListener("click", () => transition(candidate, "unsupported", unsupported)); card.append(reject, unsupported);
@@ -341,12 +420,16 @@
     Object.entries(families).forEach(([factType, records]) => {
       const readable = Boolean(state.capabilities[`${factType}_read`]);
       const section = byId(`records-${factType}`);
-      section.hidden = !readable;
-      if (!readable) return;
       const addButton = section.querySelector("[data-toggle-form]");
-      addButton.hidden = !(state.capabilities[`${factType}_write`] && state.capabilities.source_write && state.capabilities.candidate_review);
       const activeTarget = byId(`${factType}-current`), historyTarget = byId(`${factType}-historical`);
+      section.hidden = !readable;
       clear(activeTarget); clear(historyTarget);
+      if (!readable) {
+        addButton.hidden = true;
+        byId(addButton.dataset.toggleForm).hidden = true;
+        return;
+      }
+      addButton.hidden = !(state.capabilities[`${factType}_write`] && state.capabilities.source_write && state.capabilities.candidate_review);
       const active = records.filter((item) => item.is_active);
       const historical = records.filter((item) => !item.is_active);
       if (!active.length) activeTarget.append(make("p", "No current confirmed records.", "meta"));
@@ -437,7 +520,13 @@
   }
   function renderEvidenceGroup(factType, title, selectedIds) {
     const target = byId(`brief-${factType}-options`); clear(target); target.append(make("h4", title));
-    const eligible = state.briefEvidence.filter((item) => (!Object.hasOwn(item, "person_id") || item.person_id === state.person?.person_id) && item.is_active !== false && (!item.status || item.status === "confirmed") && (!item.confirmation_status || item.confirmation_status === "confirmed"));
+    const eligible = state.briefEvidence.filter((item) =>
+      OpenCareWorkspaceState.evidenceFactType(item) === factType
+      && (!Object.hasOwn(item, "person_id") || item.person_id === state.person?.person_id)
+      && item.is_active !== false
+      && (!item.status || item.status === "confirmed")
+      && (!item.confirmation_status || item.confirmation_status === "confirmed")
+    );
     if (!eligible.length) target.append(make("p", "No eligible confirmed evidence.", "meta"));
     eligible.forEach((item) => { const label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.name = "brief-record"; input.value = item.canonical_record_id || item.id; input.checked = selectedIds.includes(input.value); input.disabled = !state.capabilities.brief_write; label.append(input, document.createTextNode(` ${item.display_name || item.test_name || "Evidence record"}`)); target.append(label); });
   }
@@ -462,7 +551,7 @@
   async function loadPersistedBrief() {
     if (!state.visit || !state.capabilities.brief_read) return;
     try { state.persistedBrief = await personRequest(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief`); await Promise.all([loadBriefEvidence(), loadBriefHistory()]); state.briefRevision = state.persistedBrief.current_revision; renderPersistedBrief(); }
-    catch (error) { if (error.name === "AbortError") return; if (error.message === "That profile or record is not available.") { state.persistedBrief = null; renderPersistedBrief(); return; } status(error.message, "error"); }
+    catch (error) { if (error.name === "AbortError") return; if (error.status === 404) { state.persistedBrief = null; renderPersistedBrief(); return; } status(error.message, "error"); }
   }
 
   async function loadBriefEvidence() { if (!state.visit) return; const response = await personRequest(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/evidence`); state.briefEvidence = response.evidence; }
@@ -516,7 +605,7 @@
   const CORRECTION_ENDPOINTS = { medication: "correct", condition: "correct:condition", lab: "correct:lab" };
 
   function openCorrection(candidate, trigger) {
-    if (!state.capabilities[`${candidate.fact_type}_write`]) return;
+    if (!(state.capabilities.candidate_review && state.capabilities[`${candidate.fact_type}_write`])) return;
     const form = document.createElement("form"); form.className = "record correction-form";
     const specs = CORRECTION_FIELDS[candidate.fact_type] || CORRECTION_FIELDS.medication;
     const controls = specs.map((spec) => {

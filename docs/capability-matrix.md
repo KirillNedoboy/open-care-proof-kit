@@ -1,9 +1,10 @@
 # Capability Matrix
 
-This matrix describes the current P2 workspace and integrated P1 Product Core
-implementation on public `main` after the published `v0.2.0` boundary. The
-published `v0.1.0` tag remains the controlled private-alpha baseline; P1 and
-P2 have no separate release tag.
+This matrix describes the current P2 workspace implemented on
+`codex/p2-usable-family-workspace` (pending integration into public `main`) and
+the integrated P1 Product Core implementation on public `main` after the
+published `v0.2.0` boundary. The published `v0.1.0` tag remains the controlled
+private-alpha baseline; P1 and P2 have no separate release tag.
 
 The historical Phase-2 date above is preserved. P1's source-backed
 medication/condition/lab lifecycle and P2's workspace updates are marked

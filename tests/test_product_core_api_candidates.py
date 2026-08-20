@@ -58,6 +58,16 @@ def test_confirmation_is_idempotent_and_review_timestamp_is_server_controlled(
     assert first.json() == second.json()
     confirmed = next(item for item in candidates.json()["candidates"] if item["id"] == candidate_id)
     assert confirmed["status"] == "confirmed"
+    medications = product_core_client.get(
+        "/api/product-core/v1/people/person-1/medications"
+    )
+    expected_locator = {
+        "kind": "structured_field",
+        "path": "medication",
+    }
+    assert first.json()["provenance_locator"] == expected_locator
+    assert medications.json()["medications"][0]["provenance_locator"] == expected_locator
+
     assert confirmed["reviewed_at"] == "2026-07-26T12:00:00Z"
 
     rejected = product_core_client.post(

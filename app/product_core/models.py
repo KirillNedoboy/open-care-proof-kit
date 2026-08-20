@@ -277,6 +277,8 @@ class CanonicalRecord(BaseModel):
     confirmed_at: datetime
     is_active: bool
     superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, object] | None = None
+    predecessor_candidate_id: str | None = None
 
     @field_validator("confirmed_at")
     @classmethod

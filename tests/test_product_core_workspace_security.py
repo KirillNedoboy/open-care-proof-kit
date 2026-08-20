@@ -55,6 +55,11 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "opencare-person-vault-v2.zip" not in script
     assert script.count("opencare-person-vault-v3.zip") == 1
 
+    assert "refreshCapabilitiesAfterDenial" in script
+    assert "error.status" in script
+    assert "state.capabilities = capabilities" in script
+    assert "OpenCareWorkspaceState.evidenceFactType(item) === factType" in script
+
 
 def test_workspace_static_assets_exist() -> None:
     for relative_path in (
@@ -84,6 +89,13 @@ def test_workspace_generation_helper_rejects_stale_person_responses() -> None:
         "if(!helper.shouldApplyResponse(4,4))process.exit(1);"
         "if(helper.shouldApplyResponse(3,4))process.exit(2);"
         "if(helper.shouldApplyResponse('4',4))process.exit(3);"
+        "if(!helper.shouldRefreshCapabilities(401))process.exit(4);"
+        "if(!helper.shouldRefreshCapabilities(403))process.exit(5);"
+        "if(!helper.shouldRefreshCapabilities(404))process.exit(6);"
+        "if(helper.shouldRefreshCapabilities(409))process.exit(7);"
+        "if(helper.evidenceFactType({fact_type:'medication'})!=='medication')process.exit(8);"
+        "if(helper.evidenceFactType({record_type:'confirmed_condition'})!=='condition')process.exit(9);"
+        "if(helper.evidenceFactType({record_type:'unknown'})!=='')process.exit(10);"
     )
 
     result = subprocess.run(
@@ -153,10 +165,15 @@ def test_workspace_script_defends_exact_frontend_labels_and_provenance() -> None
         "Selected record or source changed",
         "Revision unavailable",
         "Source & provenance",
+        "Source ID:",
         "Source type:",
-        "Created:",
+        "Registered:",
         "SHA-256:",
+        "Size:",
+        "Media type:",
         "Integrity verified",
+        "Source location:",
         "Correction lineage:",
+        "Integrity: stored evidence could not be verified.",
     ):
         assert label in script

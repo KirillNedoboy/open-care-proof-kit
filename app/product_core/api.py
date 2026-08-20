@@ -354,7 +354,12 @@ async def _authorize_route_request(
                 *_QUESTION_PATH_SCOPES[operation_id],
             )
             return
-        if operation_id == "product_core_confirm_candidate":
+        if operation_id in {
+            "product_core_confirm_candidate",
+            "product_core_correct_candidate",
+            "product_core_correct_condition_candidate",
+            "product_core_correct_lab_candidate",
+        }:
             access.preflight_candidate_review(
                 str(request.path_params["candidate_id"]),
             )
@@ -633,6 +638,8 @@ def _canonical_response(record: Any) -> CanonicalMedicationResponse:
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
         superseded_by_record_id=record.superseded_by_record_id,
+        provenance_locator=record.provenance_locator,
+        predecessor_candidate_id=record.predecessor_candidate_id,
     )
 
 
@@ -666,6 +673,8 @@ def _condition_record_response(record: Any) -> ConditionRecordResponse:
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
         superseded_by_record_id=record.superseded_by_record_id,
+        provenance_locator=record.provenance_locator,
+        predecessor_candidate_id=record.predecessor_candidate_id,
     )
 
 
@@ -705,6 +714,8 @@ def _lab_record_response(record: Any) -> LabRecordResponse:
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
         superseded_by_record_id=record.superseded_by_record_id,
+        provenance_locator=record.provenance_locator,
+        predecessor_candidate_id=record.predecessor_candidate_id,
     )
 
 
@@ -1324,8 +1335,8 @@ def correct_candidate(
         note=payload.note,
         source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
-        authorize=access.authorize_candidate_mutation(
-            candidate_id, "candidate.review", action="candidate.correct"
+        authorize=access.authorize_candidate_review_mutation(
+            candidate_id, action="candidate.correct"
         ),
     )
     return _candidate_response(replacement)
@@ -1469,8 +1480,8 @@ def correct_condition_candidate(
         ),
         source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
-        authorize=access.authorize_candidate_mutation(
-            candidate_id, "candidate.review", action="candidate.correct"
+        authorize=access.authorize_candidate_review_mutation(
+            candidate_id, action="candidate.correct"
         ),
     )
     return _condition_candidate_response(replacement)
@@ -1691,8 +1702,8 @@ def correct_lab_candidate(
         ),
         source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
-        authorize=access.authorize_candidate_mutation(
-            candidate_id, "candidate.review", action="candidate.correct"
+        authorize=access.authorize_candidate_review_mutation(
+            candidate_id, action="candidate.correct"
         ),
     )
     return _lab_candidate_response(replacement)

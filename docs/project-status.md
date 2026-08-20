@@ -251,7 +251,7 @@ deterministic reviewer: `python -m evals.p1_review` (guide:
   diagnosis/treatment/dosage interpretation, and no reference-range or
   abnormality inference.
 
-## P2 usable family workspace (integrated on public main)
+## P2 usable family workspace (implemented on `codex/p2-usable-family-workspace`; pending integration into public `main`)
 
 P2 reframes `/workspace` as the OpenCare Health Workspace with capability-aware
 Person switching, all-three-type Review Inbox and Timeline surfaces,

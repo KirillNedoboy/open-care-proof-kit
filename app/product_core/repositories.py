@@ -450,7 +450,13 @@ class SQLiteCanonicalRepository:
 
     def get(self, record_id: str) -> CanonicalRecord | None:
         row = self.connection.execute(
-            "SELECT * FROM canonical_records WHERE id = ?", (record_id,)
+            """
+            SELECT cr.*, cf.provenance_locator_json, cf.predecessor_candidate_id
+            FROM canonical_records AS cr
+            JOIN candidate_facts AS cf ON cf.id = cr.candidate_id
+            WHERE cr.id = ?
+            """,
+            (record_id,),
         ).fetchone()
         if row is None:
             return None
@@ -458,7 +464,12 @@ class SQLiteCanonicalRepository:
 
     def get_by_candidate(self, candidate_id: str) -> CanonicalRecord | None:
         row = self.connection.execute(
-            "SELECT * FROM canonical_records WHERE candidate_id = ?",
+            """
+            SELECT cr.*, cf.provenance_locator_json, cf.predecessor_candidate_id
+            FROM canonical_records AS cr
+            JOIN candidate_facts AS cf ON cf.id = cr.candidate_id
+            WHERE cr.candidate_id = ?
+            """,
             (candidate_id,),
         ).fetchone()
         if row is None:
@@ -513,14 +524,19 @@ class SQLiteCanonicalRepository:
         include_inactive: bool = False,
         fact_type: str | None = None,
     ) -> list[CanonicalRecord]:
-        query = "SELECT * FROM canonical_records WHERE person_id = ?"
+        query = (
+            "SELECT cr.*, cf.provenance_locator_json, cf.predecessor_candidate_id "
+            "FROM canonical_records AS cr "
+            "JOIN candidate_facts AS cf ON cf.id = cr.candidate_id "
+            "WHERE cr.person_id = ?"
+        )
         parameters: list[object] = [person_id]
         if not include_inactive:
-            query += " AND is_active = 1"
+            query += " AND cr.is_active = 1"
         if fact_type is not None:
-            query += " AND fact_type = ?"
+            query += " AND cr.fact_type = ?"
             parameters.append(fact_type)
-        query += " ORDER BY confirmed_at ASC, id ASC"
+        query += " ORDER BY cr.confirmed_at ASC, cr.id ASC"
         rows = self.connection.execute(
             query,
             parameters,
@@ -1116,6 +1132,12 @@ def _canonical_from_row(row: sqlite3.Row, detail: CandidateDetail) -> CanonicalR
         confirmed_at=parse_utc_datetime(row["confirmed_at"]),
         is_active=bool(row["is_active"]),
         superseded_by_record_id=row["superseded_by_record_id"],
+        provenance_locator=(
+            None
+            if row["provenance_locator_json"] is None
+            else json.loads(row["provenance_locator_json"])
+        ),
+        predecessor_candidate_id=row["predecessor_candidate_id"],
     )
 
 

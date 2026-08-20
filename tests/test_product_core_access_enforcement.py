@@ -841,6 +841,13 @@ def test_condition_review_requires_candidate_review_and_condition_write(
         headers=json_headers(),
     )
     assert carol_confirm.status_code == 403
+    carol_correction = client.post(
+        f"/api/product-core/v1/candidates/{candidate_id}/correct:condition",
+        json={"display_name": "Eczema, corrected"},
+        headers=json_headers(),
+    )
+    assert carol_correction.status_code == 403
+
     access_harness.login("bob")
     bob_confirm = client.post(
         f"/api/product-core/v1/candidates/{candidate_id}/confirm",

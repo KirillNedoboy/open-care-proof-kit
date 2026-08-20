@@ -218,6 +218,11 @@ def test_lab_correction_supersedes_canonical_with_lineage(
     assert by_id[old_record_id]["superseded_by_record_id"] == new_record_id
     assert by_id[new_record_id]["is_active"] is True
     assert by_id[new_record_id]["result_text"] == "14.1"
+    assert by_id[new_record_id]["provenance_locator"] == {
+        "kind": "structured_field",
+        "path": "data.lab.test_name",
+    }
+    assert by_id[new_record_id]["predecessor_candidate_id"] == candidate_id
 
     events = product_core_client.get(
         "/api/product-core/v1/people/person-1/timeline"

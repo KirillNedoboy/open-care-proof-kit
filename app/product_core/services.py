@@ -668,6 +668,8 @@ class FactLifecycleService:
                 detail=candidate.detail,
                 confirmed_at=confirmed_at,
                 is_active=True,
+                provenance_locator=candidate.provenance_locator,
+                predecessor_candidate_id=candidate.predecessor_candidate_id,
             )
             uow.canonical_records.insert(canonical)
             event = TimelineEvent(

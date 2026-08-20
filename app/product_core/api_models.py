@@ -538,6 +538,8 @@ class ConditionRecordResponse(APIModel):
     confirmed_at: datetime
     is_active: bool
     superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+    predecessor_candidate_id: str | None = None
 
 
 class ConditionRecordListResponse(APIModel):
@@ -582,6 +584,8 @@ class LabRecordResponse(APIModel):
     confirmed_at: datetime
     is_active: bool
     superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+    predecessor_candidate_id: str | None = None
 
 
 class LabRecordListResponse(APIModel):
@@ -600,6 +604,8 @@ class CanonicalMedicationResponse(APIModel):
     confirmed_at: datetime
     is_active: bool
     superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+    predecessor_candidate_id: str | None = None
 
 
 class CanonicalMedicationListResponse(APIModel):

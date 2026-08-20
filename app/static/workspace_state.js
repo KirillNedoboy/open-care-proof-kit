@@ -9,6 +9,20 @@
     return typeof issuedGeneration === "number" && issuedGeneration === currentGeneration;
   }
 
+  function shouldRefreshCapabilities(status) {
+    return status === 401 || status === 403 || status === 404;
+  }
+
+  function evidenceFactType(item) {
+    if (["medication", "condition", "lab"].includes(item?.fact_type)) return item.fact_type;
+    const legacyRecordTypes = {
+      confirmed_medication: "medication",
+      confirmed_condition: "condition",
+      confirmed_lab: "lab",
+    };
+    return legacyRecordTypes[item?.record_type] || "";
+  }
+
   function sortVisits(visits) {
     return visits.slice().sort((left, right) => {
       const leftDate = left.scheduled_date || "9999-12-31";
@@ -47,6 +61,8 @@
 
   global.OpenCareWorkspaceState = {
     shouldApplyResponse,
+    shouldRefreshCapabilities,
+    evidenceFactType,
     sortVisits,
     sortQuestions,
     sortNewest,

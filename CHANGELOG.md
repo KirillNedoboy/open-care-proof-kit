@@ -4,7 +4,9 @@
 
 ### Added
 
-- P2 usable family workspace on public `main` after the `v0.2.0` boundary:
+- P2 usable family workspace is implemented on
+  `codex/p2-usable-family-workspace` and pending integration into public `main`
+  after the `v0.2.0` boundary:
   capability-aware Person switching, an all-three-type Review Inbox and
   Timeline, current/history record grouping, human-readable provenance,
   Visit Questions, Visit Brief content schema v2 with readable v1 revisions,
