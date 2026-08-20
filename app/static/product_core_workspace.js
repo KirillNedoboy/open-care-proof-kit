@@ -110,7 +110,9 @@
     for (let page = 1; page <= doc.extraction.page_count; page += 1) { const option = document.createElement("option"); option.value = page; option.textContent = `Page ${page}`; option.selected = page === state.selectedPage?.page_number; select.append(option); }
     byId("document-page-text").value = state.selectedPage?.normalized_text || "Choose a page to inspect.";
     const span = state.selectedSpan;
-    byId("document-selection").textContent = span ? `Selected source span: characters ${span.start + 1}–${span.end}.` : "Select text to attach a precise source span.";
+    byId("document-selection").textContent = span
+      ? `Selected page ${state.selectedPage?.page_number || "?"}, codepoints ${span.start}–${span.end}.`
+      : "Select text to attach a precise source span.";
     byId("document-candidate-form").hidden = !span || !documentCandidateAllowed();
   }
   function renderDocuments() {
@@ -323,8 +325,11 @@
       };
       return fields[locator.path] || "Recorded field in a manual entry";
     }
+    if (locator.kind === "document_text_span" && Number.isInteger(locator.page_number) && Number.isInteger(locator.start_codepoint) && Number.isInteger(locator.end_codepoint)) {
+      return `Document page ${locator.page_number}, codepoints ${locator.start_codepoint}–${locator.end_codepoint}`;
+    }
     if (locator.kind === "span" && Number.isInteger(locator.start) && Number.isInteger(locator.end) && locator.start >= 0 && locator.end > locator.start) {
-      return `Plain-text characters ${locator.start + 1}–${locator.end}`;
+      return `Source text characters ${locator.start + 1}–${locator.end}`;
     }
     return "Specific location recorded in the source";
   }
@@ -334,8 +339,10 @@
     const source = state.sources.get(item.source_id);
     details.append(summary, make("p", `Source ID: ${item.source_id}`));
     if (source) {
+      const isDocument = source.source_type === "document" || item.provenance_locator?.kind === "document_text_span";
+      const mediaLabel = source.media_type === "application/pdf" ? "PDF" : source.media_type === "text/plain" ? "Text" : "Source";
       details.append(
-        make("p", `Source type: ${source.source_type === "manual_entry" ? "Manual entry" : "Plain text"}`),
+        make("p", isDocument ? `Document · ${mediaLabel}` : source.source_type === "manual_entry" ? "Manual entry" : "Source"),
         make("p", `Registered: ${source.created_at}`),
         make("p", `SHA-256: ${source.content_hash}`),
         make("p", `Size: ${source.size_bytes} bytes`),
@@ -729,7 +736,7 @@
   byId("clear-workspace").addEventListener("click", () => { void clearWorkspace(); });
   byId("open-vault-export").addEventListener("click", (event) => { if (!state.person || !state.capabilities.vault_export) return; state.vaultExportTrigger = event.currentTarget; byId("vault-export-warning").hidden = false; byId("confirm-vault-export").focus(); });
   byId("cancel-vault-export").addEventListener("click", () => { byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); });
-  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person || !state.capabilities.vault_export) return; const button = event.currentTarget, personContext = { personId: state.person.person_id, generation: state.loadVersion, signal: state.controller?.signal }; button.disabled = true; try { const { blob, response } = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }, personContext); const serverName = OpenCareWorkspaceState.contentDispositionFilename(response.headers.get("Content-Disposition")); const filename = OpenCareWorkspaceState.sanitizeDownloadFilename(serverName, "opencare-person-vault-v3.zip"); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status("Vault download prepared.", "success"); } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { button.disabled = false; } });
+  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person || !state.capabilities.vault_export) return; const button = event.currentTarget, personContext = { personId: state.person.person_id, generation: state.loadVersion, signal: state.controller?.signal }; button.disabled = true; try { const { blob, response } = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }, personContext); const serverName = OpenCareWorkspaceState.contentDispositionFilename(response.headers.get("Content-Disposition")); const filename = OpenCareWorkspaceState.sanitizeDownloadFilename(serverName, "opencare-person-vault-v4.zip"); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status("Vault download prepared.", "success"); } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { button.disabled = false; } });
   byId("inbox-fact-filter").addEventListener("change", render);
   byId("inbox-status-filter").addEventListener("change", render);
   byId("review-search").addEventListener("input", render);
