@@ -45,6 +45,7 @@ from app.family_access.models import (
 from app.family_access.policy import (
     POLICY_VERSION,
     V1_POLICY_VERSION,
+    V2_POLICY_VERSION,
     PersonAccessPolicy,
     PolicyDecision,
     build_scopes,
@@ -646,13 +647,13 @@ class FamilyAccessService:
                 json.loads(str(current["scopes_json"]))
             )
             generation = policy_generation or inferred_generation
-            if generation not in (V1_POLICY_VERSION, POLICY_VERSION):
+            generations = (V1_POLICY_VERSION, V2_POLICY_VERSION, POLICY_VERSION)
+            if generation not in generations:
                 raise ValidationError("unsupported policy generation")
+            if generations.index(generation) < generations.index(inferred_generation):
+                raise ValidationError("policy generation cannot be downgraded")
             scopes = build_scopes("caregiver", optional_scopes, generation=generation)
-            is_upgrade = (
-                inferred_generation == V1_POLICY_VERSION
-                and generation == POLICY_VERSION
-            )
+            is_upgrade = generation != inferred_generation
             reason_code = (
                 "caregiver_scope_generation_upgrade" if is_upgrade else "caregiver_scope_revision"
             )

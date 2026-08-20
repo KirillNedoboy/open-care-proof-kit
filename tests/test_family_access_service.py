@@ -1692,7 +1692,7 @@ def test_routine_caregiver_revision_does_not_silently_upgrade_generation(
 def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
     tmp_path: Path,
 ) -> None:
-    from app.family_access.policy import OWNER_SCOPES_V1, OWNER_SCOPES_V2, infer_generation
+    from app.family_access.policy import OWNER_SCOPES_V1, OWNER_SCOPES_V3, infer_generation
 
     service = _service(tmp_path)
     owner = service.bootstrap(
@@ -1732,8 +1732,8 @@ def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
         assignment_id,
         confirm_full_owner_access=True,
     )
-    assert upgraded.scopes == OWNER_SCOPES_V2
-    assert infer_generation(upgraded.scopes) == "family-access-v2"
+    assert upgraded.scopes == OWNER_SCOPES_V3
+    assert infer_generation(upgraded.scopes) == "family-access-v3"
     assert service.authorize_person(
         owner.actor_id, "existing-person", "condition.read"
     ).allowed is True
@@ -1849,3 +1849,65 @@ def test_installation_admin_and_membership_never_grant_condition_lab_scopes(
         has_own_person_link=True,
     )
     assert denied.allowed is False
+
+
+def test_caregiver_v3_upgrade_is_explicit_and_exact(tmp_path: Path) -> None:
+    from app.family_access.policy import (
+        CAREGIVER_BASE_SCOPES_V2,
+        CAREGIVER_BASE_SCOPES_V3,
+        infer_generation,
+    )
+
+    service = _service(tmp_path)
+    owner = service.bootstrap(
+        username="owner-v3",
+        display_name="Owner",
+        password="owner password value",
+        person_ids=("existing-person",),
+        confirm_full_owner_access=True,
+    )
+    caregiver = service.create_local_actor(
+        owner.actor_id,
+        username="caregiver-v3",
+        display_name="Caregiver",
+        password="caregiver password",
+    )
+    assignment_id = _insert_v1_assignment(
+        service,
+        recipient_actor_id=caregiver.actor_id,
+        person_id="existing-person",
+        role="caregiver",
+        scopes=CAREGIVER_BASE_SCOPES_V2,
+        granted_by_actor_id=owner.actor_id,
+    )
+
+    routine = service.revise_assignment(
+        owner.actor_id,
+        "existing-person",
+        assignment_id,
+        optional_scopes=set(),
+    )
+    assert routine.scopes == CAREGIVER_BASE_SCOPES_V2
+    assert infer_generation(routine.scopes) == "family-access-v2"
+    assert (
+        service.authorize_person(
+            caregiver.actor_id, "existing-person", "document.read"
+        ).allowed
+        is False
+    )
+
+    upgraded = service.revise_assignment(
+        owner.actor_id,
+        "existing-person",
+        routine.assignment_id,
+        optional_scopes={"document.write"},
+        policy_generation="family-access-v3",
+    )
+    assert upgraded.scopes == CAREGIVER_BASE_SCOPES_V3 | {"document.write"}
+    assert infer_generation(upgraded.scopes) == "family-access-v3"
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "document.read"
+    ).allowed
+    assert service.authorize_person(
+        caregiver.actor_id, "existing-person", "document.write"
+    ).allowed
