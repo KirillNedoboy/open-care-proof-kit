@@ -3,27 +3,21 @@
 ## [Unreleased]
 
 ### Added
-- D1 evidence document ingest is implemented branch-only on
-  `codex/d1-evidence-document-ingest` pending integration: authenticated
-  Person-scoped PDF/TXT upload, immutable source bytes, bounded embedded-text
-  extraction, and human-reviewed medication/condition/lab provenance.
-  OCR, automated clinical/model extraction, and genetics remain out of scope;
-  Family Access v1/v2 stay frozen while branch-only v3 adds explicit document
-  scopes, and portable export v4 remains branch-only. See
-  `docs/d1-reviewer-guide.md` and run `python -m evals.d1_review`.
+- D1 evidence document ingest is implemented in the current baseline:
+  authenticated Person-scoped PDF/TXT upload, immutable source bytes, bounded
+  embedded-text extraction, and human-reviewed medication/condition/lab
+  provenance. OCR and automated clinical/model extraction remain out of scope.
+  Family Access v1/v2/v3 behavior and portable export v4 are integrated.
 
-- P2 usable family workspace is implemented on
-  `codex/p2-usable-family-workspace` and pending integration into public `main`
-  after the `v0.2.0` boundary:
-  capability-aware Person switching, an all-three-type Review Inbox and
-  Timeline, current/history record grouping, human-readable provenance,
-  Visit Questions, Visit Brief content schema v2 with readable v1 revisions,
-  and portable vault export format v3. The deterministic offline reviewer
-  `python -m evals.p2_review` and `tests/test_p2_reviewer.py` cover the
-  privacy and fail-closed boundaries with six zero-required counters; see
-  `docs/p2-reviewer-guide.md`. P2 adds no schema migration, family-access-v3,
-  Visit Brief schema v3, upload/OCR/model extraction, or new runtime
-  dependency.
+- P3 Genetics Research Studio is implemented on
+  `codex/p3-genetics-research-studio`: schema v9 immutable local consumer
+  genotype sources, bounded selective indexing, genome-build and coverage
+  provenance, versioned synthetic genetics evidence, reviewed findings,
+  explicit revocable genetics grants, the `/genetics` workspace, deterministic
+  family comparison, Evidence/Explore Research Mode with epistemic labels and
+  counterevidence, explicit genetics export, and offline `python -m
+  evals.p3_review`. VCF remains demo-only; no clinical genetics, diagnosis,
+  autonomous treatment, dosage, or mandatory external genetics service.
 
 - Sentient P1 evidence-grounded ingest (integrated on public `main` after the
   `v0.2.0` boundary; no separate P1 release tag): one generic evidence

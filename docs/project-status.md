@@ -265,16 +265,26 @@ zero: `cross_person_workspace_exposures`,
 `hidden_record_count_exposures`, `hidden_source_metadata_exposures`, and
 `legacy_scope_expansions`.
 
-## D1 evidence document ingest (implemented on branch; pending integration)
+## D1 evidence document ingest (implemented in the current baseline)
 
-D1 is implemented on `codex/d1-evidence-document-ingest` and is pending
-integration into public `main`. It accepts only authenticated Person-scoped
-PDF/TXT uploads, preserves immutable source bytes, and performs bounded
-embedded-text extraction. Review remains human-controlled for medication,
-condition, and lab records. OCR, automated clinical/model extraction, and
-genetics workflows remain out of scope. Family Access v1/v2 remain frozen;
-branch-only v3 adds explicit document scopes. Portable export v4 is
-branch-only pending integration.
+D1 is implemented in the current Product Core baseline. It accepts only
+authenticated Person-scoped PDF/TXT uploads, preserves immutable source bytes,
+performs bounded embedded-text extraction, and keeps review human-controlled
+for medication, condition, and lab records. OCR and automated clinical/model
+extraction remain out of scope. Family Access v1/v2 remain frozen; v3 adds
+explicit document scopes. Portable export v4 includes authorized document
+payloads and immutable extraction metadata.
+
+## P3 Genetics Research Studio (implemented on this branch)
+
+P3 adds schema v9 immutable local consumer-genotype sources, selective indexed
+observations, versioned synthetic evidence, reviewed genetics findings, explicit
+revocable genetics grants, a responsive Genetics Workspace, deterministic family
+comparison, and offline Evidence/Explore Research Mode. VCF remains demo-only;
+clinical genetics, diagnosis, treatment, dosage changes, and raw-genome provider
+disclosure remain out of scope. See
+`docs/architecture/p3-genetics-research-studio.md` and
+`python -m evals.p3_review`.
 
 ## Preserved boundaries
 

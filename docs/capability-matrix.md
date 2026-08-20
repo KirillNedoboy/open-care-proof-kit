@@ -1,14 +1,13 @@
 # Capability Matrix
 
-This matrix describes the integrated P1/P2 Product Core and workspace boundary
-on public `main` after the published `v0.2.0` boundary, plus the branch-only
-D1 document-ingest implementation on `codex/d1-evidence-document-ingest`.
-The published `v0.1.0` tag remains the controlled private-alpha baseline; P1
-and P2 have no separate release tag.
+This matrix describes the integrated P1/P2/D1 Product Core boundary and the
+P3 Genetics Research Studio on `codex/p3-genetics-research-studio`. The
+published `v0.1.0` tag remains the controlled private-alpha baseline; P1, P2,
+and D1 have no separate release tag.
 
-The historical Phase-2 date above is preserved. P1's source-backed
-medication/condition/lab lifecycle and P2's workspace updates are integrated
-on public `main`; D1 status is explicitly branch-only pending integration.
+P1 medication/condition/lab lifecycle, P2 workspace, and D1 document ingest are
+implemented in this branch baseline. P3 adds a bounded, local-first genetics
+workflow without claiming clinical genetics or general VCF support.
 
 | Capability | Status | Repository evidence or boundary |
 |---|---|---|
@@ -17,9 +16,9 @@ on public `main`; D1 status is explicitly branch-only pending integration.
 | Health vault entities | `DEMO_ONLY` | `app/health_vault/models.py`, `app/health_vault/loader.py`, `app/health_vault/read_model.py` |
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
 | Persistent editable vault | `PARTIAL` | Product Core medication/condition/lab and Visit lifecycle, active People, Family permissions, and actor-scoped JSON API are implemented; other fact families remain out of scope. |
-| Document upload | `IMPLEMENTED` (D1 branch-only) | `codex/d1-evidence-document-ingest`: authenticated Person-scoped PDF/TXT upload only; exact raw bytes are immutable and D1 remains pending integration into public `main`. |
-| Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, and focused source integrity/compensation tests; D1 documents preserve exact bytes and SHA-256. |
-| Extraction | `IMPLEMENTED` (D1 branch-only) | Bounded deterministic extraction of embedded PDF text and strict UTF-8 TXT; OCR, image-only PDF interpretation, and automated clinical/model extraction are out of scope. |
+| Document upload | `IMPLEMENTED` | Authenticated Person-scoped PDF/TXT upload; exact raw bytes are immutable. |
+| Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, source integrity tests, and P3 genetics source hashes. |
+| Extraction | `IMPLEMENTED` | Bounded deterministic embedded-text extraction; OCR and model extraction remain out of scope. |
 | Review inbox | `IMPLEMENTED` | P2 workspace: unified medication + condition + lab candidate review at `/workspace`; broader fact families remain unsupported. |
 | Canonical confirmed records | `IMPLEMENTED` | P1/P2: all three fact families (medication/condition/lab) confirm transactionally into `canonical_records` with typed detail; no other fact families. |
 | Timeline | `IMPLEMENTED` | P2 workspace: medication/condition/lab confirmation and correction events with readable current/history presentation; demo read model remains separate. |
@@ -38,16 +37,18 @@ on public `main`; D1 status is explicitly branch-only pending integration.
 | MCP adapter | `OUT_OF_SCOPE` | No `mcp.json` and no MCP server in G4; an optional read-only MCP adapter is explicitly deferred until G5 ecosystem validation |
 | Multi-client ecosystem validation | `PLANNED` | Sentient G5: install and evaluate the skill-only package in independent clients; not claimed by G4 |
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |
-| Audit | `IMPLEMENTED` | Metadata-only agent/report audit plus atomic schema v7 access audit for sensitive mutations and exports; denial-audit failure preserves denial. |
-| Evaluations | `IMPLEMENTED` | `evals/runner.py`, `evals/cases/`, `evals/trust_metrics.py`; deterministic P1/P2/D1 reviewers with focused reviewer tests and guides. |
+| Audit | `IMPLEMENTED` | Metadata-only agent/report audit, schema v9 access audit, genetics review/research receipts, and denial-audit fail-closed behavior. |
+| Evaluations | `IMPLEMENTED` | Deterministic G1/G2/G5/P1/P2/D1/P3 reviewers and focused tests; `python -m evals.p3_review` is offline. |
 | Wheel distribution | `IMPLEMENTED` | The source checkout and non-editable wheel startup have accepted validation evidence; runtime assets are packaged. |
 | Constrained Python 3.12 | `IMPLEMENTED` | `constraints/python312.txt` pins the accepted Python 3.12 release/test environment. |
-| PGx | `DEMO_ONLY` | `app/pgx/`, `app/demo_pipeline.py`, `data/evidence_packs/pgx_demo_pack.json`, `tests/test_pgx_matcher.py`, `tests/test_demo_pipeline.py` |
-| Genetics | `DEMO_ONLY` | Demo parser only in `app/genetics/`, `data/demo_patients/demo_patient_a_23andme.txt`, `tests/test_genotype_parser.py`; no Product Core genetics workflow and D1 does not expand it. |
+| PGx | `IMPLEMENTED/PARTIAL` | Deterministic reviewed genetics finding × exact confirmed medication intersection; association display only, no dosage/start/stop action. |
+| Genetics source | `IMPLEMENTED` (P3 branch) | Immutable local consumer-genotype Source, bounded TXT import, schema v9 dataset/observation/finding/research tables; VCF remains demo-only. |
+| Genetics Workspace | `IMPLEMENTED` (P3 branch) | `/genetics` responsive tabs for overview, variants, PGx, associations, traits/systems, evidence, family comparison, and Research Studio. |
+| Research Mode | `IMPLEMENTED` (P3 branch) | Offline deterministic Evidence/Explore contracts with structured epistemic labels, citations, counterevidence, and no canonical mutation path. |
 | Deployment | `PARTIAL` | Production Compose persists Product Core and backups while keeping `OPENCARE_SESSION_DB_PATH` on non-persistent `/run/opencare` tmpfs; this is not a deployment or production-readiness claim. |
-| Backup and export | `PARTIAL` | P1/P2 portable export format v3 is integrated on public `main`; D1 portable format v4 is branch-only and includes authorized document payloads plus immutable extraction metadata, pending integration. |
-| Agent tools | `PARTIAL` | Portable context and answer validation CLI in `app/agent/cli.py`, `app/agent/portable.py`, `skills/opencare-health-agent/`; no read-only Product Core tool surface |
-| Family permissions | `IMPLEMENTED` | `family-access-v1` and `family-access-v2` remain frozen; D1 branch-only `family-access-v3` adds explicit `document.read`/`document.write` upgrades without silent expansion. |
+| Backup and export | `IMPLEMENTED/PARTIAL` | Ordinary vault export excludes genetics; explicit OpenCare Genetics Package v1 includes authorized raw source and indexed/reviewed data; installation backup/recovery preserves schema v9 and source hashes. |
+| Agent tools | `PARTIAL` | Existing trust tools remain unchanged; Research Mode uses a minimized genetics packet and metadata-only receipt boundary. |
+| Family permissions | `IMPLEMENTED` | Legacy family-access generations remain frozen; separate explicit `genetics.read/write/research/compare/export` grants are required and revocable. |
 
 
 ## Reading rules

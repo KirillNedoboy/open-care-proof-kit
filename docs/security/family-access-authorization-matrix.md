@@ -1,13 +1,12 @@
 # Family access authorization matrix
 
 This is the implemented versioned Family Access policy for the live Workspace,
-Product Core HTTP API, live vault, and chat. `family-access-v1` and
-`family-access-v2` are frozen; `family-access-v3` is current only on the
-branch-only D1 implementation pending integration into public `main`. The
-server resolves the Actor, active Person, and resource ownership; a
-client-supplied Person or resource ID never grants access. Installation
-administration, Family membership, relationships, and an own-Person link are
-not authorization inputs.
+Product Core HTTP API, live vault, chat, and the P3 Genetics Workspace.
+`family-access-v1`, `family-access-v2`, and `family-access-v3` are frozen
+generations. The server resolves the Actor, active Person, and resource
+ownership; a client-supplied Person or resource ID never grants access.
+Installation administration, Family membership, relationships, and an
+own-Person link are not authorization inputs.
 
 The synthetic `/demo/health-vault` and reviewer routes remain outside this
 live-data policy. Offline `backup`, `verify`, `preflight`, and `recover` are
@@ -21,10 +20,9 @@ The scope model is versioned (see `app/family_access/policy.py`):
 - `family-access-v1` — pre-P1 scope sets, frozen verbatim.
 - `family-access-v2` — P1/P2 scope sets, frozen; v1 plus
   `condition.read`, `condition.write`, `lab.read`, and `lab.write`.
-- `family-access-v3` — D1 branch-only current generation; v2 plus
+- `family-access-v3` — current legacy generation; v2 plus
   `document.read` and `document.write` with the owner/base/optional split
-  below.
-
+  below. Genetics authority is deliberately separate from every generation.
 An assignment's generation is inferred purely from its stored `scopes_json`
 (any generation-only scope string identifies that generation) and validated
 against that generation's frozen sets; `scope_generation` is derived metadata
@@ -75,6 +73,7 @@ fact-type write scope (`medication.write`, `condition.write`, or `lab.write`
 matched to the candidate's fact type).
 ## Document metadata versus content
 
+
 `source.read` authorizes source metadata needed by an already authorized
 record operation; it is not a content oracle. Document metadata (safe filename,
 media type, size, hash, upload time, page count, and extraction status) and
@@ -85,6 +84,23 @@ document-backed candidate operations. D1 exposes no raw-document download.
 Creating or reviewing a document-backed candidate requires `document.read` plus
 the applicable fact-family review/write scopes. Ingestion itself creates no
 candidate and no canonical record.
+
+## Genetics-specific authorization
+
+P3 stores genetics consent separately in `genetic_access_grants`. The explicit
+capabilities are `genetics.read`, `genetics.write`, `genetics.research`,
+`genetics.compare`, and `genetics.export`. Existing v1/v2/v3 assignments never
+inherit these capabilities. Consent is confirmed per Person and actor, grants
+are checked before retrieval, and revocation blocks all subsequent genetics
+reads, research, comparison, and export. A caregiver with ordinary health or
+document access therefore cannot discover that a Person has a genetics dataset.
+
+Family comparison requires active `genetics.compare` grants for both Persons.
+Alice's grant does not authorize Bob or Child, and a failed hidden-Person check
+returns the same non-disclosing not-found result regardless of whether that
+Person has genetic data. Research packets contain only explicitly selected
+reviewed findings and canonical records; raw genotype bytes never enter a
+provider context or receipt.
 
 
 ## Access-management rules
