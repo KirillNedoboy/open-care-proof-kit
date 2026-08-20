@@ -23,7 +23,10 @@ from app.product_core.models import (
     LabCandidateInput,
     Person,
 )
-from app.product_core.portable_vault_export import PortableVaultExportService
+from app.product_core.portable_vault_export import (
+    PORTABLE_VAULT_FORMAT_VERSION,
+    PortableVaultExportService,
+)
 from app.product_core.services import MedicationLifecycleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visits import VisitPlanningService
@@ -290,7 +293,7 @@ def test_export_person_isolation_for_condition_and_lab_and_v3_round_trip(
     person_one = json.loads(exporter.export("person-1").vault_json)
     person_two = json.loads(exporter.export("person-2").vault_json)
 
-    assert person_one["format_version"] == 3
+    assert person_one["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
     assert {
         record["canonical_record_id"] for record in person_one["canonical_records"]
     } == {condition_record, lab_record}
@@ -375,6 +378,7 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
     # G2 consent + receipt row.
     from datetime import timedelta
 
+    receipt_id = "sha256:" + "1" * 64
     consent_id = "p1-consent"
     execution_id = "p1-exec"
     envelope_id = "sha256:" + "0" * 64
@@ -410,10 +414,10 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
                 used_evidence_ids_json, used_tools_json, output_sha256,
                 mutation_attempted, reason_codes_json, receipt_sha256, metadata_json
             ) VALUES (?, ?, ?, ?, ?, ?, 'provider', 'completed', ?, ?,
-                      '[]', '[]', NULL, 0, '[]', ?, '{}')
+                      '[]', '[]', ?, 0, '[]', ?, '{}')
             """,
             (
-                "p1-receipt",
+                receipt_id,
                 execution_id,
                 consent_id,
                 owner.actor_id,
@@ -421,6 +425,7 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
                 envelope_id,
                 clock().isoformat(),
                 (clock() + timedelta(seconds=1)).isoformat(),
+                "2" * 64,
                 "f" * 64,
             ),
         )
@@ -431,7 +436,7 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
     destination = tmp_path / "backup"
     report = backup.backup(destination)
     assert report.valid is True
-    assert report.product_core_schema_version == 7
+    assert report.product_core_schema_version == 8
 
     target = tmp_path / "recovered"
     recovery = InstallationRecoveryService(clock=lambda: clock())
@@ -544,7 +549,7 @@ def test_v6_to_v7_backup_recovers_preserving_state(tmp_path: Path) -> None:
     )
     recovered = verify_recovered_installation(target)
     assert recovered.valid is True
-    assert recovered.product_core_schema_version == 7
+    assert recovered.product_core_schema_version == 8
     with sqlite3.connect(target / "database.sqlite3") as connection:
         assert connection.execute(
             "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'medication'"

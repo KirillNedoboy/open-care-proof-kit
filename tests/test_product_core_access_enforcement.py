@@ -559,9 +559,9 @@ def test_portable_export_v2_is_scoped_deterministic_and_audited(
         assert archive.read("manifest.sha256") == hashlib.sha256(manifest_bytes).hexdigest().encode(
             "ascii"
         )
-    assert manifest["format_version"] == 3
-    assert manifest["product_core_schema_version"] == 7
-    assert vault["format_version"] == 3
+    assert manifest["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
+    assert manifest["product_core_schema_version"] == 8
+    assert vault["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
     assert len(vault["family_memberships"]) == 1
     assert vault["family_memberships"][0]["person_id"] == "alice-person"
     assert len(vault["person_relationships"]) == 1

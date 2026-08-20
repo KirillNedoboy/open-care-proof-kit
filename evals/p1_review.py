@@ -37,6 +37,7 @@ import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from app.family_access.policy import CAREGIVER_BASE_SCOPES_V1
 from app.family_access.service import FamilyAccessService
 from app.product_core.errors import ProvenanceValidationError
 from app.product_core.installation_backup import InstallationBackupService
@@ -54,7 +55,10 @@ from app.product_core.persisted_visit_briefs import (
     PersistedVisitBriefService,
     verify_persisted_visit_brief_revision,
 )
-from app.product_core.portable_vault_export import PortableVaultExportService
+from app.product_core.portable_vault_export import (
+    PORTABLE_VAULT_FORMAT_VERSION,
+    PortableVaultExportService,
+)
 from app.product_core.services import MedicationLifecycleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visits import VisitPlanningService
@@ -112,7 +116,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     ids = SequenceIds()
 
     # ------------------------------------------------------------------ #
-    # Setup: Alice (owner of the Child), Bob (caregiver, granted v2 scopes),
+    # Setup: Alice (owner of the Child), Bob (caregiver, granted current scopes),
     # Carol (unrelated actor with no assignments).
     # ------------------------------------------------------------------ #
     with database.uow() as uow:
@@ -154,7 +158,7 @@ def run_review() -> tuple[int, dict[str, str]]:
         display_name="Carol",
         password="carol password value",
     )
-    # Bob is the Child's caregiver with EXPLICITLY granted v2 review scopes.
+    # Bob is the Child's caregiver with explicitly granted current review scopes.
     family.grant_assignment(
         alice.actor_id,
         "alice-person",
@@ -345,10 +349,14 @@ def run_review() -> tuple[int, dict[str, str]]:
             "WHERE actor_id = ? AND person_id = ? AND is_active = 1",
             (bob.actor_id, "alice-person"),
         ).fetchone()
-        v1_scopes = json.loads(str(row[0]))
-        v1_scopes = [scope for scope in v1_scopes if not scope.startswith(("condition.", "lab."))]
+        assert row is not None
+        v1_scopes = CAREGIVER_BASE_SCOPES_V1 | {
+            "medication.write",
+            "candidate.review",
+        }
         uow.connection.execute(
-            "UPDATE person_access_assignments SET scopes_json = ? "
+            "UPDATE person_access_assignments SET scopes_json = ?, "
+            "scope_generation = 'family-access-v1' "
             "WHERE actor_id = ? AND person_id = ? AND is_active = 1",
             (json.dumps(sorted(v1_scopes), separators=(",", ":")), bob.actor_id, "alice-person"),
         )
@@ -496,7 +504,7 @@ def run_review() -> tuple[int, dict[str, str]]:
         .vault_json
     )
     checks.check(
-        exported["format_version"] == 3
+        exported["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
         and exported["canonical_condition_details"]
         and exported["canonical_lab_details"],
         "export v3 missing condition/lab entities",
@@ -504,7 +512,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     backup = InstallationBackupService(db_path, source_dir, clock=FixedClock())
     destination = tmp_root / "backup"
     report = backup.backup(destination)
-    checks.check(report.valid is True and report.product_core_schema_version == 7, "backup invalid")
+    checks.check(report.valid is True and report.product_core_schema_version == 8, "backup invalid")
     target = tmp_root / "recovered"
     InstallationRecoveryService(clock=FixedClock()).recover(
         destination, target, confirm_maintenance=True
