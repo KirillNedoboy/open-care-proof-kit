@@ -70,6 +70,7 @@ def _provider_status_label(settings: Settings) -> str:
         return "External model configured by operator"
     return "Local deterministic demo"
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -148,6 +149,7 @@ def _uses_actor_session_boundary(path: str) -> bool:
         in {
             "/",
             "/workspace",
+            "/genetics",
             "/vault",
             "/chat",
             "/api/chat",
@@ -301,6 +303,23 @@ def workspace(request: Request) -> Response:
     return _actor_page(
         request,
         "product_core_workspace.html",
+        {"active_person_id": access.active_person_id},
+    )
+
+
+@app.get("/genetics", response_class=HTMLResponse)
+def genetics_page(request: Request) -> Response:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse):
+        return access
+    if access.active_person_id is not None:
+        try:
+            access.require_active_person("person.read")
+        except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
+            return _live_access_error(exc)
+    return _actor_page(
+        request,
+        "genetics.html",
         {"active_person_id": access.active_person_id},
     )
 

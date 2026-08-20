@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', path='/genetics.css') }}">
   <script src="{{ url_for('static', path='/genetics.js') }}" defer></script>
 </head>
-<body data-genetics-mode="demo">
+<body data-genetics-mode="demo" data-person-id="{{ active_person_id or '' }}">
   <a class="skip-link" href="#workspace-main">Skip to genetics workspace</a>
   <header class="site-header">
     <a class="brand" href="/workspace" aria-label="OpenCare home">OpenCare</a>
@@ -83,6 +83,13 @@
             <div><h2>Overview</h2><p>A bounded view of one synthetic consumer-genotype dataset.</p></div>
             <span class="source-seal">Source hash verified</span>
           </div>
+          <form id="genetics-import-form" class="import-panel">
+            <div><h3>Import genetic data</h3><p>Local consumer genotype TXT only. The original bytes are immutable and never sent to a provider.</p></div>
+            <label for="genetics-file">Genotype file<input id="genetics-file" type="file" accept=".txt,text/plain" required></label>
+            <label for="genetics-build">Genome build<select id="genetics-build"><option value="unknown">Unknown</option><option value="GRCh37/hg19">GRCh37 / hg19</option><option value="GRCh38/hg38">GRCh38 / hg38</option></select></label>
+            <label class="confirmation-check"><input id="genetics-import-confirmation" type="checkbox" required> I understand genetic data is uniquely identifying and can reveal information about relatives.</label>
+            <button type="submit">Import locally</button><p id="genetics-import-status" role="status" aria-live="polite"></p>
+          </form>
           <div class="state-host" data-state-host="overview">
             <div class="overview-ledger">
               <div class="dataset-facts">

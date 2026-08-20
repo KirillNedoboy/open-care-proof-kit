@@ -2,16 +2,11 @@
   "use strict";
 
   const GENETICS_API_ENDPOINTS = Object.freeze({
-    WORKSPACE_SUMMARY: "/api/genetics/workspace/summary",
-    INDEXED_VARIANTS: "/api/genetics/variants",
-    PHARMACOGENOMICS: "/api/genetics/pharmacogenomics",
-    HEALTH_ASSOCIATIONS: "/api/genetics/health-associations",
-    TRAITS_AND_SYSTEMS: "/api/genetics/traits-systems",
-    EVIDENCE_LEDGER: "/api/genetics/evidence",
-    FAMILY_COMPARISON: "/api/genetics/family-comparison",
-    RESEARCH_PREVIEW: "/api/genetics/research/preview",
-    RESEARCH_RUN: "/api/genetics/research/sessions",
-    VISIT_QUESTION_HANDOFF: "/api/genetics/visit-question-handoffs"
+    WORKSPACE_SUMMARY: (personId) => `/api/product-core/v1/people/${encodeURIComponent(personId)}/genetics`,
+    IMPORT: (personId) => `/api/product-core/v1/people/${encodeURIComponent(personId)}/genetics/import`,
+    FAMILY_COMPARISON: (personId) => `/api/product-core/v1/people/${encodeURIComponent(personId)}/genetics/compare`,
+    RESEARCH_RUN: (personId) => `/api/product-core/v1/people/${encodeURIComponent(personId)}/genetics/research`,
+    VISIT_QUESTION_HANDOFF: "/api/product-core/v1/visit-questions"
   });
 
   const SYNTHETIC_VARIANTS = Object.freeze([
@@ -41,37 +36,37 @@
     }
 
     loadSummary(personId) {
-      return this.request(`${this.endpoints.WORKSPACE_SUMMARY}?person_id=${encodeURIComponent(personId)}`);
+      return this.request(this.endpoints.WORKSPACE_SUMMARY(personId));
     }
 
-    loadIndexedVariants(personId, filters = {}) {
-      const query = new URLSearchParams({ person_id: personId, ...filters });
-      return this.request(`${this.endpoints.INDEXED_VARIANTS}?${query}`);
+    importGenotype(personId, payload) {
+      return this.request(this.endpoints.IMPORT(personId), {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
     }
 
-    compareFamily(payload) {
-      return this.request(this.endpoints.FAMILY_COMPARISON, { method: "POST", body: JSON.stringify(payload) });
+    compareFamily(personId, personBId) {
+      return this.request(this.endpoints.FAMILY_COMPARISON(personId), {
+        method: "POST",
+        body: JSON.stringify({ person_b_id: personBId })
+      });
     }
 
-    previewResearch(payload) {
-      return this.request(this.endpoints.RESEARCH_PREVIEW, { method: "POST", body: JSON.stringify(payload) });
-    }
-
-    runResearch(payload) {
-      return this.request(this.endpoints.RESEARCH_RUN, { method: "POST", body: JSON.stringify(payload) });
-    }
-
-    handoffVisitQuestion(payload) {
-      return this.request(this.endpoints.VISIT_QUESTION_HANDOFF, { method: "POST", body: JSON.stringify(payload) });
+    runResearch(personId, payload) {
+      return this.request(this.endpoints.RESEARCH_RUN(personId), {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
     }
   }
 
+  const activePersonId = document.body.dataset.personId || "";
   const state = {
     activeTab: "overview",
     surfaceState: "ready",
     initialMarkup: new Map()
   };
-
   const tabList = document.querySelector('[role="tablist"]');
   const tabs = Array.from(document.querySelectorAll('[role="tab"][data-tab]'));
   const panels = Array.from(document.querySelectorAll('[role="tabpanel"][data-panel]'));
@@ -260,6 +255,44 @@
     }, 450);
   }
 
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("The local file could not be read."));
+      reader.onload = () => resolve(String(reader.result).split(",", 2)[1] || "");
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImportSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const statusNode = document.querySelector("#genetics-import-status");
+    const file = document.querySelector("#genetics-file")?.files?.[0];
+    if (!activePersonId || !file) {
+      if (statusNode) statusNode.textContent = "Select a genetics-authorized profile and local TXT file first.";
+      return;
+    }
+    const submit = form.querySelector("button[type='submit']");
+    if (submit) submit.disabled = true;
+    try {
+      const payloadBase64 = await readFileAsBase64(file);
+      await new GeneticsApiAdapter().importGenotype(activePersonId, {
+        filename: file.name,
+        payload_base64: payloadBase64,
+        genome_build: document.querySelector("#genetics-build")?.value || "unknown",
+        confirmation: Boolean(document.querySelector("#genetics-import-confirmation")?.checked)
+      });
+      if (statusNode) statusNode.textContent = "Imported locally. The source is immutable; indexed coverage is ready to review.";
+      announce("Genetic source imported locally.");
+    } catch (error) {
+      if (statusNode) statusNode.textContent = error instanceof Error ? error.message : "The local import failed.";
+      announce("Genetic import failed without exposing source values.");
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  }
+
   function addQuestionToVisit(button) {
     const question = document.querySelector("#visit-question")?.textContent?.trim() || "";
     const handoffStatus = document.querySelector("#visit-handoff-status");
@@ -314,7 +347,9 @@
   }
 
   function handleDocumentSubmit(event) {
-    if (event.target.matches("#family-comparison-form")) {
+    if (event.target.matches("#genetics-import-form")) {
+      void handleImportSubmit(event);
+    } else if (event.target.matches("#family-comparison-form")) {
       handleFamilyComparison(event);
     } else if (event.target.matches("#research-form")) {
       handleResearchSubmit(event);

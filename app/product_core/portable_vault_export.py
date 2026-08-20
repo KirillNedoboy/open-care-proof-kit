@@ -106,7 +106,11 @@ class PortableVaultExportService:
                 briefs.append((brief, revisions))
 
             sources = sorted(
-                uow.sources.list_for_person(person_id),
+                (
+                    item
+                    for item in uow.sources.list_for_person(person_id)
+                    if item.source_type != "genetics"
+                ),
                 key=lambda item: (isoformat_utc(item.created_at), item.id),
             )
             source_payloads: dict[str, bytes] = {}
@@ -119,9 +123,7 @@ class PortableVaultExportService:
                     continue
                 extraction = uow.document_extractions.get_complete_for_source(source.id)
                 if extraction is None:
-                    raise IntegrityStorageError(
-                        f"document extraction is missing: {source.id}"
-                    )
+                    raise IntegrityStorageError(f"document extraction is missing: {source.id}")
                 pages = uow.document_extractions.list_pages(extraction.extraction_id)
                 _verify_document_extraction(source, extraction, pages)
                 document_extractions.append(extraction)
@@ -229,9 +231,7 @@ class PortableVaultExportService:
                     if item.fact_type == "condition"
                 ],
                 "canonical_lab_details": [
-                    _canonical_lab_detail_dto(item)
-                    for item in records
-                    if item.fact_type == "lab"
+                    _canonical_lab_detail_dto(item) for item in records if item.fact_type == "lab"
                 ],
                 "timeline_events": [_timeline_event_dto(item) for item in events],
                 "visits": [_visit_dto(item) for item in visits],
@@ -240,10 +240,7 @@ class PortableVaultExportService:
                     for visit in visits
                     for question in questions_by_visit[visit.visit_id]
                 ],
-                "visit_briefs": [
-                    _brief_dto(brief, revisions)
-                    for brief, revisions in briefs
-                ],
+                "visit_briefs": [_brief_dto(brief, revisions) for brief, revisions in briefs],
                 "visit_brief_revisions": [
                     _revision_dto(revision)
                     for _brief, revisions in briefs
@@ -265,8 +262,7 @@ class PortableVaultExportService:
         )
         entries: list[tuple[str, bytes]] = [("vault.json", vault_json)]
         entries.extend(
-            (_source_archive_path(source), source_payloads[source.id])
-            for source in sources
+            (_source_archive_path(source), source_payloads[source.id]) for source in sources
         )
         manifest_json = _canonical_json_bytes(
             {
@@ -300,9 +296,9 @@ class PortableVaultExportService:
 
 
 def _canonical_json_bytes(value: Any) -> bytes:
-    return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
 
 def _write_deterministic(archive: zipfile.ZipFile, path: str, payload: bytes) -> None:
@@ -337,9 +333,7 @@ def _source_dto(source: Source) -> dict[str, object]:
         or "\x00" in original_filename
         or original_filename in {".", ".."}
     ):
-        raise IntegrityStorageError(
-            f"export source filename is not metadata-safe: {source.id}"
-        )
+        raise IntegrityStorageError(f"export source filename is not metadata-safe: {source.id}")
     return {
         "source_id": source.id,
         "person_id": source.person_id,
@@ -452,9 +446,7 @@ def _candidate_condition_detail_dto(candidate: CandidateFact) -> dict[str, objec
         "display_name": detail.display_name,
         "normalized_name": detail.normalized_name,
         "status_text": detail.status_text,
-        "onset_date": (
-            None if detail.onset_date is None else detail.onset_date.isoformat()
-        ),
+        "onset_date": (None if detail.onset_date is None else detail.onset_date.isoformat()),
         "note": detail.note,
     }
 
@@ -477,9 +469,7 @@ def _candidate_lab_detail_dto(candidate: CandidateFact) -> dict[str, object]:
     }
 
 
-def _canonical_record_dto(
-    record: CanonicalRecord, candidate: CandidateFact
-) -> dict[str, object]:
+def _canonical_record_dto(record: CanonicalRecord, candidate: CandidateFact) -> dict[str, object]:
     return {
         "canonical_record_id": record.id,
         "person_id": record.person_id,
@@ -513,9 +503,7 @@ def _canonical_condition_detail_dto(record: CanonicalRecord) -> dict[str, object
         "display_name": detail.display_name,
         "normalized_name": detail.normalized_name,
         "status_text": detail.status_text,
-        "onset_date": (
-            None if detail.onset_date is None else detail.onset_date.isoformat()
-        ),
+        "onset_date": (None if detail.onset_date is None else detail.onset_date.isoformat()),
         "note": detail.note,
     }
 

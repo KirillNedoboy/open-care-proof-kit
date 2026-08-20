@@ -81,6 +81,14 @@ h4 { margin: 0; font-size: 1rem; }
 .demo-toolbar p { margin: 0; font-size: .85rem; }
 .demo-toolbar label { display: flex; align-items: center; gap: .5rem; color: var(--ink); font-size: .82rem; font-weight: 700; }
 select, input, textarea { width: 100%; min-height: 44px; padding: .6rem .7rem; color: var(--ink); background: #fff; border: 1px solid var(--line-strong); border-radius: var(--control-radius); }
+.import-panel { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(160px, .7fr) minmax(160px, .7fr); gap: .85rem; align-items: end; margin-bottom: 1rem; padding: 1rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius); }
+.import-panel > div { align-self: start; }
+.import-panel p { margin: .25rem 0 0; color: var(--muted); font-size: .86rem; }
+.import-panel label { display: grid; gap: .35rem; color: var(--ink-soft); font-size: .8rem; font-weight: 700; }
+.import-panel .confirmation-check { grid-column: 1 / -1; display: flex; align-items: center; gap: .5rem; font-weight: 400; }
+.import-panel .confirmation-check input { width: 1.1rem; min-height: 1.1rem; }
+.import-panel button { min-height: 44px; padding: .6rem 1rem; color: #fff; background: var(--accent-dark); border: 0; border-radius: var(--control-radius); font-weight: 800; cursor: pointer; }
+.import-panel #genetics-import-status { grid-column: 1 / -1; }
 .demo-toolbar select { width: auto; min-height: 38px; padding-block: .35rem; }
 textarea { resize: vertical; }
 
@@ -268,7 +276,7 @@ button[type="submit"]:hover:not(:disabled) { background: var(--accent-dark); bor
   .boundary-banner details, .boundary-banner ul { grid-column: 1; }
   .demo-toolbar { align-items: flex-start; flex-direction: column; }
   .panel-heading { flex-direction: column; }
-  .overview-ledger, .coverage-notice, .filter-bar, .finding-summary, .pathway-grid, .evidence-ledger > article, .family-selectors, .comparison-summary, .research-mode { grid-template-columns: 1fr; }
+  .overview-ledger, .coverage-notice, .filter-bar, .finding-summary, .pathway-grid, .evidence-ledger > article, .family-selectors, .comparison-summary, .research-mode, .import-panel { grid-template-columns: 1fr; }
   .coverage-figure { grid-template-columns: 106px 1fr; }
   .coverage-donut { width: 104px; }
   .observation-row { grid-template-columns: 1fr 1fr; }
