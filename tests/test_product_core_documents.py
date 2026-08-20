@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from pypdf import PdfWriter
+from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from app.product_core.errors import DocumentValidationError, IntegrityStorageError
@@ -106,6 +106,16 @@ def test_pdf_embedded_text_is_accepted_and_blank_pdf_is_rejected(tmp_path: Path)
     with pytest.raises(DocumentValidationError, match="no_usable_text"):
         documents.register("person-1", output.getvalue(), "application/pdf")
 
+    encrypted_writer = PdfWriter()
+    encrypted_writer.append_pages_from_reader(PdfReader(io.BytesIO(_text_pdf("secret"))))
+    encrypted_writer.encrypt("password")
+    encrypted_output = io.BytesIO()
+    encrypted_writer.write(encrypted_output)
+    with pytest.raises(DocumentValidationError, match="encrypted_pdf"):
+        documents.register(
+            "person-1", encrypted_output.getvalue(), "application/pdf"
+        )
+
 
 def test_validation_failures_leave_no_durable_source(tmp_path: Path) -> None:
     database, documents = _service(tmp_path)
@@ -136,6 +146,15 @@ def test_extractions_are_database_immutable_and_dedup_verifies_them(tmp_path: Pa
             connection.execute(
                 "UPDATE document_extractions SET text_hash = ? WHERE extraction_id = ?",
                 ("0" * 64, first.extraction.extraction_id),
+            )
+        with pytest.raises(sqlite3.IntegrityError, match="immutable"):
+            connection.execute(
+                """
+                UPDATE document_extraction_pages
+                SET normalized_text = 'tampered'
+                WHERE extraction_id = ?
+                """,
+                (first.extraction.extraction_id,),
             )
         connection.execute("DROP TRIGGER document_extractions_immutable_delete")
         connection.execute("DROP TRIGGER document_extraction_pages_immutable_delete")
