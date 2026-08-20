@@ -128,6 +128,35 @@ class ProductCoreAccess:
             required_audit=required_audit,
         )
 
+    def effective_scopes(self, person_id: str) -> frozenset[str]:
+        """Return the current Actor's active assignment scopes on a Person.
+
+        Read-only presentation metadata for the workspace capability map —
+        never an authorization source. Mirrors ``require_person`` privacy
+        semantics: a hidden or missing Person, or no active assignment for the
+        current Actor, raises ``PersonNotFoundError`` (with a best-effort
+        denial audit) and leaks nothing about other Actors, assignment history,
+        or role names.
+        """
+        try:
+            with self.runtime.database.uow() as uow:
+                assert uow.connection is not None
+                row = uow.connection.execute(
+                    "SELECT p.person_id FROM people AS p "
+                    "WHERE p.person_id = ? AND p.is_active = 1",
+                    (person_id,),
+                ).fetchone()
+                resolved_person_id = None if row is None else str(row["person_id"])
+                assignment_state = self._active_assignment_state(
+                    uow.connection, resolved_person_id
+                )
+                if resolved_person_id is None or assignment_state is None:
+                    raise PersonNotFoundError("Person was not found.")
+                return assignment_state[1]
+        except PersonNotFoundError:
+            self._best_effort_denial_audit(None)
+            raise
+
     def require_source_for_person(
         self,
         source_id: str,

@@ -101,7 +101,7 @@ def test_product_core_openapi_is_stable_and_public_only(product_core_client: Tes
         if isinstance(operation, dict) and "operationId" in operation
     ]
 
-    assert len(paths) == 43
+    assert len(paths) == 44
     assert len(operation_ids) == len(set(operation_ids))
     assert "product_core_unsupported_candidate" in operation_ids
     assert "product_core_create_condition_candidate" in operation_ids

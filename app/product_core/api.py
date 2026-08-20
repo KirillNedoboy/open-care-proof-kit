@@ -71,6 +71,8 @@ from app.product_core.api_models import (
     VisitQuestionUpdateRequest,
     VisitResponse,
     VisitUpdateRequest,
+    WorkspaceCapabilities,
+    WorkspaceCapabilitiesResponse,
     _validate_identifier,
 )
 from app.product_core.errors import (
@@ -1006,6 +1008,47 @@ def get_person(
 ) -> PersonResponse:
     access.require_person(person_id, "person.read")
     return _person_response(runtime.people.get(person_id))
+
+
+@router.get(
+    "/people/{person_id}/workspace-capabilities",
+    response_model=WorkspaceCapabilitiesResponse,
+    responses={404: {"model": ErrorResponse}},
+    operation_id="product_core_get_workspace_capabilities",
+)
+def get_workspace_capabilities(
+    person_id: ProductCoreIdentifier,
+    access: AccessDependency,
+) -> WorkspaceCapabilitiesResponse:
+    """Return the current Actor's capability map on a Person (read-only).
+
+    Presentation metadata only — never replaces server-side authorization.
+    Only the current Actor's booleans are returned; hidden or missing Person,
+    or a missing/revoked assignment, fails closed with 404 person_not_found.
+    """
+    scopes = access.effective_scopes(person_id)
+    return WorkspaceCapabilitiesResponse(
+        person_id=person_id,
+        capabilities=WorkspaceCapabilities(
+            person_update="person.update" in scopes,
+            source_write="source.write" in scopes,
+            candidate_review="candidate.review" in scopes,
+            medication_read="medication.read" in scopes,
+            medication_write="medication.write" in scopes,
+            condition_read="condition.read" in scopes,
+            condition_write="condition.write" in scopes,
+            lab_read="lab.read" in scopes,
+            lab_write="lab.write" in scopes,
+            timeline_read="timeline.read" in scopes,
+            visit_read="visit.read" in scopes,
+            visit_write="visit.write" in scopes,
+            brief_read="brief.read" in scopes,
+            brief_write="brief.write" in scopes,
+            brief_export="brief.export" in scopes,
+            vault_export="vault.export" in scopes,
+            chat_use="chat.use" in scopes,
+        ),
+    )
 
 
 @router.patch(

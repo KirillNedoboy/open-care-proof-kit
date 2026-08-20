@@ -433,6 +433,38 @@ class PeopleListResponse(APIModel):
     people: list[PersonResponse]
 
 
+class WorkspaceCapabilities(APIModel):
+    """Closed capability map for the current Actor on one Person.
+
+    Each boolean maps 1:1 to the same-named scope string. candidate.read is a
+    precondition for inbox listing present in every role base set and is NOT
+    part of this shape.
+    """
+
+    person_update: bool
+    source_write: bool
+    candidate_review: bool
+    medication_read: bool
+    medication_write: bool
+    condition_read: bool
+    condition_write: bool
+    lab_read: bool
+    lab_write: bool
+    timeline_read: bool
+    visit_read: bool
+    visit_write: bool
+    brief_read: bool
+    brief_write: bool
+    brief_export: bool
+    vault_export: bool
+    chat_use: bool
+
+
+class WorkspaceCapabilitiesResponse(APIModel):
+    person_id: str
+    capabilities: WorkspaceCapabilities
+
+
 class SourceRegistrationResponse(APIModel):
     created: bool
     source: SourceResponse
