@@ -638,13 +638,46 @@ class GeneticsService:
         with self.database.uow() as uow:
             assert uow.connection is not None
             rows_a = uow.connection.execute(
-                "SELECT rsid, normalized_genotype, no_call FROM genetic_variant_observations WHERE person_id = ? AND rsid IS NOT NULL",
+                """
+                SELECT rsid, normalized_genotype, no_call, genome_build, orientation_state
+                FROM genetic_variant_observations
+                WHERE person_id = ? AND rsid IS NOT NULL
+                """,
                 (person_a,),
             ).fetchall()
             rows_b = uow.connection.execute(
-                "SELECT rsid, normalized_genotype, no_call FROM genetic_variant_observations WHERE person_id = ? AND rsid IS NOT NULL",
+                """
+                SELECT rsid, normalized_genotype, no_call, genome_build, orientation_state
+                FROM genetic_variant_observations
+                WHERE person_id = ? AND rsid IS NOT NULL
+                """,
                 (person_b,),
             ).fetchall()
+        builds = {
+            str(row["genome_build"])
+            for row in (*rows_a, *rows_b)
+            if str(row["genome_build"]) != "unknown"
+        }
+        orientations_resolved = all(
+            str(row["orientation_state"]) in {"resolved", "not_applicable"}
+            for row in (*rows_a, *rows_b)
+        )
+        build_compatible = len(builds) <= 1 and orientations_resolved
+        if not build_compatible:
+            return {
+                "person_a": person_a,
+                "person_b": person_b,
+                "common_covered_loci": 0,
+                "shared_loci": [],
+                "differing_loci": [],
+                "ibs0": 0,
+                "ibs1": 0,
+                "ibs2": 0,
+                "build_compatible": False,
+                "interpretation": (
+                    "comparison unavailable: incompatible build or unresolved orientation"
+                ),
+            }
         a = {
             str(row["rsid"]): str(row["normalized_genotype"])
             for row in rows_a
@@ -666,6 +699,7 @@ class GeneticsService:
             "ibs0": ibs[0],
             "ibs1": ibs[1],
             "ibs2": ibs[2],
+            "build_compatible": True,
             "interpretation": "compatibility/similarity evidence only; not kinship or forensic proof",
         }
 
