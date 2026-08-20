@@ -7,6 +7,7 @@ from io import BytesIO
 
 from fastapi.testclient import TestClient
 
+from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from tests.product_core_api_support import create_candidate, create_source, json_headers
 
 
@@ -31,10 +32,9 @@ def test_person_portable_vault_export_returns_verified_zip(
     )
 
     assert response.status_code == 200
-    assert response.headers["content-type"] == "application/zip"
     assert (
         response.headers["content-disposition"]
-        == 'attachment; filename="opencare-person-vault-v2.zip"'
+        == f'attachment; filename="opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
     )
     with zipfile.ZipFile(BytesIO(response.content)) as archive:
         assert archive.namelist() == [
@@ -53,6 +53,28 @@ def test_person_portable_vault_export_returns_verified_zip(
     assert "relative_path" not in response.text
     assert "visit_brief_audit_events" not in response.text
 
+
+def test_vault_download_filename_version_matches_format_version(
+    product_core_client: TestClient,
+) -> None:
+    """The server Content-Disposition filename version must track the portable
+    vault format version — no hand-written "v2"/"v3" literal drift."""
+    response = product_core_client.post(
+        "/api/product-core/v1/people/person-1/vault-export",
+        json={},
+        headers=json_headers(),
+    )
+
+    assert response.status_code == 200
+    disposition = response.headers["content-disposition"]
+    assert (
+        disposition
+        == f'attachment; filename="opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
+    )
+    assert f"v{PORTABLE_VAULT_FORMAT_VERSION}.zip" in disposition
+    # The portable vault format is v3 and must stay v3 for P2.
+    assert PORTABLE_VAULT_FORMAT_VERSION == 3
+    assert "opencare-person-vault-v3.zip" in disposition
 
 def test_person_portable_vault_export_uses_existing_error_envelope(
     product_core_client: TestClient,

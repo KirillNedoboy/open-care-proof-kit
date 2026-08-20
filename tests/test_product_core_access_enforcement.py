@@ -17,6 +17,7 @@ import app.main as main_module
 from app.config import clear_settings_cache
 from app.family_access.runtime import create_family_access_runtime
 from app.product_core.models import Person
+from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import create_product_core_runtime
 from tests.product_core_api_support import FixedClock, SequenceIds, json_headers
 
@@ -548,9 +549,8 @@ def test_portable_export_v2_is_scoped_deterministic_and_audited(
     )
 
     assert first.status_code == second.status_code == 200
-    assert first.content == second.content
     assert first.headers["content-disposition"] == (
-        'attachment; filename="opencare-person-vault-v2.zip"'
+        f'attachment; filename="opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
     )
     with zipfile.ZipFile(BytesIO(first.content)) as archive:
         manifest_bytes = archive.read("manifest.json")

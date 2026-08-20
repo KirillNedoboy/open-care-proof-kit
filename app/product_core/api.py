@@ -105,6 +105,7 @@ from app.product_core.errors import (
     VisitValidationError,
 )
 from app.product_core.models import ConditionCandidateInput, LabCandidateInput, VisitBriefRequest
+from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import ProductCoreRuntime
 
 ProductCoreIdentifier = Annotated[
@@ -1754,7 +1755,10 @@ def export_person_portable_vault(
         content=exported.zip_bytes,
         media_type="application/zip",
         headers={
-            "Content-Disposition": 'attachment; filename="opencare-person-vault-v2.zip"'
+            "Content-Disposition": (
+                f'attachment; filename="opencare-person-vault-v'
+                f'{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
+            ),
         },
     )
 
