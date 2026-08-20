@@ -540,7 +540,7 @@
   function render() {
     const inbox = byId("review-inbox"), timeline = byId("timeline-list"), counts = byId("overview-counts"), latest = byId("overview-latest");
     [inbox, timeline, counts, latest].forEach(clear);
-    renderFactSections(); syncFactTypeFilters();
+    renderFactSections(); renderDocuments(); syncFactTypeFilters();
     ["medication", "condition", "lab"].filter((type) => state.capabilities[`${type}_read`]).forEach((type) => {
       const card = make("article", "", "summary-card");
       card.append(make("strong", type === "condition" ? "Recorded conditions" : `${type[0].toUpperCase()}${type.slice(1)}s`), make("p", `${({ medication: state.medications, condition: state.conditions, lab: state.labs })[type].filter((item) => item.is_active).length} current · ${visibleCandidates().filter((item) => item.fact_type === type && item.status === "pending").length} waiting for review`));
