@@ -3,8 +3,8 @@
 ## Boundary
 
 This is the implemented versioned Family Access policy for the live Workspace,
-Product Core HTTP API, live vault, and chat (P1 branch: `family-access-v2`
-current generation; `family-access-v1` frozen). The server resolves the Actor,
+Product Core HTTP API, live vault, and chat (`family-access-v2` is the current
+generation; `family-access-v1` is frozen). The server resolves the Actor,
 active Person, and resource ownership; a client-supplied Person or resource ID
 never grants access. Installation administration, Family membership,
 relationships, and an own-Person link are not authorization inputs.

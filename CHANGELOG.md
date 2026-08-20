@@ -4,22 +4,31 @@
 
 ### Added
 
-- Sentient P1 evidence-grounded ingest (implementation branch
-  `codex/p1-evidence-grounded-ingest`): one generic evidence lifecycle for
-  medication/condition/lab facts — migration v7 (generic `candidate_facts` and
-  `canonical_records` with typed detail tables, `unsupported` review status,
-  correction supersession lineage, provenance locators, `scope_generation` on
-  assignments); source-backed condition and lab lifecycles with validated
-  immutable-source provenance and deterministic timeline events; Family Access
-  scope generations (`family-access-v1` frozen, `family-access-v2` adds
-  condition/lab scopes, generation inferred from stored scopes with no silent
-  privilege expansion); Visit Brief content schema v2 with condition/lab
+- P2 usable family workspace on public `main` after the `v0.2.0` boundary:
+  capability-aware Person switching, an all-three-type Review Inbox and
+  Timeline, current/history record grouping, human-readable provenance,
+  Visit Questions, Visit Brief content schema v2 with readable v1 revisions,
+  and portable vault export format v3. The deterministic offline reviewer
+  `python -m evals.p2_review` and `tests/test_p2_reviewer.py` cover the
+  privacy and fail-closed boundaries with six zero-required counters; see
+  `docs/p2-reviewer-guide.md`. P2 adds no schema migration, family-access-v3,
+  Visit Brief schema v3, upload/OCR/model extraction, or new runtime
+  dependency.
+
+- Sentient P1 evidence-grounded ingest (integrated on public `main` after the
+  `v0.2.0` boundary; no separate P1 release tag): one generic evidence
+  lifecycle for medication/condition/lab facts — migration v7 (generic
+  `candidate_facts` and `canonical_records` with typed detail tables,
+  `unsupported` review status, correction supersession lineage, provenance
+  locators, `scope_generation` on assignments); source-backed condition and
+  lab lifecycles with validated immutable-source provenance and deterministic
+  timeline events; Family Access scope generations (`family-access-v1` frozen,
+  `family-access-v2` current); Visit Brief content schema v2 with condition/lab
   evidence selections while v1 revisions remain readable; confirmed
-  condition/lab records in the agent context; portable export format v3;
-  backup/verify/preflight/recover on schema v7; and the deterministic offline
-  reviewer `python -m evals.p1_review` with six zero-required security
-  counters. P1 adds no OCR/upload/model extraction, no FHIR/EHR sync, and no
-  diagnosis/treatment/interpretation. Root-plugin G5 limitation unchanged.
+  condition/lab records in the agent context; portable export format v3; and
+  backup/verify/preflight/recover on schema v7. P1 adds no OCR/upload/model
+  extraction, no FHIR/EHR sync, and no diagnosis/treatment/interpretation.
+
 
 - Optional Sentient Agent Framework compatibility spike (`[sentient]` extra,
   `sentient-agent-framework==0.3.0`): synthetic/demo-only OpenCare agent over

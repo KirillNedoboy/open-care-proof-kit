@@ -11,13 +11,12 @@ is itself a release tag.
 
 ## Implemented boundary
 
-- Product Core schema v7 (P1 branch) preserves the Medication/Visit lifecycle and adds
-  durable Actors, versioned scrypt credentials, installation administrators,
-  Families, memberships, relationships, append-only consent, explicit Person
-  assignments, one-to-one own-Person links, hash-only invitations,
-  metadata-only access audit, the generic evidence lifecycle
-  (medication/condition/lab candidates and canonical records), and versioned
-  Family Access scope generations.
+- Product Core schema v7 preserves the Medication/Visit lifecycle and adds durable
+  Actors, versioned scrypt credentials, installation administrators, Families,
+  memberships, relationships, append-only consent, explicit Person assignments,
+  one-to-one own-Person links, hash-only invitations, metadata-only access audit,
+  the generic evidence lifecycle (medication/condition/lab candidates and
+  canonical records), and versioned Family Access scope generations.
 - A generation-aware Family Access policy protects live `/workspace`, `/vault`,
   `/api/product-core/v1`, `/chat`, and `/api/chat`: `family-access-v1` scope
   sets are frozen verbatim for legacy grants, and the current
@@ -84,6 +83,12 @@ reported:
 - focused recovery/credential/smoke tests: passed;
 - JavaScript syntax and live browser flows: passed earlier in the six-commit
   implementation sequence.
+
+The deterministic P2 reviewer is also covered by
+`tests/test_p2_reviewer.py` and `python -m evals.p2_review`; its fixed-clock
+offline scenario passes with all six P2 security counters at zero. Invocation
+guarantees and scope are documented in
+[`docs/p2-reviewer-guide.md`](p2-reviewer-guide.md).
 
 Final evals, trust metrics, package installation, Uvicorn/production Compose
 smoke, and clean-worktree evidence are recorded in the implementation report,
@@ -193,13 +198,12 @@ pending, not an internal security defect; the machine gate therefore still
 reports `READY_FOR_SECOND_CLIENT_SMOKE`. This work is integrated on `main`
 after the published `v0.2.0` baseline; it is not itself a release tag.
 
-## Sentient P1 evidence-grounded ingest (implementation branch)
+## Sentient P1 evidence-grounded ingest (integrated on public main)
 
-P1 generalizes the medication-only evidence lifecycle into ONE reusable
+P1 generalizes the prior medication evidence lifecycle into one reusable
 lifecycle for three fact families — `medication`, `condition`, `lab` — with
-typed strongly-validated detail. It is implemented on the
-`codex/p1-evidence-grounded-ingest` branch (not yet integrated to `main`); per
-the status conventions above it is branch work until integration. Design and
+typed strongly-validated detail. It is integrated on public `main` after the
+published `v0.2.0` boundary; P1 has no separate release tag. Design and
 acceptance contract: `docs/architecture/p1-evidence-grounded-ingest.md`;
 deterministic reviewer: `python -m evals.p1_review` (guide:
 `docs/p1-reviewer-guide.md`).
@@ -247,6 +251,20 @@ deterministic reviewer: `python -m evals.p1_review` (guide:
   diagnosis/treatment/dosage interpretation, and no reference-range or
   abnormality inference.
 
+## P2 usable family workspace (integrated on public main)
+
+P2 reframes `/workspace` as the OpenCare Health Workspace with capability-aware
+Person switching, all-three-type Review Inbox and Timeline surfaces,
+current/history record grouping, human-readable provenance, Visit Questions,
+Visit Brief content schema v2 with readable v1 revisions, and portable vault
+export format v3. It adds no schema migration, family-access-v3, Visit Brief
+schema v3, or new runtime dependency. The deterministic offline reviewer
+(`python -m evals.p2_review`) and its focused test pass with these counters at
+zero: `cross_person_workspace_exposures`,
+`stale_person_render_acceptances`, `unauthorized_ui_backed_mutations`,
+`hidden_record_count_exposures`, `hidden_source_metadata_exposures`, and
+`legacy_scope_expansions`.
+
 ## Preserved boundaries
 
 - published `v0.1.0` controlled private-alpha baseline and current `v0.2.0`
@@ -254,10 +272,8 @@ deterministic reviewer: `python -m evals.p1_review` (guide:
 - deterministic Medication and Visit lifecycle, exports, and offline recovery;
 - guarded answer validation and medical-safety restrictions;
 - no new runtime dependency;
-- on `main` (P1 branch adds the source-backed Conditions/Labs lifecycle per the
-  section above): no Phase 3 ingest, OCR, Conditions/Labs lifecycle, FHIR,
-  Sentient, EvoSkill, genetics expansion, cloud synchronization, or public
-  SaaS identity.
+- on public `main`: no Phase 3 ingest, OCR, document upload, FHIR, Sentient,
+  EvoSkill, genetics expansion, cloud synchronization, or public SaaS identity.
 
 ## Remaining product limits
 

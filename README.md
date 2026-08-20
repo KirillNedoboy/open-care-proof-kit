@@ -158,6 +158,8 @@ downstream adapters, and the
 ## Reviewer Quick Links
 
 - Local reviewer route: `/demo/health-vault`
+- P2 deterministic reviewer: `.\.venv\Scripts\python.exe -m evals.p2_review`
+- P2 reviewer guide: [docs/p2-reviewer-guide.md](docs/p2-reviewer-guide.md)
 - Reviewer pack: [docs/final_reviewer_pack.md](docs/final_reviewer_pack.md)
 - Reviewer quickstart: [docs/reviewer_quickstart.md](docs/reviewer_quickstart.md)
 - Health/Family Vault demo guide: [docs/health_family_vault_demo.md](docs/health_family_vault_demo.md)
@@ -178,8 +180,9 @@ downstream adapters, and the
 - Actor-scoped live vault and Workspace at `/vault` and `/workspace`.
 - Actor-scoped chat at `/chat`; the browser sends only the question and the
   server builds context for the authorized active Person.
-- Schema v5 Actors, scrypt credentials, Families, relationships, append-only
-  consent, assignments, hash-only invitations, and metadata-only access audit.
+- Product Core schema v7 Actors, scrypt credentials, Families, relationships,
+  append-only consent, assignments, hash-only invitations, and metadata-only
+  access audit.
 - Eight-hour server-side sessions in a separate runtime database, same-origin
   checks, and CSRF enforcement for authenticated mutations.
 - Fixed owner/caregiver scopes, independent last-owner and last-administrator
@@ -199,12 +202,13 @@ downstream adapters, and the
 - Runtime-only session storage through `OPENCARE_SESSION_DB_PATH`, outside
   Product Core backup and recovery.
 - Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
-- Deterministic medication lifecycle, persistent Visits and Visit Questions,
-  persisted Visit Briefs, and deterministic Person export v2 under
-  `app/product_core/`.
+- Deterministic medication/condition/lab lifecycle, persistent Visits and Visit
+  Questions, persisted Visit Briefs (content schema v2; v1 revisions readable),
+  and deterministic Person export v3 under `app/product_core/`.
 - Versioned Product Core JSON API under `/api/product-core/v1` for source
-registration, candidate review, canonical medications, timeline, Visits, Visit
-Questions, Visit Brief generation, and portable vault export.
+  registration, candidate review, canonical medication/condition/lab records,
+  timeline, Visits, Visit Questions, Visit Brief generation, and portable vault
+  export.
 - Dockerfile, compose foundation, and deployment guide for self-hosted use.
 - Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
 - Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
@@ -331,6 +335,7 @@ Core validation:
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
 .\.venv\Scripts\python.exe -m evals.trust_metrics
+.\.venv\Scripts\python.exe -m evals.p2_review
 git diff --check
 ```
 
@@ -340,9 +345,9 @@ Product Core migration smoke test:
 .\.venv\Scripts\python.exe -c "from app.config import get_settings; from app.product_core.sqlite import SQLiteDatabase; s=get_settings(); SQLiteDatabase(s.product_db_path).migrate()"
 ```
 
-Product Core persists medication lifecycle records, active people profiles,
-Visits, user-authored Visit Questions, and schema v5 Family identity/access
-state. The API uses the same
+Product Core persists medication/condition/lab lifecycle records, active
+people profiles, Visits, user-authored Visit Questions, and schema v7 Family
+identity/access state. The API uses the same
 SQLite metadata and immutable UTF-8 source payloads configured through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
 application startup. The API has persisted active people profiles; legacy opaque
@@ -409,7 +414,7 @@ verifies, atomically activates, verifies again, and rolls back handled failures.
 It cannot guarantee crash- or power-loss safety between filesystem operations;
 exact abandoned recovery artifacts block subsequent recovery until inspected.
 
-Recovery restores durable Actor credentials and the complete v5 access state,
+Recovery restores durable Actor credentials and the complete v7 access state,
 including revocations. It restores neither `.env`, plaintext passwords,
 invitation codes, `OPENCARE_SECRET_KEY`, provider keys, cookies, sessions, TLS
 files, nor deployment configuration. Every Actor logs in again and creates a
@@ -422,7 +427,7 @@ Start the local app:
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-On a fresh schema v5 installation, open `/bootstrap` while no Actor exists.
+On a fresh schema v7 installation, open `/bootstrap` while no Actor exists.
 Bootstrap creates the first local Actor and installation administrator; it
 grants no implicit Person access. Any selected existing Person becomes an owner
 grant only after the explicit full-access confirmation. Later sessions start at
@@ -573,18 +578,20 @@ Near-term work should stay conservative:
 See [docs/roadmap/product-core-roadmap.md](docs/roadmap/product-core-roadmap.md)
 for the canonical next-phase roadmap. The older
 [docs/roadmap.md](docs/roadmap.md) is historical.
-# Visit Preparation Workspace
+# OpenCare Health Workspace
 
 `/workspace` is the primary OpenCare entry point and `/` redirects there. It uses the
-versioned Product Core API for manual medication entry, review, confirmed records,
-the Product Core timeline, persistent Visits and user-authored Visit Questions,
-and Visit-scoped persisted Brief revisions with confirmed-evidence selection,
-editable preparation notes, history/restore, Markdown copy/download, and an
-explicit Person-scoped portable vault download. The
-legacy deterministic Person-scoped Brief endpoint remains available. Profiles
-and selected Visits remain only in page memory; the active Person selection is
-held in the server-side Actor session.
+versioned Product Core API for capability-aware Person switching, all-three-type
+Review Inbox and Timeline surfaces, current/history records, human-readable
+provenance, source-backed medication/condition/lab review, persistent Visits and
+user-authored Visit Questions, and Visit-scoped persisted Brief revisions with
+confirmed-evidence selection, editable preparation notes, history/restore,
+Markdown copy/download, and an explicit Person-scoped portable vault v3
+download. Visit Brief content schema v2 remains readable for v1 revisions.
+The legacy deterministic Person-scoped Brief endpoint remains available.
+Profiles and selected Visits remain only in page memory; the active Person
+selection is held in the server-side Actor session.
 Legacy opaque person IDs migrate to `Imported profile` records without inferred data.
 `/chat` remains a supporting feature behind the same Actor and Person policy.
 Family/access management and Actor deactivation are implemented. Person
-deletion, uploads, extraction, OCR, and Phase 3 ingest remain out of scope.
+deletion, document upload, extraction, OCR, and Phase 3 ingest remain out of scope.
