@@ -15,7 +15,12 @@ from app.product_core.installation_backup import (
 )
 from app.product_core.models import Person
 from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
-from app.product_core.services import MedicationLifecycleService, SourceService
+from app.product_core.services import (
+    DocumentService,
+    ImmutableSourceStore,
+    MedicationLifecycleService,
+    SourceService,
+)
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visits import VisitPlanningService
 
@@ -57,7 +62,7 @@ def test_backup_and_offline_verify_create_a_complete_installation_artifact(
     )
     manifest = json.loads(manifest_bytes)
     assert manifest["format_version"] == 1
-    assert manifest["product_core_schema_version"] == 7
+    assert manifest["product_core_schema_version"] == 8
     assert manifest["created_at"] == "2026-07-30T12:00:00+00:00"
     assert manifest["sources"][0]["source_id"] == source.id
     assert (destination / "sources" / source.id / "payload.bin").is_file()
@@ -346,3 +351,46 @@ def _refresh_database_payload_manifest(destination: Path) -> None:
     (destination / "manifest.sha256").write_bytes(
         hashlib.sha256(raw).hexdigest().encode("ascii") + b"\n"
     )
+
+
+@pytest.mark.parametrize("mutation", ["missing_page", "altered_page"])
+def test_backup_rejects_missing_or_altered_document_extraction_pages(
+    tmp_path: Path, mutation: str
+) -> None:
+    database = SQLiteDatabase(tmp_path / "active.sqlite3")
+    database.migrate()
+    now = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    with database.uow() as uow:
+        uow.people.insert(
+            Person(
+                person_id="person-1",
+                display_name="Ada",
+                created_at=now,
+                updated_at=now,
+                is_active=True,
+            )
+        )
+    source_dir = tmp_path / "active-sources"
+    document = DocumentService(database, ImmutableSourceStore(source_dir)).register(
+        "person-1", b"document evidence", "text/plain"
+    )
+    with sqlite3.connect(database.path) as connection:
+        connection.execute("DROP TRIGGER document_extraction_pages_immutable_delete")
+        connection.execute("DROP TRIGGER document_extraction_pages_immutable_update")
+        if mutation == "missing_page":
+            connection.execute(
+                "DELETE FROM document_extraction_pages WHERE extraction_id = ?",
+                (document.extraction.extraction_id,),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE document_extraction_pages
+                SET normalized_text = 'altered', extracted_chars = 7
+                WHERE extraction_id = ?
+                """,
+                (document.extraction.extraction_id,),
+            )
+
+    with pytest.raises(InstallationBackupError, match="document_extraction"):
+        InstallationBackupService(database.path, source_dir).backup(tmp_path / "backup")

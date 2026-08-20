@@ -240,7 +240,9 @@ def _validate_snapshot(connection: sqlite3.Connection) -> int:
         raise InstallationBackupError("unsupported_schema_version")
     _validate_lifecycle(connection)
     _validate_brief_revisions(connection)
+    _validate_documents(connection)
     _validate_family_access(connection)
+    _validate_security_evidence(connection)
     return versions[-1]
 
 
@@ -258,6 +260,8 @@ def _snapshot_sources(connection: sqlite3.Connection) -> list[Source]:
             media_type=row["media_type"],
             created_at=parse_utc_datetime(row["created_at"]),
             provenance=json.loads(row["provenance_json"]),
+            original_filename=row["original_filename"],
+            document_kind=row["document_kind"],
         )
         _validated_source_id(source.id)
         sources.append(source)
@@ -585,6 +589,121 @@ def _validate_brief_revisions(connection: sqlite3.Connection) -> None:
             raise InstallationBackupError("visit_brief_integrity_failed") from exc
 
 
+def _validate_documents(connection: sqlite3.Connection) -> None:
+    invalid_identity = connection.execute(
+        """
+        SELECT 1
+        FROM document_extractions AS extraction
+        LEFT JOIN sources AS source ON source.id = extraction.source_id
+        WHERE source.id IS NULL
+           OR source.source_type <> 'document'
+           OR source.person_id <> extraction.person_id
+        LIMIT 1
+        """
+    ).fetchone()
+    missing_extraction = connection.execute(
+        """
+        SELECT 1 FROM sources AS source
+        WHERE source.source_type = 'document'
+          AND NOT EXISTS (
+              SELECT 1 FROM document_extractions AS extraction
+              WHERE extraction.source_id = source.id
+                AND extraction.person_id = source.person_id
+                AND extraction.status = 'complete'
+          )
+        LIMIT 1
+        """
+    ).fetchone()
+    if invalid_identity is not None or missing_extraction is not None:
+        raise InstallationBackupError("document_extraction_consistency_failed")
+
+    extractions = connection.execute(
+        "SELECT * FROM document_extractions ORDER BY extraction_id"
+    ).fetchall()
+    for extraction in extractions:
+        pages = connection.execute(
+            """
+            SELECT * FROM document_extraction_pages
+            WHERE extraction_id = ?
+            ORDER BY page_number
+            """,
+            (extraction["extraction_id"],),
+        ).fetchall()
+        if (
+            len(pages) != extraction["page_count"]
+            or [row["page_number"] for row in pages] != list(range(1, len(pages) + 1))
+        ):
+            raise InstallationBackupError("document_extraction_page_count_failed")
+        text_digest = hashlib.sha256()
+        total_chars = 0
+        for page in pages:
+            encoded = str(page["normalized_text"]).encode("utf-8")
+            if (
+                page["source_id"] != extraction["source_id"]
+                or page["person_id"] != extraction["person_id"]
+                or page["extracted_chars"] != len(str(page["normalized_text"]))
+                or hashlib.sha256(encoded).hexdigest() != page["page_hash"]
+            ):
+                raise InstallationBackupError("document_extraction_page_integrity_failed")
+            text_digest.update(len(encoded).to_bytes(8, "big"))
+            text_digest.update(encoded)
+            total_chars += int(page["extracted_chars"])
+        if (
+            total_chars != extraction["total_chars"]
+            or text_digest.hexdigest() != extraction["text_hash"]
+        ):
+            raise InstallationBackupError("document_extraction_integrity_failed")
+
+    candidates = connection.execute(
+        """
+        SELECT candidate.provenance_locator_json, source.id AS source_id,
+               source.person_id, source.content_hash
+        FROM candidate_facts AS candidate
+        JOIN sources AS source ON source.id = candidate.source_id
+        WHERE source.source_type = 'document'
+        ORDER BY candidate.id
+        """
+    ).fetchall()
+    for candidate in candidates:
+        try:
+            locator = json.loads(candidate["provenance_locator_json"])
+            if (
+                not isinstance(locator, dict)
+                or locator.get("kind") != "document_text_span"
+                or locator.get("source_id") != candidate["source_id"]
+                or locator.get("content_hash") != candidate["content_hash"]
+            ):
+                raise ValueError
+            page = connection.execute(
+                """
+                SELECT * FROM document_extraction_pages
+                WHERE extraction_id = ? AND page_number = ?
+                """,
+                (locator.get("extraction_id"), locator.get("page_number")),
+            ).fetchone()
+            start = locator.get("start_codepoint")
+            end = locator.get("end_codepoint")
+            if (
+                page is None
+                or page["source_id"] != candidate["source_id"]
+                or page["person_id"] != candidate["person_id"]
+                or type(start) is not int
+                or type(end) is not int
+                or start < 0
+                or end <= start
+                or end > len(str(page["normalized_text"]))
+                or hashlib.sha256(
+                    str(page["normalized_text"])[start:end].encode("utf-8")
+                ).hexdigest()
+                != locator.get("selected_text_sha256")
+            ):
+                raise ValueError
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise InstallationBackupError(
+                "document_provenance_integrity_failed"
+            ) from exc
+
+
 def _validate_family_access(connection: sqlite3.Connection) -> None:
     scoped_tables = (
         "person_access_consent_history",
@@ -656,6 +775,96 @@ def _validate_family_access(connection: sqlite3.Connection) -> None:
     )
     if any(connection.execute(query).fetchone() is not None for query in inconsistent_queries):
         raise InstallationBackupError("family_access_consistency_failed")
+
+
+def _validate_security_evidence(connection: sqlite3.Connection) -> None:
+    inconsistent_credential = connection.execute(
+        """
+        SELECT 1
+        FROM actor_credentials AS credential
+        LEFT JOIN actor_credentials AS replacement
+          ON replacement.credential_id = credential.replaced_by_credential_id
+        WHERE credential.replaced_by_credential_id IS NOT NULL
+          AND (
+              replacement.credential_id IS NULL
+              OR replacement.actor_id <> credential.actor_id
+              OR credential.revoked_at IS NULL
+          )
+        LIMIT 1
+        """
+    ).fetchone()
+    if inconsistent_credential is not None:
+        raise InstallationBackupError("credential_consistency_failed")
+
+    receipt_rows = connection.execute(
+        """
+        SELECT receipt.*, consent.execution_id AS consent_execution_id,
+               consent.actor_id AS consent_actor_id,
+               consent.person_id AS consent_person_id,
+               consent.envelope_id AS consent_envelope_id
+        FROM agent_execution_receipts AS receipt
+        LEFT JOIN agent_disclosure_consents AS consent
+          ON consent.consent_id = receipt.consent_id
+        ORDER BY receipt.receipt_id
+        """
+    ).fetchall()
+    for row in receipt_rows:
+        try:
+            evidence_ids = json.loads(row["used_evidence_ids_json"])
+            used_tools = json.loads(row["used_tools_json"])
+            reasons = json.loads(row["reason_codes_json"])
+            metadata = json.loads(row["metadata_json"])
+            for values in (evidence_ids, used_tools, reasons):
+                if (
+                    not isinstance(values, list)
+                    or not all(isinstance(item, str) for item in values)
+                    or values != sorted(set(values))
+                ):
+                    raise ValueError
+            if not isinstance(metadata, dict):
+                raise ValueError
+            if (
+                row["consent_execution_id"] != row["execution_id"]
+                or row["consent_actor_id"] != row["actor_id"]
+                or row["consent_person_id"] != row["person_id"]
+                or row["consent_envelope_id"] != row["envelope_id"]
+                or re.fullmatch(r"sha256:[0-9a-f]{64}", row["receipt_id"]) is None
+                or re.fullmatch(r"[0-9a-f]{64}", row["receipt_sha256"]) is None
+                or (
+                    row["output_sha256"] is not None
+                    and re.fullmatch(r"[0-9a-f]{64}", row["output_sha256"]) is None
+                )
+                or (
+                    row["status"] == "completed"
+                    and (row["output_sha256"] is None or reasons)
+                )
+                or (
+                    row["status"] != "completed"
+                    and (row["output_sha256"] is not None or not reasons)
+                )
+                or parse_utc_datetime(row["completed_at"])
+                < parse_utc_datetime(row["started_at"])
+            ):
+                raise ValueError
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise InstallationBackupError("execution_receipt_integrity_failed") from exc
+
+    consent_rows = connection.execute(
+        """
+        SELECT consent_hash, disclosure_metadata_json, metadata_json
+        FROM agent_disclosure_consents ORDER BY consent_id
+        """
+    ).fetchall()
+    for row in consent_rows:
+        try:
+            if (
+                re.fullmatch(r"[0-9a-f]{64}", row["consent_hash"]) is None
+                or not isinstance(json.loads(row["disclosure_metadata_json"]), dict)
+                or not isinstance(json.loads(row["metadata_json"]), dict)
+            ):
+                raise ValueError
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise InstallationBackupError("disclosure_consent_integrity_failed") from exc
 
 
 def _source_payload_relative_path(source_id: str) -> str:

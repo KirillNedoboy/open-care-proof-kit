@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from app.product_core.errors import (
+    IntegrityStorageError,
     SourceCorruptionError,
     UnsafeSourcePathError,
     VisitBriefIntegrityError,
@@ -19,6 +20,8 @@ from app.product_core.models import Person
 from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
 from app.product_core.portable_vault_export import PortableVaultExportService
 from app.product_core.services import (
+    DocumentService,
+    ImmutableSourceStore,
     MedicationLifecycleService,
     SourceService,
 )
@@ -50,7 +53,7 @@ def test_empty_person_export_has_canonical_bundle_and_manifest_checksum(tmp_path
         assert archive.read("manifest.sha256").decode("ascii") == hashlib.sha256(
             manifest
         ).hexdigest()
-    assert vault["format_version"] == 3
+    assert vault["format_version"] == 4
     assert vault["person"]["person_id"] == "person-1"
     assert vault["sources"] == []
     assert "relative_path" not in manifest.decode("utf-8")
@@ -138,6 +141,107 @@ def test_populated_export_is_person_scoped_and_has_stable_canonical_payloads(
         )
     with pytest.raises(VisitBriefIntegrityError):
         exporter.export("person-1")
+
+
+def test_export_includes_unused_document_evidence_and_is_person_scoped(
+    tmp_path: Path,
+) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    database.migrate()
+    timestamp = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    with database.uow() as uow:
+        for person_id in ("person-1", "person-2"):
+            uow.people.insert(
+                Person(
+                    person_id=person_id,
+                    display_name=person_id,
+                    created_at=timestamp,
+                    updated_at=timestamp,
+                    is_active=True,
+                )
+            )
+    documents = DocumentService(database, ImmutableSourceStore(tmp_path / "sources"))
+    owned = documents.register(
+        "person-1",
+        b"First page evidence",
+        "text/plain",
+        original_filename="../safe-name.txt",
+    )
+    unrelated = documents.register(
+        "person-2",
+        b"Private other-person evidence",
+        "text/plain",
+        original_filename="private.txt",
+    )
+
+    exported = PortableVaultExportService(database, tmp_path / "sources").export("person-1")
+
+    with zipfile.ZipFile(BytesIO(exported.zip_bytes)) as archive:
+        names = archive.namelist()
+        vault = json.loads(archive.read("vault.json"))
+        manifest = json.loads(archive.read("manifest.json"))
+        owned_path = f"sources/{owned.source.id}/payload.bin"
+        assert owned_path in names
+        assert archive.read(owned_path) == b"First page evidence"
+        assert f"sources/{unrelated.source.id}/payload.bin" not in names
+        assert [item["source_id"] for item in vault["document_extractions"]] == [
+            owned.source.id
+        ]
+        assert vault["document_extraction_pages"][0]["normalized_text"] == (
+            "First page evidence"
+        )
+        assert vault["sources"][0]["original_filename"] == "safe-name.txt"
+        assert vault["sources"][0]["document_kind"] == "text"
+        assert [item["path"] for item in manifest["payloads"]] == [
+            "vault.json",
+            owned_path,
+        ]
+    serialized = exported.vault_json.decode("utf-8")
+    assert unrelated.source.id not in serialized
+    assert "Private other-person evidence" not in serialized
+    assert "../safe-name.txt" not in serialized
+
+
+@pytest.mark.parametrize("mutation", ["missing_page", "altered_page"])
+def test_export_rejects_incomplete_or_altered_document_extraction(
+    tmp_path: Path, mutation: str
+) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    database.migrate()
+    timestamp = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    with database.uow() as uow:
+        uow.people.insert(
+            Person(
+                person_id="person-1",
+                display_name="Ada",
+                created_at=timestamp,
+                updated_at=timestamp,
+                is_active=True,
+            )
+        )
+    document = DocumentService(
+        database, ImmutableSourceStore(tmp_path / "sources")
+    ).register("person-1", b"immutable evidence", "text/plain")
+    with sqlite3.connect(database.path) as connection:
+        connection.execute("DROP TRIGGER document_extraction_pages_immutable_delete")
+        connection.execute("DROP TRIGGER document_extraction_pages_immutable_update")
+        if mutation == "missing_page":
+            connection.execute(
+                "DELETE FROM document_extraction_pages WHERE extraction_id = ?",
+                (document.extraction.extraction_id,),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE document_extraction_pages
+                SET normalized_text = 'altered', extracted_chars = 7
+                WHERE extraction_id = ?
+                """,
+                (document.extraction.extraction_id,),
+            )
+
+    with pytest.raises(IntegrityStorageError):
+        PortableVaultExportService(database, tmp_path / "sources").export("person-1")
 
 
 def test_export_fails_closed_when_reached_source_is_missing(tmp_path: Path) -> None:

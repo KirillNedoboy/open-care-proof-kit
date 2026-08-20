@@ -16,7 +16,12 @@ from app.product_core.installation_recovery import (
 )
 from app.product_core.models import Person
 from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
-from app.product_core.services import MedicationLifecycleService, SourceService
+from app.product_core.services import (
+    DocumentService,
+    ImmutableSourceStore,
+    MedicationLifecycleService,
+    SourceService,
+)
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visits import VisitPlanningService
 
@@ -220,3 +225,47 @@ def _backup_with_source(tmp_path: Path) -> tuple[SQLiteDatabase, SourceService, 
     backup = tmp_path / "backup"
     InstallationBackupService(database.path, sources.store.source_dir).backup(backup)
     return database, sources, source, backup
+
+
+def test_recovery_round_trips_document_payload_and_extraction_identity(
+    tmp_path: Path,
+) -> None:
+    database = SQLiteDatabase(tmp_path / "active.sqlite3")
+    database.migrate()
+    now = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    with database.uow() as uow:
+        uow.people.insert(
+            Person(
+                person_id="person-1",
+                display_name="Ada",
+                created_at=now,
+                updated_at=now,
+                is_active=True,
+            )
+        )
+    source_dir = tmp_path / "active-sources"
+    registered = DocumentService(database, ImmutableSourceStore(source_dir)).register(
+        "person-1",
+        b"preserved extraction text",
+        "text/plain",
+        original_filename="evidence.txt",
+    )
+    backup = tmp_path / "backup"
+    InstallationBackupService(database.path, source_dir).backup(backup)
+    target = tmp_path / "recovered"
+
+    InstallationRecoveryService().recover(backup, target, confirm_maintenance=True)
+
+    assert (
+        target / "sources" / registered.source.id / "payload.bin"
+    ).read_bytes() == b"preserved extraction text"
+    recovered = SQLiteDatabase(target / "database.sqlite3")
+    with recovered.uow() as uow:
+        source = uow.sources.get(registered.source.id)
+        extraction = uow.document_extractions.get(registered.extraction.extraction_id)
+        pages = uow.document_extractions.list_pages(registered.extraction.extraction_id)
+    assert source is not None
+    assert source.original_filename == "evidence.txt"
+    assert source.document_kind == "text"
+    assert extraction == registered.extraction
+    assert [page.normalized_text for page in pages] == ["preserved extraction text"]

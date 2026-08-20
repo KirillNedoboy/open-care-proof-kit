@@ -15,6 +15,8 @@ from app.product_core.models import (
     CandidateFact,
     CanonicalRecord,
     ConditionCandidateDetail,
+    DocumentExtractionPage,
+    DocumentExtractionSnapshot,
     LabCandidateDetail,
     MedicationCandidateDetail,
     PersistedVisitBrief,
@@ -31,7 +33,7 @@ from app.product_core.persisted_visit_briefs import verify_persisted_visit_brief
 from app.product_core.services import ImmutableSourceStore
 from app.product_core.sqlite import SQLiteDatabase
 
-PORTABLE_VAULT_FORMAT_VERSION = 3
+PORTABLE_VAULT_FORMAT_VERSION = 4
 PRODUCT_CORE_SCHEMA_VERSION = PRODUCT_MIGRATIONS[-1].version
 
 
@@ -103,26 +105,27 @@ class PortableVaultExportService:
                     )
                 briefs.append((brief, revisions))
 
-            source_ids = {
-                item.source_id for item in candidates
-            } | {item.source_id for item in records} | {item.source_id for item in events}
-            for selections in selections_by_revision.values():
-                source_ids.update(selection.source_id for selection in selections)
-
-            sources: list[Source] = []
+            sources = sorted(
+                uow.sources.list_for_person(person_id),
+                key=lambda item: (isoformat_utc(item.created_at), item.id),
+            )
             source_payloads: dict[str, bytes] = {}
-            for source_id in sorted(source_ids):
-                source = uow.sources.get(source_id)
-                if source is None:
-                    raise IntegrityStorageError(f"export source is missing: {source_id}")
-                if source.person_id != person_id:
-                    raise IntegrityStorageError(
-                        f"export source belongs to another person: {source_id}"
-                    )
+            document_extractions: list[DocumentExtractionSnapshot] = []
+            document_pages: list[DocumentExtractionPage] = []
+            for source in sources:
                 _source_archive_path(source)
-                sources.append(source)
                 source_payloads[source.id] = self.source_store.read_for_portable_export(source)
-
+                if source.source_type != "document":
+                    continue
+                extraction = uow.document_extractions.get_complete_for_source(source.id)
+                if extraction is None:
+                    raise IntegrityStorageError(
+                        f"document extraction is missing: {source.id}"
+                    )
+                pages = uow.document_extractions.list_pages(extraction.extraction_id)
+                _verify_document_extraction(source, extraction, pages)
+                document_extractions.append(extraction)
+                document_pages.extend(pages)
             connection = uow.connection
             assert connection is not None
             memberships = [
@@ -183,11 +186,18 @@ class PortableVaultExportService:
                     raise IntegrityStorageError("export Actor history is incomplete")
                 actors.append(_actor_dto(actor))
 
+        candidates_by_id = {candidate.id: candidate for candidate in candidates}
         vault_json = _canonical_json_bytes(
             {
                 "format_version": PORTABLE_VAULT_FORMAT_VERSION,
                 "person": _person_dto(person),
                 "sources": [_source_dto(source) for source in sources],
+                "document_extractions": [
+                    _document_extraction_dto(item) for item in document_extractions
+                ],
+                "document_extraction_pages": [
+                    _document_extraction_page_dto(item) for item in document_pages
+                ],
                 "candidate_facts": [_candidate_dto(item) for item in candidates],
                 "candidate_medication_details": [
                     _candidate_medication_detail_dto(item)
@@ -204,7 +214,10 @@ class PortableVaultExportService:
                     for item in candidates
                     if item.fact_type == "lab"
                 ],
-                "canonical_records": [_canonical_record_dto(item) for item in records],
+                "canonical_records": [
+                    _canonical_record_dto(item, candidates_by_id[item.candidate_id])
+                    for item in records
+                ],
                 "canonical_medication_details": [
                     _canonical_medication_detail_dto(item)
                     for item in records
@@ -317,6 +330,16 @@ def _person_dto(person: Person) -> dict[str, object]:
 
 
 def _source_dto(source: Source) -> dict[str, object]:
+    original_filename = source.original_filename
+    if original_filename is not None and (
+        "/" in original_filename
+        or "\\" in original_filename
+        or "\x00" in original_filename
+        or original_filename in {".", ".."}
+    ):
+        raise IntegrityStorageError(
+            f"export source filename is not metadata-safe: {source.id}"
+        )
     return {
         "source_id": source.id,
         "person_id": source.person_id,
@@ -324,7 +347,72 @@ def _source_dto(source: Source) -> dict[str, object]:
         "content_hash": source.content_hash,
         "size_bytes": source.size_bytes,
         "media_type": source.media_type,
+        "original_filename": original_filename,
+        "document_kind": source.document_kind,
         "created_at": isoformat_utc(source.created_at),
+    }
+
+
+def _verify_document_extraction(
+    source: Source,
+    extraction: DocumentExtractionSnapshot,
+    pages: list[DocumentExtractionPage],
+) -> None:
+    if (
+        extraction.source_id != source.id
+        or extraction.person_id != source.person_id
+        or len(pages) != extraction.page_count
+        or [page.page_number for page in pages] != list(range(1, len(pages) + 1))
+    ):
+        raise IntegrityStorageError("document extraction identity mismatch")
+    text_digest = hashlib.sha256()
+    total_chars = 0
+    for page in pages:
+        encoded = page.normalized_text.encode("utf-8")
+        if (
+            page.extraction_id != extraction.extraction_id
+            or page.source_id != source.id
+            or page.person_id != source.person_id
+            or page.extracted_chars != len(page.normalized_text)
+            or hashlib.sha256(encoded).hexdigest() != page.page_hash
+        ):
+            raise IntegrityStorageError("document extraction page integrity mismatch")
+        text_digest.update(len(encoded).to_bytes(8, "big"))
+        text_digest.update(encoded)
+        total_chars += page.extracted_chars
+    if total_chars != extraction.total_chars or text_digest.hexdigest() != extraction.text_hash:
+        raise IntegrityStorageError("document extraction integrity mismatch")
+
+
+def _document_extraction_dto(
+    extraction: DocumentExtractionSnapshot,
+) -> dict[str, object]:
+    return {
+        "extraction_id": extraction.extraction_id,
+        "source_id": extraction.source_id,
+        "person_id": extraction.person_id,
+        "extractor": extraction.extractor,
+        "extractor_version": extraction.extractor_version,
+        "status": extraction.status,
+        "text_hash": extraction.text_hash,
+        "total_chars": extraction.total_chars,
+        "page_count": extraction.page_count,
+        "extracted_at": isoformat_utc(extraction.extracted_at),
+    }
+
+
+def _document_extraction_page_dto(
+    page: DocumentExtractionPage,
+) -> dict[str, object]:
+    return {
+        "extraction_id": page.extraction_id,
+        "source_id": page.source_id,
+        "person_id": page.person_id,
+        "page_number": page.page_number,
+        "normalized_text": page.normalized_text,
+        "decoded_content_bytes": page.decoded_content_bytes,
+        "extracted_chars": page.extracted_chars,
+        "page_hash": page.page_hash,
     }
 
 
@@ -389,7 +477,9 @@ def _candidate_lab_detail_dto(candidate: CandidateFact) -> dict[str, object]:
     }
 
 
-def _canonical_record_dto(record: CanonicalRecord) -> dict[str, object]:
+def _canonical_record_dto(
+    record: CanonicalRecord, candidate: CandidateFact
+) -> dict[str, object]:
     return {
         "canonical_record_id": record.id,
         "person_id": record.person_id,
@@ -399,6 +489,7 @@ def _canonical_record_dto(record: CanonicalRecord) -> dict[str, object]:
         "confirmed_at": isoformat_utc(record.confirmed_at),
         "is_active": record.is_active,
         "superseded_by_record_id": record.superseded_by_record_id,
+        "provenance_locator": candidate.provenance_locator,
     }
 
 
