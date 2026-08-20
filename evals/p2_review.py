@@ -58,6 +58,7 @@ from app.product_core.errors import (
     PersonNotFoundError,
     SourceNotFoundError,
 )
+from app.product_core.genetics import GeneticsService
 from app.product_core.models import (
     ConditionCandidateInput,
     LabCandidateDetail,
@@ -309,6 +310,13 @@ def run_review() -> tuple[int, dict[str, str]]:
         ),
         people=PeopleService(database, clock=FixedClock(), id_factory=ids),
         lifecycle=lifecycle,
+        genetics=GeneticsService(
+            database,
+            sources,
+            tmp_root,
+            clock=FixedClock(),
+            id_factory=ids,
+        ),
         visit_briefs=VisitBriefService(database),
         persisted_visit_briefs=briefs,
         portable_vault_exports=PortableVaultExportService(database, sources.store),
@@ -594,9 +602,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     checks.check(
         carol_capability_denied
         and (
-            family.authorize_person(
-                carol.actor_id, "child-person", "medication.read"
-            ).allowed
+            family.authorize_person(carol.actor_id, "child-person", "medication.read").allowed
             is False
         ),
         "hidden actor could obtain child-person capabilities",
@@ -631,17 +637,10 @@ def run_review() -> tuple[int, dict[str, str]]:
             for key in ("condition_read", "condition_write", "lab_read", "lab_write")
         )
         and (
-            family.authorize_person(
-                legacy.actor_id, "child-person", "condition.read"
-            ).allowed
+            family.authorize_person(legacy.actor_id, "child-person", "condition.read").allowed
             is False
         )
-        and (
-            family.authorize_person(
-                legacy.actor_id, "child-person", "lab.read"
-            ).allowed
-            is False
-        ),
+        and (family.authorize_person(legacy.actor_id, "child-person", "lab.read").allowed is False),
         "legacy family-access-v1 grant silently gained condition/lab capability",
     )
     lines["person isolation"] = "pass"
@@ -661,9 +660,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     }
     unsupported_ids = {
         candidate.id
-        for candidate in lifecycle.list_candidates(
-            "child-person", status="unsupported"
-        )
+        for candidate in lifecycle.list_candidates("child-person", status="unsupported")
     }
     checks.check(
         rejected_cond.id in rejected_ids and unsupported_cond.id in unsupported_ids,
@@ -737,7 +734,8 @@ def run_review() -> tuple[int, dict[str, str]]:
     # ------------------------------------------------------------------ #
     bob_metadata = _safe_source_metadata(sources.get(med_source.id))
     checks.check(
-        set(bob_metadata) == {
+        set(bob_metadata)
+        == {
             "source_id",
             "source_type",
             "content_hash",
@@ -837,9 +835,7 @@ def run_review() -> tuple[int, dict[str, str]]:
         eligible_types == {"medication", "condition", "lab"}
         and len(eligible) == 3
         and all(
-            sources.get(
-                str(cast(dict[str, object], preview["source"])["source_id"])
-            ).person_id
+            sources.get(str(cast(dict[str, object], preview["source"])["source_id"])).person_id
             == "child-person"
             for preview in eligible
         ),
@@ -926,11 +922,9 @@ def run_review() -> tuple[int, dict[str, str]]:
     lines["export version"] = "pass"
 
     # ------------------------------------------------------------------ #
-    # 15. Historical P1 / G1-G5 boundaries remain while D1 versions advance.
-    # ------------------------------------------------------------------ #
     checks.check(
-        product_migrations.PRODUCT_MIGRATIONS[-1].version == 8,
-        "product schema version is not the current v8",
+        product_migrations.PRODUCT_MIGRATIONS[-1].version == 9,
+        "product schema version is not the current v9",
     )
     checks.check(
         PORTABLE_VAULT_FORMAT_VERSION == 4
@@ -964,9 +958,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     checks.check(
         bob_revoked
         and (
-            family.authorize_person(
-                bob.actor_id, "child-person", "medication.read"
-            ).allowed
+            family.authorize_person(bob.actor_id, "child-person", "medication.read").allowed
             is False
         ),
         "revoked caregiver still obtained child-person capabilities",
@@ -1069,8 +1061,7 @@ def run_review() -> tuple[int, dict[str, str]]:
 
     # Legacy scope expansion: a v1-granted actor gaining condition/lab capability.
     if any(
-        legacy_caps[key]
-        for key in ("condition_read", "condition_write", "lab_read", "lab_write")
+        legacy_caps[key] for key in ("condition_read", "condition_write", "lab_read", "lab_write")
     ):
         legacy_scope_expansions.append("legacy:condition/lab")
 

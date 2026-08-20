@@ -27,6 +27,7 @@ from app.family_access.runtime import FamilyAccessRuntime
 from app.family_access.service import FamilyAccessService
 from app.family_access.sessions import SessionStore
 from app.product_core.access import ProductCoreAccess
+from app.product_core.genetics import GeneticsService
 from app.product_core.installation_backup import InstallationBackupService
 from app.product_core.installation_recovery import (
     InstallationRecoveryService,
@@ -244,6 +245,13 @@ def run_review() -> tuple[int, dict[str, str], dict[str, int]]:
             documents=documents,
             people=PeopleService(database, clock=clock, id_factory=ids),
             lifecycle=lifecycle,
+            genetics=GeneticsService(
+                database,
+                sources,
+                root,
+                clock=clock,
+                id_factory=ids,
+            ),
             visit_briefs=VisitBriefService(database),
             persisted_visit_briefs=PersistedVisitBriefService(
                 database,
@@ -405,10 +413,7 @@ def run_review() -> tuple[int, dict[str, str], dict[str, int]]:
             (("x" * 100_001).encode("utf-8"), "text/plain"),
         )
         checks.check(
-            all(
-                _document_rejected(documents, body, media)
-                for body, media in invalid_documents
-            )
+            all(_document_rejected(documents, body, media) for body, media in invalid_documents)
             and source_count
             == len(documents.list_for_person("alice-person"))
             + len(documents.list_for_person("carol-person")),
@@ -641,9 +646,7 @@ def run_review() -> tuple[int, dict[str, str], dict[str, int]]:
     return (1 if checks.failures else 0), lines, counters
 
 
-def _print_summary(
-    exit_code: int, lines: dict[str, str], counters: dict[str, int]
-) -> None:
+def _print_summary(exit_code: int, lines: dict[str, str], counters: dict[str, int]) -> None:
     print("D1 REVIEW")
     for heading, status in lines.items():
         print(f"{heading}: {status}")

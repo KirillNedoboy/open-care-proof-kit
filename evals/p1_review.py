@@ -88,6 +88,7 @@ class _Check:
         if not condition:
             self.failures.append(message)
 
+
 def _v1_brief_content_hash(content: dict[str, object], markdown: str) -> str:
     return hashlib.sha256(
         json.dumps(
@@ -499,9 +500,7 @@ def run_review() -> tuple[int, dict[str, str]]:
     # Export + backup/recovery round trip preserving P1 entities.
     # ------------------------------------------------------------------ #
     exported = json.loads(
-        PortableVaultExportService(database, sources.store)
-        .export("alice-person")
-        .vault_json
+        PortableVaultExportService(database, sources.store).export("alice-person").vault_json
     )
     checks.check(
         exported["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
@@ -512,7 +511,10 @@ def run_review() -> tuple[int, dict[str, str]]:
     backup = InstallationBackupService(db_path, source_dir, clock=FixedClock())
     destination = tmp_root / "backup"
     report = backup.backup(destination)
-    checks.check(report.valid is True and report.product_core_schema_version == 8, "backup invalid")
+    checks.check(
+        report.valid is True and report.product_core_schema_version == 9,
+        "backup invalid",
+    )
     target = tmp_root / "recovered"
     InstallationRecoveryService(clock=FixedClock()).recover(
         destination, target, confirm_maintenance=True
@@ -523,10 +525,12 @@ def run_review() -> tuple[int, dict[str, str]]:
         checks.check(
             connection.execute(
                 "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
-            ).fetchone()[0] >= 2
+            ).fetchone()[0]
+            >= 2
             and connection.execute(
                 "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'lab'"
-            ).fetchone()[0] == 1,
+            ).fetchone()[0]
+            == 1,
             "recovered database lost condition/lab canonicals",
         )
     lines["export/recovery"] = "pass"
