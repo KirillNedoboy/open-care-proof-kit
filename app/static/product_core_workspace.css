@@ -107,6 +107,10 @@ summary { min-height: 44px; display: flex; align-items: center; width: fit-conte
 fieldset { margin-top: .8rem; border: 1px solid var(--line-strong); border-radius: .5rem; }
 legend { padding: 0 .4rem; font-weight: 800; }
 pre { max-height: 36rem; white-space: pre-wrap; overflow: auto; padding: 1rem; background: #edf2ef; border-radius: .45rem; font: .9rem/1.55 Consolas, monospace; }
+.document-list { display: grid; gap: .65rem; }
+.document-panel, .document-viewer { margin-top: 1rem; }
+.document-page-text { min-height: 18rem; max-height: 36rem; overflow: auto; white-space: pre-wrap; font: .9rem/1.55 Consolas, monospace; }
+.selection-state { min-height: 1.5rem; color: var(--muted); }
 .export-warning { margin-top: 1rem; padding: 1rem; background: var(--warning-bg); border: 1px solid #dcc88f; border-radius: .55rem; }
 [hidden] { display: none !important; }
 @media (max-width: 820px) {

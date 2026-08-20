@@ -59,6 +59,16 @@
     return plain ? (plain[1] || plain[2] || "") : "";
   }
 
+  function sanitizeDocumentFilename(value, fallback = "document") {
+    const candidate = String(value || "")
+      .replace(/[\\/\u0000-\u001f\u007f"]/g, "-")
+      .replace(/[?#%]/g, "-")
+      .replace(/^\.+/, "")
+      .trim()
+      .slice(0, 120);
+    return candidate || fallback;
+  }
+
   global.OpenCareWorkspaceState = {
     shouldApplyResponse,
     shouldRefreshCapabilities,
@@ -68,5 +78,6 @@
     sortNewest,
     sanitizeDownloadFilename,
     contentDispositionFilename,
+    sanitizeDocumentFilename,
   };
 })(typeof window !== "undefined" ? window : globalThis);

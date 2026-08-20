@@ -2,7 +2,7 @@
   "use strict";
 
   const api = "/api/product-core/v1";
-  const state = { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), vaultExportTrigger: null, loadVersion: 0, controller: null };
+  const state = { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, loadVersion: 0, controller: null };
   const byId = (id) => document.getElementById(id);
   const make = (tag, value = "", className = "") => { const node = document.createElement(tag); node.textContent = value; node.className = className; return node; };
   const div = (id) => { const node = document.createElement("div"); node.id = id; return node; };
@@ -82,6 +82,71 @@
     return { blob, response };
   }
 
+  function documentContext() {
+    return { personId: state.person?.person_id || "", generation: state.loadVersion, signal: state.controller?.signal };
+  }
+  async function loadDocumentPage(document, pageNumber, trigger) {
+    if (!document || !state.capabilities.document_read) return;
+    try {
+      const page = await personRequest(`/people/${encodeURIComponent(state.person.person_id)}/documents/${encodeURIComponent(document.source_id)}/extractions/${encodeURIComponent(document.extraction.extraction_id)}/pages/${pageNumber}`);
+      if (page.source_id !== state.selectedDocument?.source_id || document.person_id !== state.person?.person_id) return;
+      state.selectedPage = page; state.selectedSpan = null; renderDocumentViewer(); byId("document-page-text").focus();
+    } catch (error) { if (error.name !== "AbortError") { status(error.message, "error"); trigger?.focus(); } }
+  }
+  function renderDocumentViewer() {
+    const viewer = byId("document-viewer"), doc = state.selectedDocument;
+    viewer.hidden = !doc;
+    if (!doc) return;
+    byId("document-viewer-title").textContent = doc.original_filename || "Document page text";
+    byId("document-viewer-provenance").textContent = `${doc.document_kind === "pdf" ? "PDF" : "Plain text"} · ${doc.size_bytes} bytes · SHA-256 ${doc.content_hash}`;
+    const select = byId("document-page-selector"); clear(select);
+    for (let page = 1; page <= doc.extraction.page_count; page += 1) { const option = document.createElement("option"); option.value = page; option.textContent = `Page ${page}`; option.selected = page === state.selectedPage?.page_number; select.append(option); }
+    byId("document-page-text").value = state.selectedPage?.normalized_text || "Choose a page to inspect.";
+    const span = state.selectedSpan;
+    byId("document-selection").textContent = span ? `Selected source span: characters ${span.start + 1}–${span.end}.` : "Select text to attach a precise source span.";
+    byId("document-candidate-form").hidden = !span || !state.capabilities.candidate_review;
+  }
+  function renderDocuments() {
+    const section = byId("documents"), list = byId("document-list"); section.hidden = !state.capabilities.document_read; clear(list);
+    byId("document-upload-panel").hidden = !(state.capabilities.document_write && state.capabilities.source_write);
+    byId("documents-empty").hidden = state.documents.length > 0;
+    state.documents.forEach((doc) => { const card = make("article", "", "record"), button = make("button", doc.original_filename || "Open document"); button.type = "button"; button.addEventListener("click", () => { state.selectedDocument = doc; state.selectedPage = null; state.selectedSpan = null; renderDocumentViewer(); void loadDocumentPage(doc, 1, button); }); card.append(make("strong", doc.original_filename || "Untitled document"), make("p", `${doc.document_kind === "pdf" ? "PDF" : "Plain text"} · ${doc.extraction.page_count} page${doc.extraction.page_count === 1 ? "" : "s"} · Added ${doc.created_at}`, "meta"), button); list.append(card); });
+    renderDocumentViewer();
+  }
+  async function loadDocuments(personIdContext) {
+    if (!state.capabilities.document_read) { state.documents = []; return []; }
+    const response = await request(`/people/${encodeURIComponent(personIdContext)}/documents`, {}, documentContext());
+    if (response.documents.some((doc) => doc.person_id !== personIdContext)) return [];
+    return response.documents;
+  }
+  async function uploadDocument(event) {
+    event.preventDefault();
+    if (!state.person || !state.capabilities.document_write || !state.capabilities.source_write) return;
+    const file = byId("document-file").files[0], submit = event.submitter;
+    if (!file) return;
+    submit.disabled = true;
+    try {
+      const body = await file.arrayBuffer();
+      const filename = OpenCareWorkspaceState.sanitizeDocumentFilename(file.name);
+      await personRequest(`/people/${encodeURIComponent(state.person.person_id)}/documents`, { method: "POST", body, headers: { "Content-Type": file.type === "application/pdf" ? "application/pdf" : "text/plain", "X-OpenCare-Filename": filename } });
+      event.target.reset(); await loadWorkspace(); status("Document uploaded.", "success");
+    } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { submit.disabled = false; }
+  }
+  async function submitDocumentCandidate(event) {
+    event.preventDefault();
+    const span = state.selectedSpan, type = byId("document-candidate-type").value;
+    if (!state.person || !span || !state.capabilities.candidate_review || !state.capabilities.source_write || !state.capabilities[`${type}_write`]) return;
+    const submit = event.submitter; submit.disabled = true;
+    const name = byId("document-candidate-name").value.trim(), detail = byId("document-candidate-detail").value.trim() || null;
+    try {
+      const sourceId = state.selectedDocument.source_id, locator = { kind: "span", start: span.start, end: span.end };
+      if (type === "medication") { await personRequest("/candidates/medications", { method: "POST", body: JSON.stringify({ person_id: state.person.person_id, source_id: sourceId, display_name: name, schedule_text: detail, note: null, provenance_locator: locator }) }); }
+      else if (type === "condition") { await personRequest("/candidates/conditions", { method: "POST", body: JSON.stringify({ person_id: state.person.person_id, source_id: sourceId, display_name: name, status_text: detail, onset_date: null, note: null, provenance_locator: locator }) }); }
+      else { await personRequest("/candidates/labs", { method: "POST", body: JSON.stringify({ person_id: state.person.person_id, source_id: sourceId, test_name: name, result_text: detail || "", unit_text: null, reference_range_text: null, observed_date: null, source_flag_text: null, note: null, provenance_locator: locator }) }); }
+      event.target.reset(); state.selectedSpan = null; await loadWorkspace(); status("Typed candidate is waiting for review.", "success");
+    } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { submit.disabled = false; }
+  }
+
   function pruneWorkspaceToCapabilities() {
     if (!state.capabilities.medication_read) Object.assign(state, { candidates: [], medications: [] });
     if (!state.capabilities.condition_read) Object.assign(state, { conditionCandidates: [], conditions: [] });
@@ -157,7 +222,7 @@
     state.controller?.abort();
     const generation = ++state.loadVersion;
     state.controller = new AbortController();
-    Object.assign(state, { person: { person_id: personId, display_name: "Loading profile…" }, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), vaultExportTrigger: null });
+    Object.assign(state, { person: { person_id: personId, display_name: "Loading profile…" }, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
     enableWorkspace(false);
     renderPersonContext();
     const personContext = { personId, generation, signal: state.controller.signal };
@@ -189,6 +254,11 @@
       if (capabilities.timeline_read) add("timeline", `/people/${encodeURIComponent(personId)}/timeline`);
       if (capabilities.visit_read) add("visits", `/people/${encodeURIComponent(personId)}/visits`);
       const loaded = Object.fromEntries(await Promise.all(loads));
+      if (capabilities.document_read) {
+        const documentResponse = await loadDocuments(personId);
+        if (!OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) return;
+        state.documents = documentResponse || state.documents;
+      }
       if (!OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) return;
       Object.assign(state, {
         candidates: (loaded.medicationCandidates?.candidates || []).filter((item) => item.fact_type === "medication" && item.person_id === personId),
@@ -630,7 +700,7 @@
     state.controller?.abort();
     state.loadVersion += 1;
     try { await setActivePerson(null); } catch (error) { status(error.message, "error"); return; }
-    Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), vaultExportTrigger: null, controller: null });
+    Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, controller: null });
     byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; byId("vault-export-warning").hidden = true; renderPersonContext(); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status("Profile selection cleared.");
   }
 
@@ -694,4 +764,17 @@
   byId("download-brief").addEventListener("click", async () => { if (!state.visit || !state.capabilities.brief_export) return; try { const markdown = await requestText(`/visits/${encodeURIComponent(state.visit.visit_id)}/brief/current:export`, { method: "POST", body: "{}" }, currentPersonContext()); const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `opencare-visit-brief-r${state.persistedBrief.current_revision_number}.md`; link.click(); URL.revokeObjectURL(link.href); status("Markdown download prepared.", "success"); } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } });
 
   enableWorkspace(false); renderPeople([]); refreshPeople().catch((error) => { status(error.message, "error"); });
+  byId("document-upload-form").addEventListener("submit", uploadDocument);
+  byId("document-page-selector").addEventListener("change", (event) => {
+    if (!state.selectedDocument) return;
+    state.selectedPage = null; state.selectedSpan = null;
+    void loadDocumentPage(state.selectedDocument, Number(event.target.value), event.target);
+  });
+  byId("document-page-text").addEventListener("select", () => {
+    const text = byId("document-page-text"), start = text.selectionStart, end = text.selectionEnd;
+    if (Number.isInteger(start) && Number.isInteger(end) && end > start) {
+      state.selectedSpan = { start, end }; renderDocumentViewer();
+    }
+  });
+  byId("document-candidate-form").addEventListener("submit", submitDocumentCandidate);
 })();
