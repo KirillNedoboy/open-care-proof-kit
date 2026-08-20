@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+# ruff: noqa: E501, UP035
 from collections import Counter
-from typing import Iterable
+from collections.abc import Iterable
 
 from pydantic import Field
 
@@ -49,7 +50,12 @@ def compare_ibs(
         if left_item.no_call or right_item.no_call:
             no_calls += 1
             continue
-        shared = sum((Counter(left_item.normalized_genotype or "") & Counter(right_item.normalized_genotype or "")).values())
+        shared = sum(
+            (
+                Counter(left_item.normalized_genotype or "")
+                & Counter(right_item.normalized_genotype or "")
+            ).values()
+        )
         ibs_counts[shared] += 1
         differing += left_item.normalized_genotype != right_item.normalized_genotype
 
@@ -63,7 +69,9 @@ def compare_ibs(
     if insufficient:
         limitations.append("No compatible called loci were available; no similarity is reported.")
     if no_calls or missing or incompatible:
-        limitations.append("No-call, missing, or build/orientation-incompatible loci were excluded.")
+        limitations.append(
+            "No-call, missing, or build/orientation-incompatible loci were excluded."
+        )
     return IbsComparison(
         common_loci=common,
         differing_genotypes=differing,

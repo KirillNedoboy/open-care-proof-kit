@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Iterable
 from hashlib import sha256
 from pathlib import Path
-from typing import Iterable
 
 from app.genetics.models import (
     CandidateFinding,

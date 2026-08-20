@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+# ruff: noqa: E501
+from collections.abc import Collection, Mapping
 from hashlib import sha256
-from typing import Collection, Mapping
 
 from app.genetics.models import (
     ConsumerGenotypeImport,
@@ -60,7 +61,9 @@ def parse_consumer_genotypes(
 
     build = normalize_genome_build(genome_build)
     rsid_targets = frozenset(selected_rsids)
-    locus_targets = frozenset((chromosome.upper().removeprefix("CHR"), position) for chromosome, position in selected_loci)
+    locus_targets = frozenset(
+        (chromosome.upper().removeprefix("CHR"), position) for chromosome, position in selected_loci
+    )
     orientations = orientation_by_rsid or {}
     parsed_count = 0
     observations: list[GenotypeObservation] = []
@@ -73,7 +76,9 @@ def parse_consumer_genotypes(
         if len(columns) != 4:
             columns = line.split()
         if len(columns) != 4:
-            raise ValueError(f"invalid consumer genotype row at line {line_number}: expected 4 columns")
+            raise ValueError(
+                f"invalid consumer genotype row at line {line_number}: expected 4 columns"
+            )
 
         rsid, chromosome_raw, position_raw, reported_raw = (column.strip() for column in columns)
         if not rsid:

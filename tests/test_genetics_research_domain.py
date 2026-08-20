@@ -1,4 +1,4 @@
-import json
+# ruff: noqa: E501
 from pathlib import Path
 
 import pytest
@@ -6,7 +6,11 @@ from pydantic import ValidationError
 
 from app.genetics.comparison import compare_ibs
 from app.genetics.consumer import parse_consumer_genotypes
-from app.genetics.evidence import assess_evidence, intersect_pgx_medications, load_genetics_evidence_pack
+from app.genetics.evidence import (
+    assess_evidence,
+    intersect_pgx_medications,
+    load_genetics_evidence_pack,
+)
 from app.genetics.models import (
     CoverageState,
     EpistemicStatus,
@@ -20,7 +24,6 @@ from app.genetics.research import (
     build_research_packet,
     validate_research_output,
 )
-
 
 PACK_PATH = Path("data/evidence_packs/genetics_demo_pack.json")
 

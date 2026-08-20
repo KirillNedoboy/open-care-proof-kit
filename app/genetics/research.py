@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+# ruff: noqa: E501
 import json
 import re
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from pydantic import Field
 
@@ -104,7 +106,9 @@ def build_research_packet(
     _require_known("finding", selected_finding_ids, finding_index)
     _reject_raw_values(selected_health_records)
 
-    selected_observations = {key: observation_index[key] for key in sorted(selected_observation_ids)}
+    selected_observations = {
+        key: observation_index[key] for key in sorted(selected_observation_ids)
+    }
     selected_evidence = {key: evidence_index[key] for key in sorted(selected_evidence_ids)}
     selected_findings = {key: finding_index[key] for key in sorted(selected_finding_ids)}
     health_records: dict[str, SelectedHealthRecord] = {}
@@ -113,18 +117,36 @@ def build_research_packet(
         kind = record.pop("kind", None)
         if not isinstance(kind, str) or not kind:
             raise ValueError(f"selected health record {record_id} requires a kind")
-        health_records[record_id] = SelectedHealthRecord(record_id=record_id, kind=kind, data=record)
+        health_records[record_id] = SelectedHealthRecord(
+            record_id=record_id, kind=kind, data=record
+        )
 
     context = {
         "person_id": person_id,
         "mode": mode.value,
-        "selected_observations": {key: value.model_dump(mode="json") for key, value in selected_observations.items()},
-        "selected_evidence": {key: value.model_dump(mode="json") for key, value in selected_evidence.items()},
-        "selected_findings": {key: value.model_dump(mode="json") for key, value in selected_findings.items()},
-        "selected_health_records": {key: value.model_dump(mode="json") for key, value in health_records.items()},
+        "selected_observations": {
+            key: value.model_dump(mode="json") for key, value in selected_observations.items()
+        },
+        "selected_evidence": {
+            key: value.model_dump(mode="json") for key, value in selected_evidence.items()
+        },
+        "selected_findings": {
+            key: value.model_dump(mode="json") for key, value in selected_findings.items()
+        },
+        "selected_health_records": {
+            key: value.model_dump(mode="json") for key, value in health_records.items()
+        },
     }
     serialized = json.dumps(context, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return ResearchPacket(**context, context_hash=sha256(serialized.encode("utf-8")).hexdigest())
+    return ResearchPacket(
+        person_id=person_id,
+        mode=mode,
+        selected_observations=selected_observations,
+        selected_evidence=selected_evidence,
+        selected_findings=selected_findings,
+        selected_health_records=health_records,
+        context_hash=sha256(serialized.encode("utf-8")).hexdigest(),
+    )
 
 
 def validate_research_output(output: ResearchOutput, packet: ResearchPacket) -> ResearchOutput:
