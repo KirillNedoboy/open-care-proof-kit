@@ -46,6 +46,7 @@ from app.product_core.api_models import (
     PersonResponse,
     PersonUpdateRequest,
     PlainTextSourceRequest,
+    SourceMetadataResponse,
     SourceRegistrationResponse,
     SourceResponse,
     TimelineEventResponse,
@@ -1135,6 +1136,37 @@ def register_plain_text_source(
     return SourceRegistrationResponse(
         created=result.created,
         source=_source_response(result.source),
+    )
+
+@router.get(
+    "/sources/{source_id}",
+    response_model=SourceMetadataResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    operation_id="product_core_get_source_metadata",
+)
+def get_source_metadata(
+    source_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> SourceMetadataResponse:
+    """Return safe, Person-isolated source provenance metadata (read-only).
+
+    Ownership is resolved server-side from the sources table; a hidden or
+    foreign source fails closed with 404 source_not_found. integrity_verified
+    is true only after the immutable payload hash has been verified; a
+    mismatch raises SourceCorruptionError (500 integrity) — never returned.
+    """
+    access.require_source(source_id, "source.read")
+    source = runtime.sources.get(source_id)
+    runtime.sources.store.read(source)
+    return SourceMetadataResponse(
+        source_id=source.id,
+        source_type=source.source_type,
+        content_hash=source.content_hash,
+        size_bytes=source.size_bytes,
+        media_type=source.media_type,
+        created_at=source.created_at,
+        integrity_verified=True,
     )
 
 

@@ -470,6 +470,23 @@ class SourceRegistrationResponse(APIModel):
     source: SourceResponse
 
 
+class SourceMetadataResponse(APIModel):
+    """Safe, Person-isolated source provenance metadata.
+
+    Never exposes the owning Person id, the server-side storage location,
+    payload bytes, or provenance internals. integrity_verified is true only
+    after the immutable payload hash has been verified server-side.
+    """
+
+    source_id: str
+    source_type: Literal["manual_entry", "plain_text"]
+    content_hash: str
+    size_bytes: int
+    media_type: str
+    created_at: datetime
+    integrity_verified: bool
+
+
 class CandidateResponse(APIModel):
     id: str
     person_id: str

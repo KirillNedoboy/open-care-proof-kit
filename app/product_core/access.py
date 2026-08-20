@@ -157,6 +157,26 @@ class ProductCoreAccess:
             self._best_effort_denial_audit(None)
             raise
 
+    def require_source(self, source_id: str, *required_scopes: str) -> str:
+        """Resolve a source's owning Person server-side and require scopes.
+
+        Mirrors require_source_for_person but resolves the owning Person from
+        the sources table itself, so a source belonging to a Person the Actor
+        cannot access (hidden or foreign) raises SourceNotFoundError — never a
+        ScopeForbiddenError.
+        """
+        return self._require_query(
+            """
+            SELECT s.person_id
+            FROM sources AS s
+            JOIN people AS p ON p.person_id = s.person_id AND p.is_active = 1
+            WHERE s.id = ?
+            """,
+            (source_id,),
+            required_scopes,
+            SourceNotFoundError,
+        )
+
     def require_source_for_person(
         self,
         source_id: str,
