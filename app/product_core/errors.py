@@ -94,6 +94,21 @@ class ProvenanceValidationError(ProductCoreError, ValueError):
     """Raised when a provenance locator is missing, malformed, or does not
     match the immutable source content."""
 
+class DocumentValidationError(ProductCoreError, ValueError):
+    """Raised when an uploaded document fails a bounded validation rule."""
+
+    def __init__(self, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
+class DocumentTooLargeError(DocumentValidationError):
+    """Raised when the raw request body exceeds the upload byte limit."""
+
+
+class UnsupportedDocumentMediaTypeError(DocumentValidationError):
+    """Raised when the declared or detected document class is unsupported."""
+
 
 class RuntimeNotReadyError(ProductCoreError):
     """Raised when the application runtime was not initialized at startup."""

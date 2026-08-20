@@ -6,12 +6,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-SourceType = Literal["manual_entry", "plain_text"]
+SourceType = Literal["manual_entry", "plain_text", "document"]
 FactType = Literal["medication", "condition", "lab"]
 CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected", "unsupported"]
-VisitBriefRevisionOrigin = Literal[
-    "deterministic_generation", "user_edit", "regeneration"
-]
+VisitBriefRevisionOrigin = Literal["deterministic_generation", "user_edit", "regeneration"]
 VisitBriefState = Literal["current", "stale", "unavailable"]
 
 
@@ -54,11 +52,46 @@ class Source(BaseModel):
     media_type: str = Field(min_length=1)
     created_at: datetime
     provenance: dict[str, str] = Field(default_factory=dict)
+    original_filename: str | None = None
+    document_kind: Literal["pdf", "text"] | None = None
 
     @field_validator("created_at")
     @classmethod
     def validate_created_at(cls, value: datetime) -> datetime:
         return ensure_utc_datetime(value)
+
+
+class DocumentExtractionSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    extraction_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    person_id: str = Field(min_length=1)
+    extractor: str = Field(min_length=1)
+    extractor_version: str = Field(min_length=1)
+    status: Literal["complete"] = "complete"
+    text_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    total_chars: int = Field(ge=0, le=1_000_000)
+    page_count: int = Field(ge=1, le=200)
+    extracted_at: datetime
+
+    @field_validator("extracted_at")
+    @classmethod
+    def validate_extracted_at(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
+
+
+class DocumentExtractionPage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    extraction_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    person_id: str = Field(min_length=1)
+    page_number: int = Field(ge=1, le=200)
+    normalized_text: str
+    decoded_content_bytes: int = Field(ge=0, le=200_000)
+    extracted_chars: int = Field(ge=0, le=100_000)
+    page_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class Person(BaseModel):

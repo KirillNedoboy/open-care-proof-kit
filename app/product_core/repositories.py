@@ -13,6 +13,8 @@ from app.product_core.models import (
     CandidateStatus,
     CanonicalRecord,
     ConditionCandidateDetail,
+    DocumentExtractionPage,
+    DocumentExtractionSnapshot,
     LabCandidateDetail,
     MedicationCandidateDetail,
     PersistedVisitBrief,
@@ -54,6 +56,22 @@ class SourceRepository(Protocol):
     def insert(self, source: Source) -> None: ...
 
     def path_referenced(self, relative_path: str) -> bool: ...
+
+
+class DocumentExtractionRepository(Protocol):
+    def get(self, extraction_id: str) -> DocumentExtractionSnapshot | None: ...
+
+    def get_complete_for_source(self, source_id: str) -> DocumentExtractionSnapshot | None: ...
+
+    def list_pages(self, extraction_id: str) -> list[DocumentExtractionPage]: ...
+
+    def get_page(self, extraction_id: str, page_number: int) -> DocumentExtractionPage | None: ...
+
+    def insert(
+        self,
+        snapshot: DocumentExtractionSnapshot,
+        pages: list[DocumentExtractionPage],
+    ) -> None: ...
 
 
 class SQLitePersonRepository:
@@ -263,8 +281,9 @@ class SQLiteSourceRepository:
             """
             INSERT INTO sources (
                 id, person_id, source_type, relative_path, content_hash,
-                size_bytes, media_type, created_at, provenance_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                size_bytes, media_type, created_at, provenance_json,
+                original_filename, document_kind
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 source.id,
@@ -276,6 +295,8 @@ class SQLiteSourceRepository:
                 source.media_type,
                 source.created_at.isoformat(),
                 json.dumps(source.provenance, ensure_ascii=False, sort_keys=True),
+                source.original_filename,
+                source.document_kind,
             ),
         )
 
@@ -286,6 +307,98 @@ class SQLiteSourceRepository:
                 (relative_path,),
             ).fetchone()
             is not None
+        )
+
+
+class SQLiteDocumentExtractionRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get(self, extraction_id: str) -> DocumentExtractionSnapshot | None:
+        row = self.connection.execute(
+            "SELECT * FROM document_extractions WHERE extraction_id = ?",
+            (extraction_id,),
+        ).fetchone()
+        return None if row is None else _document_extraction_from_row(row)
+
+    def get_complete_for_source(self, source_id: str) -> DocumentExtractionSnapshot | None:
+        row = self.connection.execute(
+            """
+            SELECT * FROM document_extractions
+            WHERE source_id = ? AND status = 'complete'
+            ORDER BY extracted_at DESC, extraction_id DESC
+            LIMIT 1
+            """,
+            (source_id,),
+        ).fetchone()
+        return None if row is None else _document_extraction_from_row(row)
+
+    def list_pages(self, extraction_id: str) -> list[DocumentExtractionPage]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM document_extraction_pages
+            WHERE extraction_id = ?
+            ORDER BY page_number
+            """,
+            (extraction_id,),
+        ).fetchall()
+        return [_document_page_from_row(row) for row in rows]
+
+    def get_page(self, extraction_id: str, page_number: int) -> DocumentExtractionPage | None:
+        row = self.connection.execute(
+            """
+            SELECT * FROM document_extraction_pages
+            WHERE extraction_id = ? AND page_number = ?
+            """,
+            (extraction_id, page_number),
+        ).fetchone()
+        return None if row is None else _document_page_from_row(row)
+
+    def insert(
+        self,
+        snapshot: DocumentExtractionSnapshot,
+        pages: list[DocumentExtractionPage],
+    ) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO document_extractions (
+                extraction_id, source_id, person_id, extractor, extractor_version,
+                status, text_hash, total_chars, page_count, extracted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                snapshot.extraction_id,
+                snapshot.source_id,
+                snapshot.person_id,
+                snapshot.extractor,
+                snapshot.extractor_version,
+                snapshot.status,
+                snapshot.text_hash,
+                snapshot.total_chars,
+                snapshot.page_count,
+                snapshot.extracted_at.isoformat(),
+            ),
+        )
+        self.connection.executemany(
+            """
+            INSERT INTO document_extraction_pages (
+                extraction_id, source_id, person_id, page_number, normalized_text,
+                decoded_content_bytes, extracted_chars, page_hash
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    page.extraction_id,
+                    page.source_id,
+                    page.person_id,
+                    page.page_number,
+                    page.normalized_text,
+                    page.decoded_content_bytes,
+                    page.extracted_chars,
+                    page.page_hash,
+                )
+                for page in pages
+            ],
         )
 
 
@@ -341,9 +454,7 @@ class SQLiteCandidateRepository:
                 candidate.predecessor_candidate_id,
                 None
                 if candidate.provenance_locator is None
-                else json.dumps(
-                    candidate.provenance_locator, ensure_ascii=False, sort_keys=True
-                ),
+                else json.dumps(candidate.provenance_locator, ensure_ascii=False, sort_keys=True),
             ),
         )
         self._insert_detail(candidate)
@@ -1023,6 +1134,8 @@ class SQLiteVisitBriefAuditRepository:
             )
             for row in rows
         ]
+
+
 class SQLiteDisclosureConsentRepository:
     """Append-only persistence for v6 disclosure consent records."""
 
@@ -1030,10 +1143,23 @@ class SQLiteDisclosureConsentRepository:
         self.connection = connection
 
     def insert(self, consent: dict[str, object]) -> None:
-        fields = ("consent_id", "execution_id", "actor_id", "person_id", "purpose",
-                  "action", "envelope_id", "provider_id", "provider_descriptor_hash",
-                  "disclosure_metadata_json", "policy_version", "consented_at",
-                  "expires_at", "consent_hash", "metadata_json")
+        fields = (
+            "consent_id",
+            "execution_id",
+            "actor_id",
+            "person_id",
+            "purpose",
+            "action",
+            "envelope_id",
+            "provider_id",
+            "provider_descriptor_hash",
+            "disclosure_metadata_json",
+            "policy_version",
+            "consented_at",
+            "expires_at",
+            "consent_hash",
+            "metadata_json",
+        )
         self.connection.execute(
             f"INSERT INTO agent_disclosure_consents ({','.join(fields)}) "
             f"VALUES ({','.join('?' for _ in fields)})",
@@ -1055,10 +1181,25 @@ class SQLiteExecutionReceiptRepository:
         self.connection = connection
 
     def insert(self, receipt: dict[str, object]) -> None:
-        fields = ("receipt_id", "execution_id", "consent_id", "actor_id", "person_id",
-                  "envelope_id", "provider_id", "status", "started_at", "completed_at",
-                  "used_evidence_ids_json", "used_tools_json", "output_sha256",
-                  "mutation_attempted", "reason_codes_json", "receipt_sha256", "metadata_json")
+        fields = (
+            "receipt_id",
+            "execution_id",
+            "consent_id",
+            "actor_id",
+            "person_id",
+            "envelope_id",
+            "provider_id",
+            "status",
+            "started_at",
+            "completed_at",
+            "used_evidence_ids_json",
+            "used_tools_json",
+            "output_sha256",
+            "mutation_attempted",
+            "reason_codes_json",
+            "receipt_sha256",
+            "metadata_json",
+        )
         self.connection.execute(
             f"INSERT INTO agent_execution_receipts ({','.join(fields)}) "
             f"VALUES ({','.join('?' for _ in fields)})",
@@ -1084,6 +1225,36 @@ def _source_from_row(row: sqlite3.Row) -> Source:
         media_type=row["media_type"],
         created_at=parse_utc_datetime(row["created_at"]),
         provenance=json.loads(row["provenance_json"]),
+        original_filename=row["original_filename"],
+        document_kind=row["document_kind"],
+    )
+
+
+def _document_extraction_from_row(row: sqlite3.Row) -> DocumentExtractionSnapshot:
+    return DocumentExtractionSnapshot(
+        extraction_id=row["extraction_id"],
+        source_id=row["source_id"],
+        person_id=row["person_id"],
+        extractor=row["extractor"],
+        extractor_version=row["extractor_version"],
+        status=row["status"],
+        text_hash=row["text_hash"],
+        total_chars=row["total_chars"],
+        page_count=row["page_count"],
+        extracted_at=parse_utc_datetime(row["extracted_at"]),
+    )
+
+
+def _document_page_from_row(row: sqlite3.Row) -> DocumentExtractionPage:
+    return DocumentExtractionPage(
+        extraction_id=row["extraction_id"],
+        source_id=row["source_id"],
+        person_id=row["person_id"],
+        page_number=row["page_number"],
+        normalized_text=row["normalized_text"],
+        decoded_content_bytes=row["decoded_content_bytes"],
+        extracted_chars=row["extracted_chars"],
+        page_hash=row["page_hash"],
     )
 
 
@@ -1155,9 +1326,7 @@ def _condition_detail_from_row(row: sqlite3.Row) -> ConditionCandidateDetail:
         display_name=row["display_name"],
         normalized_name=row["normalized_name"],
         status_text=row["status_text"],
-        onset_date=(
-            None if row["onset_date"] is None else date.fromisoformat(row["onset_date"])
-        ),
+        onset_date=(None if row["onset_date"] is None else date.fromisoformat(row["onset_date"])),
         note=row["note"],
     )
 

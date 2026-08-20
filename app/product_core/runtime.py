@@ -8,6 +8,7 @@ from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
 from app.product_core.portable_vault_export import PortableVaultExportService
 from app.product_core.services import (
     Clock,
+    DocumentService,
     IdFactory,
     MedicationLifecycleService,
     PeopleService,
@@ -24,6 +25,7 @@ from app.product_core.visits import VisitPlanningService
 class ProductCoreRuntime:
     database: SQLiteDatabase
     sources: SourceService
+    documents: DocumentService
     people: PeopleService
     lifecycle: MedicationLifecycleService
     visit_briefs: VisitBriefService
@@ -50,6 +52,12 @@ def create_product_core_runtime(
     return ProductCoreRuntime(
         database=database,
         sources=sources,
+        documents=DocumentService(
+            database,
+            sources.store,
+            clock=clock,
+            id_factory=id_factory,
+        ),
         people=PeopleService(database, clock=clock, id_factory=id_factory),
         lifecycle=MedicationLifecycleService(
             database,

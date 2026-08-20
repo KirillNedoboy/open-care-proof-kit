@@ -24,7 +24,7 @@ def test_fresh_and_repeated_migrations_bootstrap_schema_and_foreign_keys(
             for row in connection.execute(
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
-        ] == [1, 2, 3, 4, 5, 6, 7]
+        ] == [1, 2, 3, 4, 5, 6, 7, 8]
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         table_names = {
             row[0]
@@ -57,23 +57,61 @@ def test_phase_1c_upgrade_backfills_people_and_preserves_records(tmp_path: Path)
         connection.execute("BEGIN")
         connection.execute(
             """INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("source-1", "legacy-one", "manual_entry", "source-1.json", "a" * 64, 1,
-             "application/json", "2026-01-01T00:00:00+00:00", "{}"),
+            (
+                "source-1",
+                "legacy-one",
+                "manual_entry",
+                "source-1.json",
+                "a" * 64,
+                1,
+                "application/json",
+                "2026-01-01T00:00:00+00:00",
+                "{}",
+            ),
         )
         connection.execute(
             """INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("candidate-1", "legacy-two", "source-1", "medication", "confirmed", "Aspirin",
-             "aspirin", None, None, "2026-01-01T00:00:00+00:00", "2026-01-02T00:00:00+00:00", None),
+            (
+                "candidate-1",
+                "legacy-two",
+                "source-1",
+                "medication",
+                "confirmed",
+                "Aspirin",
+                "aspirin",
+                None,
+                None,
+                "2026-01-01T00:00:00+00:00",
+                "2026-01-02T00:00:00+00:00",
+                None,
+            ),
         )
         connection.execute(
             """INSERT INTO canonical_medication_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("record-1", "legacy-three", "candidate-1", "source-1", "Aspirin", "aspirin",
-             None, None, "2026-01-02T00:00:00+00:00", 1),
+            (
+                "record-1",
+                "legacy-three",
+                "candidate-1",
+                "source-1",
+                "Aspirin",
+                "aspirin",
+                None,
+                None,
+                "2026-01-02T00:00:00+00:00",
+                1,
+            ),
         )
         connection.execute(
             """INSERT INTO timeline_events VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            ("event-1", "legacy-four", "record-1", "source-1", "medication_confirmed",
-             "2026-01-02T00:00:00+00:00", "Medication confirmed: Aspirin"),
+            (
+                "event-1",
+                "legacy-four",
+                "record-1",
+                "source-1",
+                "medication_confirmed",
+                "2026-01-02T00:00:00+00:00",
+                "Medication confirmed: Aspirin",
+            ),
         )
         connection.commit()
 
@@ -94,8 +132,7 @@ def test_phase_1c_upgrade_backfills_people_and_preserves_records(tmp_path: Path)
             ("legacy-two", "Imported profile", None, 1),
         ]
         source_people = [
-            tuple(row)
-            for row in connection.execute("SELECT person_id FROM sources").fetchall()
+            tuple(row) for row in connection.execute("SELECT person_id FROM sources").fetchall()
         ]
         candidate_people = [
             tuple(row)
@@ -103,18 +140,34 @@ def test_phase_1c_upgrade_backfills_people_and_preserves_records(tmp_path: Path)
         ]
         assert source_people == [("legacy-one",)]
         assert candidate_people == [("legacy-two",)]
-        assert [tuple(row) for row in connection.execute(
-            "SELECT person_id FROM canonical_records"
-        ).fetchall()] == [("legacy-three",)]
-        assert [tuple(row) for row in connection.execute(
-            "SELECT person_id FROM timeline_events"
-        ).fetchall()] == [("legacy-four",)]
+        assert [
+            tuple(row)
+            for row in connection.execute("SELECT person_id FROM canonical_records").fetchall()
+        ] == [("legacy-three",)]
+        assert [
+            tuple(row)
+            for row in connection.execute("SELECT person_id FROM timeline_events").fetchall()
+        ] == [("legacy-four",)]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         with pytest.raises(sqlite3.IntegrityError):
             connection.execute(
-                "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                ("bad", "unknown", "manual_entry", "bad.json", "b" * 64, 1,
-                 "application/json", "2026-01-01T00:00:00+00:00", "{}"),
+                """
+                INSERT INTO sources (
+                    id, person_id, source_type, relative_path, content_hash,
+                    size_bytes, media_type, created_at, provenance_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "bad",
+                    "unknown",
+                    "manual_entry",
+                    "bad.json",
+                    "b" * 64,
+                    1,
+                    "application/json",
+                    "2026-01-01T00:00:00+00:00",
+                    "{}",
+                ),
             )
 
 
@@ -139,23 +192,33 @@ def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path
                 size_bytes, media_type, created_at, provenance_json
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            ("source-1", "person-1", "manual_entry", "source-1.json", "b" * 64, 1,
-             "application/json", "2026-07-30T00:00:00+00:00", "{}"),
+            (
+                "source-1",
+                "person-1",
+                "manual_entry",
+                "source-1.json",
+                "b" * 64,
+                1,
+                "application/json",
+                "2026-07-30T00:00:00+00:00",
+                "{}",
+            ),
         )
         connection.commit()
 
     database.migrate()
 
     with database.connect() as connection:
-        assert [row[0] for row in connection.execute(
-            "SELECT version FROM schema_migrations ORDER BY version"
-        ).fetchall()] == [1, 2, 3, 4, 5, 6, 7]
+        assert [
+            row[0]
+            for row in connection.execute(
+                "SELECT version FROM schema_migrations ORDER BY version"
+            ).fetchall()
+        ] == [1, 2, 3, 4, 5, 6, 7, 8]
         person_name = connection.execute(
             "SELECT display_name FROM people WHERE person_id = 'person-1'"
         ).fetchone()[0]
-        source_id = connection.execute(
-            "SELECT id FROM sources WHERE id = 'source-1'"
-        ).fetchone()[0]
+        source_id = connection.execute("SELECT id FROM sources WHERE id = 'source-1'").fetchone()[0]
         assert person_name == "Ada"
         assert source_id == "source-1"
         with pytest.raises(sqlite3.IntegrityError):
@@ -165,8 +228,15 @@ def test_phase_1e_a_upgrade_from_version_two_preserves_existing_records(tmp_path
                     visit_id, person_id, title, specialist, scheduled_date, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                ("visit-missing", "missing", "Visit", None, None,
-                "2026-07-30T00:00:00+00:00", "2026-07-30T00:00:00+00:00"),
+                (
+                    "visit-missing",
+                    "missing",
+                    "Visit",
+                    None,
+                    None,
+                    "2026-07-30T00:00:00+00:00",
+                    "2026-07-30T00:00:00+00:00",
+                ),
             )
 
 
@@ -229,9 +299,12 @@ def test_failed_migration_is_rolled_back_and_not_recorded(tmp_path: Path) -> Non
         assert connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version"
         ).fetchall() == [(1,)]
-        assert connection.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='rolled_back'"
-        ).fetchone() is None
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='rolled_back'"
+            ).fetchone()
+            is None
+        )
 
 
 def test_product_migration_does_not_own_schema_migrations_bootstrap(
@@ -311,10 +384,13 @@ finally:
                 "SELECT version FROM schema_migrations ORDER BY version"
             ).fetchall()
         ]
-        assert versions == [1, 2, 3, 4, 5, 6, 7]
-        assert connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
-        ).fetchone() is not None
+        assert versions == [1, 2, 3, 4, 5, 6, 7, 8]
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sources'"
+            ).fetchone()
+            is not None
+        )
     finally:
         connection.close()
 
@@ -342,6 +418,7 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
                 separators=(",", ":"),
             ).encode("utf-8")
         ).hexdigest()
+
     from app.product_core.services import MedicationLifecycleService, SourceService
 
     database = SQLiteDatabase(tmp_path / "product.sqlite3")
@@ -355,43 +432,129 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         )
         connection.execute(
             "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("src-1", "person-1", "manual_entry", "src-1.json", "a" * 64, 1,
-             "application/json", timestamp, json.dumps({"entry_method": "manual"})),
+            (
+                "src-1",
+                "person-1",
+                "manual_entry",
+                "src-1.json",
+                "a" * 64,
+                1,
+                "application/json",
+                timestamp,
+                json.dumps({"entry_method": "manual"}),
+            ),
         )
         connection.execute(
             "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("cand-1", "person-1", "src-1", "medication", "pending", "Aspirin",
-             "aspirin", None, None, timestamp, None, None),
+            (
+                "cand-1",
+                "person-1",
+                "src-1",
+                "medication",
+                "pending",
+                "Aspirin",
+                "aspirin",
+                None,
+                None,
+                timestamp,
+                None,
+                None,
+            ),
         )
         connection.execute(
             "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("cand-2", "person-1", "src-1", "medication", "confirmed", "Ibuprofen",
-             "ibuprofen", "daily", None, timestamp, timestamp, None),
+            (
+                "cand-2",
+                "person-1",
+                "src-1",
+                "medication",
+                "confirmed",
+                "Ibuprofen",
+                "ibuprofen",
+                "daily",
+                None,
+                timestamp,
+                timestamp,
+                None,
+            ),
         )
         connection.execute(
             "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("cand-3", "person-1", "src-1", "medication", "rejected", "Paracetamol",
-             "paracetamol", None, "note", timestamp, timestamp, None),
+            (
+                "cand-3",
+                "person-1",
+                "src-1",
+                "medication",
+                "rejected",
+                "Paracetamol",
+                "paracetamol",
+                None,
+                "note",
+                timestamp,
+                timestamp,
+                None,
+            ),
         )
         connection.execute(
             "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("cand-4", "person-1", "src-1", "medication", "corrected", "Aspirin",
-             "aspirin", None, None, timestamp, timestamp, None),
+            (
+                "cand-4",
+                "person-1",
+                "src-1",
+                "medication",
+                "corrected",
+                "Aspirin",
+                "aspirin",
+                None,
+                None,
+                timestamp,
+                timestamp,
+                None,
+            ),
         )
         connection.execute(
             "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("cand-5", "person-1", "src-1", "medication", "pending", "Aspirin (low dose)",
-             "aspirin low dose", None, None, timestamp, None, "cand-4"),
+            (
+                "cand-5",
+                "person-1",
+                "src-1",
+                "medication",
+                "pending",
+                "Aspirin (low dose)",
+                "aspirin low dose",
+                None,
+                None,
+                timestamp,
+                None,
+                "cand-4",
+            ),
         )
         connection.execute(
             "INSERT INTO canonical_medication_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("rec-1", "person-1", "cand-2", "src-1", "Ibuprofen", "ibuprofen",
-             "daily", None, timestamp, 1),
+            (
+                "rec-1",
+                "person-1",
+                "cand-2",
+                "src-1",
+                "Ibuprofen",
+                "ibuprofen",
+                "daily",
+                None,
+                timestamp,
+                1,
+            ),
         )
         connection.execute(
             "INSERT INTO timeline_events VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("ev-1", "person-1", "rec-1", "src-1", "medication_confirmed",
-             timestamp, "Medication confirmed: Ibuprofen"),
+            (
+                "ev-1",
+                "person-1",
+                "rec-1",
+                "src-1",
+                "medication_confirmed",
+                timestamp,
+                "Medication confirmed: Ibuprofen",
+            ),
         )
         connection.execute(
             "INSERT INTO visits VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -407,9 +570,19 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         )
         connection.execute(
             "INSERT INTO visit_brief_revisions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("rev-1", "b-1", 1, "deterministic_generation", None, 1, 1,
-             json.dumps({"medications": []}), "# brief",
-             _v1_brief_content_hash(json.dumps({"medications": []}), "# brief"), timestamp),
+            (
+                "rev-1",
+                "b-1",
+                1,
+                "deterministic_generation",
+                None,
+                1,
+                1,
+                json.dumps({"medications": []}),
+                "# brief",
+                _v1_brief_content_hash(json.dumps({"medications": []}), "# brief"),
+                timestamp,
+            ),
         )
         connection.execute(
             "INSERT INTO visit_brief_evidence_selections VALUES (?, ?, ?, ?, ?)",
@@ -422,9 +595,7 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         )
         connection.execute(
             "INSERT INTO actor_credentials VALUES (?, ?, 'local_password', 'scrypt', 1, "
-            "x'00000000000000000000000000000000', x'"
-            + "0" * 128
-            + "', ?, NULL, NULL)",
+            "x'00000000000000000000000000000000', x'" + "0" * 128 + "', ?, NULL, NULL)",
             ("cred-owner", "actor-owner", timestamp),
         )
         connection.execute(
@@ -434,137 +605,288 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
         connection.execute(
             "INSERT INTO person_access_consent_history VALUES (?, 'grant', ?, ?, ?, 'owner', ?, "
             "'bootstrap_owner_grant', ?)",
-            ("consent-1", "actor-owner", "actor-owner", "person-1",
-             json.dumps(sorted({"person.read", "source.read", "candidate.read",
-                                "medication.read", "medication.write", "timeline.read",
-                                "visit.read", "brief.read", "chat.use",
-                                "person.update", "source.write", "candidate.review",
-                                "brief.write", "brief.export", "vault.export",
-                                "visit.write", "relationship.read", "relationship.manage",
-                                "access.read", "access.manage"})),
-             timestamp),
+            (
+                "consent-1",
+                "actor-owner",
+                "actor-owner",
+                "person-1",
+                json.dumps(
+                    sorted(
+                        {
+                            "person.read",
+                            "source.read",
+                            "candidate.read",
+                            "medication.read",
+                            "medication.write",
+                            "timeline.read",
+                            "visit.read",
+                            "brief.read",
+                            "chat.use",
+                            "person.update",
+                            "source.write",
+                            "candidate.review",
+                            "brief.write",
+                            "brief.export",
+                            "vault.export",
+                            "visit.write",
+                            "relationship.read",
+                            "relationship.manage",
+                            "access.read",
+                            "access.manage",
+                        }
+                    )
+                ),
+                timestamp,
+            ),
         )
         connection.execute(
             "INSERT INTO person_access_consent_history VALUES "
             "(?, 'grant', ?, ?, ?, 'caregiver', ?, 'caregiver_grant', ?)",
-            ("consent-2", "actor-owner", "actor-caregiver", "person-1",
-             json.dumps(sorted({"person.read", "source.read", "candidate.read",
-                                "medication.read", "timeline.read", "visit.read",
-                                "brief.read", "relationship.read", "chat.use"})),
-             timestamp),
+            (
+                "consent-2",
+                "actor-owner",
+                "actor-caregiver",
+                "person-1",
+                json.dumps(
+                    sorted(
+                        {
+                            "person.read",
+                            "source.read",
+                            "candidate.read",
+                            "medication.read",
+                            "timeline.read",
+                            "visit.read",
+                            "brief.read",
+                            "relationship.read",
+                            "chat.use",
+                        }
+                    )
+                ),
+                timestamp,
+            ),
         )
         connection.execute(
             "INSERT INTO person_access_assignments VALUES "
             "(?, ?, ?, 'owner', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
-            ("assignment-1", "actor-owner", "person-1",
-             json.dumps(sorted({"person.read", "source.read", "candidate.read",
-                                "medication.read", "medication.write", "timeline.read",
-                                "visit.read", "brief.read", "chat.use",
-                                "person.update", "source.write", "candidate.review",
-                                "brief.write", "brief.export", "vault.export",
-                                "visit.write", "relationship.read", "relationship.manage",
-                                "access.read", "access.manage"})),
-             "consent-1", "actor-owner", timestamp),
+            (
+                "assignment-1",
+                "actor-owner",
+                "person-1",
+                json.dumps(
+                    sorted(
+                        {
+                            "person.read",
+                            "source.read",
+                            "candidate.read",
+                            "medication.read",
+                            "medication.write",
+                            "timeline.read",
+                            "visit.read",
+                            "brief.read",
+                            "chat.use",
+                            "person.update",
+                            "source.write",
+                            "candidate.review",
+                            "brief.write",
+                            "brief.export",
+                            "vault.export",
+                            "visit.write",
+                            "relationship.read",
+                            "relationship.manage",
+                            "access.read",
+                            "access.manage",
+                        }
+                    )
+                ),
+                "consent-1",
+                "actor-owner",
+                timestamp,
+            ),
         )
         connection.execute(
             "INSERT INTO person_access_assignments VALUES "
             "(?, ?, ?, 'caregiver', ?, ?, ?, 1, ?, NULL, NULL, NULL)",
-            ("assignment-2", "actor-caregiver", "person-1",
-             json.dumps(sorted({"person.read", "source.read", "candidate.read",
-                                "medication.read", "timeline.read", "visit.read",
-                                "brief.read", "relationship.read", "chat.use"})),
-             "consent-2", "actor-owner", timestamp),
+            (
+                "assignment-2",
+                "actor-caregiver",
+                "person-1",
+                json.dumps(
+                    sorted(
+                        {
+                            "person.read",
+                            "source.read",
+                            "candidate.read",
+                            "medication.read",
+                            "timeline.read",
+                            "visit.read",
+                            "brief.read",
+                            "relationship.read",
+                            "chat.use",
+                        }
+                    )
+                ),
+                "consent-2",
+                "actor-owner",
+                timestamp,
+            ),
         )
         # Access audit rows (append-only).
         connection.execute(
             "INSERT INTO access_audit_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            ("audit-1", "actor-owner", "bootstrap", "installation", None, "success",
-             "bootstrap", timestamp),
+            (
+                "audit-1",
+                "actor-owner",
+                "bootstrap",
+                "installation",
+                None,
+                "success",
+                "bootstrap",
+                timestamp,
+            ),
         )
         connection.execute(
             "INSERT INTO access_audit_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            ("audit-2", "actor-owner", "assignment.create", "assignment", "assignment-1",
-             "success", "bootstrap_owner_grant", timestamp),
+            (
+                "audit-2",
+                "actor-owner",
+                "assignment.create",
+                "assignment",
+                "assignment-1",
+                "success",
+                "bootstrap_owner_grant",
+                timestamp,
+            ),
         )
         # G2 disclosure consent + execution receipt (v6 tables).
         connection.execute(
             "INSERT INTO agent_disclosure_consents VALUES (?, ?, ?, ?, 'purpose', 'action', "
             "'env-1', 'provider', ?, '{}', 'family-access-v1', ?, ?, ?, '{}')",
-            ("g2-consent-1", "exec-1", "actor-owner", "person-1", "d" * 64,
-             timestamp, timestamp, "e" * 64),
+            (
+                "g2-consent-1",
+                "exec-1",
+                "actor-owner",
+                "person-1",
+                "d" * 64,
+                timestamp,
+                timestamp,
+                "e" * 64,
+            ),
         )
         connection.execute(
             "INSERT INTO agent_execution_receipts VALUES (?, ?, ?, ?, ?, 'env-1', 'provider', "
             "'completed', ?, ?, '[]', '[]', NULL, 0, '[]', ?, '{}')",
-            ("g2-receipt-1", "exec-1", "g2-consent-1", "actor-owner", "person-1",
-             timestamp, timestamp, "f" * 64),
+            (
+                "g2-receipt-1",
+                "exec-1",
+                "g2-consent-1",
+                "actor-owner",
+                "person-1",
+                timestamp,
+                timestamp,
+                "f" * 64,
+            ),
         )
         connection.execute("COMMIT")
 
     database.migrate()
 
     with database.connect() as connection:
-        assert [row[0] for row in connection.execute(
-            "SELECT version FROM schema_migrations ORDER BY version"
-        ).fetchall()] == [1, 2, 3, 4, 5, 6, 7]
+        assert [
+            row[0]
+            for row in connection.execute(
+                "SELECT version FROM schema_migrations ORDER BY version"
+            ).fetchall()
+        ] == [1, 2, 3, 4, 5, 6, 7, 8]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE id = 'rec-1'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_medication_details WHERE record_id = 'rec-1'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM candidate_medication_details WHERE candidate_id = 'cand-2'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM candidate_condition_details"
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT COUNT(*) FROM candidate_lab_details"
-        ).fetchone()[0] == 0
-        assert tuple(connection.execute(
-            "SELECT fact_type, event_type FROM timeline_events WHERE id = 'ev-1'"
-        ).fetchone()) == ("medication", "medication_confirmed")
-        assert connection.execute(
-            "SELECT provenance_locator_json FROM candidate_facts WHERE id = 'cand-1'"
-        ).fetchone()[0] == '{"kind":"structured_field","path":"medication"}'
-        assert connection.execute(
-            "SELECT COUNT(*) FROM visit_brief_evidence_selections WHERE revision_id = 'rev-1'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM visit_brief_revisions WHERE revision_id = 'rev-1'"
-        ).fetchone()[0] == 1
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE id = 'rec-1'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_medication_details WHERE record_id = 'rec-1'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM candidate_medication_details WHERE candidate_id = 'cand-2'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM candidate_condition_details").fetchone()[0]
+            == 0
+        )
+        assert connection.execute("SELECT COUNT(*) FROM candidate_lab_details").fetchone()[0] == 0
+        assert tuple(
+            connection.execute(
+                "SELECT fact_type, event_type FROM timeline_events WHERE id = 'ev-1'"
+            ).fetchone()
+        ) == ("medication", "medication_confirmed")
+        assert (
+            connection.execute(
+                "SELECT provenance_locator_json FROM candidate_facts WHERE id = 'cand-1'"
+            ).fetchone()[0]
+            == '{"kind":"structured_field","path":"medication"}'
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM visit_brief_evidence_selections WHERE revision_id = 'rev-1'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM visit_brief_revisions WHERE revision_id = 'rev-1'"
+            ).fetchone()[0]
+            == 1
+        )
         # Correction lineage preserved (successor points at corrected original).
-        assert tuple(connection.execute(
-            "SELECT status, predecessor_candidate_id FROM candidate_facts WHERE id = 'cand-5'"
-        ).fetchone()) == ("pending", "cand-4")
-        assert connection.execute(
-            "SELECT COUNT(*) FROM candidate_facts WHERE id = 'cand-4' AND status = 'corrected'"
-        ).fetchone()[0] == 1
+        assert tuple(
+            connection.execute(
+                "SELECT status, predecessor_candidate_id FROM candidate_facts WHERE id = 'cand-5'"
+            ).fetchone()
+        ) == ("pending", "cand-4")
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM candidate_facts WHERE id = 'cand-4' AND status = 'corrected'"
+            ).fetchone()[0]
+            == 1
+        )
         # Visit Question preserved.
-        assert connection.execute(
-            "SELECT question_text FROM visit_questions WHERE question_id = 'q-1'"
-        ).fetchone()[0] == "What should I ask?"
+        assert (
+            connection.execute(
+                "SELECT question_text FROM visit_questions WHERE question_id = 'q-1'"
+            ).fetchone()[0]
+            == "What should I ask?"
+        )
         # Actors, assignments, consent history, audit, G2 consent/receipt preserved.
-        assert connection.execute(
-            "SELECT COUNT(*) FROM actors WHERE actor_id IN ('actor-owner', 'actor-caregiver')"
-        ).fetchone()[0] == 2
-        assert connection.execute(
-            "SELECT COUNT(*) FROM person_access_assignments WHERE is_active = 1"
-        ).fetchone()[0] == 2
-        assert connection.execute(
-            "SELECT COUNT(*) FROM person_access_consent_history"
-        ).fetchone()[0] == 2
-        assert connection.execute(
-            "SELECT COUNT(*) FROM access_audit_events"
-        ).fetchone()[0] == 2
-        assert connection.execute(
-            "SELECT COUNT(*) FROM agent_disclosure_consents"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM agent_execution_receipts"
-        ).fetchone()[0] == 1
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM actors WHERE actor_id IN ('actor-owner', 'actor-caregiver')"
+            ).fetchone()[0]
+            == 2
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM person_access_assignments WHERE is_active = 1"
+            ).fetchone()[0]
+            == 2
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM person_access_consent_history").fetchone()[0]
+            == 2
+        )
+        assert connection.execute("SELECT COUNT(*) FROM access_audit_events").fetchone()[0] == 2
+        assert (
+            connection.execute("SELECT COUNT(*) FROM agent_disclosure_consents").fetchone()[0] == 1
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM agent_execution_receipts").fetchone()[0] == 1
+        )
         # The legacy v1 Brief revision still renders.
         from app.product_core.persisted_visit_briefs import (
             verify_persisted_visit_brief_revision,
@@ -602,9 +924,7 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
     def next_id() -> str:
         return next(ids)
 
-    sources = SourceService(
-        database, tmp_path / "sources", clock=clock, id_factory=next_id
-    )
+    sources = SourceService(database, tmp_path / "sources", clock=clock, id_factory=next_id)
     lifecycle = MedicationLifecycleService(
         database, clock=clock, id_factory=next_id, source_reader=sources.store.read
     )
@@ -616,6 +936,9 @@ def test_populated_v6_lifecycle_survives_to_v7_with_behavior_valid(tmp_path: Pat
     assert record.is_active is True
     assert record.display_name == "Omeprazole"
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE person_id = 'person-1'"
-        ).fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE person_id = 'person-1'"
+            ).fetchone()[0]
+            == 2
+        )

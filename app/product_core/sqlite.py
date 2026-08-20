@@ -10,6 +10,7 @@ from app.product_core.repositories import (
     SQLiteCandidateRepository,
     SQLiteCanonicalRepository,
     SQLiteDisclosureConsentRepository,
+    SQLiteDocumentExtractionRepository,
     SQLiteExecutionReceiptRepository,
     SQLitePersonRepository,
     SQLiteSourceRepository,
@@ -55,6 +56,7 @@ class UnitOfWork:
         self.consent_records: SQLiteDisclosureConsentRepository
         self.execution_receipts: SQLiteExecutionReceiptRepository
         self.sources: SQLiteSourceRepository
+        self.document_extractions: SQLiteDocumentExtractionRepository
         self.people: SQLitePersonRepository
         self.candidates: SQLiteCandidateRepository
         self.canonical_records: SQLiteCanonicalRepository
@@ -75,6 +77,7 @@ class UnitOfWork:
             self.connection = None
             raise
         self.sources = SQLiteSourceRepository(self.connection)
+        self.document_extractions = SQLiteDocumentExtractionRepository(self.connection)
         self.people = SQLitePersonRepository(self.connection)
         self.candidates = SQLiteCandidateRepository(self.connection)
         self.consent_records = SQLiteDisclosureConsentRepository(self.connection)

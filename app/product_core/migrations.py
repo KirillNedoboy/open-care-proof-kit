@@ -1236,9 +1236,7 @@ PRODUCT_MIGRATIONS = (
             "DROP TABLE canonical_medication_records",
             "DROP TABLE candidate_facts",
             "ALTER TABLE candidate_facts_v7 RENAME TO candidate_facts",
-            (
-                "ALTER TABLE canonical_records_v7 RENAME TO canonical_records"
-            ),
+            ("ALTER TABLE canonical_records_v7 RENAME TO canonical_records"),
             "ALTER TABLE timeline_events_v7 RENAME TO timeline_events",
             (
                 "ALTER TABLE visit_brief_evidence_selections_v7 "
@@ -1273,10 +1271,7 @@ PRODUCT_MIGRATIONS = (
                 "CREATE INDEX canonical_records_person_active_idx "
                 "ON canonical_records(person_id, is_active)"
             ),
-            (
-                "CREATE INDEX canonical_records_candidate_idx "
-                "ON canonical_records(candidate_id)"
-            ),
+            ("CREATE INDEX canonical_records_candidate_idx ON canonical_records(candidate_id)"),
             (
                 "CREATE INDEX timeline_events_person_event_at_idx "
                 "ON timeline_events(person_id, event_at, id)"
@@ -1285,6 +1280,153 @@ PRODUCT_MIGRATIONS = (
                 "CREATE INDEX visit_brief_evidence_revision_position_idx "
                 "ON visit_brief_evidence_selections(revision_id, position)"
             ),
+        ),
+    ),
+    Migration(
+        version=8,
+        statements=(
+            "PRAGMA defer_foreign_keys=ON",
+            """
+            CREATE TABLE sources_v8 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_type TEXT NOT NULL CHECK (
+                    source_type IN ('manual_entry', 'plain_text', 'document')
+                ),
+                relative_path TEXT NOT NULL CHECK (length(trim(relative_path)) > 0),
+                content_hash TEXT NOT NULL CHECK (
+                    length(content_hash) = 64
+                    AND content_hash = lower(content_hash)
+                    AND content_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                size_bytes INTEGER NOT NULL CHECK (size_bytes >= 0),
+                media_type TEXT NOT NULL CHECK (length(trim(media_type)) > 0),
+                created_at TEXT NOT NULL,
+                provenance_json TEXT NOT NULL,
+                original_filename TEXT,
+                document_kind TEXT CHECK (document_kind IN ('pdf', 'text')),
+                CHECK (
+                    (source_type = 'document' AND document_kind IS NOT NULL)
+                    OR (source_type <> 'document' AND document_kind IS NULL
+                        AND original_filename IS NULL)
+                ),
+                UNIQUE (person_id, source_type, content_hash),
+                UNIQUE (id, person_id)
+            )
+            """,
+            """
+            INSERT INTO sources_v8 (
+                id, person_id, source_type, relative_path, content_hash, size_bytes,
+                media_type, created_at, provenance_json, original_filename, document_kind
+            )
+            SELECT id, person_id, source_type, relative_path, content_hash, size_bytes,
+                   media_type, created_at, provenance_json, NULL, NULL
+            FROM sources
+            """,
+            "DROP TABLE sources",
+            "ALTER TABLE sources_v8 RENAME TO sources",
+            """
+            CREATE TABLE document_extractions (
+                extraction_id TEXT PRIMARY KEY CHECK (length(trim(extraction_id)) > 0),
+                source_id TEXT NOT NULL,
+                person_id TEXT NOT NULL,
+                extractor TEXT NOT NULL CHECK (length(trim(extractor)) > 0),
+                extractor_version TEXT NOT NULL CHECK (length(trim(extractor_version)) > 0),
+                status TEXT NOT NULL CHECK (status = 'complete'),
+                text_hash TEXT NOT NULL CHECK (
+                    length(text_hash) = 64
+                    AND text_hash = lower(text_hash)
+                    AND text_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                total_chars INTEGER NOT NULL CHECK (
+                    total_chars >= 0 AND total_chars <= 1000000
+                ),
+                page_count INTEGER NOT NULL CHECK (
+                    page_count >= 1 AND page_count <= 200
+                ),
+                extracted_at TEXT NOT NULL,
+                UNIQUE (source_id, extractor, extractor_version, text_hash),
+                UNIQUE (extraction_id, source_id, person_id),
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id)
+            )
+            """,
+            """
+            CREATE TABLE document_extraction_pages (
+                extraction_id TEXT NOT NULL,
+                source_id TEXT NOT NULL,
+                person_id TEXT NOT NULL,
+                page_number INTEGER NOT NULL CHECK (
+                    page_number >= 1 AND page_number <= 200
+                ),
+                normalized_text TEXT NOT NULL,
+                decoded_content_bytes INTEGER NOT NULL CHECK (
+                    decoded_content_bytes >= 0 AND decoded_content_bytes <= 200000
+                ),
+                extracted_chars INTEGER NOT NULL CHECK (
+                    extracted_chars >= 0
+                    AND extracted_chars <= 100000
+                    AND extracted_chars = length(normalized_text)
+                ),
+                page_hash TEXT NOT NULL CHECK (
+                    length(page_hash) = 64
+                    AND page_hash = lower(page_hash)
+                    AND page_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                PRIMARY KEY (extraction_id, page_number),
+                FOREIGN KEY (extraction_id, source_id, person_id)
+                    REFERENCES document_extractions(extraction_id, source_id, person_id)
+            )
+            """,
+            """
+            CREATE TRIGGER document_extractions_source_type_insert
+            BEFORE INSERT ON document_extractions
+            WHEN NOT EXISTS (
+                SELECT 1 FROM sources
+                WHERE id = NEW.source_id
+                  AND person_id = NEW.person_id
+                  AND source_type = 'document'
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_extraction_source_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_extractions_immutable_update
+            BEFORE UPDATE ON document_extractions
+            BEGIN
+                SELECT RAISE(ABORT, 'document_extraction_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_extractions_immutable_delete
+            BEFORE DELETE ON document_extractions
+            BEGIN
+                SELECT RAISE(ABORT, 'document_extraction_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_extraction_pages_immutable_update
+            BEFORE UPDATE ON document_extraction_pages
+            BEGIN
+                SELECT RAISE(ABORT, 'document_extraction_page_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_extraction_pages_immutable_delete
+            BEFORE DELETE ON document_extraction_pages
+            BEGIN
+                SELECT RAISE(ABORT, 'document_extraction_page_immutable');
+            END
+            """,
+            """
+            CREATE INDEX document_extractions_person_source_idx
+            ON document_extractions(person_id, source_id, extracted_at, extraction_id)
+            """,
+            """
+            CREATE INDEX document_extraction_pages_source_idx
+            ON document_extraction_pages(person_id, source_id, extraction_id, page_number)
+            """,
         ),
     ),
 )
@@ -1339,6 +1481,10 @@ class MigrationRunner:
             raise
 
     def _apply_migration(self, connection: sqlite3.Connection, migration: Migration) -> None:
+        if migration.version == 8:
+            # SQLite cannot rebuild a referenced parent table while foreign-key
+            # enforcement is active, even when all final references are valid.
+            connection.execute("PRAGMA foreign_keys=OFF")
         connection.execute("BEGIN IMMEDIATE")
         try:
             already_applied = connection.execute(
@@ -1354,11 +1500,18 @@ class MigrationRunner:
                     connection.execute(statement, (applied_at, applied_at))
                 else:
                     connection.execute(statement)
+            foreign_key_violations = connection.execute("PRAGMA foreign_key_check").fetchall()
+            if foreign_key_violations:
+                raise sqlite3.IntegrityError("migration left foreign key violations")
             connection.execute(
                 "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
                 (migration.version, applied_at),
             )
             connection.commit()
+            if migration.version == 8:
+                connection.execute("PRAGMA foreign_keys=ON")
         except BaseException:
             connection.rollback()
+            if migration.version == 8:
+                connection.execute("PRAGMA foreign_keys=ON")
             raise

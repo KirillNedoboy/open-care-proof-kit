@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import re
@@ -11,10 +12,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Literal
+
+import pypdf
 
 from app.product_core.errors import (
     CandidateNotFoundError,
     CanonicalRecordNotFoundError,
+    DocumentValidationError,
     IntegrityStorageError,
     InvalidTransitionError,
     PersonMismatchError,
@@ -33,6 +38,8 @@ from app.product_core.models import (
     CanonicalRecord,
     ConditionCandidateDetail,
     ConditionCandidateInput,
+    DocumentExtractionPage,
+    DocumentExtractionSnapshot,
     FactType,
     LabCandidateDetail,
     LabCandidateInput,
@@ -57,6 +64,20 @@ SourceReader = Callable[[Source], bytes]
 class SourceRegistrationResult:
     source: Source
     created: bool
+
+
+@dataclass(frozen=True)
+class DocumentRegistrationResult:
+    source: Source
+    extraction: DocumentExtractionSnapshot
+    created: bool
+
+
+MAX_DOCUMENT_UPLOAD_BYTES = 10_485_760
+MAX_DOCUMENT_PAGES = 200
+MAX_DECODED_PAGE_BYTES = 200_000
+MAX_PAGE_CHARS = 100_000
+MAX_TOTAL_CHARS = 1_000_000
 
 
 def default_clock() -> datetime:
@@ -254,9 +275,7 @@ class ImmutableSourceStore:
                         f"source path must not contain symlinks: {source.id}"
                     )
             if not stat.S_ISREG(raw_path.lstat().st_mode):
-                raise SourceCorruptionError(
-                    f"source payload is not a regular file: {source.id}"
-                )
+                raise SourceCorruptionError(f"source payload is not a regular file: {source.id}")
             payload = raw_path.read_bytes()
         except SourceCorruptionError:
             raise
@@ -486,9 +505,7 @@ class SourceService:
                     authorize(uow.connection)
                 if uow.people.get(person_id) is None:
                     raise PersonNotFoundError(f"person not found: {person_id}")
-                existing = uow.sources.find_by_deduplication(
-                    person_id, source_type, content_hash
-                )
+                existing = uow.sources.find_by_deduplication(person_id, source_type, content_hash)
                 if existing is not None:
                     self.store.read(existing)
                     return SourceRegistrationResult(existing, False)
@@ -513,9 +530,7 @@ class SourceService:
             if relative_path is not None:
                 self._remove_unreferenced(relative_path)
             with self.database.uow() as uow:
-                existing = uow.sources.find_by_deduplication(
-                    person_id, source_type, content_hash
-                )
+                existing = uow.sources.find_by_deduplication(person_id, source_type, content_hash)
             if existing is not None:
                 self.store.read(existing)
                 return SourceRegistrationResult(existing, False)
@@ -540,6 +555,271 @@ class SourceService:
         return source_id
 
 
+class DocumentService:
+    """Bounded local document extraction backed by immutable Source bytes."""
+
+    def __init__(
+        self,
+        database: SQLiteDatabase,
+        source_store: ImmutableSourceStore,
+        *,
+        clock: Clock = default_clock,
+        id_factory: IdFactory = default_id_factory,
+    ) -> None:
+        self.database = database
+        self.store = source_store
+        self.clock = clock
+        self.id_factory = id_factory
+
+    def register(
+        self,
+        person_id: str,
+        payload: bytes,
+        media_type: str,
+        *,
+        original_filename: str | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> DocumentRegistrationResult:
+        if len(payload) > MAX_DOCUMENT_UPLOAD_BYTES:
+            raise DocumentValidationError("upload_bytes_limit_exceeded")
+        normalized_media_type = media_type.split(";", 1)[0].strip().lower()
+        if normalized_media_type not in {"application/pdf", "text/plain"}:
+            raise DocumentValidationError("unsupported_media_type")
+        extracted_pages, extractor, extractor_version, document_kind = self._extract(
+            payload, normalized_media_type
+        )
+        content_hash = hashlib.sha256(payload).hexdigest()
+        text_hash = self._canonical_text_hash([item[0] for item in extracted_pages])
+        total_chars = sum(len(item[0]) for item in extracted_pages)
+        safe_filename = self.sanitize_original_filename(original_filename)
+        relative_path: str | None = None
+        try:
+            with self.database.uow(begin_mode="IMMEDIATE") as uow:
+                assert uow.connection is not None
+                if authorize is not None:
+                    authorize(uow.connection)
+                if uow.people.get(person_id) is None:
+                    raise PersonNotFoundError(f"person not found: {person_id}")
+                existing = uow.sources.find_by_deduplication(person_id, "document", content_hash)
+                if existing is not None:
+                    extraction = self._verify_document_in_uow(uow, existing)
+                    if existing.media_type != normalized_media_type:
+                        raise IntegrityStorageError("document media type changed")
+                    return DocumentRegistrationResult(existing, extraction, False)
+
+                source_id = SourceService._safe_generated_id(self.id_factory())
+                extraction_id = SourceService._safe_generated_id(self.id_factory())
+                suffix = "pdf" if document_kind == "pdf" else "txt"
+                relative_path = f"{source_id}.{suffix}"
+                self.store.publish(relative_path, payload)
+                now = ensure_utc_datetime(self.clock())
+                source = Source(
+                    id=source_id,
+                    person_id=person_id,
+                    source_type="document",
+                    relative_path=relative_path,
+                    content_hash=content_hash,
+                    size_bytes=len(payload),
+                    media_type=normalized_media_type,
+                    created_at=now,
+                    provenance={"entry_method": "document_upload"},
+                    original_filename=safe_filename,
+                    document_kind=document_kind,
+                )
+                snapshot = DocumentExtractionSnapshot(
+                    extraction_id=extraction_id,
+                    source_id=source_id,
+                    person_id=person_id,
+                    extractor=extractor,
+                    extractor_version=extractor_version,
+                    text_hash=text_hash,
+                    total_chars=total_chars,
+                    page_count=len(extracted_pages),
+                    extracted_at=now,
+                )
+                pages = [
+                    DocumentExtractionPage(
+                        extraction_id=extraction_id,
+                        source_id=source_id,
+                        person_id=person_id,
+                        page_number=index,
+                        normalized_text=text,
+                        decoded_content_bytes=decoded_bytes,
+                        extracted_chars=len(text),
+                        page_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                    )
+                    for index, (text, decoded_bytes) in enumerate(extracted_pages, start=1)
+                ]
+                uow.sources.insert(source)
+                uow.document_extractions.insert(snapshot, pages)
+                return DocumentRegistrationResult(source, snapshot, True)
+        except sqlite3.IntegrityError:
+            if relative_path is not None:
+                self._remove_unreferenced(relative_path)
+            with self.database.uow() as uow:
+                existing = uow.sources.find_by_deduplication(person_id, "document", content_hash)
+                if existing is not None:
+                    extraction = self._verify_document_in_uow(uow, existing)
+                    return DocumentRegistrationResult(existing, extraction, False)
+            raise
+        except BaseException:
+            if relative_path is not None:
+                self._remove_unreferenced(relative_path)
+            raise
+
+    def list_for_person(self, person_id: str) -> list[tuple[Source, DocumentExtractionSnapshot]]:
+        with self.database.uow() as uow:
+            documents = [
+                source
+                for source in uow.sources.list_for_person(person_id)
+                if source.source_type == "document"
+            ]
+            return [(source, self._verify_document_in_uow(uow, source)) for source in documents]
+
+    def get(self, source_id: str) -> tuple[Source, DocumentExtractionSnapshot]:
+        with self.database.uow() as uow:
+            source = uow.sources.get(source_id)
+            if source is None or source.source_type != "document":
+                raise SourceNotFoundError(f"document source not found: {source_id}")
+            return source, self._verify_document_in_uow(uow, source)
+
+    def get_page(
+        self, source_id: str, extraction_id: str, page_number: int
+    ) -> tuple[DocumentExtractionSnapshot, DocumentExtractionPage]:
+        with self.database.uow() as uow:
+            source = uow.sources.get(source_id)
+            if source is None or source.source_type != "document":
+                raise SourceNotFoundError(f"document source not found: {source_id}")
+            snapshot = self._verify_document_in_uow(uow, source)
+            if snapshot.extraction_id != extraction_id:
+                raise SourceNotFoundError("document extraction was not found")
+            page = uow.document_extractions.get_page(extraction_id, page_number)
+            if page is None:
+                raise SourceNotFoundError("document page was not found")
+            return snapshot, page
+
+    def _verify_document_in_uow(
+        self, uow: UnitOfWork, source: Source
+    ) -> DocumentExtractionSnapshot:
+        if source.source_type != "document":
+            raise IntegrityStorageError("document source type mismatch")
+        self.store.read(source)
+        snapshot = uow.document_extractions.get_complete_for_source(source.id)
+        if snapshot is None:
+            raise IntegrityStorageError("document extraction is missing")
+        if snapshot.source_id != source.id or snapshot.person_id != source.person_id:
+            raise IntegrityStorageError("document extraction ownership mismatch")
+        pages = uow.document_extractions.list_pages(snapshot.extraction_id)
+        if len(pages) != snapshot.page_count or not pages:
+            raise IntegrityStorageError("document extraction page count mismatch")
+        if [page.page_number for page in pages] != list(range(1, len(pages) + 1)):
+            raise IntegrityStorageError("document extraction page sequence mismatch")
+        total_chars = 0
+        for page in pages:
+            encoded = page.normalized_text.encode("utf-8")
+            if (
+                page.source_id != source.id
+                or page.person_id != source.person_id
+                or page.extracted_chars != len(page.normalized_text)
+                or page.decoded_content_bytes > MAX_DECODED_PAGE_BYTES
+                or page.extracted_chars > MAX_PAGE_CHARS
+                or hashlib.sha256(encoded).hexdigest() != page.page_hash
+            ):
+                raise IntegrityStorageError("document extraction page integrity mismatch")
+            total_chars += page.extracted_chars
+        if (
+            total_chars != snapshot.total_chars
+            or total_chars > MAX_TOTAL_CHARS
+            or self._canonical_text_hash([page.normalized_text for page in pages])
+            != snapshot.text_hash
+        ):
+            raise IntegrityStorageError("document extraction integrity mismatch")
+        return snapshot
+
+    def _remove_unreferenced(self, relative_path: str) -> None:
+        with self.database.uow() as uow:
+            referenced = uow.sources.path_referenced(relative_path)
+        if not referenced:
+            self.store._resolve_relative_path(relative_path).unlink(missing_ok=True)
+
+    @staticmethod
+    def _extract(
+        payload: bytes, media_type: str
+    ) -> tuple[list[tuple[str, int]], str, str, Literal["pdf", "text"]]:
+        if media_type == "text/plain":
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError:
+                raise DocumentValidationError("invalid_utf8") from None
+            if text.startswith("\ufeff"):
+                text = text[1:]
+            text = text.replace("\r\n", "\n").replace("\r", "\n")
+            encoded_length = len(text.encode("utf-8"))
+            DocumentService._enforce_page_limits(text, encoded_length)
+            if len(text) > MAX_TOTAL_CHARS:
+                raise DocumentValidationError("total_chars_limit_exceeded")
+            return [(text, encoded_length)], "opencare-text", "1", "text"
+
+        if not payload.startswith(b"%PDF-"):
+            raise DocumentValidationError("pdf_signature_invalid")
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(payload), strict=True)
+            if reader.is_encrypted:
+                raise DocumentValidationError("encrypted_pdf")
+            if len(reader.pages) > MAX_DOCUMENT_PAGES:
+                raise DocumentValidationError("page_limit_exceeded")
+            if not reader.pages:
+                raise DocumentValidationError("no_usable_text")
+            pages: list[tuple[str, int]] = []
+            total_chars = 0
+            usable = False
+            for page in reader.pages:
+                contents = page.get_contents()
+                decoded_bytes = 0 if contents is None else len(contents.get_data())
+                text = page.extract_text() or ""
+                DocumentService._enforce_page_limits(text, decoded_bytes)
+                total_chars += len(text)
+                if total_chars > MAX_TOTAL_CHARS:
+                    raise DocumentValidationError("total_chars_limit_exceeded")
+                usable = usable or bool(text.strip())
+                pages.append((text, decoded_bytes))
+            if not usable:
+                raise DocumentValidationError("no_usable_text")
+            return pages, "pypdf", pypdf.__version__, "pdf"
+        except DocumentValidationError:
+            raise
+        except Exception:
+            raise DocumentValidationError("malformed_pdf") from None
+
+    @staticmethod
+    def _enforce_page_limits(text: str, decoded_bytes: int) -> None:
+        if decoded_bytes > MAX_DECODED_PAGE_BYTES:
+            raise DocumentValidationError("decoded_page_bytes_limit_exceeded")
+        if len(text) > MAX_PAGE_CHARS:
+            raise DocumentValidationError("page_chars_limit_exceeded")
+
+    @staticmethod
+    def _canonical_text_hash(pages: list[str]) -> str:
+        digest = hashlib.sha256()
+        for page in pages:
+            encoded = page.encode("utf-8")
+            digest.update(len(encoded).to_bytes(8, "big"))
+            digest.update(encoded)
+        return digest.hexdigest()
+
+    @staticmethod
+    def sanitize_original_filename(value: str | None) -> str | None:
+        if value is None:
+            return None
+        leaf = value.replace("\\", "/").rsplit("/", 1)[-1]
+        cleaned = (
+            "".join(character for character in leaf if character >= " " and character != "\x7f")
+            .strip()
+            .strip(".")
+        )
+        if not cleaned:
+            return None
+        return cleaned[:200]
 
 
 class FactLifecycleService:
@@ -591,7 +871,7 @@ class FactLifecycleService:
             if source.person_id != person_id:
                 raise PersonMismatchError("source belongs to another person")
             locator = self._resolve_provenance_locator(
-                source, fact_type, detail, provenance_locator
+                uow, source, fact_type, detail, provenance_locator
             )
             candidate = CandidateFact(
                 id=self.id_factory(),
@@ -732,8 +1012,7 @@ class FactLifecycleService:
                 raise CandidateNotFoundError(f"candidate not found: {candidate_id}")
             if candidate.status != "pending":
                 raise InvalidTransitionError(
-                    f"candidate {candidate_id} cannot be marked {status} from "
-                    f"{candidate.status}"
+                    f"candidate {candidate_id} cannot be marked {status} from {candidate.status}"
                 )
             reviewed_at = ensure_utc_datetime(self.clock())
             uow.candidates.update_status(candidate.id, status, reviewed_at)
@@ -765,8 +1044,7 @@ class FactLifecycleService:
                     )
                 if not existing.is_active:
                     raise InvalidTransitionError(
-                        f"candidate {candidate_id} cannot be corrected from a "
-                        "superseded record"
+                        f"candidate {candidate_id} cannot be corrected from a superseded record"
                     )
             elif original.status != "pending":
                 raise InvalidTransitionError(
@@ -780,7 +1058,7 @@ class FactLifecycleService:
             if source.person_id != original.person_id:
                 raise PersonMismatchError("replacement source belongs to another person")
             locator = self._resolve_provenance_locator(
-                source, original.fact_type, detail, provenance_locator
+                uow, source, original.fact_type, detail, provenance_locator
             )
             reviewed_at = ensure_utc_datetime(self.clock())
             replacement = CandidateFact(
@@ -829,9 +1107,7 @@ class FactLifecycleService:
         with self.database.uow() as uow:
             if uow.people.get(person_id) is None:
                 raise PersonNotFoundError(f"person not found: {person_id}")
-            return uow.canonical_records.list_for_person(
-                person_id, include_inactive, fact_type
-            )
+            return uow.canonical_records.list_for_person(person_id, include_inactive, fact_type)
 
     def list_timeline(self, person_id: str) -> list[TimelineEvent]:
         with self.database.uow() as uow:
@@ -880,6 +1156,7 @@ class FactLifecycleService:
 
     def _resolve_provenance_locator(
         self,
+        uow: UnitOfWork,
         source: Source,
         fact_type: str,
         detail: CandidateDetail,
@@ -890,6 +1167,11 @@ class FactLifecycleService:
                 "kind": "structured_field",
                 "path": self._manual_locator_path(source, fact_type),
             }
+        elif source.source_type == "document":
+            if client_locator is None:
+                raise ProvenanceValidationError("document_text_span provenance locator is required")
+            locator = client_locator
+            self._validate_document_locator(uow, source, locator)
         else:
             if client_locator is None:
                 raise ProvenanceValidationError(
@@ -898,16 +1180,72 @@ class FactLifecycleService:
             locator = client_locator
             if (
                 locator.get("kind") != "span"
-                or not isinstance(locator.get("start"), int)
-                or not isinstance(locator.get("end"), int)
+                or type(locator.get("start")) is not int
+                or type(locator.get("end")) is not int
             ):
                 raise ProvenanceValidationError(
                     "provenance locator must be a span with integer start/end offsets"
                 )
         if self.source_reader is not None:
             payload = self.source_reader(source)
-            self._validate_locator_content(source, fact_type, detail, locator, payload)
+            if source.source_type != "document":
+                self._validate_locator_content(source, fact_type, detail, locator, payload)
         return locator
+
+    @staticmethod
+    def _validate_document_locator(
+        uow: UnitOfWork, source: Source, locator: dict[str, object]
+    ) -> None:
+        expected_keys = {
+            "kind",
+            "source_id",
+            "content_hash",
+            "extraction_id",
+            "page_number",
+            "start_codepoint",
+            "end_codepoint",
+            "selected_text_sha256",
+        }
+        if set(locator) != expected_keys or locator.get("kind") != "document_text_span":
+            raise ProvenanceValidationError("document provenance locator schema is invalid")
+        source_id = locator.get("source_id")
+        content_hash = locator.get("content_hash")
+        extraction_id = locator.get("extraction_id")
+        selected_hash = locator.get("selected_text_sha256")
+        if (
+            source_id != source.id
+            or content_hash != source.content_hash
+            or not isinstance(extraction_id, str)
+            or not isinstance(selected_hash, str)
+            or re.fullmatch(r"[0-9a-f]{64}", selected_hash) is None
+        ):
+            raise ProvenanceValidationError("document provenance source binding is invalid")
+        page_number = locator.get("page_number")
+        start = locator.get("start_codepoint")
+        end = locator.get("end_codepoint")
+        if type(page_number) is not int or type(start) is not int or type(end) is not int:
+            raise ProvenanceValidationError("document provenance offsets must be integers")
+        snapshot = uow.document_extractions.get(extraction_id)
+        if (
+            snapshot is None
+            or snapshot.status != "complete"
+            or snapshot.source_id != source.id
+            or snapshot.person_id != source.person_id
+        ):
+            raise ProvenanceValidationError("document extraction binding is invalid")
+        page = uow.document_extractions.get_page(extraction_id, page_number)
+        if (
+            page is None
+            or page.source_id != source.id
+            or page.person_id != source.person_id
+            or hashlib.sha256(page.normalized_text.encode("utf-8")).hexdigest() != page.page_hash
+        ):
+            raise ProvenanceValidationError("document extraction page is invalid")
+        if start < 0 or end <= start or end > len(page.normalized_text):
+            raise ProvenanceValidationError("document provenance span is out of range")
+        selected = page.normalized_text[start:end].encode("utf-8")
+        if hashlib.sha256(selected).hexdigest() != selected_hash:
+            raise ProvenanceValidationError("document selected text hash does not match")
 
     def _manual_locator_path(self, source: Source, fact_type: str) -> str:
         if self.source_reader is None:
@@ -986,9 +1324,7 @@ class FactLifecycleService:
         if text[start:end].strip() != expected:
             raise ProvenanceValidationError("provenance span does not match the recorded name")
 
-    def _verify_source_and_locator(
-        self, uow: UnitOfWork, candidate: CandidateFact
-    ) -> None:
+    def _verify_source_and_locator(self, uow: UnitOfWork, candidate: CandidateFact) -> None:
         if self.source_reader is None:
             return
         source = uow.sources.get(candidate.source_id)
@@ -996,18 +1332,19 @@ class FactLifecycleService:
             raise IntegrityStorageError(f"candidate source is missing: {candidate.source_id}")
         payload = self.source_reader(source)
         if candidate.provenance_locator is not None:
-            self._validate_locator_content(
-                source,
-                candidate.fact_type,
-                candidate.detail,
-                candidate.provenance_locator,
-                payload,
-            )
+            if source.source_type == "document":
+                self._validate_document_locator(uow, source, candidate.provenance_locator)
+            else:
+                self._validate_locator_content(
+                    source,
+                    candidate.fact_type,
+                    candidate.detail,
+                    candidate.provenance_locator,
+                    payload,
+                )
 
     @staticmethod
-    def _find_superseded(
-        uow: UnitOfWork, candidate: CandidateFact
-    ) -> CanonicalRecord | None:
+    def _find_superseded(uow: UnitOfWork, candidate: CandidateFact) -> CanonicalRecord | None:
         if candidate.predecessor_candidate_id is None:
             return None
         predecessor = uow.candidates.get(candidate.predecessor_candidate_id)
