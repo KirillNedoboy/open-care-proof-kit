@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.config import Settings
+from app.product_core.genetics import GeneticsService
 from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
 from app.product_core.portable_vault_export import PortableVaultExportService
 from app.product_core.services import (
@@ -28,6 +29,7 @@ class ProductCoreRuntime:
     documents: DocumentService
     people: PeopleService
     lifecycle: MedicationLifecycleService
+    genetics: GeneticsService
     visit_briefs: VisitBriefService
     persisted_visit_briefs: PersistedVisitBriefService
     portable_vault_exports: PortableVaultExportService
@@ -64,6 +66,13 @@ def create_product_core_runtime(
             clock=clock,
             id_factory=id_factory,
             source_reader=sources.store.read,
+        ),
+        genetics=GeneticsService(
+            database,
+            sources,
+            settings.data_dir,
+            clock=clock,
+            id_factory=id_factory,
         ),
         visit_briefs=VisitBriefService(database),
         persisted_visit_briefs=PersistedVisitBriefService(

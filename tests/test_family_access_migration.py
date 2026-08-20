@@ -195,7 +195,7 @@ def test_v5_migration_preserves_v4_people_and_adds_empty_access_schema(tmp_path:
         )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
-    assert versions == [1, 2, 3, 4, 5, 6, 7, 8]
+    assert versions == [1, 2, 3, 4, 5, 6, 7, 8, 9]
     assert tables >= ACCESS_TABLES
     assert counts == dict.fromkeys(ACCESS_TABLES, 0)
 
@@ -392,9 +392,7 @@ def test_last_owner_and_own_person_link_survive_update_and_delete_bypasses(
             """,
             (TIMESTAMP,),
         )
-        with pytest.raises(
-            sqlite3.IntegrityError, match="active_own_person_link_requires_owner"
-        ):
+        with pytest.raises(sqlite3.IntegrityError, match="active_own_person_link_requires_owner"):
             connection.execute(
                 "DELETE FROM person_access_assignments WHERE assignment_id = 'assignment-1'"
             )
@@ -445,8 +443,7 @@ def test_active_relationship_survives_membership_update_and_delete_bypasses(
             "WHERE membership_id = 'membership-1'",
             "UPDATE family_memberships SET person_id = 'person-3' "
             "WHERE membership_id = 'membership-1'",
-            "UPDATE family_memberships SET is_active = 0 "
-            "WHERE membership_id = 'membership-1'",
+            "UPDATE family_memberships SET is_active = 0 WHERE membership_id = 'membership-1'",
             "DELETE FROM family_memberships WHERE membership_id = 'membership-1'",
         ):
             with pytest.raises(
@@ -473,9 +470,7 @@ def test_active_admin_assignment_requires_active_actor_on_insert_and_update(
             """,
             (TIMESTAMP, TIMESTAMP),
         )
-        with pytest.raises(
-            sqlite3.IntegrityError, match="active_admin_requires_active_actor"
-        ):
+        with pytest.raises(sqlite3.IntegrityError, match="active_admin_requires_active_actor"):
             connection.execute(
                 """
                 INSERT INTO installation_admin_assignments (
@@ -494,11 +489,9 @@ def test_active_admin_assignment_requires_active_actor_on_insert_and_update(
                     'admin-disabled', 'disabled-actor', 'active-actor', 0, ?, ?, 'active-actor'
                 )
                 """,
-                (TIMESTAMP, TIMESTAMP),
-            )
-        with pytest.raises(
-            sqlite3.IntegrityError, match="active_admin_requires_active_actor"
-        ):
+            (TIMESTAMP, TIMESTAMP),
+        )
+        with pytest.raises(sqlite3.IntegrityError, match="active_admin_requires_active_actor"):
             connection.execute(
                 "UPDATE installation_admin_assignments SET is_active = 1, "
                 "revoked_at = NULL, revoked_by_actor_id = NULL "
@@ -513,9 +506,7 @@ def test_active_admin_assignment_requires_active_actor_on_insert_and_update(
             """,
             (TIMESTAMP,),
         )
-        with pytest.raises(
-            sqlite3.IntegrityError, match="active_admin_requires_active_actor"
-        ):
+        with pytest.raises(sqlite3.IntegrityError, match="active_admin_requires_active_actor"):
             connection.execute(
                 "UPDATE installation_admin_assignments SET actor_id = 'disabled-actor' "
                 "WHERE admin_assignment_id = 'admin-active'"

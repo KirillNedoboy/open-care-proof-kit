@@ -62,7 +62,7 @@ def test_backup_and_offline_verify_create_a_complete_installation_artifact(
     )
     manifest = json.loads(manifest_bytes)
     assert manifest["format_version"] == 1
-    assert manifest["product_core_schema_version"] == 8
+    assert manifest["product_core_schema_version"] == 9
     assert manifest["created_at"] == "2026-07-30T12:00:00+00:00"
     assert manifest["sources"][0]["source_id"] == source.id
     assert (destination / "sources" / source.id / "payload.bin").is_file()
@@ -122,9 +122,9 @@ def test_backup_rejects_unsafe_persisted_source_id(tmp_path: Path) -> None:
         connection.execute("UPDATE sources SET id = ? WHERE id = ?", ("../unsafe", source.id))
 
     with pytest.raises(InstallationBackupError, match="source_id_unsafe"):
-        InstallationBackupService(
-            database.path, sources.store.source_dir
-        ).backup(tmp_path / "backup")
+        InstallationBackupService(database.path, sources.store.source_dir).backup(
+            tmp_path / "backup"
+        )
 
 
 def test_backup_rejects_source_path_escape(tmp_path: Path) -> None:
@@ -136,9 +136,9 @@ def test_backup_rejects_source_path_escape(tmp_path: Path) -> None:
         )
 
     with pytest.raises(InstallationBackupError, match="source_path_unsafe"):
-        InstallationBackupService(
-            database.path, sources.store.source_dir
-        ).backup(tmp_path / "backup")
+        InstallationBackupService(database.path, sources.store.source_dir).backup(
+            tmp_path / "backup"
+        )
 
 
 def test_backup_rejects_source_symlink(tmp_path: Path) -> None:
@@ -153,9 +153,9 @@ def test_backup_rejects_source_symlink(tmp_path: Path) -> None:
         pytest.skip("symlinks are unavailable in this test environment")
 
     with pytest.raises(InstallationBackupError, match="symlink_rejected"):
-        InstallationBackupService(
-            database.path, sources.store.source_dir
-        ).backup(tmp_path / "backup")
+        InstallationBackupService(database.path, sources.store.source_dir).backup(
+            tmp_path / "backup"
+        )
 
 
 def test_verify_rejects_manifest_checksum_mismatch_and_undeclared_file(tmp_path: Path) -> None:
@@ -309,9 +309,9 @@ def test_backup_rejects_corrupted_persisted_brief_before_completion(tmp_path: Pa
         )
 
     with pytest.raises(InstallationBackupError, match="visit_brief_integrity_failed"):
-        InstallationBackupService(
-            database.path, sources.store.source_dir
-        ).backup(tmp_path / "backup")
+        InstallationBackupService(database.path, sources.store.source_dir).backup(
+            tmp_path / "backup"
+        )
 
 
 def _active_installation(tmp_path: Path) -> tuple[SQLiteDatabase, SourceService, object]:

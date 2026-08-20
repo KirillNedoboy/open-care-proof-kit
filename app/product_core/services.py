@@ -492,6 +492,52 @@ class SourceService:
         source = self.get(source_id)
         return self.store.read(source)
 
+    def register_genetics_payload_result(
+        self,
+        person_id: str,
+        payload: bytes,
+        *,
+        original_filename: str,
+        media_type: str = "text/plain",
+        provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> SourceRegistrationResult:
+        if not person_id.strip() or not original_filename.strip():
+            raise ValueError("person_id and original_filename must not be empty")
+        return self._register(
+            person_id=person_id,
+            source_type="genetics",
+            payload=payload,
+            media_type=media_type,
+            suffix="txt",
+            provenance=provenance
+            or {
+                "entry_method": "local_genetics_import",
+                "format": "consumer_genotype",
+            },
+            original_filename=original_filename.strip(),
+            authorize=authorize,
+        )
+
+    def register_genetics_payload(
+        self,
+        person_id: str,
+        payload: bytes,
+        *,
+        original_filename: str,
+        media_type: str = "text/plain",
+        provenance: dict[str, str] | None = None,
+        authorize: MutationAuthorizer | None = None,
+    ) -> Source:
+        return self.register_genetics_payload_result(
+            person_id,
+            payload,
+            original_filename=original_filename,
+            media_type=media_type,
+            provenance=provenance,
+            authorize=authorize,
+        ).source
+
     def _register(
         self,
         *,
@@ -502,6 +548,8 @@ class SourceService:
         suffix: str,
         provenance: dict[str, str],
         authorize: MutationAuthorizer | None,
+        original_filename: str | None = None,
+        document_kind: Literal["pdf", "text"] | None = None,
     ) -> SourceRegistrationResult:
         content_hash = hashlib.sha256(payload).hexdigest()
         relative_path: str | None = None
@@ -530,6 +578,8 @@ class SourceService:
                     media_type=media_type,
                     created_at=ensure_utc_datetime(self.clock()),
                     provenance=provenance,
+                    original_filename=original_filename,
+                    document_kind=document_kind,
                 )
                 uow.sources.insert(source)
                 return SourceRegistrationResult(source, True)

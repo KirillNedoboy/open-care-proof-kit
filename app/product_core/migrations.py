@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# ruff: noqa: E501
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -1429,6 +1430,284 @@ PRODUCT_MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=9,
+        statements=(
+            "PRAGMA defer_foreign_keys=ON",
+            """
+            CREATE TABLE sources_v9 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_type TEXT NOT NULL CHECK (
+                    source_type IN ('manual_entry', 'plain_text', 'document', 'genetics')
+                ),
+                relative_path TEXT NOT NULL CHECK (length(trim(relative_path)) > 0),
+                content_hash TEXT NOT NULL CHECK (
+                    length(content_hash) = 64
+                    AND content_hash = lower(content_hash)
+                    AND content_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                size_bytes INTEGER NOT NULL CHECK (size_bytes >= 0),
+                media_type TEXT NOT NULL CHECK (length(trim(media_type)) > 0),
+                created_at TEXT NOT NULL,
+                provenance_json TEXT NOT NULL,
+                original_filename TEXT,
+                document_kind TEXT CHECK (document_kind IN ('pdf', 'text')),
+                CHECK (
+                    (source_type = 'document' AND document_kind IS NOT NULL)
+                    OR (source_type <> 'document' AND document_kind IS NULL
+                        AND (source_type <> 'genetics' OR original_filename IS NOT NULL))
+                ),
+                UNIQUE (person_id, source_type, content_hash),
+                UNIQUE (id, person_id)
+            )
+            """,
+            """
+            INSERT INTO sources_v9 (
+                id, person_id, source_type, relative_path, content_hash, size_bytes,
+                media_type, created_at, provenance_json, original_filename, document_kind
+            )
+            SELECT id, person_id, source_type, relative_path, content_hash, size_bytes,
+                   media_type, created_at, provenance_json, original_filename, document_kind
+            FROM sources
+            """,
+            "DROP TRIGGER document_extractions_source_type_insert",
+            "DROP TABLE sources",
+            "ALTER TABLE sources_v9 RENAME TO sources",
+            """
+            CREATE TRIGGER document_extractions_source_type_insert
+            BEFORE INSERT ON document_extractions
+            WHEN NOT EXISTS (
+                SELECT 1 FROM sources
+                WHERE id = NEW.source_id
+                  AND person_id = NEW.person_id
+                  AND source_type = 'document'
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_extraction_source_mismatch');
+            END
+            """,
+            """
+            CREATE TABLE genetic_access_grants (
+                grant_id TEXT PRIMARY KEY CHECK (length(trim(grant_id)) > 0),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                scopes_json TEXT NOT NULL,
+                consent_confirmed INTEGER NOT NULL CHECK (consent_confirmed IN (0, 1)),
+                granted_by_actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                created_at TEXT NOT NULL,
+                revoked_at TEXT,
+                CHECK (json_valid(scopes_json)),
+                UNIQUE (actor_id, person_id, created_at)
+            )
+            """,
+            """
+            CREATE TABLE genetic_datasets (
+                dataset_id TEXT PRIMARY KEY CHECK (length(trim(dataset_id)) > 0),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                source_hash TEXT NOT NULL CHECK (
+                    length(source_hash) = 64
+                    AND source_hash = lower(source_hash)
+                    AND source_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                format TEXT NOT NULL CHECK (format = 'consumer_genotype'),
+                original_filename TEXT NOT NULL CHECK (length(trim(original_filename)) > 0),
+                genome_build TEXT NOT NULL CHECK (
+                    genome_build IN ('GRCh37/hg19', 'GRCh38/hg38', 'unknown')
+                ),
+                parser TEXT NOT NULL CHECK (length(trim(parser)) > 0),
+                parser_version TEXT NOT NULL CHECK (length(trim(parser_version)) > 0),
+                imported_at TEXT NOT NULL,
+                parsed_loci_count INTEGER NOT NULL CHECK (parsed_loci_count >= 0),
+                indexed_loci_count INTEGER NOT NULL CHECK (indexed_loci_count >= 0),
+                metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),
+                UNIQUE (dataset_id, person_id),
+                UNIQUE (source_id, person_id),
+                FOREIGN KEY (source_id, person_id) REFERENCES sources(id, person_id)
+            )
+            """,
+            """
+            CREATE TABLE genetic_variant_observations (
+                observation_id TEXT PRIMARY KEY CHECK (length(trim(observation_id)) > 0),
+                dataset_id TEXT NOT NULL,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                rsid TEXT,
+                chromosome TEXT NOT NULL CHECK (length(trim(chromosome)) > 0),
+                position INTEGER NOT NULL CHECK (position > 0),
+                reported_genotype TEXT NOT NULL CHECK (length(reported_genotype) > 0),
+                normalized_genotype TEXT NOT NULL CHECK (length(normalized_genotype) > 0),
+                no_call INTEGER NOT NULL CHECK (no_call IN (0, 1)),
+                genome_build TEXT NOT NULL CHECK (
+                    genome_build IN ('GRCh37/hg19', 'GRCh38/hg38', 'unknown')
+                ),
+                orientation_state TEXT NOT NULL CHECK (
+                    orientation_state IN ('resolved', 'unresolved', 'ambiguous', 'not_applicable')
+                ),
+                coverage_state TEXT NOT NULL CHECK (
+                    coverage_state IN ('present', 'no_call', 'indexed')
+                ),
+                source_locator_json TEXT NOT NULL CHECK (json_valid(source_locator_json)),
+                UNIQUE (dataset_id, rsid, chromosome, position),
+                FOREIGN KEY (dataset_id, person_id)
+                    REFERENCES genetic_datasets(dataset_id, person_id)
+            )
+            """,
+            """
+            CREATE TABLE genetic_evidence_entries (
+                evidence_entry_id TEXT PRIMARY KEY CHECK (length(trim(evidence_entry_id)) > 0),
+                pack_id TEXT NOT NULL CHECK (length(trim(pack_id)) > 0),
+                pack_version TEXT NOT NULL CHECK (length(trim(pack_version)) > 0),
+                evidence_id TEXT NOT NULL CHECK (length(trim(evidence_id)) > 0),
+                rsid TEXT,
+                chromosome TEXT,
+                position INTEGER CHECK (position IS NULL OR position > 0),
+                gene TEXT,
+                genome_build TEXT NOT NULL CHECK (
+                    genome_build IN ('GRCh37/hg19', 'GRCh38/hg38', 'unknown')
+                ),
+                genotype_condition TEXT NOT NULL CHECK (length(trim(genotype_condition)) > 0),
+                category TEXT NOT NULL CHECK (length(trim(category)) > 0),
+                title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+                association TEXT NOT NULL CHECK (length(trim(association)) > 0),
+                effect_direction TEXT,
+                evidence_level TEXT NOT NULL CHECK (
+                    evidence_level IN ('Clinical', 'High', 'Moderate', 'Low', 'Exploratory', 'Conflicting')
+                ),
+                source_name TEXT NOT NULL CHECK (length(trim(source_name)) > 0),
+                source_citation TEXT NOT NULL CHECK (length(trim(source_citation)) > 0),
+                source_url TEXT,
+                source_version_date TEXT,
+                limitations_json TEXT NOT NULL CHECK (json_valid(limitations_json)),
+                orientation_metadata TEXT NOT NULL CHECK (length(trim(orientation_metadata)) > 0),
+                tags_json TEXT NOT NULL CHECK (json_valid(tags_json)),
+                UNIQUE (pack_id, pack_version, evidence_id)
+            )
+            """,
+            """
+            CREATE TABLE genetic_findings (
+                finding_id TEXT PRIMARY KEY CHECK (length(trim(finding_id)) > 0),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                observation_id TEXT NOT NULL REFERENCES genetic_variant_observations(observation_id),
+                evidence_entry_id TEXT NOT NULL
+                    REFERENCES genetic_evidence_entries(evidence_entry_id),
+                status TEXT NOT NULL CHECK (
+                    status IN ('pending', 'reviewed', 'dismissed', 'unsupported', 'conflicting')
+                ),
+                category TEXT NOT NULL CHECK (length(trim(category)) > 0),
+                evidence_level TEXT NOT NULL CHECK (
+                    evidence_level IN ('Clinical', 'High', 'Moderate', 'Low', 'Exploratory', 'Conflicting')
+                ),
+                title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+                gene TEXT,
+                association TEXT NOT NULL CHECK (length(trim(association)) > 0),
+                provenance_json TEXT NOT NULL CHECK (json_valid(provenance_json)),
+                created_at TEXT NOT NULL,
+                reviewed_at TEXT,
+                UNIQUE (observation_id, evidence_entry_id)
+            )
+            """,
+            """
+            CREATE TABLE genetic_finding_reviews (
+                review_id TEXT PRIMARY KEY CHECK (length(trim(review_id)) > 0),
+                finding_id TEXT NOT NULL REFERENCES genetic_findings(finding_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                prior_status TEXT NOT NULL,
+                new_status TEXT NOT NULL,
+                reason TEXT,
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE genetics_research_sessions (
+                session_id TEXT PRIMARY KEY CHECK (length(trim(session_id)) > 0),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                mode TEXT NOT NULL CHECK (mode IN ('evidence', 'explore')),
+                question TEXT NOT NULL CHECK (length(trim(question)) > 0),
+                selected_context_json TEXT NOT NULL CHECK (json_valid(selected_context_json)),
+                provider_class TEXT NOT NULL CHECK (length(trim(provider_class)) > 0),
+                disclosure_consent_id TEXT,
+                context_hash TEXT NOT NULL CHECK (length(context_hash) = 64),
+                validation_result TEXT NOT NULL CHECK (
+                    validation_result IN ('accepted', 'rejected')
+                ),
+                output_json TEXT NOT NULL CHECK (json_valid(output_json)),
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE genetics_research_claims (
+                claim_id TEXT PRIMARY KEY CHECK (length(trim(claim_id)) > 0),
+                session_id TEXT NOT NULL REFERENCES genetics_research_sessions(session_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                claim_text TEXT NOT NULL CHECK (length(trim(claim_text)) > 0),
+                epistemic_status TEXT NOT NULL CHECK (
+                    epistemic_status IN (
+                        'observed', 'supported', 'plausible', 'speculative',
+                        'unsupported/conflicting'
+                    )
+                ),
+                supporting_evidence_json TEXT NOT NULL CHECK (json_valid(supporting_evidence_json)),
+                contradicting_evidence_json TEXT NOT NULL CHECK (
+                    json_valid(contradicting_evidence_json)
+                ),
+                person_record_ids_json TEXT NOT NULL CHECK (json_valid(person_record_ids_json)),
+                reasoning_summary TEXT NOT NULL,
+                limitations_json TEXT NOT NULL CHECK (json_valid(limitations_json)),
+                missing_information_json TEXT NOT NULL CHECK (json_valid(missing_information_json)),
+                lifecycle TEXT NOT NULL CHECK (lifecycle IN ('kept', 'dismissed')),
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TRIGGER genetic_datasets_immutable_update
+            BEFORE UPDATE ON genetic_datasets
+            BEGIN
+                SELECT RAISE(ABORT, 'genetic_dataset_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER genetic_datasets_immutable_delete
+            BEFORE DELETE ON genetic_datasets
+            BEGIN
+                SELECT RAISE(ABORT, 'genetic_dataset_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER genetic_observations_immutable_update
+            BEFORE UPDATE ON genetic_variant_observations
+            BEGIN
+                SELECT RAISE(ABORT, 'genetic_observation_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER genetic_observations_immutable_delete
+            BEFORE DELETE ON genetic_variant_observations
+            BEGIN
+                SELECT RAISE(ABORT, 'genetic_observation_immutable');
+            END
+            """,
+            "CREATE INDEX genetic_datasets_person_import_idx ON genetic_datasets(person_id, imported_at)",
+            (
+                "CREATE INDEX genetic_observations_person_locus_idx ON "
+                "genetic_variant_observations(person_id, chromosome, position, rsid)"
+            ),
+            (
+                "CREATE INDEX genetic_findings_person_status_idx ON "
+                "genetic_findings(person_id, status, evidence_level)"
+            ),
+            (
+                "CREATE INDEX genetics_research_sessions_person_created_idx ON "
+                "genetics_research_sessions(person_id, created_at)"
+            ),
+            (
+                "CREATE INDEX genetic_access_grants_actor_person_active_idx ON "
+                "genetic_access_grants(actor_id, person_id, revoked_at)"
+            ),
+        ),
+    ),
 )
 
 
@@ -1481,7 +1760,7 @@ class MigrationRunner:
             raise
 
     def _apply_migration(self, connection: sqlite3.Connection, migration: Migration) -> None:
-        if migration.version == 8:
+        if migration.version in {8, 9}:
             # SQLite cannot rebuild a referenced parent table while foreign-key
             # enforcement is active, even when all final references are valid.
             connection.execute("PRAGMA foreign_keys=OFF")
@@ -1508,10 +1787,10 @@ class MigrationRunner:
                 (migration.version, applied_at),
             )
             connection.commit()
-            if migration.version == 8:
+            if migration.version in {8, 9}:
                 connection.execute("PRAGMA foreign_keys=ON")
         except BaseException:
             connection.rollback()
-            if migration.version == 8:
+            if migration.version in {8, 9}:
                 connection.execute("PRAGMA foreign_keys=ON")
             raise

@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-SourceType = Literal["manual_entry", "plain_text", "document"]
+SourceType = Literal["manual_entry", "plain_text", "document", "genetics"]
 FactType = Literal["medication", "condition", "lab"]
 CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected", "unsupported"]
 VisitBriefRevisionOrigin = Literal["deterministic_generation", "user_edit", "regeneration"]

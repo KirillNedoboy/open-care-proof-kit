@@ -3,6 +3,7 @@ transactional review atomicity for the generalized evidence lifecycle.
 
 Each test maps to a design acceptance item (design §24 Wrong Person scenario,
 §25 security counters, §16 migration plan, §22 export/recovery)."""
+
 from __future__ import annotations
 
 import json
@@ -192,24 +193,26 @@ def test_condition_and_lab_confirmation_rolls_back_on_timeline_failure(
         lifecycle.confirm(candidate.id)
 
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records"
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT COUNT(*) FROM timeline_events"
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT status, reviewed_at FROM candidate_facts WHERE id = ?",
-            (candidate.id,),
-        ).fetchone()[0] == "pending"
+        assert connection.execute("SELECT COUNT(*) FROM canonical_records").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM timeline_events").fetchone()[0] == 0
+        assert (
+            connection.execute(
+                "SELECT status, reviewed_at FROM candidate_facts WHERE id = ?",
+                (candidate.id,),
+            ).fetchone()[0]
+            == "pending"
+        )
         detail_table = {
             "condition": "candidate_condition_details",
             "lab": "candidate_lab_details",
         }[fact_type]
-        assert connection.execute(
-            f"SELECT COUNT(*) FROM {detail_table} WHERE candidate_id = ?",
-            (candidate.id,),
-        ).fetchone()[0] == 1  # the candidate's own detail row is untouched
+        assert (
+            connection.execute(
+                f"SELECT COUNT(*) FROM {detail_table} WHERE candidate_id = ?",
+                (candidate.id,),
+            ).fetchone()[0]
+            == 1
+        )  # the candidate's own detail row is untouched
 
 
 # --------------------------------------------------------------------------- #
@@ -251,13 +254,14 @@ def test_source_corruption_fails_closed_on_condition_and_lab_confirm(
         lifecycle.confirm(candidate.id)
 
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records"
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT status FROM candidate_facts WHERE id = ?",
-            (candidate.id,),
-        ).fetchone()[0] == "pending"
+        assert connection.execute("SELECT COUNT(*) FROM canonical_records").fetchone()[0] == 0
+        assert (
+            connection.execute(
+                "SELECT status FROM candidate_facts WHERE id = ?",
+                (candidate.id,),
+            ).fetchone()[0]
+            == "pending"
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -283,9 +287,7 @@ def test_export_person_isolation_for_condition_and_lab_and_v3_round_trip(
     tmp_path: Path,
 ) -> None:
     database, sources, lifecycle, _, _ = _setup(tmp_path, "person-1", "person-2")
-    condition_record, _ = _confirmed_condition(
-        database, sources, lifecycle, "person-1", "Asthma"
-    )
+    condition_record, _ = _confirmed_condition(database, sources, lifecycle, "person-1", "Asthma")
     lab_record, _ = _confirmed_lab(database, sources, lifecycle, "person-1")
     _confirmed_lab(database, sources, lifecycle, "person-2", "Glucose")
 
@@ -294,9 +296,10 @@ def test_export_person_isolation_for_condition_and_lab_and_v3_round_trip(
     person_two = json.loads(exporter.export("person-2").vault_json)
 
     assert person_one["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
-    assert {
-        record["canonical_record_id"] for record in person_one["canonical_records"]
-    } == {condition_record, lab_record}
+    assert {record["canonical_record_id"] for record in person_one["canonical_records"]} == {
+        condition_record,
+        lab_record,
+    }
     assert person_one["canonical_condition_details"]
     assert person_one["canonical_lab_details"]
     assert person_one["candidate_facts"]
@@ -307,14 +310,9 @@ def test_export_person_isolation_for_condition_and_lab_and_v3_round_trip(
     }
     assert len(person_two["canonical_records"]) == 1
     assert {condition_record, lab_record}.isdisjoint(person_two_record_ids)
-    assert all(
-        record["person_id"] == "person-2" for record in person_two["canonical_records"]
-    )
+    assert all(record["person_id"] == "person-2" for record in person_two["canonical_records"])
     assert person_two["canonical_condition_details"] == []
-    assert all(
-        detail["test_name"] == "Glucose"
-        for detail in person_two["canonical_lab_details"]
-    )
+    assert all(detail["test_name"] == "Glucose" for detail in person_two["canonical_lab_details"])
     assert person_two["person"]["person_id"] == "person-2"
 
     # Deterministic round trip: two exports of the same Person are identical.
@@ -365,9 +363,7 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
         selected_record_ids=[med_record.id, condition_record, lab_record],
         expected_current_revision_number=None,
     )
-    family = FamilyAccessService(
-        database, clock=clock, id_factory=ids
-    )
+    family = FamilyAccessService(database, clock=clock, id_factory=ids)
     owner = family.bootstrap(
         username="owner",
         display_name="Owner",
@@ -436,7 +432,7 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
     destination = tmp_path / "backup"
     report = backup.backup(destination)
     assert report.valid is True
-    assert report.product_core_schema_version == 8
+    assert report.product_core_schema_version == 9
 
     target = tmp_path / "recovered"
     recovery = InstallationRecoveryService(clock=lambda: clock())
@@ -445,33 +441,43 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
     assert recovered.valid is True
 
     with sqlite3.connect(target / "database.sqlite3") as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'lab'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_medication_details"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_condition_details"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_lab_details"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM visit_brief_evidence_selections"
-        ).fetchone()[0] == 3
-        assert connection.execute(
-            "SELECT COUNT(*) FROM person_access_assignments WHERE is_active = 1"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM agent_disclosure_consents"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM agent_execution_receipts"
-        ).fetchone()[0] == 1
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'lab'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM canonical_medication_details").fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM canonical_condition_details").fetchone()[0]
+            == 1
+        )
+        assert connection.execute("SELECT COUNT(*) FROM canonical_lab_details").fetchone()[0] == 1
+        assert (
+            connection.execute("SELECT COUNT(*) FROM visit_brief_evidence_selections").fetchone()[0]
+            == 3
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM person_access_assignments WHERE is_active = 1"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM agent_disclosure_consents").fetchone()[0] == 1
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM agent_execution_receipts").fetchone()[0] == 1
+        )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
@@ -494,23 +500,61 @@ def test_v6_to_v7_backup_recovers_preserving_state(tmp_path: Path) -> None:
         )
         connection.execute(
             "INSERT INTO sources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("src-1", "person-1", "manual_entry", "src-1.json", "a" * 64, 1,
-             "application/json", timestamp, json.dumps({"entry_method": "manual"})),
+            (
+                "src-1",
+                "person-1",
+                "manual_entry",
+                "src-1.json",
+                "a" * 64,
+                1,
+                "application/json",
+                timestamp,
+                json.dumps({"entry_method": "manual"}),
+            ),
         )
         connection.execute(
             "INSERT INTO candidate_facts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("cand-1", "person-1", "src-1", "medication", "confirmed", "Ibuprofen",
-             "ibuprofen", "daily", None, timestamp, timestamp, None),
+            (
+                "cand-1",
+                "person-1",
+                "src-1",
+                "medication",
+                "confirmed",
+                "Ibuprofen",
+                "ibuprofen",
+                "daily",
+                None,
+                timestamp,
+                timestamp,
+                None,
+            ),
         )
         connection.execute(
             "INSERT INTO canonical_medication_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("rec-1", "person-1", "cand-1", "src-1", "Ibuprofen", "ibuprofen",
-             "daily", None, timestamp, 1),
+            (
+                "rec-1",
+                "person-1",
+                "cand-1",
+                "src-1",
+                "Ibuprofen",
+                "ibuprofen",
+                "daily",
+                None,
+                timestamp,
+                1,
+            ),
         )
         connection.execute(
             "INSERT INTO timeline_events VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("ev-1", "person-1", "rec-1", "src-1", "medication_confirmed",
-             timestamp, "Medication confirmed: Ibuprofen"),
+            (
+                "ev-1",
+                "person-1",
+                "rec-1",
+                "src-1",
+                "medication_confirmed",
+                timestamp,
+                "Medication confirmed: Ibuprofen",
+            ),
         )
         connection.execute("COMMIT")
     database.migrate()
@@ -549,12 +593,18 @@ def test_v6_to_v7_backup_recovers_preserving_state(tmp_path: Path) -> None:
     )
     recovered = verify_recovered_installation(target)
     assert recovered.valid is True
-    assert recovered.product_core_schema_version == 8
+    assert recovered.product_core_schema_version == 9
     with sqlite3.connect(target / "database.sqlite3") as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'medication'"
-        ).fetchone()[0] == 1
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
-        ).fetchone()[0] == 1
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'medication'"
+            ).fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
+            ).fetchone()[0]
+            == 1
+        )
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
