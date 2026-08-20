@@ -47,9 +47,7 @@ class AccessHarness:
         assert response.status_code == 200, response.text
         csrf = self.client.cookies.get("opencare_csrf")
         assert csrf is not None
-        self.client.headers.update(
-            {"origin": "http://testserver", "x-opencare-csrf": csrf}
-        )
+        self.client.headers.update({"origin": "http://testserver", "x-opencare-csrf": csrf})
 
     def select(self, person_id: str) -> None:
         response = self.client.put(
@@ -60,9 +58,7 @@ class AccessHarness:
 
 
 @pytest.fixture
-def access_harness(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Iterator[AccessHarness]:
+def access_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[AccessHarness]:
     monkeypatch.setenv("OPENCARE_PRODUCT_DB_PATH", str(tmp_path / "product" / "db.sqlite3"))
     monkeypatch.setenv("OPENCARE_SOURCE_DIR", str(tmp_path / "product" / "sources"))
     monkeypatch.setenv("OPENCARE_SESSION_DB_PATH", str(tmp_path / "runtime" / "sessions.sqlite3"))
@@ -274,9 +270,7 @@ def test_mutation_authorization_and_write_share_one_database_transaction(
         next_connection_id += 1
         statements_by_connection[connection_id] = []
         connection.set_trace_callback(
-            lambda statement: statements_by_connection[connection_id].append(
-                _sql_shape(statement)
-            )
+            lambda statement: statements_by_connection[connection_id].append(_sql_shape(statement))
         )
         return connection
 
@@ -329,10 +323,13 @@ def test_audit_failures_roll_back_mutations_and_preserve_denials(
     assert hidden.status_code == 404
     assert forbidden.status_code == 403
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM sources WHERE person_id IN (?, ?)",
-            ("bob-person", "alice-person"),
-        ).fetchone()[0] == 0
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM sources WHERE person_id IN (?, ?)",
+                ("bob-person", "alice-person"),
+            ).fetchone()[0]
+            == 0
+        )
     assert "product_core_denial_audit_failed" in caplog.text
     assert "carol-person" not in caplog.text
     assert "alice-person" not in caplog.text
@@ -354,8 +351,7 @@ def test_people_list_and_person_errors_do_not_disclose_hidden_people(
 
     assert listed.status_code == 200
     assert [
-        (person["person_id"], person["display_name"])
-        for person in listed.json()["people"]
+        (person["person_id"], person["display_name"]) for person in listed.json()["people"]
     ] == [
         ("alice-person", "Alice profile"),
         ("bob-person", "Bob profile"),
@@ -390,9 +386,12 @@ def test_person_create_requires_literal_owner_confirmation_and_is_atomic(
     assert rejected.status_code == 403
     assert coerced.status_code == 422
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM people WHERE display_name IN ('Unowned', 'Coerced')"
-        ).fetchone()[0] == 0
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM people WHERE display_name IN ('Unowned', 'Coerced')"
+            ).fetchone()[0]
+            == 0
+        )
 
     created = client.post(
         "/api/product-core/v1/people",
@@ -480,9 +479,7 @@ def test_nested_resource_ownership_and_scope_map(
         == 403
     )
     assert (
-        client.post(
-            f"/api/product-core/v1/candidates/{candidate_id}/reject", json={}
-        ).status_code
+        client.post(f"/api/product-core/v1/candidates/{candidate_id}/reject", json={}).status_code
         == 403
     )
     assert (
@@ -499,12 +496,7 @@ def test_nested_resource_ownership_and_scope_map(
         ).status_code
         == 403
     )
-    assert (
-        client.post(
-            f"/api/product-core/v1/visits/{visit_id}/brief", json={}
-        ).status_code
-        == 403
-    )
+    assert client.post(f"/api/product-core/v1/visits/{visit_id}/brief", json={}).status_code == 403
     assert (
         client.post(
             "/api/product-core/v1/people/alice-person/visit-briefs:generate",
@@ -513,9 +505,7 @@ def test_nested_resource_ownership_and_scope_map(
         == 403
     )
     assert (
-        client.post(
-            "/api/product-core/v1/people/alice-person/vault-export", json={}
-        ).status_code
+        client.post("/api/product-core/v1/people/alice-person/vault-export", json={}).status_code
         == 403
     )
 
@@ -541,12 +531,8 @@ def test_portable_export_v2_is_scoped_deterministic_and_audited(
     access_harness.login("alice")
     client = access_harness.client
 
-    first = client.post(
-        "/api/product-core/v1/people/alice-person/vault-export", json={}
-    )
-    second = client.post(
-        "/api/product-core/v1/people/alice-person/vault-export", json={}
-    )
+    first = client.post("/api/product-core/v1/people/alice-person/vault-export", json={})
+    second = client.post("/api/product-core/v1/people/alice-person/vault-export", json={})
 
     assert first.status_code == second.status_code == 200
     assert first.headers["content-disposition"] == (
@@ -560,7 +546,7 @@ def test_portable_export_v2_is_scoped_deterministic_and_audited(
             "ascii"
         )
     assert manifest["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
-    assert manifest["product_core_schema_version"] == 8
+    assert manifest["product_core_schema_version"] == 9
     assert vault["format_version"] == PORTABLE_VAULT_FORMAT_VERSION
     assert len(vault["family_memberships"]) == 1
     assert vault["family_memberships"][0]["person_id"] == "alice-person"
@@ -587,12 +573,15 @@ def test_portable_export_v2_is_scoped_deterministic_and_audited(
 
     database = main_module.app.state.product_core_runtime.database
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM access_audit_events "
-            "WHERE actor_id = ? AND action_code = 'vault.export' "
-            "AND target_id = 'alice-person' AND outcome = 'success'",
-            (access_harness.actor_ids["alice"],),
-        ).fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM access_audit_events "
+                "WHERE actor_id = ? AND action_code = 'vault.export' "
+                "AND target_id = 'alice-person' AND outcome = 'success'",
+                (access_harness.actor_ids["alice"],),
+            ).fetchone()[0]
+            == 2
+        )
 
     family_service = main_module.app.state.family_access_runtime.service
 
@@ -600,9 +589,7 @@ def test_portable_export_v2_is_scoped_deterministic_and_audited(
         raise OSError("forced audit failure")
 
     monkeypatch.setattr(family_service, "audit_writer", fail_audit)
-    failed = client.post(
-        "/api/product-core/v1/people/alice-person/vault-export", json={}
-    )
+    failed = client.post("/api/product-core/v1/people/alice-person/vault-export", json={})
     assert failed.status_code == 503
     assert failed.headers["content-type"].startswith("application/json")
     assert failed.json() == {
@@ -703,9 +690,7 @@ def test_brief_export_requires_scope_and_durable_access_audit(
     )
     assert generated.status_code == 201, generated.text
 
-    exported = client.post(
-        f"/api/product-core/v1/visits/{visit_id}/brief/current:export", json={}
-    )
+    exported = client.post(f"/api/product-core/v1/visits/{visit_id}/brief/current:export", json={})
     assert exported.status_code == 200
     assert exported.headers["content-type"].startswith("text/markdown")
 
@@ -715,9 +700,7 @@ def test_brief_export_requires_scope_and_durable_access_audit(
         raise OSError("forced brief audit failure")
 
     monkeypatch.setattr(family_service, "audit_writer", fail_audit)
-    failed = client.post(
-        f"/api/product-core/v1/visits/{visit_id}/brief/current:export", json={}
-    )
+    failed = client.post(f"/api/product-core/v1/visits/{visit_id}/brief/current:export", json={})
     assert failed.status_code == 503
     assert failed.headers["content-type"].startswith("application/json")
     assert "#" not in failed.text
@@ -788,15 +771,9 @@ def test_wrong_person_condition_scopes_deny_and_hide_without_silent_expansion(
     missing = client.get("/api/product-core/v1/people/missing-person/conditions")
     hidden_record = client.get(f"/api/product-core/v1/conditions/{record_id}")
     missing_record = client.get("/api/product-core/v1/conditions/missing-record")
-    hidden_candidate = client.get(
-        f"/api/product-core/v1/candidates/conditions/{candidate_id}"
-    )
-    missing_candidate = client.get(
-        "/api/product-core/v1/candidates/conditions/missing-candidate"
-    )
-    list_candidates = client.get(
-        "/api/product-core/v1/people/alice-person/condition-candidates"
-    )
+    hidden_candidate = client.get(f"/api/product-core/v1/candidates/conditions/{candidate_id}")
+    missing_candidate = client.get("/api/product-core/v1/candidates/conditions/missing-candidate")
+    list_candidates = client.get("/api/product-core/v1/people/alice-person/condition-candidates")
 
     assert visible.status_code == 403
     assert hidden.status_code == missing.status_code == 404
@@ -1048,13 +1025,17 @@ def test_condition_confirm_audit_failure_rolls_back_canonical_and_timeline(
     assert confirm.status_code == 503
     database = main_module.app.state.product_core_runtime.database
     with database.connect() as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT COUNT(*) FROM timeline_events"
-        ).fetchone()[0] == 0
-        assert connection.execute(
-            "SELECT status FROM candidate_facts WHERE id = ?",
-            (candidate_id,),
-        ).fetchone()[0] == "pending"
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM canonical_records WHERE fact_type = 'condition'"
+            ).fetchone()[0]
+            == 0
+        )
+        assert connection.execute("SELECT COUNT(*) FROM timeline_events").fetchone()[0] == 0
+        assert (
+            connection.execute(
+                "SELECT status FROM candidate_facts WHERE id = ?",
+                (candidate_id,),
+            ).fetchone()[0]
+            == "pending"
+        )

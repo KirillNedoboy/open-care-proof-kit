@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import sqlite3
 from collections.abc import Callable
@@ -36,6 +37,13 @@ from app.product_core.api_models import (
     DocumentResponse,
     EmptyActionRequest,
     ErrorResponse,
+    GeneticsComparisonRequest,
+    GeneticsConsentRequest,
+    GeneticsExportRequest,
+    GeneticsGrantRequest,
+    GeneticsImportRequest,
+    GeneticsResearchRequest,
+    GeneticsReviewRequest,
     LabCandidateListResponse,
     LabCandidateRequest,
     LabCandidateResponse,
@@ -110,6 +118,7 @@ from app.product_core.errors import (
     VisitQuestionNotFoundError,
     VisitValidationError,
 )
+from app.product_core.genetics import MAX_GENETICS_UPLOAD_BYTES, GeneticsValidationError
 from app.product_core.models import ConditionCandidateInput, LabCandidateInput, VisitBriefRequest
 from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import ProductCoreRuntime
@@ -147,6 +156,12 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, Any]]:
 
 
 def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
+    if isinstance(exc, GeneticsValidationError):
+        return _error_response(
+            422,
+            "genetics_validation_failed",
+            "The genetics request is invalid.",
+        )
     if isinstance(exc, ScopeForbiddenError):
         return _error_response(403, "scope_forbidden", "Required scope is not granted.")
     if isinstance(exc, AccessAuditUnavailableError):
@@ -322,6 +337,17 @@ _BODY_PERSON_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_create_condition_candidate": ("candidate.review",),
     "product_core_create_lab_candidate": ("candidate.review",),
 }
+
+_GENETICS_OPERATIONS = {
+    "product_core_get_genetics_workspace": "genetics.read",
+    "product_core_consent_genetics": "person.read",
+    "product_core_grant_genetics_access": "access.manage",
+    "product_core_import_genetics": "genetics.write",
+    "product_core_review_genetics_finding": "genetics.read",
+    "product_core_run_genetics_research": "genetics.research",
+    "product_core_compare_genetics": "genetics.compare",
+    "product_core_export_genetics": "genetics.export",
+}
 _CANDIDATE_CREATE_OPERATIONS = frozenset(
     {
         "product_core_create_medication_candidate",
@@ -355,6 +381,12 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_save_persisted_visit_brief_user_edit",
     "product_core_restore_persisted_visit_brief_revision",
     "product_core_export_current_persisted_visit_brief",
+    "product_core_consent_genetics",
+    "product_core_grant_genetics_access",
+    "product_core_import_genetics",
+    "product_core_review_genetics_finding",
+    "product_core_run_genetics_research",
+    "product_core_export_genetics",
 }
 
 
@@ -364,6 +396,15 @@ async def _authorize_route_request(
     # Preflight path resources before request-model validation to preserve 404
     # privacy semantics. The authoritative recheck and success audit still run
     # inside the same Product Core write transaction as the mutation.
+    if operation_id in _GENETICS_OPERATIONS:
+        person_id = request.path_params.get("person_id")
+        if isinstance(person_id, str):
+            scope = _GENETICS_OPERATIONS[operation_id]
+            if scope in {"person.read", "access.manage"}:
+                access.require_person(person_id, scope)
+            else:
+                access.require_genetics(person_id, scope)
+        return
     if operation_id in _ATOMIC_MUTATION_OPERATIONS:
         if operation_id in _PERSON_PATH_SCOPES:
             access.preflight_person(
@@ -2201,3 +2242,182 @@ def generate_visit_brief(
         )
     )
     return VisitBriefResponse.model_validate(brief.model_dump())
+
+
+@router.post(
+    "/people/{person_id}/genetics/consent",
+    response_model=dict[str, Any],
+    operation_id="product_core_consent_genetics",
+)
+def consent_genetics(
+    person_id: ProductCoreIdentifier,
+    payload: GeneticsConsentRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_person(person_id, "person.read")
+    grant_id = runtime.genetics.grant_access(
+        actor_id=access.actor_id,
+        person_id=person_id,
+        scopes=payload.scopes,
+        granted_by_actor_id=access.actor_id,
+        consent_confirmed=payload.confirmation,
+    )
+    return {"grant_id": grant_id, "person_id": person_id, "scopes": payload.scopes}
+
+
+@router.post(
+    "/people/{person_id}/genetics/access",
+    response_model=dict[str, Any],
+    operation_id="product_core_grant_genetics_access",
+)
+def grant_genetics_access(
+    person_id: ProductCoreIdentifier,
+    payload: GeneticsGrantRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_person(person_id, "access.manage")
+    grant_id = runtime.genetics.grant_access(
+        actor_id=payload.actor_id,
+        person_id=person_id,
+        scopes=payload.scopes,
+        granted_by_actor_id=access.actor_id,
+        consent_confirmed=payload.confirmation,
+    )
+    return {"grant_id": grant_id, "person_id": person_id, "actor_id": payload.actor_id}
+
+
+@router.get(
+    "/people/{person_id}/genetics",
+    response_model=dict[str, Any],
+    operation_id="product_core_get_genetics_workspace",
+)
+def get_genetics_workspace(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_genetics(person_id, "genetics.read")
+    return runtime.genetics.overview(person_id=person_id)
+
+
+@router.post(
+    "/people/{person_id}/genetics/import",
+    response_model=dict[str, Any],
+    operation_id="product_core_import_genetics",
+)
+def import_genetics(
+    person_id: ProductCoreIdentifier,
+    payload: GeneticsImportRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_genetics(person_id, "genetics.write")
+    encoded = payload.payload_base64
+    if len(encoded) > ((MAX_GENETICS_UPLOAD_BYTES + 2) // 3) * 4:
+        raise GeneticsValidationError("genetics_upload_bytes_limit_exceeded")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise GeneticsValidationError("genetics_payload_base64_invalid") from exc
+    result = runtime.genetics.import_consumer_genotype(
+        person_id=person_id,
+        payload=raw,
+        original_filename=payload.filename,
+        genome_build=payload.genome_build,
+        confirmation=payload.confirmation,
+        selected_loci=payload.selected_loci,
+    )
+    return result.__dict__
+
+
+@router.post(
+    "/people/{person_id}/genetics/findings/{finding_id}/review",
+    response_model=dict[str, Any],
+    operation_id="product_core_review_genetics_finding",
+)
+def review_genetics_finding(
+    person_id: ProductCoreIdentifier,
+    finding_id: ProductCoreIdentifier,
+    payload: GeneticsReviewRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_genetics(person_id, "genetics.read")
+    return runtime.genetics.review_finding(
+        finding_id=finding_id,
+        person_id=person_id,
+        actor_id=access.actor_id,
+        status=payload.status,
+        reason=payload.reason,
+    )
+
+
+@router.post(
+    "/people/{person_id}/genetics/research",
+    response_model=dict[str, Any],
+    operation_id="product_core_run_genetics_research",
+)
+def run_genetics_research(
+    person_id: ProductCoreIdentifier,
+    payload: GeneticsResearchRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_genetics(person_id, "genetics.research")
+    if payload.second_person_id is not None:
+        access.require_genetics(payload.second_person_id, "genetics.compare")
+    packet = runtime.genetics.build_research_packet(
+        person_id=person_id,
+        finding_ids=payload.finding_ids,
+        canonical_records=payload.canonical_records,
+        second_person_id=payload.second_person_id,
+    )
+    return runtime.genetics.run_deterministic_research(
+        person_id=person_id,
+        actor_id=access.actor_id,
+        mode=payload.mode,
+        question=payload.question,
+        packet=packet,
+    )
+
+
+@router.post(
+    "/people/{person_id}/genetics/compare",
+    response_model=dict[str, Any],
+    operation_id="product_core_compare_genetics",
+)
+def compare_genetics(
+    person_id: ProductCoreIdentifier,
+    payload: GeneticsComparisonRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_genetics(person_id, "genetics.compare")
+    access.require_genetics(payload.person_b_id, "genetics.compare")
+    return runtime.genetics.compare(person_a=person_id, person_b=payload.person_b_id)
+
+
+@router.post(
+    "/people/{person_id}/genetics/export",
+    operation_id="product_core_export_genetics",
+)
+def export_genetics(
+    person_id: ProductCoreIdentifier,
+    payload: GeneticsExportRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> Response:
+    access.require_genetics(person_id, "genetics.export")
+    if not payload.confirmation:
+        raise GeneticsValidationError("genetics_export_confirmation_required")
+    package = runtime.genetics.export_package(
+        person_id=person_id,
+        include_research=payload.include_research,
+    )
+    return Response(
+        content=package,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="opencare-genetics-package-v1.zip"'},
+    )

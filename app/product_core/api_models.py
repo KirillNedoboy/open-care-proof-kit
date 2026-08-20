@@ -413,7 +413,7 @@ class VisitQuestionUpdateRequest(APIModel):
 class SourceResponse(APIModel):
     source_id: str
     person_id: str
-    source_type: Literal["manual_entry", "plain_text"]
+    source_type: Literal["manual_entry", "plain_text", "genetics"]
     content_hash: str
     size_bytes: int
     media_type: str
@@ -481,7 +481,7 @@ class SourceMetadataResponse(APIModel):
     """
 
     source_id: str
-    source_type: Literal["manual_entry", "plain_text", "document"]
+    source_type: Literal["manual_entry", "plain_text", "document", "genetics"]
     content_hash: str
     size_bytes: int
     media_type: str
@@ -798,6 +798,53 @@ class VisitBriefEvidenceValidationResponse(APIModel):
     valid: bool
     selection_fingerprint: str
     evidence: list[dict[str, Any]]
+
+
+class GeneticsConsentRequest(APIModel):
+    confirmation: bool
+    scopes: list[
+        Literal[
+            "genetics.read",
+            "genetics.write",
+            "genetics.research",
+            "genetics.compare",
+            "genetics.export",
+        ]
+    ] = Field(min_length=1)
+
+
+class GeneticsGrantRequest(GeneticsConsentRequest):
+    actor_id: str = Field(min_length=1)
+
+
+class GeneticsImportRequest(APIModel):
+    filename: str = Field(min_length=1, max_length=255)
+    payload_base64: str = Field(min_length=1)
+    genome_build: Literal["GRCh37/hg19", "GRCh38/hg38", "unknown"] = "unknown"
+    confirmation: bool
+    selected_loci: list[str] = Field(default_factory=list, max_length=500)
+
+
+class GeneticsReviewRequest(APIModel):
+    status: Literal["reviewed", "dismissed", "unsupported", "conflicting"]
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class GeneticsResearchRequest(APIModel):
+    mode: Literal["evidence", "explore"]
+    question: str = Field(min_length=1, max_length=2000)
+    finding_ids: list[str] = Field(min_length=1, max_length=100)
+    canonical_records: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
+    second_person_id: str | None = None
+
+
+class GeneticsComparisonRequest(APIModel):
+    person_b_id: str = Field(min_length=1)
+
+
+class GeneticsExportRequest(APIModel):
+    confirmation: bool
+    include_research: bool = False
 
 
 class ErrorResponse(APIModel):

@@ -101,7 +101,7 @@ def test_product_core_openapi_is_stable_and_public_only(product_core_client: Tes
         if isinstance(operation, dict) and "operationId" in operation
     ]
 
-    assert len(paths) == 48
+    assert len(paths) == 56
     assert len(operation_ids) == len(set(operation_ids))
     assert "product_core_unsupported_candidate" in operation_ids
     assert "product_core_create_condition_candidate" in operation_ids
@@ -121,6 +121,9 @@ def test_product_core_openapi_is_stable_and_public_only(product_core_client: Tes
     assert "VisitBriefRevisionResponse" in schema["components"]["schemas"]
     assert "DocumentRegistrationResponse" in schema["components"]["schemas"]
     assert "DocumentPageResponse" in schema["components"]["schemas"]
+    assert "product_core_get_genetics_workspace" in operation_ids
+    assert "product_core_import_genetics" in operation_ids
+    assert "GeneticsImportRequest" in schema["components"]["schemas"]
 
 
 def test_startup_migration_failure_does_not_publish_runtime(

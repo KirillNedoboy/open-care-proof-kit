@@ -153,6 +153,17 @@ class ProductCoreAccess:
             self._best_effort_denial_audit(None)
             raise
 
+    def require_genetics(self, person_id: str, scope: str) -> str:
+        """Require explicit, Person-bound genetics consent without widening legacy scopes."""
+        self.require_person(person_id, "person.read")
+        if not self.runtime.genetics.has_scope(
+            actor_id=self.actor_id,
+            person_id=person_id,
+            scope=scope,
+        ):
+            raise PersonNotFoundError("Person was not found.")
+        return person_id
+
     def require_source(self, source_id: str, *required_scopes: str) -> str:
         """Resolve a source's owning Person server-side and require scopes.
 
