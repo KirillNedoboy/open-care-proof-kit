@@ -107,13 +107,15 @@ def test_password_minimum_and_constant_time_verification_boundary(
 
 
 def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default() -> None:
-    assert POLICY_VERSION == "family-access-v2"
+    assert POLICY_VERSION == "family-access-v3"
     assert {
         "person.read",
         "person.update",
         "source.read",
         "source.write",
         "candidate.read",
+        "document.read",
+        "document.write",
         "candidate.review",
         "medication.read",
         "medication.write",
@@ -137,6 +139,7 @@ def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default(
     assert {
         "person.read",
         "source.read",
+        "document.read",
         "candidate.read",
         "medication.read",
         "condition.read",
@@ -149,6 +152,7 @@ def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default(
     } == CAREGIVER_BASE_SCOPES
     assert {
         "source.write",
+        "document.write",
         "candidate.review",
         "medication.write",
         "condition.write",

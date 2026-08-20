@@ -53,7 +53,7 @@ def test_workspace_assets_are_external_and_avoid_browser_persistence_or_unsafe_h
     assert "include_inactive=true" in script
     assert "/sources/" in script
     assert "opencare-person-vault-v2.zip" not in script
-    assert script.count("opencare-person-vault-v3.zip") == 1
+    assert script.count("opencare-person-vault-v4.zip") == 1
 
     assert "refreshCapabilitiesAfterDenial" in script
     assert "error.status" in script
@@ -78,7 +78,7 @@ def test_workspace_uses_session_csrf_and_server_side_active_person() -> None:
     assert "X-OpenCare-CSRF" in script
     assert "/api/family-access/v1/active-person" in script
     assert "confirm_owner_assignment: byId(\"create-owner-confirmation\").checked" in script
-    assert "opencare-person-vault-v3.zip" in script
+    assert "opencare-person-vault-v4.zip" in script
 
 
 def test_workspace_generation_helper_rejects_stale_person_responses() -> None:
@@ -166,7 +166,7 @@ def test_workspace_script_defends_exact_frontend_labels_and_provenance() -> None
         "Revision unavailable",
         "Source & provenance",
         "Source ID:",
-        "Source type:",
+        "Document ·",
         "Registered:",
         "SHA-256:",
         "Size:",
