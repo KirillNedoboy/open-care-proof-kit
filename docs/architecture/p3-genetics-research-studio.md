@@ -3,8 +3,9 @@
 **Historical contract:** design binding for `codex/p3-genetics-research-studio`,
 based on Product Core schema v8.
 
-**Current implementation:** implemented and published on public `main` at
-`0937d352cc74a3050609e826baa6bad82f6ac9ee`; Product Core schema v9 is current.
+**Current implementation:** implemented and published on public `main`; the
+historical P3-final baseline was `0937d352cc74a3050609e826baa6bad82f6ac9ee`.
+Product Core schema v9 is current.
 
 ## Product thesis
 

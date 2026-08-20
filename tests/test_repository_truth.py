@@ -7,9 +7,6 @@ from app import __version__
 from app.product_core.migrations import PRODUCT_MIGRATIONS
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_MAIN_SHA = "0937d352cc74a3050609e826baa6bad82f6ac9ee"
-
-
 def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
@@ -20,7 +17,10 @@ def test_current_repository_truth_is_published_and_versioned() -> None:
     readme = _read("README.md")
     project = tomllib.loads(_read("pyproject.toml"))["project"]
 
-    assert PUBLIC_MAIN_SHA in status
+    assert "Public `main` is a mutable Git ref." in status
+    assert "P3-final implementation" in status
+    assert "R1 repository-truth" in status
+    assert "contains the completed G1-G5, P1, P2, D1, and P3 implementation" in readme
     assert "P3 Genetics Research Studio (implemented and published on public" in status
     assert "P3 is part of the published" in matrix
     assert "P3 branch" not in matrix

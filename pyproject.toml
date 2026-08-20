@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "open-care-proof-kit"
 version = "0.3.0.dev0"
-description = "Local-first open-source trust/evidence/safety toolkit for private health AI agents."
+description = "Open-source self-hosted Personal and Family Health Workspace with reusable trust infrastructure for sensitive personal AI agents."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"

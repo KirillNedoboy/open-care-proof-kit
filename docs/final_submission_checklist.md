@@ -12,8 +12,8 @@ Use this checklist before submitting OpenCare Proof Kit for grant or reviewer ev
 - [ ] Public default branch is `main`.
 - [ ] README links to current status, capability matrix, roadmap, security,
   reviewer, and P3 guide documents.
-- [ ] Public main baseline is
-  `0937d352cc74a3050609e826baa6bad82f6ac9ee`.
+- [ ] Public `main` contains the completed implementation; historical P3-final
+  baseline: `0937d352cc74a3050609e826baa6bad82f6ac9ee`.
 - [ ] `v0.1.0` and `v0.2.0` remain the only published tags/releases.
 
 ## README First Screen

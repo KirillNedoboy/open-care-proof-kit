@@ -1,276 +1,339 @@
 # Product Core Roadmap
 
-> **Current status (2026-08-20):** The implementation roadmap through P1,
-> P2, D1, and P3 is complete on public `main` at
-> `0937d352cc74a3050609e826baa6bad82f6ac9ee`.
->
-> This document preserves historical phase design and acceptance context. It
-> is no longer a list of pending implementation work. Current feature roadmap
-> completed. Future product work requires a new explicit product decision.
+## Current status
 
-The historical roadmap below describes the evolution of Product Core without
-speculative dates or estimates. It is subordinate to
-[ADR 0001](../adr/0001-opencare-product-direction.md).
+The implementation roadmap through P1, P2, D1, and P3 is complete on public
+`main`.
 
-## Phase 1: first vertical slice
+This file is no longer a queue of pending Product Core features. It records the
+completed implementation sequence and preserves the architectural logic behind
+it.
 
-### Objective
+Do not infer a new feature phase from historical sections in this document.
+Future product work requires a new explicit product decision.
 
-Prove the core user-owned lifecycle for one non-genetic fact type:
+Do not hardcode the mutable current `main` SHA here. Historical phase-final SHAs
+belong in project history or release notes, not in the definition of “current
+main”.
 
-`Source -> CandidateFact -> User Review -> CanonicalRecord -> TimelineEvent -> VisitBrief`
+## Product thesis
 
-### Deliverables
+OpenCare is an open-source, self-hosted Personal and Family Health Workspace plus
+reusable trust infrastructure for sensitive personal AI agents.
 
-- medication fact type only;
-- manual medication entry;
-- optional text-based source;
-- source registration and immutable source reference;
-- candidate medication facts with provenance;
-- explicit review, correction, confirmation, and rejection states;
-- canonical confirmed medication records;
-- deterministic timeline event generation;
-- deterministic Visit Brief generation;
-- source references in every brief claim;
-- repository interfaces that preserve a later SQLite boundary;
-- standard-library SQLite persistence with explicit migration bootstrap;
-- immutable local source publication and corruption checks;
-- tests for lifecycle, provenance, correction, rejection, and rebuild behavior.
+The product remains:
 
-### Non-goals
+```text
+vault first
+-> provenance and human review
+-> family workspace
+-> document evidence
+-> bounded AI
+-> genetics research
+```
+
+OpenCare should be useful without genetics and without an LLM.
+
+## Completed sequence
+
+### Foundation / Trust
+
+| Phase | Outcome | Status |
+| --- | --- | --- |
+| G1 | Trust Envelope | Complete |
+| G2 | Consent-Gated Runtime | Complete |
+| G2.5 | Optional Sentient compatibility | Complete |
+| G3 | Model Portability | Complete |
+| G4 | Portable Trust Package | Complete |
+| G5 | Ecosystem Validation engineering | Complete |
+
+G5 has one deliberately separate external evidence gate:
+
+```text
+READY_FOR_SECOND_CLIENT_SMOKE
+```
+
+Agent Skills interoperability is verified across OMP 17.3.5 and Hermes Agent
+0.19.0. Root Agent Plugins two-independent-client validation remains external
+evidence pending and must not be relabelled PASS.
+
+There is no G6.
+
+### P1 — Evidence-Grounded Ingest
+
+Completed outcome:
+
+- generic candidate/canonical lifecycle;
+- medications, recorded conditions, and labs;
+- provenance locators;
+- explicit human review;
+- unsupported/conflicting states;
+- source-backed timeline;
+- Visit Brief v2;
+- canonical records exposed to bounded agent context.
+
+Core invariant established:
+
+```text
+Source
+-> Candidate
+-> Human Review
+-> Canonical Record
+-> Timeline / Visit Brief
+```
+
+AI output does not promote itself into canonical truth.
+
+### P2 — Usable Family Workspace
+
+Completed outcome:
+
+- actor-scoped workspace;
+- explicit Person switching;
+- server-derived capabilities;
+- Family Access authorization;
+- review inbox and provenance surfaces;
+- lifecycle controls;
+- Visit preparation UX;
+- responsive workspace behavior;
+- race-safe Person changes.
+
+Core authorization invariant:
+
+```text
+Actor
+-> explicit Person
+-> assignment / scope generation
+-> authorized operation
+```
+
+Relationships alone are not grants.
+
+### D1 — Evidence Document Ingest
+
+Completed outcome:
+
+- local TXT ingest;
+- text-layer PDF ingest;
+- immutable Source bytes;
+- deterministic bounded extraction;
+- page-level extraction records;
+- exact provenance spans;
+- candidate creation from selected evidence;
+- human review before canonical truth;
+- document-specific Family Access v3 scopes;
+- portable vault v4 document inclusion;
+- backup/recovery support.
+
+D1 intentionally does not imply:
 
 - OCR;
-- genetics or PGx expansion;
-- external LLM requirement;
-- multi-user SaaS;
-- family permissions;
-- autonomous canonical-record mutation;
-- broad document ingestion;
-- UI redesign;
-- deployment changes.
+- image interpretation;
+- cloud extraction;
+- LLM extraction;
+- autonomous clinical NER.
 
-### Acceptance criteria
+Core flow:
 
-- A user can create a medication record without editing runtime JSON directly.
-- A text source can produce a candidate medication fact without making it
-  canonical automatically.
-- Review can confirm, correct, or reject the candidate.
-- Only confirmed or manually entered canonical records appear in the timeline.
-- The Visit Brief is deterministic and source-linked.
-- Rebuilding derived views does not change canonical records.
-- No external provider is required.
-- `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR` configure the local
-  persistence boundary.
+```text
+document
+-> immutable Source
+-> deterministic extraction
+-> provenance span
+-> candidate
+-> human review
+-> canonical record
+```
 
-### Phase 1A status
+Raw document bytes/page text do not become unrestricted agent context.
 
-The medication-only UI-free foundation is implemented under
-`app/product_core/`. Confirmation creates the canonical medication record and
-its `medication_confirmed` timeline event in one Unit of Work transaction.
-Correction, rejection, idempotent confirmation, source deduplication, source
-corruption detection, and Visit Brief selection rules are covered by focused
-tests. Deactivation, HTTP routes, UI, people, and non-medication fact types
-remain deferred.
+### P3 — Genetics Research Studio
 
-### Phase 1B status
+Completed outcome:
 
-The medication-only lifecycle is exposed through the versioned
-`/api/product-core/v1` JSON API. The adapter provides source registration,
-candidate detail/list/review, canonical medication and timeline reads, and
-deterministic Visit Brief generation. Startup migrations run through the
-existing FastAPI lifespan; public schemas hide storage paths and normalized
-comparison values; review timestamps are controlled by the server clock; and
-Product Core errors use a scoped stable JSON envelope. The API has no UI,
-people table, per-person authorization, source download, extraction, or
-provider/model calls.
+- immutable local consumer-genotype Source;
+- selective normalized observations;
+- explicit genome-build and coverage state;
+- versioned genetics evidence entries;
+- reviewed genetics findings;
+- separate revocable genetics grants;
+- `/genetics` workspace;
+- PGx lens;
+- family comparison over authorized indexed loci;
+- Evidence Mode;
+- Explore Mode;
+- explicit epistemic labels;
+- counterevidence / Devil’s Advocate;
+- separate Genetics Export;
+- bounded Research receipts.
 
-### Validation requirements
+Core flow:
 
-- focused unit tests for each state transition;
-- integration test for the complete lifecycle;
-- provenance tests for source linkage and missing sources;
-- regression tests proving rejected candidates do not become canonical;
-- `pytest`, Ruff, mypy, and existing evals;
-- `git diff --check`.
+```text
+raw genotype
+-> immutable genetics Source
+-> selective normalized variants
+-> evidence-backed finding candidate
+-> human review
+-> reviewed finding
+-> bounded Genetics Research context
+```
 
-### Major risks
+Raw genome never enters provider context.
 
-- confusing candidate facts with confirmed records;
-- allowing AI output to mutate canonical data;
-- losing source identity during correction;
-- creating a persistence abstraction that bypasses future SQLite ownership;
-- making the Visit Brief appear clinical or prescriptive.
+Research hypotheses never become canonical facts automatically.
 
-## Phase 1C: Visit Preparation UI
+## Current Product Core baseline
 
-### Objective
+Current implementation baseline:
 
-Expose the validated medication lifecycle and deterministic Visit Brief API
-through a minimal Visit Preparation UI without moving lifecycle authority out
-of Product Core services.
+- Product Core schema v9;
+- Family Access v1 frozen;
+- Family Access v2 frozen;
+- Family Access v3 document scopes;
+- separate genetics grants:
+  - `genetics.read`
+  - `genetics.write`
+  - `genetics.research`
+  - `genetics.compare`
+  - `genetics.export`
+- Visit Brief content schema v2;
+- v1 Visit Brief revisions remain readable;
+- ordinary Person portable vault format v4;
+- Genetics Export separate from ordinary vault export.
 
-Phase 1C serves `/workspace` as the primary entry point through external static
-assets that call only the versioned Product Core API; `/chat` remains supporting.
+## AI boundary after P3
 
-### Non-goals
+OpenCare now has multiple AI behavior classes and they must not be collapsed into
+one obsolete rule.
 
-- broader fact types;
-- document upload or extraction;
-- family permissions;
-- clinical advice or provider calls;
-- deployment changes.
+### Ordinary health / evidence-grounded assistance
 
-## Phase 1D: persistent people profiles
+- source-constrained;
+- authorized context only;
+- provenance-aware;
+- uncertainty explicit;
+- no invented evidence;
+- no diagnosis/treatment/dosage authority.
 
-Phase 1D adds active people profiles, explicit workspace selection, and a migration
-that backfills existing opaque IDs as non-medical `Imported profile` records before
-foreign keys are enforced. The shared password gate remains installation-wide, so this
-does not add accounts, family relationships, or authorization.
+### Genetics Evidence Mode
 
-## Phase 1E-A: persistent Visits and Visit Questions
+- reviewed selected evidence only;
+- unresolved ambiguity fails closed;
+- supported claims require selected evidence;
+- no unsupported model background as evidence.
 
-Phase 1E-A adds Person-scoped persisted Visits and user-authored Visit Questions
-to the existing SQLite Product Core. Questions have explicit contiguous ordering
-within a Visit and may be edited, moved, or removed. The workspace keeps profile
-and Visit selection in page memory only.
+### Genetics Explore Mode
 
-This phase does not persist or change the deterministic Visit Brief, add an
-evidence/source drawer, export or backup, identity or caregiver permissions,
-family relationships, or AI-generated questions or answers.
+May generate explicitly labelled:
 
-## Phase 1E-B: persisted editable Visit Briefs
+- hypotheses;
+- mechanisms;
+- alternatives;
+- model-background possibilities;
+- counterarguments;
+- missing-information analysis;
+- questions worth investigating.
 
-Phase 1E-B is implemented according to [ADR 0003](../adr/0003-persisted-visit-briefs.md)
-and the [Visit Brief lifecycle](../architecture/visit-brief-lifecycle.md). One
-persisted Brief belongs to a Visit; immutable revisions retain selected confirmed
-medication evidence and ordered Visit Questions. Deterministic Markdown,
-separately editable preparation notes, restoration, integrity checks, derived
-stale state, and metadata-only export auditing are implemented.
+Still prohibited:
 
-The implementation calculates freshness from snapshots and live evidence; it
-does not overwrite user edits during regeneration. Evidence, revisions, and
-current-pointer changes are transaction-bound and source-linked. The phase
-does not add JSON vault export, backup/recovery, PDF, upload/OCR, AI or external
-providers, identity/permissions, family relationships, Sentient work, or
-EvoSkill.
+- diagnosis-as-fact;
+- causal certainty unsupported by evidence;
+- treatment instructions;
+- medication start/stop/change;
+- dosage instructions;
+- autonomous canonical-record mutation.
 
-## Phase 1F: vault export, installation backup, and recovery
+External/literature/quoted framing is not a safety bypass.
 
-Phase 1F is defined in [ADR 0004](../adr/0004-vault-export-backup-recovery.md).
-Phase 1F-A is implemented: a deterministic Person-scoped portable ZIP contains
-the supported Product Core graph, only reachable immutable sources, canonical
-JSON, manifest checksums, and a Workspace download warning. It verifies source
-payloads and persisted Brief integrity before responding, creates no persistent
-artifact, and does not add import or encryption.
+## Permanent architecture invariants
 
-Phase 1F-B is implemented: the operator-only Product Core CLI creates a
-staged SQLite snapshot, copies and verifies every snapshot `sources` payload,
-writes a canonical manifest and `COMPLETE` marker, and verifies supplied backup
-directories offline. It creates no HTTP/UI route and does not add recovery,
-import, encryption, cloud/scheduled storage, or deployment behavior.
+All future work must preserve:
 
-Phase 1F-C is implemented: operator-only preflight and fail-closed recovery
-restore a verified backup only into an absent or real empty target, with
-same-filesystem staging, post-activation verification, and handled rollback.
+1. User-owned source first.
+2. Immutable source identity/integrity.
+3. Provenance-preserving derivation.
+4. Human review before canonical promotion.
+5. Explicit Actor and Person authorization.
+6. Separate genetics authorization.
+7. Deny-by-default access.
+8. Purpose/consent-aware external disclosure.
+9. Minimized agent context.
+10. Raw genome excluded from provider context.
+11. Validated output/refusal.
+12. Audit/receipt.
+13. No agent path to silent canonical mutation.
+14. No diagnosis, treatment, or dosage authority.
 
-The implementation sequence is complete: 1F-A portable export, 1F-B
-backup/verification, and 1F-C empty-target recovery with rollback. It does not
-add portable import, merge, cloud storage, schedules, encryption, sharing,
-credentials, Identity, family access, uploads/OCR or deployment changes.
+## Deferred capabilities are not implied next steps
 
-## Phase 2: broader workspace
+The following remain outside the implemented roadmap unless a new explicit
+decision approves them:
 
-### Objective
+- OCR;
+- production VCF/gVCF/WGS pipelines;
+- FASTQ/BAM/CRAM processing;
+- mandatory external genetics services;
+- clinical diagnosis;
+- autonomous treatment;
+- dosage recommendation;
+- clinical decision support;
+- SaaS multi-tenant expansion;
+- cloud raw-genome storage/transmission;
+- MCP as a product objective.
 
-Extend the verified lifecycle to the minimum useful non-genetic workspace.
+Their presence in old design notes must not be interpreted as an approved next
+phase.
 
-### Deliverables
+## Repository / ecosystem follow-ups are not product phases
 
-- additional fact types;
-- limited document ingest;
-- review inbox;
-- improved timeline;
-- visit preparation UI;
-- export and backup.
+The following may still be useful operational work but do not reopen the Product
+Core roadmap:
 
-### Non-goals
+- root Agent Plugins second-client external validation;
+- GitHub branch-protection / required-check policy;
+- GitHub license metadata recognition;
+- refreshed current Workspace / Genetics screenshots;
+- release/tag decision.
 
-- genetics expansion;
-- autonomous medical advice;
-- external LLM dependence;
-- multi-tenant SaaS;
-- caregiver permissions before an explicit authorization model exists.
+These are repository, governance, presentation, or ecosystem-evidence tasks, not
+new product phases.
 
-### Acceptance criteria
+## Historical design evolution
 
-- Each new fact type has the same source, review, canonical, and derived-view
-  boundaries as medications.
-- Ingested documents remain recoverable as immutable sources.
-- Review status is visible and auditable.
-- Timeline and Visit Brief outputs can be rebuilt from canonical data.
-- Export and backup preserve sources, canonical records, provenance, and
-  explicit unsupported states.
+Earlier Phase 1 / Phase 2 / Phase 3 documents and ADRs remain useful historical
+context. Their old “non-goals” describe what was intentionally excluded at that
+time.
 
-### Validation requirements
+When an earlier section says that family permissions, document ingest, or
+genetics were deferred, read it historically. Those capabilities are now
+implemented.
 
-- per-fact-type unit and integration tests;
-- import/export round-trip tests;
-- backup restore tests;
-- provenance completeness checks;
-- browser or HTTP smoke tests for the review and visit-preparation flows;
-- full repository validation.
+Historical material must not override:
 
-### Major risks
+- `docs/project-status.md`;
+- `docs/capability-matrix.md`;
+- `AGENTS.md`;
+- `AGENTS.product-direction.md`;
+- current runtime tests and reviewers.
 
-- broad ingest creating unsupported extraction claims;
-- accidental loss of raw sources during export or migration;
-- UI implying that recorded context is clinical interpretation;
-- scope expansion before the medication lifecycle is stable.
+## Next product step
 
-## Phase 3: constrained assistance
+None is selected here.
 
-### Objective
+The completed roadmap ends at P3.
 
-Add bounded assistance after the deterministic workspace is usable without AI.
+Any future product phase must start with a new explicit product decision that
+states:
 
-### Deliverables
+- user problem;
+- scope;
+- non-goals;
+- data/privacy boundary;
+- authorization impact;
+- provenance/review impact;
+- agent-policy impact;
+- acceptance criteria;
+- validation plan.
 
-- query-scoped AI assistance;
-- explicit provider consent;
-- context preview before external transmission;
-- family caregiver permissions;
-- read-only agent tools;
-- improved ingestion adapters.
-
-### Non-goals
-
-- diagnosis;
-- treatment or dosage recommendation;
-- autonomous record mutation;
-- broad chatbot positioning;
-- multi-tenant SaaS before self-hosted validation.
-
-### Acceptance criteria
-
-- Provider use is opt-in and visible.
-- The user can inspect the exact context selected for an AI request.
-- AI output remains an artifact or view and cannot write canonical records.
-- Agent tools are read-only and scope-checked.
-- Family permissions are enforced at the tool and data boundary.
-- Unsupported and uncertain outputs remain explicit.
-
-### Validation requirements
-
-- provider consent and context-preview tests;
-- authorization tests for every read-only tool;
-- tests proving AI output cannot mutate canonical data;
-- privacy tests for paths, secrets, and raw sources;
-- deterministic fallback tests when a provider is unavailable;
-- full repository validation and threat-model review.
-
-### Major risks
-
-- transmitting more health context than the query requires;
-- treating fluent AI output as a canonical record;
-- permission failures across family members;
-- increasing operational complexity before the local workflow is trustworthy.
+Until such a decision exists, do not invent P4, G6, or another feature phase.

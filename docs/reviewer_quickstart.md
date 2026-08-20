@@ -150,7 +150,8 @@ python -m pip check
 git diff --check
 ```
 
-Expected final local evidence:
+Historical P3-final local evidence at
+`0937d352cc74a3050609e826baa6bad82f6ac9ee`:
 
 - pytest: `675 passed, 4 skipped, 4 warnings`;
 - `evals.runner`: `30/30`;

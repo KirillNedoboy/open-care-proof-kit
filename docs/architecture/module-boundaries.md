@@ -141,8 +141,12 @@ truth.
     connection or request-reused Unit of Work.
 14. The outer password gate provides shared-instance protection only. Live
     Person authorization requires a valid Actor session and an explicit active
-    assignment evaluated by `family-access-v1`; a `person_id`, Family link,
+    assignment evaluated under its frozen Family Access scope generation
+    (`family-access-v1`, `family-access-v2`, or `family-access-v3`); document
+    access uses v3 document scopes where applicable, and a `person_id`, Family link,
     relationship, own-Person link, or installation-admin role is never a grant.
+    Genetics authorization is a separate explicit grants layer; ordinary
+    caregiver/health scopes never imply genetics scopes.
 15. Synthetic demo/reviewer routes remain separate from the actor-scoped live
     Workspace, vault, Product Core API, and chat.
 

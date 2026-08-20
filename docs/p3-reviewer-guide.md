@@ -1,6 +1,6 @@
 # P3 Genetics Research Studio Reviewer Guide
 
-P3 is implemented on public `main` at
+P3 is implemented on public `main`; its historical phase-final baseline was
 `0937d352cc74a3050609e826baa6bad82f6ac9ee`. This guide is a deterministic,
 offline reviewer procedure, not clinical validation.
 

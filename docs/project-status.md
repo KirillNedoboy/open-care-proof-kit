@@ -1,8 +1,9 @@
 # OpenCare current project status
 
 This is the canonical status for public `main` at repository update date
-2026-08-20. Public `main` is
-`0937d352cc74a3050609e826baa6bad82f6ac9ee`. The only published tags/releases
+2026-08-20. Public `main` is a mutable Git ref. The P3-final implementation
+baseline was `0937d352cc74a3050609e826baa6bad82f6ac9ee`; the R1 repository-truth
+baseline is `46141e70d980fc611513e98afe251b1c611089c7`. The only published tags/releases
 are `v0.1.0` and `v0.2.0`; neither is a production-readiness or clinical-
 readiness claim.
 - Package/runtime development identity: `0.3.0.dev0`; this is not a published
@@ -59,10 +60,11 @@ The complete policy is in
 [the authorization matrix](security/family-access-authorization-matrix.md) and
 [ADR 0005](adr/0005-family-identity-access-boundary.md).
 
-## Validation baseline
+## Historical validation baselines
 
-The final local verification for public-main implementation was run on Python
-3.12. It is local evidence, not a claim that GitHub Actions ran every command.
+The P3-final verification at `0937d352cc74a3050609e826baa6bad82f6ac9ee` was run
+on Python 3.12. It is historical local evidence, not a claim that GitHub
+Actions ran every command.
 
 - pytest: `675 passed, 4 skipped, 4 warnings`;
 - Ruff: all checks passed;
@@ -77,6 +79,11 @@ The final local verification for public-main implementation was run on Python
 - all P3 security counters: `0`;
 - `pip check`: no broken requirements;
 - `git diff --check`: passed;
+
+R1 repository-truth verification at `46141e70d980fc611513e98afe251b1c611089c7`
+reported `677 passed, 4 skipped, 4 warnings`, G5 `20/20`, and P1/P2/D1/P3
+`PASS`. Fresh R2 validation is reported by the task completing this integrity
+pass.
 - runtime JavaScript syntax checks: passed.
 
 G5 Agent Skills interoperability is verified across OMP 17.3.5 and Hermes
@@ -261,7 +268,7 @@ payloads and immutable extraction metadata.
 
 ## P3 Genetics Research Studio (implemented and published on public `main`)
 
-P3 is implemented on public `main` at
+P3 is implemented on public `main`. Its historical phase-final baseline was
 `0937d352cc74a3050609e826baa6bad82f6ac9ee`. It adds schema v9 immutable local
 consumer-genotype sources, selective indexed observations, versioned synthetic
 evidence, reviewed genetics findings, explicit revocable genetics grants, a

@@ -71,7 +71,9 @@ OpenCare Proof Kit provides:
 - a local Actor/family access boundary with explicit consent and person-scoped permissions;
 - deny-by-default authorization, access audit, person export, and offline recovery boundaries;
 - CI, evals, and trust metrics;
-- the existing PGx briefing path as a narrow evidence/safety reference workflow.
+- the existing PGx briefing path as a narrow evidence/safety reference workflow;
+- D1 document evidence ingest and P3 Genetics Research Studio with bounded
+  Evidence/Explore modes.
 
 ## Why Open Source
 
@@ -146,8 +148,9 @@ The repo must stay conservative:
 - no start/stop advice;
 - no clinical decision support;
 - no clinical validation claim;
-- no real patient support;
-- no real genetic data support.
+- public repository fixtures are synthetic/de-identified only;
+- the self-hosted runtime is designed for user-owned sensitive health,
+  document, and genetic data under explicit local authorization.
 
 The reviewer vault layer is provenance/traceability only, not medical interpretation.
 
@@ -199,7 +202,7 @@ Support would help fund:
 |---|---|
 | Overclaiming capability | Keep the repo synthetic/demo-only and explicit about non-goals. |
 | Reviewer confusion | Keep the reviewer pack, threat model, trust metrics, and route boundaries easy to inspect. |
-| Scope creep into genetics too early | Keep the product rule visible: vault first, genetics later. |
+| Scope creep into genetics too early | Keep the product rule visible: vault first, genetics secondary. |
 | Safety drift in future UI or prose | Preserve wording scans, trust metrics, and fail-closed provenance rules. |
 
 ## Non-Goals
@@ -211,7 +214,7 @@ OpenCare Proof Kit does not aim to provide:
 - dosage guidance;
 - medication selection advice;
 - start/stop medication advice;
-- real patient or real genetic data support in the current repo;
+- real patient or real genetic data in public repository fixtures;
 - FASTQ/BAM/WGS processing;
 - clinical decision support;
 - clinical validation claims.

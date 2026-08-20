@@ -49,8 +49,9 @@ product roadmap.
 ## Release status
 
 `v0.1.0` and `v0.2.0` are the only published release tags. Public `main`
-contains the completed G1-G5, P1, P2, D1, and P3 implementation at
-`0937d352cc74a3050609e826baa6bad82f6ac9ee`. These releases and the current
+contains the completed G1-G5, P1, P2, D1, and P3 implementation. The P3-final
+implementation baseline was `0937d352cc74a3050609e826baa6bad82f6ac9ee`;
+public `main` is mutable. These releases and the current
 unreleased development line are not production-readiness or clinical-readiness
 claims.
 Package/runtime identity is `0.3.0.dev0`, an unreleased development version;

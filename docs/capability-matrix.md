@@ -1,8 +1,8 @@
 # Capability Matrix
 
 This matrix describes the implemented P1/P2/D1 Product Core boundary and the
-P3 Genetics Research Studio on public `main` at
-`0937d352cc74a3050609e826baa6bad82f6ac9ee`. D1 is published on public `main`
+P3 Genetics Research Studio on public `main`. Its historical P3-final baseline
+was `0937d352cc74a3050609e826baa6bad82f6ac9ee`. D1 is published on public `main`
 at `c6ae91e40f02582c0e07c1bca8c95765970c93ff`; P3 is part of the published
 main implementation. The published `v0.1.0` and `v0.2.0` tags remain the only
 release tags.

@@ -4,7 +4,7 @@
 > current repository status. See [ADR 0001](adr/0001-opencare-product-direction.md)
 > and [project status](project-status.md).
 
-Copy these answers into a Sentient Open Source AGI Grant or similar public-goods application. Keep the wording conservative. This repo is private, local-first trust infrastructure with health as the stress-test domain. It is not a clinical product.
+Copy these answers into a Sentient Open Source AGI Grant or similar public-goods application. Keep the wording conservative. This public repo is local-first trust infrastructure with health as the stress-test domain. It is not a clinical product.
 
 ## Current implementation note
 
@@ -96,12 +96,15 @@ The value is not a closed patient workflow. The value is a reusable public-good 
 
 Medication, family, and genetic context are high-sensitivity data categories. OpenCare Proof Kit keeps the current repo local-first so a reviewer can inspect what was loaded, what was transformed, what evidence was used, what safety boundaries were applied, and what outputs were produced without requiring cloud upload.
 
-The current repo uses synthetic/demo-only data. It does not claim real-patient support or real-genetic-data support. Generated `reports/` artifacts remain ignored by Git.
+Public repository fixtures remain synthetic/de-identified only. The self-hosted
+runtime is designed for user-owned sensitive health, document, and genetic data
+under explicit local authorization; generated `reports/` artifacts remain
+ignored by Git.
 
 ## I. Who Benefits
 
 - people who want a private workspace for medical and family context;
-- families who need shared context, provenance, and explicit access boundaries before any genetics layer exists;
+- families who need shared context, provenance, and explicit access boundaries across health, document, and genetics context;
 - open-source builders working on sensitive local agents;
 - clinicians and reviewers who want visible sources, boundaries, and audit metadata;
 - grant reviewers looking for concrete trustworthy-AI infrastructure rather than a pitch deck.
@@ -121,6 +124,7 @@ The current repo uses synthetic/demo-only data. It does not claim real-patient s
 - Person-scoped permissions, deny-by-default authorization, access audit, export, and offline recovery boundaries.
 - GitHub Actions CI plus deterministic local trust metrics.
 - Existing Medication-to-Doctor Briefing / PGx demo, report output, audit output, and eval suite.
+- D1 document evidence ingest and P3 Genetics Research Studio with bounded Evidence/Explore modes.
 
 ## K. Technical Architecture
 
@@ -209,7 +213,7 @@ review handoffs, and future interface/adapters beyond the completed P3 boundary.
 |---|---|
 | Overclaiming clinical capability | Keep the repo synthetic/demo-only, deterministic-first, and explicit that it is not medical advice or clinical validation. |
 | Source-less or unsupported context being overstated | Fail-closed provenance rules, reviewer artifacts, and trust metrics. |
-| Privacy drift | Local-first defaults, ignored generated reports, and no real patient/genetic support claims. |
+| Privacy drift | Local-first defaults, ignored generated reports, and synthetic/de-identified public fixtures. |
 | Scope creep into genetics or AI-doctor positioning | Product rule: vault first, genetics second, LLM third as interface. |
 | Reviewer confusion | Compact reviewer pack, visible safety boundary language, CI, and reproducible validation commands. |
 
@@ -224,8 +228,8 @@ OpenCare Proof Kit does not provide or promise:
 - start/stop medication instructions;
 - clinical decision support;
 - clinical validation;
-- real patient support in the current repo;
-- real genetic data support in the current repo;
+- real patient data in public repository fixtures;
+- real genetic data in public repository fixtures;
 - FASTQ/BAM/WGS pipeline;
 - production genome interpretation;
 - SaaS/auth/payments/Telegram/blockchain;
