@@ -52,6 +52,19 @@ def test_genetics_requires_explicit_consent_and_excludes_raw_marker(
     assert "unique-raw-marker" not in workspace.text
 
 
+def test_streaming_genetics_import_enforces_local_byte_boundary(
+    product_core_client: TestClient,
+) -> None:
+    _consent(product_core_client, "person-1")
+    response = product_core_client.post(
+        "/api/product-core/v1/people/person-1/genetics/import:stream"
+        "?filename=synthetic_stream.txt&genome_build=GRCh37%2Fhg19&confirmation=true",
+        content=GENOTYPE,
+        headers={"content-type": "application/octet-stream", "origin": "http://testserver"},
+    )
+    assert response.status_code == 200, response.text
+
+
 def test_genetics_access_is_person_isolated_and_comparison_needs_both_grants(
     product_core_client: TestClient,
 ) -> None:

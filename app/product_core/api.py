@@ -266,6 +266,13 @@ async def _check_request_safety(request: Request, operation_id: str) -> JSONResp
                     "unsupported_document_media_type",
                     "Only PDF and plain-text documents are supported.",
                 )
+        elif operation_id == "product_core_import_genetics_stream":
+            if media_type not in {"application/octet-stream", "text/plain"}:
+                return _error_response(
+                    415,
+                    "unsupported_genetics_media_type",
+                    "Only bounded consumer genotype bytes are supported.",
+                )
         elif media_type != "application/json":
             return _error_response(
                 415,
@@ -343,6 +350,7 @@ _GENETICS_OPERATIONS = {
     "product_core_consent_genetics": "person.read",
     "product_core_revoke_genetics_access": "access.manage",
     "product_core_import_genetics": "genetics.write",
+    "product_core_import_genetics_stream": "genetics.write",
     "product_core_review_genetics_finding": "genetics.read",
     "product_core_run_genetics_research": "genetics.research",
     "product_core_compare_genetics": "genetics.compare",
@@ -384,7 +392,7 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_consent_genetics",
     "product_core_grant_genetics_access",
     "product_core_import_genetics",
-    "product_core_review_genetics_finding",
+    "product_core_import_genetics_stream",
     "product_core_revoke_genetics_access",
     "product_core_run_genetics_research",
     "product_core_export_genetics",
@@ -670,6 +678,23 @@ async def _read_bounded_document_body(request: Request) -> bytes:
         payload.extend(chunk)
     if len(payload) != declared_length:
         raise DocumentValidationError("content_length_mismatch")
+    return bytes(payload)
+
+
+async def _read_bounded_genetics_body(request: Request) -> bytes:
+    raw_length = request.headers.get("content-length")
+    if raw_length is None or not raw_length.isdecimal():
+        raise GeneticsValidationError("genetics_content_length_required")
+    declared_length = int(raw_length)
+    if declared_length > MAX_GENETICS_UPLOAD_BYTES:
+        raise GeneticsValidationError("genetics_upload_bytes_limit_exceeded")
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > MAX_GENETICS_UPLOAD_BYTES:
+            raise GeneticsValidationError("genetics_upload_bytes_limit_exceeded")
+        payload.extend(chunk)
+    if len(payload) != declared_length:
+        raise GeneticsValidationError("genetics_content_length_mismatch")
     return bytes(payload)
 
 
@@ -2329,6 +2354,32 @@ def import_genetics(
         genome_build=payload.genome_build,
         confirmation=payload.confirmation,
         selected_loci=payload.selected_loci,
+    )
+    return result.__dict__
+
+
+@router.post(
+    "/people/{person_id}/genetics/import:stream",
+    response_model=dict[str, Any],
+    operation_id="product_core_import_genetics_stream",
+)
+async def import_genetics_stream(
+    person_id: ProductCoreIdentifier,
+    request: Request,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    filename: str = Query(min_length=1, max_length=255),
+    genome_build: str = Query(default="unknown"),
+    confirmation: bool = Query(default=False),
+) -> dict[str, Any]:
+    access.require_genetics(person_id, "genetics.write")
+    raw = await _read_bounded_genetics_body(request)
+    result = runtime.genetics.import_consumer_genotype(
+        person_id=person_id,
+        payload=raw,
+        original_filename=filename,
+        genome_build=genome_build,
+        confirmation=confirmation,
     )
     return result.__dict__
 
