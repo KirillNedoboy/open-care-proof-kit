@@ -85,6 +85,13 @@
   function documentContext() {
     return { personId: state.person?.person_id || "", generation: state.loadVersion, signal: state.controller?.signal };
   }
+  function documentCandidateAllowed(type = byId("document-candidate-type")?.value) {
+    return Boolean(state.capabilities.document_read && state.capabilities.candidate_review && state.capabilities[`${type}_write`] && state.capabilities[`${type}_read`]);
+  }
+  async function sha256Hex(value) {
+    const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
   async function loadDocumentPage(document, pageNumber, trigger) {
     if (!document || !state.capabilities.document_read) return;
     try {
@@ -104,7 +111,7 @@
     byId("document-page-text").value = state.selectedPage?.normalized_text || "Choose a page to inspect.";
     const span = state.selectedSpan;
     byId("document-selection").textContent = span ? `Selected source span: characters ${span.start + 1}–${span.end}.` : "Select text to attach a precise source span.";
-    byId("document-candidate-form").hidden = !span || !state.capabilities.candidate_review;
+    byId("document-candidate-form").hidden = !span || !documentCandidateAllowed();
   }
   function renderDocuments() {
     const section = byId("documents"), list = byId("document-list"); section.hidden = !state.capabilities.document_read; clear(list);
@@ -135,11 +142,24 @@
   async function submitDocumentCandidate(event) {
     event.preventDefault();
     const span = state.selectedSpan, type = byId("document-candidate-type").value;
-    if (!state.person || !span || !state.capabilities.candidate_review || !state.capabilities.source_write || !state.capabilities[`${type}_write`]) return;
+    if (!state.person || !state.selectedDocument || !state.selectedPage || !span || !documentCandidateAllowed(type)) return;
     const submit = event.submitter; submit.disabled = true;
     const name = byId("document-candidate-name").value.trim(), detail = byId("document-candidate-detail").value.trim() || null;
     try {
-      const sourceId = state.selectedDocument.source_id, locator = { kind: "span", start: span.start, end: span.end };
+      const pageText = state.selectedPage.normalized_text || "";
+      const codepoints = Array.from(pageText);
+      const selectedText = codepoints.slice(span.start, span.end).join("");
+      const locator = {
+        kind: "document_text_span",
+        source_id: state.selectedDocument.source_id,
+        content_hash: state.selectedDocument.content_hash,
+        extraction_id: state.selectedDocument.extraction.extraction_id,
+        page_number: state.selectedPage.page_number,
+        start_codepoint: span.start,
+        end_codepoint: span.end,
+        selected_text_sha256: await sha256Hex(selectedText),
+      };
+      const sourceId = state.selectedDocument.source_id;
       if (type === "medication") { await personRequest("/candidates/medications", { method: "POST", body: JSON.stringify({ person_id: state.person.person_id, source_id: sourceId, display_name: name, schedule_text: detail, note: null, provenance_locator: locator }) }); }
       else if (type === "condition") { await personRequest("/candidates/conditions", { method: "POST", body: JSON.stringify({ person_id: state.person.person_id, source_id: sourceId, display_name: name, status_text: detail, onset_date: null, note: null, provenance_locator: locator }) }); }
       else { await personRequest("/candidates/labs", { method: "POST", body: JSON.stringify({ person_id: state.person.person_id, source_id: sourceId, test_name: name, result_text: detail || "", unit_text: null, reference_range_text: null, observed_date: null, source_flag_text: null, note: null, provenance_locator: locator }) }); }
@@ -777,4 +797,5 @@
     }
   });
   byId("document-candidate-form").addEventListener("submit", submitDocumentCandidate);
+  byId("document-candidate-type").addEventListener("change", renderDocumentViewer);
 })();
