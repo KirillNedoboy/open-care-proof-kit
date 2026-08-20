@@ -14,7 +14,7 @@ def test_build_demo_briefing_returns_safe_result() -> None:
     assert result.audit["findings_count"] == 1
     assert result.audit["coverage"]["coverage_status"] == "matched_demo_rule"
     assert result.audit["report_id"]
-    assert result.audit["app_version"] == "0.1.0"
+    assert result.audit["app_version"] == "0.3.0.dev0"
     assert result.audit["pipeline_steps"] == PIPELINE_STEPS
     assert result.audit["raw_health_or_genetic_data_exported"] is False
     assert "patient_id" not in result.audit

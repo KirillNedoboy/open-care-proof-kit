@@ -477,7 +477,7 @@ wheels = [
 
 [[package]]
 name = "open-care-proof-kit"
-version = "0.1.0"
+version = "0.3.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

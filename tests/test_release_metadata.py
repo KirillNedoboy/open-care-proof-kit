@@ -33,7 +33,7 @@ def _tracked_markdown_paths() -> list[Path]:
 def test_project_metadata_is_complete_without_dependency_or_version_changes() -> None:
     project = tomllib.loads(_read("pyproject.toml"))["project"]
 
-    assert project["version"] == "0.1.0"
+    assert project["version"] == "0.3.0.dev0"
     assert project["readme"] == "README.md"
     assert project["license"] == "Apache-2.0"
     assert project["license-files"] == ["LICENSE"]

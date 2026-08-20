@@ -103,7 +103,7 @@ def test_audit_payload_contains_boundary_metadata_without_raw_identifiers() -> N
     assert audit["demo_only"] is True
     assert audit["safety_policy_version"] == "0.1"
     assert audit["pipeline_steps"] == PIPELINE_STEPS
-    assert audit["app_version"] == "0.1.0"
+    assert audit["app_version"] == "0.3.0.dev0"
     assert audit["report_id"]
     assert len(audit["patient_id_hash"]) == 64
     assert "patient_id" not in audit

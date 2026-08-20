@@ -37,6 +37,24 @@ jobs:
       - name: Run trust metrics
         run: python -m evals.trust_metrics
 
+      - name: Run final phase reviewers
+        run: |
+          python -m evals.g5_review
+          python -m evals.p1_review
+          python -m evals.p2_review
+          python -m evals.d1_review
+          python -m evals.p3_review
+
+      - name: Check dependencies and patch
+        run: |
+          python -m pip check
+          git diff --check
+
+      - name: Check runtime JavaScript
+        run: |
+          node --check app/static/product_core_workspace.js
+          node --check app/static/genetics.js
+
   family-access-credentials:
     name: Family access credentials (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
