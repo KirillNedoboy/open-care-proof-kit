@@ -341,7 +341,7 @@ _BODY_PERSON_SCOPES: dict[str, tuple[str, ...]] = {
 _GENETICS_OPERATIONS = {
     "product_core_get_genetics_workspace": "genetics.read",
     "product_core_consent_genetics": "person.read",
-    "product_core_grant_genetics_access": "access.manage",
+    "product_core_revoke_genetics_access": "access.manage",
     "product_core_import_genetics": "genetics.write",
     "product_core_review_genetics_finding": "genetics.read",
     "product_core_run_genetics_research": "genetics.research",
@@ -385,6 +385,7 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_grant_genetics_access",
     "product_core_import_genetics",
     "product_core_review_genetics_finding",
+    "product_core_revoke_genetics_access",
     "product_core_run_genetics_research",
     "product_core_export_genetics",
 }
@@ -2397,6 +2398,23 @@ def compare_genetics(
     access.require_genetics(person_id, "genetics.compare")
     access.require_genetics(payload.person_b_id, "genetics.compare")
     return runtime.genetics.compare(person_a=person_id, person_b=payload.person_b_id)
+
+
+@router.post(
+    "/people/{person_id}/genetics/access/{grant_id}/revoke",
+    status_code=204,
+    operation_id="product_core_revoke_genetics_access",
+)
+def revoke_genetics_access(
+    person_id: ProductCoreIdentifier,
+    grant_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    _payload: Annotated[EmptyActionRequest | None, Body()] = None,
+) -> Response:
+    access.require_person(person_id, "access.manage")
+    runtime.genetics.revoke_access(grant_id=grant_id, person_id=person_id)
+    return Response(status_code=204)
 
 
 @router.post(

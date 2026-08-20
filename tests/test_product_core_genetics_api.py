@@ -64,3 +64,24 @@ def test_genetics_access_is_person_isolated_and_comparison_needs_both_grants(
         headers=json_headers(),
     )
     assert comparison.status_code == 404
+
+
+def test_genetics_consent_revocation_blocks_follow_up_reads(
+    product_core_client: TestClient,
+) -> None:
+    consent = product_core_client.post(
+        "/api/product-core/v1/people/person-1/genetics/consent",
+        json={"confirmation": True, "scopes": ["genetics.read"]},
+        headers=json_headers(),
+    )
+    assert consent.status_code == 200, consent.text
+    grant_id = consent.json()["grant_id"]
+    revoked = product_core_client.post(
+        f"/api/product-core/v1/people/person-1/genetics/access/{grant_id}/revoke",
+        json={},
+        headers=json_headers(),
+    )
+    assert revoked.status_code == 204
+    assert (
+        product_core_client.get("/api/product-core/v1/people/person-1/genetics").status_code == 404
+    )

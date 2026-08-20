@@ -127,12 +127,16 @@ class GeneticsService:
             )
         return grant_id
 
-    def revoke_access(self, *, grant_id: str, actor_id: str) -> None:
+    def revoke_access(self, *, grant_id: str, person_id: str) -> None:
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
             assert uow.connection is not None
             uow.connection.execute(
-                "UPDATE genetic_access_grants SET revoked_at = ? WHERE grant_id = ? AND actor_id = ? AND revoked_at IS NULL",
-                (self._now(), grant_id, actor_id),
+                """
+                UPDATE genetic_access_grants
+                SET revoked_at = ?
+                WHERE grant_id = ? AND person_id = ? AND revoked_at IS NULL
+                """,
+                (self._now(), grant_id, person_id),
             )
 
     def has_scope(self, *, actor_id: str, person_id: str, scope: str) -> bool:
