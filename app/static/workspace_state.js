@@ -1,0 +1,56 @@
+/* Pure workspace-state helpers for the OpenCare Health Workspace. */
+(function (global) {
+  "use strict";
+
+  const compareText = (left, right) => String(left || "").localeCompare(String(right || ""), "en", { sensitivity: "base" });
+  const compareDate = (left, right) => String(left || "").localeCompare(String(right || ""));
+
+  function shouldApplyResponse(issuedGeneration, currentGeneration) {
+    return typeof issuedGeneration === "number" && issuedGeneration === currentGeneration;
+  }
+
+  function sortVisits(visits) {
+    return visits.slice().sort((left, right) => {
+      const leftDate = left.scheduled_date || "9999-12-31";
+      const rightDate = right.scheduled_date || "9999-12-31";
+      return compareDate(leftDate, rightDate) || compareText(left.title, right.title) || compareText(left.visit_id, right.visit_id);
+    });
+  }
+
+  function sortQuestions(questions) {
+    return questions.slice().sort((left, right) => Number(left.position) - Number(right.position) || compareText(left.question_id, right.question_id));
+  }
+
+  function sortNewest(items, dateKey, idKey) {
+    return items.slice().sort((left, right) => compareDate(right[dateKey], left[dateKey]) || compareText(right[idKey], left[idKey]));
+  }
+
+  function sanitizeDownloadFilename(value, fallback) {
+    const candidate = String(value || "")
+      .replace(/[\\/\u0000-\u001f\u007f]/g, "-")
+      .replace(/^\.+/, "")
+      .trim();
+    let safe = candidate || fallback;
+    if (!safe.toLowerCase().endsWith(".zip")) safe += ".zip";
+    return safe;
+  }
+
+  function contentDispositionFilename(header) {
+    if (!header) return "";
+    const encoded = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encoded) {
+      try { return decodeURIComponent(encoded[1]); } catch (_) { return ""; }
+    }
+    const plain = header.match(/filename\s*=\s*(?:"([^"]*)"|([^;\s]*))/i);
+    return plain ? (plain[1] || plain[2] || "") : "";
+  }
+
+  global.OpenCareWorkspaceState = {
+    shouldApplyResponse,
+    sortVisits,
+    sortQuestions,
+    sortNewest,
+    sanitizeDownloadFilename,
+    contentDispositionFilename,
+  };
+})(typeof window !== "undefined" ? window : globalThis);
