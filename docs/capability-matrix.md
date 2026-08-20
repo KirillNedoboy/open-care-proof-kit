@@ -1,13 +1,12 @@
 # Capability Matrix
 
 This matrix describes the integrated P1/P2/D1 Product Core boundary and the
-P3 Genetics Research Studio on `codex/p3-genetics-research-studio`. The
-published `v0.1.0` tag remains the controlled private-alpha baseline; P1, P2,
-and D1 have no separate release tag.
-
-P1 medication/condition/lab lifecycle, P2 workspace, and D1 document ingest are
-implemented in this branch baseline. P3 adds a bounded, local-first genetics
-workflow without claiming clinical genetics or general VCF support.
+P3 Genetics Research Studio on `codex/p3-genetics-research-studio`. D1 is
+implemented and published on public `main` at
+`c6ae91e40f02582c0e07c1bca8c95765970c93ff`. P3 is implemented on this branch
+and pending integration into public `main`. The published `v0.1.0` tag remains
+the controlled private-alpha baseline; P1, P2, D1, and P3 have no separate
+release tag.
 
 | Capability | Status | Repository evidence or boundary |
 |---|---|---|

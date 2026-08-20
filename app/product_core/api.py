@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import json
 import sqlite3
 from collections.abc import Callable
@@ -118,11 +117,17 @@ from app.product_core.errors import (
     VisitQuestionNotFoundError,
     VisitValidationError,
 )
-from app.product_core.genetics import MAX_GENETICS_UPLOAD_BYTES, GeneticsValidationError
+from app.product_core.genetics import (
+    MAX_GENETICS_UPLOAD_BYTES,
+    GeneticsValidationError,
+    decode_bounded_genetics_base64,
+)
 from app.product_core.models import ConditionCandidateInput, LabCandidateInput, VisitBriefRequest
 from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import ProductCoreRuntime
 from app.product_core.services import MAX_DOCUMENT_PAGES, MAX_DOCUMENT_UPLOAD_BYTES
+
+MAX_GENETICS_JSON_REQUEST_BYTES = ((MAX_GENETICS_UPLOAD_BYTES + 2) // 3) * 4 + 65_536
 
 ProductCoreIdentifier = Annotated[
     str,
@@ -265,6 +270,32 @@ async def _check_request_safety(request: Request, operation_id: str) -> JSONResp
                     415,
                     "unsupported_document_media_type",
                     "Only PDF and plain-text documents are supported.",
+                )
+        elif operation_id == "product_core_import_genetics":
+            raw_length = request.headers.get("content-length")
+            if raw_length is None:
+                return _error_response(
+                    411,
+                    "genetics_content_length_required",
+                    "A bounded content length is required.",
+                )
+            if not raw_length.isdecimal():
+                return _error_response(
+                    422,
+                    "genetics_content_length_invalid",
+                    "The genetics request is invalid.",
+                )
+            if int(raw_length) > MAX_GENETICS_JSON_REQUEST_BYTES:
+                return _error_response(
+                    413,
+                    "genetics_upload_bytes_limit_exceeded",
+                    "The genetics request is too large.",
+                )
+            if media_type != "application/json":
+                return _error_response(
+                    415,
+                    "json_content_type_required",
+                    "JSON content type is required.",
                 )
         elif operation_id == "product_core_import_genetics_stream":
             if media_type not in {"application/octet-stream", "text/plain"}:
@@ -2340,13 +2371,7 @@ def import_genetics(
     access: AccessDependency,
 ) -> dict[str, Any]:
     access.require_genetics(person_id, "genetics.write")
-    encoded = payload.payload_base64
-    if len(encoded) > ((MAX_GENETICS_UPLOAD_BYTES + 2) // 3) * 4:
-        raise GeneticsValidationError("genetics_upload_bytes_limit_exceeded")
-    try:
-        raw = base64.b64decode(encoded, validate=True)
-    except (ValueError, TypeError) as exc:
-        raise GeneticsValidationError("genetics_payload_base64_invalid") from exc
+    raw = decode_bounded_genetics_base64(payload.payload_base64)
     result = runtime.genetics.import_consumer_genotype(
         person_id=person_id,
         payload=raw,

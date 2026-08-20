@@ -79,7 +79,13 @@ class ResearchReceipt(FrozenModel):
 
 
 _FORBIDDEN_INSTRUCTION = re.compile(
-    r"\b(?:start|stop)\s+(?:taking|using)\b|\b(?:increase|decrease|change)\s+(?:the\s+)?dose\b|\btake\s+\d",
+    r"\b(?:start|stop|change|switch|increase|decrease|take)\b.{0,80}\b"
+    r"(?:taking|using|treatment|therapy|medication|dose|mg)\b",
+    re.IGNORECASE,
+)
+_UNSUPPORTED_CLINICAL_CLAIM = re.compile(
+    r"\b(?:you have|these variants confirm|this proves|proves that your symptoms are caused by|"
+    r"your symptoms are caused by|diagnosed with)\b",
     re.IGNORECASE,
 )
 
@@ -188,8 +194,17 @@ def validate_research_output(output: ResearchOutput, packet: ResearchPacket) -> 
             raise ValueError("model-background claims must be explicitly plausible or speculative")
         if packet.mode is ResearchMode.EVIDENCE and claim.model_background:
             raise ValueError("model-background claims are excluded from Evidence Mode")
-        if _FORBIDDEN_INSTRUCTION.search(f"{claim.claim} {claim.reasoning_summary}"):
-            raise ValueError("autonomous medication dose/start/stop instructions are forbidden")
+        claim_text = f"{claim.claim} {claim.reasoning_summary}"
+        lower_claim = claim_text.casefold()
+        external_discussion = any(
+            marker in lower_claim
+            for marker in ("external claim", "literature says", "quoted claim")
+        )
+        if (
+            _FORBIDDEN_INSTRUCTION.search(claim_text)
+            or _UNSUPPORTED_CLINICAL_CLAIM.search(claim_text)
+        ) and not external_discussion:
+            raise ValueError("unsupported clinical or prescriptive claim")
     return output
 
 
@@ -224,12 +239,31 @@ def _require_known(label: str, selected: set[str], index: Mapping[str, object]) 
         raise ValueError(f"unknown selected {label} IDs: {sorted(unknown)}")
 
 
+_RAW_CONTEXT_KEYWORDS = (
+    "raw",
+    "payload",
+    "source_content",
+    "genome_file",
+    "genotype_file",
+    "unindexed",
+)
+_GENOTYPE_ROW = re.compile(
+    r"(?:^|\n)\s*(?:rs[0-9A-Za-z_-]+|\S+)\s+\S+\s+\d+\s+[ACGT-]{1,2}(?:\s|$)",
+    re.IGNORECASE,
+)
+
+
 def _reject_raw_values(value: object, *, path: str = "selected_health_records") -> None:
     if isinstance(value, (bytes, bytearray, memoryview)):
         raise ValueError(f"raw bytes are forbidden in research packets at {path}")
+    if isinstance(value, str):
+        if len(value) > 5_000 or _GENOTYPE_ROW.search(value):
+            raise ValueError(f"raw genotype content is forbidden in research packets at {path}")
+        return
     if isinstance(value, Mapping):
         for key, child in value.items():
-            if "raw" in str(key).casefold():
+            normalized_key = str(key).casefold()
+            if any(token in normalized_key for token in _RAW_CONTEXT_KEYWORDS):
                 raise ValueError(f"raw fields are forbidden in research packets at {path}.{key}")
             _reject_raw_values(child, path=f"{path}.{key}")
     elif isinstance(value, (list, tuple, set)):

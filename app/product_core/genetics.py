@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 # ruff: noqa: E501
+import base64
 import hashlib
 import io
 import json
@@ -35,8 +36,54 @@ EVIDENCE_LEVELS = frozenset({"Clinical", "High", "Moderate", "Low", "Exploratory
 FINDING_STATUSES = frozenset({"pending", "reviewed", "dismissed", "unsupported", "conflicting"})
 
 
+_RAW_RESEARCH_KEYWORDS = (
+    "raw",
+    "payload",
+    "source_content",
+    "genome_file",
+    "genotype_file",
+    "unindexed",
+)
+_GENOTYPE_ROW_PATTERN = re.compile(
+    r"(?:^|\n)\s*(?:rs[0-9A-Za-z_-]+|\S+)\s+\S+\s+\d+\s+[ACGT-]{1,2}(?:\s|$)",
+    re.IGNORECASE,
+)
+
+
 class GeneticsValidationError(ProductCoreError, ValueError):
     pass
+
+
+def decode_bounded_genetics_base64(encoded: str) -> bytes:
+    encoded_limit = ((MAX_GENETICS_UPLOAD_BYTES + 2) // 3) * 4
+    if len(encoded) > encoded_limit:
+        raise GeneticsValidationError("genetics_upload_bytes_limit_exceeded")
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise GeneticsValidationError("genetics_payload_base64_invalid") from exc
+    if len(decoded) > MAX_GENETICS_UPLOAD_BYTES:
+        raise GeneticsValidationError("genetics_upload_bytes_limit_exceeded")
+    return decoded
+
+
+_UNSUPPORTED_DIAGNOSIS = re.compile(
+    r"\b(?:you have|these variants confirm|this proves|proves that your symptoms are caused by|"
+    r"your symptoms are caused by|diagnosed with)\b",
+    re.IGNORECASE,
+)
+_UNSAFE_ACTION = re.compile(
+    r"\b(?:start|stop|change|switch|increase|decrease|take)\b.{0,80}\b"
+    r"(?:treatment|therapy|medication|dose|mg)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_unqualified_clinical_claim(text: str) -> bool:
+    lower = text.casefold()
+    if any(marker in lower for marker in ("external claim", "literature says", "quoted claim")):
+        return False
+    return bool(_UNSUPPORTED_DIAGNOSIS.search(text) or _UNSAFE_ACTION.search(text))
 
 
 @dataclass(frozen=True)
@@ -458,6 +505,7 @@ class GeneticsService:
         ids = list(dict.fromkeys(finding_ids))
         records = [dict(item) for item in canonical_records]
         for record in records:
+            _validate_research_context(record)
             if record.get("person_id", person_id) != person_id:
                 raise GeneticsValidationError("cross_person_record_selection_rejected")
         with self.database.uow() as uow:
@@ -530,12 +578,9 @@ class GeneticsService:
                 raise GeneticsValidationError("invalid_genetics_citation")
             if not set(claim.get("person_record_ids", ())) <= allowed_records:
                 raise GeneticsValidationError("invalid_person_record_citation")
-            if re.search(
-                r"\b(start|stop|increase|decrease|change)\b.{0,60}\b(dose|mg|medication)\b",
-                str(claim.get("claim", "")),
-                re.I,
-            ):
-                raise GeneticsValidationError("autonomous_clinical_action_rejected")
+            claim_text = f"{claim.get('claim', '')} {claim.get('reasoning_summary', '')}"
+            if _is_unqualified_clinical_claim(claim_text):
+                raise GeneticsValidationError("unsupported_clinical_claim_rejected")
         if packet.get("raw_genome_included"):
             raise GeneticsValidationError("raw_genome_not_allowed")
 
@@ -787,21 +832,40 @@ class GeneticsService:
 
     def _remove_unreferenced_source(self, source_id: str) -> None:
         # SourceService's store is immutable; an uncommitted dataset must not leave bytes behind.
-        with self.database.uow() as uow:
+        removable_path: str | None = None
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
             row = uow.sources.get(source_id)
-            referenced = (
-                uow.connection.execute(
-                    "SELECT 1 FROM genetic_datasets WHERE source_id = ?",
-                    (source_id,),
-                ).fetchone()
-                if uow.connection
-                else None
-            )
-        if row is not None and referenced is None:
-            self.sources.store._resolve_relative_path(row.relative_path).unlink(missing_ok=True)
+            referenced = uow.connection.execute(
+                "SELECT 1 FROM genetic_datasets WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()
+            if row is not None and referenced is None and row.source_type == "genetics":
+                uow.connection.execute("DELETE FROM sources WHERE id = ?", (source_id,))
+                removable_path = row.relative_path
+        if removable_path is not None:
+            self.sources.store._resolve_relative_path(removable_path).unlink(missing_ok=True)
 
     def _now(self) -> str:
         return self.clock().astimezone(UTC).isoformat()
+
+
+def _validate_research_context(value: object, *, path: str = "canonical_records") -> None:
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        raise GeneticsValidationError("raw_research_context_rejected")
+    if isinstance(value, str):
+        if len(value) > 5_000 or _GENOTYPE_ROW_PATTERN.search(value):
+            raise GeneticsValidationError("raw_research_context_rejected")
+        return
+    if isinstance(value, dict):
+        for key, child in value.items():
+            normalized_key = str(key).casefold()
+            if any(token in normalized_key for token in _RAW_RESEARCH_KEYWORDS):
+                raise GeneticsValidationError("raw_research_context_rejected")
+            _validate_research_context(child, path=f"{path}.{key}")
+    elif isinstance(value, (list, tuple, set)):
+        for index, child in enumerate(value):
+            _validate_research_context(child, path=f"{path}[{index}]")
 
 
 def parse_consumer_genotype(payload: bytes) -> list[ParsedObservation]:

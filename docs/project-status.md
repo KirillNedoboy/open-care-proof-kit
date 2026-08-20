@@ -265,24 +265,27 @@ zero: `cross_person_workspace_exposures`,
 `hidden_record_count_exposures`, `hidden_source_metadata_exposures`, and
 `legacy_scope_expansions`.
 
-## D1 evidence document ingest (implemented in the current baseline)
+## D1 evidence document ingest (implemented and published on public `main`)
 
-D1 is implemented in the current Product Core baseline. It accepts only
-authenticated Person-scoped PDF/TXT uploads, preserves immutable source bytes,
-performs bounded embedded-text extraction, and keeps review human-controlled
-for medication, condition, and lab records. OCR and automated clinical/model
+D1 is implemented and published on public `main` at
+`c6ae91e40f02582c0e07c1bca8c95765970c93ff`. It accepts only authenticated
+Person-scoped PDF/TXT uploads, preserves immutable source bytes, performs
+bounded embedded-text extraction, and keeps review human-controlled for
+medication, condition, and lab records. OCR and automated clinical/model
 extraction remain out of scope. Family Access v1/v2 remain frozen; v3 adds
 explicit document scopes. Portable export v4 includes authorized document
 payloads and immutable extraction metadata.
 
-## P3 Genetics Research Studio (implemented on this branch)
+## P3 Genetics Research Studio (implemented on this branch; pending public-main integration)
 
-P3 adds schema v9 immutable local consumer-genotype sources, selective indexed
-observations, versioned synthetic evidence, reviewed genetics findings, explicit
-revocable genetics grants, a responsive Genetics Workspace, deterministic family
-comparison, and offline Evidence/Explore Research Mode. VCF remains demo-only;
-clinical genetics, diagnosis, treatment, dosage changes, and raw-genome provider
-disclosure remain out of scope. See
+P3 is implemented on
+`codex/p3-genetics-research-studio` and remains pending integration into public
+`main`. It adds schema v9 immutable local consumer-genotype sources, selective
+indexed observations, versioned synthetic evidence, reviewed genetics findings,
+explicit revocable genetics grants, a responsive Genetics Workspace,
+deterministic family comparison, and offline Evidence/Explore Research Mode.
+VCF remains demo-only; clinical genetics, diagnosis, treatment, dosage changes,
+and raw-genome provider disclosure remain out of scope. See
 `docs/architecture/p3-genetics-research-studio.md` and
 `python -m evals.p3_review`.
 

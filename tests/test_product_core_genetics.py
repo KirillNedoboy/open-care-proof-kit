@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 # ruff: noqa: E501
+import base64
 import json
 from pathlib import Path
 
-from app.product_core.genetics import GeneticsService, GeneticsValidationError
+import pytest
+
+from app.product_core.genetics import (
+    MAX_GENETICS_UPLOAD_BYTES,
+    GeneticsService,
+    GeneticsValidationError,
+    decode_bounded_genetics_base64,
+)
 from app.product_core.services import PeopleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 
@@ -174,9 +182,77 @@ def test_genetics_export_is_explicit_and_ordinary_vault_excludes_raw_source(
     with ZipFile(BytesIO(genetics_package)) as archive:
         assert b"unique-raw-marker" in archive.read("source/payload.txt")
         assert archive.read("manifest.json").find(b"OpenCare Genetics Package v1") >= 0
-
     ordinary = PortableVaultExportService(database, service.sources.store).export(person_id)
     import json
 
     ordinary_payload = json.loads(ordinary.vault_json)
     assert all(source["source_type"] != "genetics" for source in ordinary_payload["sources"])
+
+
+def test_base64_boundary_and_failed_import_cleanup(tmp_path: Path) -> None:
+    accepted = base64.b64encode(b"x" * MAX_GENETICS_UPLOAD_BYTES).decode("ascii")
+    assert len(decode_bounded_genetics_base64(accepted)) == MAX_GENETICS_UPLOAD_BYTES
+    with pytest.raises(GeneticsValidationError):
+        decode_bounded_genetics_base64(
+            base64.b64encode(b"x" * (MAX_GENETICS_UPLOAD_BYTES + 1)).decode("ascii")
+        )
+    with pytest.raises(GeneticsValidationError):
+        decode_bounded_genetics_base64("not-base64")
+
+    service, database, person_id = _service(tmp_path)
+    broken = GeneticsService(
+        database,
+        service.sources,
+        Path("data"),
+        id_factory=iter(["dataset-only"]).__next__,
+    )
+    with pytest.raises(StopIteration):
+        broken.import_consumer_genotype(
+            person_id=person_id,
+            payload=SYNTHETIC_GENOTYPE,
+            original_filename="synthetic_failed.txt",
+            genome_build="GRCh37/hg19",
+            confirmation=True,
+        )
+    with database.connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM genetic_datasets").fetchone()[0] == 0
+
+
+def test_product_core_research_rejects_diagnosis_and_prescriptions(tmp_path: Path) -> None:
+    service, _database, _person_id = _service(tmp_path)
+    packet = {"findings": [], "canonical_records": [], "raw_genome_included": False}
+    base = {
+        "what_may_be_happening": "bounded",
+        "evidence_supporting": [],
+        "evidence_against": ["coverage is incomplete"],
+        "alternative_explanations": ["coincidence"],
+        "missing_information": ["confirmation"],
+        "confidence": "plausible",
+        "questions_worth_investigating": ["what would change confidence?"],
+    }
+    for text in (
+        "You have disease X.",
+        "These variants confirm disease X.",
+        "This proves that your symptoms are caused by X.",
+        "Start treatment Y.",
+        "Stop treatment Y.",
+        "Change medication X to Y.",
+        "Increase medication to 10 mg.",
+        "Decrease medication to 5 mg.",
+    ):
+        with pytest.raises(GeneticsValidationError):
+            service.validate_research_output(
+                {
+                    **base,
+                    "claims": [
+                        {
+                            "claim": text,
+                            "epistemic_status": "plausible",
+                            "reasoning_summary": "context",
+                        }
+                    ],
+                },
+                packet,
+                mode="explore",
+            )
