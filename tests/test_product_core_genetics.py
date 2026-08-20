@@ -231,28 +231,29 @@ def test_product_core_research_rejects_diagnosis_and_prescriptions(tmp_path: Pat
         "confidence": "plausible",
         "questions_worth_investigating": ["what would change confidence?"],
     }
-    for text in (
-        "You have disease X.",
-        "These variants confirm disease X.",
-        "This proves that your symptoms are caused by X.",
-        "Start treatment Y.",
-        "Stop treatment Y.",
-        "Change medication X to Y.",
-        "Increase medication to 10 mg.",
-        "Decrease medication to 5 mg.",
-    ):
-        with pytest.raises(GeneticsValidationError):
-            service.validate_research_output(
-                {
-                    **base,
-                    "claims": [
-                        {
-                            "claim": text,
-                            "epistemic_status": "plausible",
-                            "reasoning_summary": "context",
-                        }
-                    ],
-                },
-                packet,
-                mode="explore",
-            )
+    for framing in ("external claim: ", "literature says: ", "quoted claim: "):
+        for text in (
+            "You have disease X.",
+            "These variants confirm disease X.",
+            "This proves that your symptoms are caused by X.",
+            "Start treatment Y.",
+            "Stop treatment Y.",
+            "Change medication X to Y.",
+            "Increase medication to 10 mg.",
+            "Decrease medication to 5 mg.",
+        ):
+            with pytest.raises(GeneticsValidationError):
+                service.validate_research_output(
+                    {
+                        **base,
+                        "claims": [
+                            {
+                                "claim": framing + text,
+                                "epistemic_status": "plausible",
+                                "reasoning_summary": "context",
+                            }
+                        ],
+                    },
+                    packet,
+                    mode="explore",
+                )

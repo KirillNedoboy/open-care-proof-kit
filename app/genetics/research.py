@@ -195,15 +195,9 @@ def validate_research_output(output: ResearchOutput, packet: ResearchPacket) -> 
         if packet.mode is ResearchMode.EVIDENCE and claim.model_background:
             raise ValueError("model-background claims are excluded from Evidence Mode")
         claim_text = f"{claim.claim} {claim.reasoning_summary}"
-        lower_claim = claim_text.casefold()
-        external_discussion = any(
-            marker in lower_claim
-            for marker in ("external claim", "literature says", "quoted claim")
-        )
-        if (
-            _FORBIDDEN_INSTRUCTION.search(claim_text)
-            or _UNSUPPORTED_CLINICAL_CLAIM.search(claim_text)
-        ) and not external_discussion:
+        if _FORBIDDEN_INSTRUCTION.search(claim_text) or _UNSUPPORTED_CLINICAL_CLAIM.search(
+            claim_text
+        ):
             raise ValueError("unsupported clinical or prescriptive claim")
     return output
 

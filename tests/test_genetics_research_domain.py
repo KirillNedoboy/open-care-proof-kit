@@ -250,6 +250,7 @@ def test_research_packet_rejects_raw_source_fields() -> None:
         )
 
 
+@pytest.mark.parametrize("framing", ("external claim: ", "literature says: ", "quoted claim: "))
 @pytest.mark.parametrize(
     "claim_text",
     (
@@ -263,10 +264,12 @@ def test_research_packet_rejects_raw_source_fields() -> None:
         "Decrease medication to 5 mg.",
     ),
 )
-def test_research_rejects_diagnosis_and_prescriptive_claims(claim_text: str) -> None:
+def test_research_rejects_framed_diagnosis_and_prescriptive_claims(
+    framing: str, claim_text: str
+) -> None:
     packet = _packet_for_validation()
     with pytest.raises(ValueError, match="clinical|prescriptive"):
-        validate_research_output(valid_output(claim=claim_text), packet)
+        validate_research_output(valid_output(claim=framing + claim_text), packet)
 
 
 def test_research_allows_explicitly_qualified_hypothesis() -> None:
@@ -277,6 +280,21 @@ def test_research_allows_explicitly_qualified_hypothesis() -> None:
                 "One plausible hypothesis is X, but the supplied evidence does not "
                 "establish that the Person has X."
             )
+        ),
+        packet,
+    )
+
+
+def test_research_allows_non_prescriptive_literature_discussion() -> None:
+    packet = _packet_for_validation()
+    validate_research_output(
+        valid_output(
+            claim=(
+                "Literature says: a published study reported an association between X and Y; "
+                "this does not establish that the Person has X."
+            ),
+            model_background=True,
+            epistemic_status=EpistemicStatus.SPECULATIVE,
         ),
         packet,
     )

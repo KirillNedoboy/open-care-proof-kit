@@ -80,9 +80,6 @@ _UNSAFE_ACTION = re.compile(
 
 
 def _is_unqualified_clinical_claim(text: str) -> bool:
-    lower = text.casefold()
-    if any(marker in lower for marker in ("external claim", "literature says", "quoted claim")):
-        return False
     return bool(_UNSUPPORTED_DIAGNOSIS.search(text) or _UNSAFE_ACTION.search(text))
 
 
