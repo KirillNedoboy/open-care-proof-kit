@@ -1,7 +1,15 @@
 # Product Core Roadmap
 
-This roadmap describes the next implementation sequence without speculative
-dates or estimates. It is subordinate to
+> **Current status (2026-08-20):** The implementation roadmap through P1,
+> P2, D1, and P3 is complete on public `main` at
+> `0937d352cc74a3050609e826baa6bad82f6ac9ee`.
+>
+> This document preserves historical phase design and acceptance context. It
+> is no longer a list of pending implementation work. Current feature roadmap
+> completed. Future product work requires a new explicit product decision.
+
+The historical roadmap below describes the evolution of Product Core without
+speculative dates or estimates. It is subordinate to
 [ADR 0001](../adr/0001-opencare-product-direction.md).
 
 ## Phase 1: first vertical slice

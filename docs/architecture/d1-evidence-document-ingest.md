@@ -1,9 +1,12 @@
 # D1: Evidence Document Ingest
 
-- Status: Design binding; implementation is not part of D1 design commit
-- Branch: `codex/d1-evidence-document-ingest` (based on `1085e2e5a4c544ab609076441660ab25eeaafcdb`)
-- Decision owners: OpenCare maintainers
-- Scope: authenticated, Person-scoped ingestion of immutable PDF and plain-text evidence, deterministic extraction, reviewer-visible candidate provenance, and safe document lifecycle integration with Product Core.
+- Historical design status: binding contract for the D1 implementation.
+- Current implementation status: implemented and published on public `main` at
+  `c6ae91e40f02582c0e07c1bca8c95765970c93ff`.
+- Current runtime: authenticated Person-scoped PDF/TXT upload, immutable Source
+  bytes, bounded extraction, provenance/review, document grants, export v4,
+  backup, and recovery.
+- Historical branch/base context below is preserved for auditability.
 
 This document is the implementation contract for D1. A document registration never confirms a fact and never silently grants access.
 

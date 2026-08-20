@@ -18,17 +18,32 @@ OpenCare Proof Kit: self-hosted personal/family health workspace infrastructure 
 
 ## Short Pitch
 
-OpenCare Proof Kit is not a medical chatbot. It is an open-source, self-hosted personal/family health workspace with a synthetic reviewer surface and an implemented Phase 2 family identity/access boundary: explicit consent, person-scoped permissions, deny-by-default authorization, audit, export, and recovery controls.
+OpenCare Proof Kit is not a medical chatbot. It is an open-source, self-hosted
+personal/family health workspace with an implemented Product Core, Family
+Workspace, D1 document evidence ingest, P3 Genetics Research Studio, explicit
+consent, person-scoped permissions, deny-by-default authorization, audit,
+export, and recovery controls.
 
 ## Long Pitch
 
-The strongest current story is vault first. OpenCare should be useful before DNA enters the picture. The repo proves that with a synthetic/demo-only Health/Family Vault and a live local family workspace: deterministic schemas, provenance-preserving read models, reviewer artifacts, a read-only `/demo/health-vault` page, and a Phase 2 family identity/access boundary.
+The strongest current story is vault first. OpenCare is useful before DNA enters
+the picture. Public fixtures remain synthetic/demo-only, while the self-hosted
+runtime is designed for user-owned sensitive health, document, and genetic data
+under explicit local authorization. Current live surfaces include `/workspace`,
+`/family-access`, `/genetics`, and `/demo/health-vault`.
 
 That vault layer is paired with visible review infrastructure: privacy/safety threat models, provenance semantics, artifact guarantees, an authorization matrix, GitHub Actions CI, and trust metrics. A reviewer can inspect the docs, artifacts, routes, access policy, and validation evidence directly.
 
-The existing Medication-to-Doctor Briefing / PGx path remains intact as a narrow reference workflow. It is useful here because it stress-tests evidence, safety, audit, and eval behavior. But it is no longer the main product framing. Genetics is still a future enhancement layer. Any future LLM remains an interface layer, not the source of truth.
+The existing Medication-to-Doctor Briefing / PGx path remains a narrow reference
+workflow. D1 document evidence and P3 Genetics Research Studio are now
+implemented on public `main`; P3 provides bounded reviewed associations,
+selective indexing, family comparison, and Evidence/Explore Research Mode.
+Genetics remains secondary to the vault and the LLM remains an interface layer,
+not the source of truth.
 
-The repo is synthetic/demo-only. It does not claim real-patient support, real-genetic-data support, diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop medication advice, clinical decision support, or clinical validation.
+The repo contains synthetic/de-identified fixtures only. It does not claim
+diagnosis, treatment recommendation, dosage guidance, medication selection,
+start/stop medication advice, clinical decision support, or clinical validation.
 
 ## Origin Story
 
@@ -148,24 +163,24 @@ GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics on `pu
 
 ### Implemented now
 
-- synthetic Health/Family Vault Core
-- Phase 2 Family Identity and Access Boundary
-- deterministic loader/validation
-- deterministic read model
-- deterministic local artifacts
-- committed reviewer artifacts
-- threat model / provenance / artifact guarantee docs
-- read-only reviewer UI
-- context/provenance trace graph
-- CI and trust metrics
-- Medication-to-Doctor Briefing / PGx reference workflow
+- Product Core schema v9 with People, records, review, Visits, Visit Briefs,
+  document evidence, export, backup, and recovery;
+- Family Access v1-v3 with explicit consent and separate genetics grants;
+- D1 PDF/TXT document evidence ingest with immutable bytes and provenance;
+- P3 Genetics Workspace, selective consumer-genotype indexing, reviewed
+  evidence, PGx associations, family comparison, Genetics Export, and
+  Evidence/Explore Research Mode;
+- G1-G5 trust infrastructure, deterministic reviewers, CI, and trust metrics;
+- synthetic Health/Family Vault Core and Medication-to-Doctor Briefing / PGx
+  reference workflow;
 
-### Next grant-funded work
+### Historical planned work (superseded by completed public-main implementation)
 
 - local ingest/provenance conventions for documents, labs, medications, visits, and notes;
 - Conditions/Labs and clinician-review handoff improvements;
 - broader evals and trust metrics around provenance gaps and access boundaries;
-- future genetics/interface research only after the vault and family-access foundations remain safe and inspectable.
+- future interface/adapters beyond the completed P3 boundary only after explicit
+  privacy and safety decisions;
 
 ## Requested Support / Use Of Funds
 
@@ -175,7 +190,8 @@ Support would help fund:
 - reviewer artifact maintenance and verification tooling;
 - broader synthetic eval and trust coverage;
 - cleaner clinician-review handoff exports;
-- conservative research on future genetics and interface layers after the current foundation is stable.
+- conservative research on future interface decisions beyond the completed P3
+  boundary.
 
 ## Risks And Mitigations
 

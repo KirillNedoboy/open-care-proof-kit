@@ -1,8 +1,13 @@
 # OpenCare Module Boundaries
 
 This document defines intended ownership for the combined OpenCare foundation.
-It does not move modules or change imports.
+The implementation sequence through G1-G5, P1, P2, D1, and P3 is complete on
+public `main`. It does not move modules or change imports.
 
+Current runtime ownership includes Product Core schema v9, D1 document ingest,
+`app/product_core/genetics.py`, separate genetics grants, `/workspace`,
+`/family-access`, and `/genetics`. Historical phase notes below are retained
+for architecture provenance, not as pending work.
 ## Product Core
 
 Product Core owns user-facing health workspace concepts:
@@ -13,6 +18,8 @@ Product Core owns user-facing health workspace concepts:
 - candidate facts;
 - canonical records;
 - review;
+- document Sources/extractions and reviewer provenance;
+- genetics datasets, evidence, findings, grants, research sessions, and Genetics Export.
 - timeline;
 - visits;
 - questions;
@@ -139,11 +146,17 @@ truth.
 15. Synthetic demo/reviewer routes remain separate from the actor-scoped live
     Workspace, vault, Product Core API, and chat.
 
-## Current-to-intended mapping
+## Current ownership mapping
 
-The current `app/health_vault` package is a read-only/demo foundation for
-future Product Core work. The current `app/agent` package is a bounded
-Question Workspace precursor, not the product entry point. The current
-`app/pgx` and `app/genetics` packages are Reference Workflow components. The
-current report, eval, deployment, and reviewer documents belong to Trust
-Foundation or reviewer/grant artifacts according to their ownership above.
+`app/product_core` owns the live schema v9 workspace, lifecycle, document
+ingest, persisted genetics service, exports, backup, and recovery.
+`app/family_access` owns Actor sessions, consent, and Family Access policy.
+`app/agent_trust` owns reusable Trust Envelope and receipt contracts.
+`app/agent` owns bounded context, provider adapters, validation, and audit.
+`app/genetics` owns pure consumer-genotype, evidence, comparison, and Research
+Mode contracts. `app/pgx` remains the deterministic reference matcher.
+Templates/static assets implement the live Workspace and Genetics Workspace.
+`evals` contains deterministic final-phase reviewers.
+
+Historical phase notes above describe how these boundaries evolved; they do not
+describe pending implementation work.

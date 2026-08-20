@@ -6,6 +6,13 @@
 
 Copy these answers into a Sentient Open Source AGI Grant or similar public-goods application. Keep the wording conservative. This repo is private, local-first trust infrastructure with health as the stress-test domain. It is not a clinical product.
 
+## Current implementation note
+
+G1-G5, P1, P2, D1, and P3 are implemented on public `main`. The planning and
+future-work language below is historical grant context, not a pending product
+roadmap. Public fixtures remain synthetic/de-identified; no clinical authority
+is claimed.
+
 Character counts:
 
 - Short summary: 651
@@ -18,19 +25,36 @@ OpenCare Proof Kit: privacy-first personal/family medical workspace infrastructu
 
 ## B. One-Sentence Pitch
 
-OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first personal/family health workspace, demonstrated with a synthetic reviewer surface and an implemented Phase 2 family identity/access boundary with explicit consent, person-scoped permissions, deny-by-default authorization, audit, export, and recovery controls.
+OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first
+personal/family health workspace with deterministic trust, provenance, safety,
+audit, review, document evidence, and bounded genetics research.
 
 ## C. Short Summary
 
-OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first personal/family health workspace. The repo implements a synthetic Health/Family Vault reviewer surface plus Phase 2 family identity and access controls: explicit consent, person-scoped permissions, deny-by-default authorization, access audit, person export, and offline backup/recovery boundaries. The existing Medication-to-Doctor Briefing / PGx demo remains a narrow reference workflow. Genetics and LLM layers are future extensions. The project does not provide diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support.
+OpenCare Proof Kit is an open-source, self-hosted foundation for a privacy-first
+personal/family health workspace. The repo implements Product Core records,
+Family Access, D1 PDF/TXT evidence documents, P3 Genetics Research Studio,
+explicit consent, Person-scoped permissions, deny-by-default authorization,
+access audit, export, and offline backup/recovery. The existing
+Medication-to-Doctor Briefing / PGx demo remains a narrow reference workflow.
+The project does not provide diagnosis, treatment recommendation, dosage
+guidance, medication selection, or clinical decision support.
 
 ## D. Longer Summary
 
-OpenCare Proof Kit is a local-first, open-source foundation for a privacy-first personal/family health workspace. The current repo is vault-first: it implements a synthetic Health/Family Vault reviewer surface and a live Phase 2 family identity/access boundary with explicit consent, person-scoped permissions, deny-by-default policy, access audit, person export, and recovery controls.
+OpenCare Proof Kit is a local-first, open-source foundation for a privacy-first
+personal/family health workspace. Public repository fixtures are synthetic and
+de-identified; the self-hosted runtime is designed for user-owned sensitive
+health, document, and genetic data under explicit local authorization.
 
-The older Medication-to-Doctor Briefing / PGx demo still runs as a narrow reference workflow. Synthetic health vault data and demo genotype-like data go through local evidence packs, deterministic PGx rules, safety checks, Markdown reporting, JSON audit output, and executable evals.
-
-The design rule is deterministic tools before LLM. The vault is the source of truth. Genetics is a future layer. Any future LLM remains an interface and explanation layer, not clinical authority. The repo is synthetic/demo-only, does not support real patient or real genetic data yet, is not in clinical deployment, and does not provide diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, clinical decision support, or clinical validation.
+The older Medication-to-Doctor Briefing / PGx demo still runs as a narrow
+reference workflow. D1 document evidence and P3 Genetics Research Studio are
+implemented on public `main`; P3 remains selective, evidence-backed, and
+bounded. The design rule is deterministic tools before LLM. The vault remains
+the source of truth, and any model remains an interface layer rather than
+clinical authority. The project does not provide diagnosis, treatment
+recommendation, dosage guidance, medication selection, start/stop advice,
+clinical decision support, or clinical validation.
 
 ## E. Problem
 
@@ -143,35 +167,36 @@ GitHub Actions CI runs tests, lint, type checks, evals, and trust metrics. The t
 
 ## N. Why Sentient / Grant Alignment
 
-This project fits an open-source public-goods grant because it focuses on infrastructure that makes personal agents more inspectable, private, and controllable. The repo is local-first, synthetic/demo-only, deterministic-first, and honest about what is not implemented.
+This project fits an open-source public-goods grant because it focuses on
+infrastructure that makes personal agents more inspectable, private, and
+controllable. The repo is local-first, deterministic-first, and explicit about
+what is not clinical authority. Public fixtures are synthetic/de-identified;
+self-hosted runtime capabilities are local and authorization-bound.
 
 It does not assume closed deployment, platform lock-in, or current Sentient integration. It is the kind of substrate another builder can inspect and reuse.
 
-## O. What Support Would Help
+## O. Historical support framing
 
-Grant support would help fund:
+The planning language in this section predates the completed D1/P3 public-main
+implementation. It is retained as grant context, not as a pending product
+roadmap.
 
-- better ingest/provenance tooling for the vault-first layer;
-- more reviewer automation and artifact verification;
-- broader synthetic eval coverage;
-- stronger trust metrics and release hygiene;
-- clearer clinician-review handoff exports;
-- careful research on future genetics and interface layers after the vault and family-access foundations are stable.
+Grant support could help fund better ingest/provenance tooling, reviewer
+automation, synthetic eval coverage, trust metrics, release hygiene, clinician-
+review handoffs, and future interface/adapters beyond the completed P3 boundary.
 
-## P. 30-Day Milestones
+## P. Historical 30-Day Milestones
 
 - Maintain the Phase 2 reviewer pack and GitHub release hygiene.
 - Tighten reviewer docs around vault-first behavior, family access, and trust metrics.
 - Add artifact refresh and reviewer-pack maintenance instructions.
 - Expand wording scans and packaging checks for submission hygiene.
-
-## Q. 60-Day Milestones
+## Q. Historical 60-Day Milestones
 
 - Add local ingest/provenance conventions for documents, labs, medications, visits, and notes.
 - Improve clinician-review handoff exports without adding clinical action.
 - Extend trust metrics and reviewer surfaces around provenance gaps and unsupported states.
-
-## R. 90-Day Milestones
+## R. Historical 90-Day Milestones
 
 - Research optional future genetics and interface layers without breaking the vault-first architecture.
 - Define privacy, provenance, and safety requirements before any real-data or adapter work.

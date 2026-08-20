@@ -1,8 +1,10 @@
 # OpenCare P3 — Genetics Research Studio
 
-**Status:** Binding implementation contract for `codex/p3-genetics-research-studio`  
-**Baseline:** Product Core schema v8 at `c6ae91e40f02582c0e07c1bca8c95765970c93ff`  
-**Target:** Product Core schema v9; local-first, deterministic, offline-testable
+**Historical contract:** design binding for `codex/p3-genetics-research-studio`,
+based on Product Core schema v8.
+
+**Current implementation:** implemented and published on public `main` at
+`0937d352cc74a3050609e826baa6bad82f6ac9ee`; Product Core schema v9 is current.
 
 ## Product thesis
 

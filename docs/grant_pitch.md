@@ -4,6 +4,12 @@
 > are maintained in [ADR 0001](adr/0001-opencare-product-direction.md) and
 > [project status](project-status.md).
 
+
+## Current Implementation Note
+
+G1-G5, P1, P2, D1, and P3 are implemented on public `main`. The planning
+language below is historical grant context, not a pending product roadmap.
+
 ## One-Liner
 
 OpenCare Proof Kit is an open-source, self-hosted personal and family health workspace with local-first provenance, safety, audit, and person-scoped access controls. It is also a reusable trust-infrastructure reference for agents working with sensitive personal context.
@@ -127,6 +133,7 @@ the current foundation:
 - Conditions/Labs and clinician-review handoff improvements;
 - broader synthetic evals and trust metrics around provenance gaps and access boundaries;
 - maintained reviewer artifacts and reproducible release hygiene;
-- conservative research on future genetics and interface layers after the vault and family-access foundations remain stable.
+- conservative research on future interface/adapters beyond the completed P3
+  boundary.
 
 The next work should deepen safety, evidence, auditability, and reviewer confidence. It should not expand into diagnosis, dosage recommendation, real patient data, WGS/FASTQ/BAM processing, SaaS auth, payments, Telegram, blockchain, or cloud raw genotype upload by default.

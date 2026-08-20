@@ -1,17 +1,27 @@
 # OpenCare Proof Kit
 
-OpenCare is an open-source, self-hosted Personal and Family Health Workspace.
-This repository is the main OpenCare foundation: it contains a
-synthetic/demo Health/Family Vault, persistent Product Core medication and
-visit-planning records, reusable trust components, a guarded Question Workspace
-precursor, local Actor sessions with explicit Person permissions, a frozen PGx
-reference workflow, and reviewer artifacts. Live `/workspace`, `/vault`, and
-`/chat` are Person-scoped; synthetic reviewer surfaces remain separate under
-`/demo`.
+OpenCare is an open-source, self-hosted Personal and Family Health Workspace
+plus reusable trust infrastructure for sensitive personal AI agents.
 
-The product rule is simple: vault first, genetics second, LLM third as interface. OpenCare should be useful without DNA. The current implementation is not an AI doctor, not diagnosis, not treatment recommendation, not dosage guidance, and not clinical decision support.
+The product sequence is:
 
-The existing Medication-to-Doctor Briefing / PGx demo remains intact as the narrow reference workflow. Genetics remains a future layer. The LLM remains an interface/explanation layer, not the source of truth.
+```text
+vault first
+  -> source provenance and human review
+  -> Family Workspace
+  -> document evidence
+  -> bounded AI
+  -> Genetics Research Studio
+```
+
+OpenCare is useful without DNA. It is not an AI doctor, diagnostic authority,
+treatment planner, dosage recommender, medication start/stop authority, clinical
+decision-support system, or clinically validated software.
+
+Public repository content, fixtures, tests, screenshots, and reviewer artifacts
+are synthetic/de-identified only. A self-hosted runtime is designed to store
+user-owned health, document, and genetic data locally behind Person isolation,
+provenance, explicit consent, review, and export boundaries.
 
 ## Canonical Documents
 
@@ -38,15 +48,36 @@ product roadmap.
 
 ## Release status
 
-`v0.1.0` is the published controlled private-alpha baseline. The current
-`main` branch contains the implemented Phase 2 Family Identity and Access
-Boundary and is published as `v0.2.0`. Neither release is a
-production-readiness or clinical-readiness claim.
+`v0.1.0` and `v0.2.0` are the only published release tags. Public `main`
+contains the completed G1-G5, P1, P2, D1, and P3 implementation at
+`0937d352cc74a3050609e826baa6bad82f6ac9ee`. These releases and the current
+unreleased development line are not production-readiness or clinical-readiness
+claims.
+Package/runtime identity is `0.3.0.dev0`, an unreleased development version;
+no `v0.3.0` tag exists.
 
-Production Compose requires explicit persistent Product Core and backup host
-paths. Development Compose remains synthetic/demo-only and is not suitable for
-sensitive private-alpha data. See the private-alpha operator checklist before
-handling any non-synthetic installation data.
+## Current capabilities
+
+- Actor-scoped Family Workspace at `/workspace` with Person isolation.
+- Medication, recorded-condition, and lab records with source provenance,
+  human review, correction history, timeline, Visits, and Visit Briefs.
+- Bounded PDF/TXT evidence-document ingest with immutable Source bytes and
+  extraction provenance.
+- G1 Trust Envelope, consent-gated G2 runtime, G3 provider portability, G4
+  portable trust package, and G5 ecosystem validation.
+- Local/self-hosted model portability with explicit external-provider consent.
+- Product Core schema v9, Family Access v1/v2 frozen plus v3 document scopes,
+  and separate genetics grants: `genetics.read`, `genetics.write`,
+  `genetics.research`, `genetics.compare`, `genetics.export`.
+- Genetics Workspace at `/genetics`, bounded consumer-genotype import, selective
+  indexing, reviewed evidence, PGx associations, family comparison, and
+  separate Genetics Export.
+- Research Studio Evidence Mode and Explore Mode with epistemic labels,
+  counterevidence, citation validation, and no canonical-record mutation path.
+- Installation backup/recovery and ordinary Person portable vault export v4.
+
+Development Compose, `/demo/health-vault`, and committed reviewer artifacts are
+synthetic/demo surfaces. They are separate from live actor-scoped Product Core.
 
 ## Portable Health-Agent Skill
 
@@ -62,11 +93,12 @@ source-backed answers, and uses the existing policy and validation rules.
 ```
 
 Installation is manual and workspace-scoped. OpenCare does not automatically
-modify agent instruction files or install global skills. There is no MCP,
-document ingestion, genetics support, diagnosis, treatment advice, or
-dosage-change advice in this phase. External agents remain responsible for
-their own model and provider security. OpenCare validates output but cannot
-guarantee medical correctness.
+modify agent instruction files or install global skills. There is no MCP.
+The portable skill is one bounded agent surface; authenticated Product Core
+document ingestion and Genetics Research Studio are available through the
+Workspace and versioned APIs. External agents remain responsible for their own
+model and provider security. OpenCare validates output but cannot guarantee
+medical correctness.
 
 ## Sentient G1 Trust Envelope
 
@@ -140,8 +172,10 @@ G4 also ships an Agent Plugins v1 **skill-only** package at
 `agent-plugins/opencare-trust/` (strict 1.0.0 `plugin.json` plus its `skills/`
 tree, including the canonical `opencare-health-agent` skill), packaged
 deterministically from the canonical skill at [skills/opencare-health-agent](skills/opencare-health-agent/).
-The package contains no `mcp.json`: MCP support is explicitly deferred, and no
-multi-client validation is claimed (that is Sentient G5).
+The package contains no `mcp.json`: MCP support remains out of scope. G5
+validates Agent Skills interoperability; the remaining root Agent Plugins
+two-client gate is external evidence pending and machine state remains
+`READY_FOR_SECOND_CLIENT_SMOKE`.
 
 ```powershell
 .\.venv\Scripts\python.exe -m app.agent_trust.cli verify-envelope --envelope fixtures/agent-trust/allowed-envelope.json --at 2027-08-02T10:00:00Z
@@ -168,58 +202,39 @@ downstream adapters, and the
 - Threat model: [docs/privacy_safety_threat_model.md](docs/privacy_safety_threat_model.md)
 - Provenance semantics: [docs/provenance_semantics.md](docs/provenance_semantics.md)
 - Vault artifact guarantees: [docs/vault_artifact_guarantees.md](docs/vault_artifact_guarantees.md)
+- P1/P2/D1/P3/G5 reviewers:
+  `python -m evals.p1_review`, `python -m evals.p2_review`,
+  `python -m evals.d1_review`, `python -m evals.p3_review`,
+  `python -m evals.g5_review`
+- P3 reviewer guide: [docs/p3-reviewer-guide.md](docs/p3-reviewer-guide.md)
 
 ## What Is Implemented Now
 
-- Health/Family Vault Core schemas plus a synthetic family dataset.
-- Deterministic loader and validation for the synthetic family vault.
-- Deterministic read model with provenance coverage and safety boundary notices.
-- Deterministic local reviewer artifacts: JSON read model, Markdown summary, manifest.
-- Committed synthetic reviewer artifacts under `docs/assets/health_vault/`.
-- Read-only local reviewer page at `/demo/health-vault`.
-- Actor-scoped live vault and Workspace at `/vault` and `/workspace`.
-- Actor-scoped chat at `/chat`; the browser sends only the question and the
-  server builds context for the authorized active Person.
-- Product Core schema v7 Actors, scrypt credentials, Families, relationships,
-  append-only consent, assignments, hash-only invitations, and metadata-only
-  access audit.
-- Eight-hour server-side sessions in a separate runtime database, same-origin
-  checks, and CSRF enforcement for authenticated mutations.
-- Fixed owner/caregiver scopes, independent last-owner and last-administrator
-  guards, explicit high-risk owner grants, and atomic confirmed Person creation.
-- Family/access management UI plus a generic body-only `/invite` flow.
-- Deterministic `Context / Provenance Trace Graph` on the reviewer page.
-- Privacy/safety threat model, provenance semantics, and artifact guarantee docs.
-- GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
-- Deterministic local trust metrics report for reviewer/demo trust checks.
-- Production config validation with fail-closed checks for secrets and private mode.
-- Public `/health`, `/healthz`, and `/readyz` endpoints for self-hosted checks.
-- Legacy password-gated private mode for non-Actor routes; its cookie never
-  substitutes for an Actor session or Person assignment.
-- Configurable runtime vault source through `OPENCARE_VAULT_SOURCE=demo|local_file`.
-- Mounted local vault file support through `OPENCARE_VAULT_FILE=/path/to/vault.json`.
-- Product Core SQLite persistence through `OPENCARE_PRODUCT_DB_PATH`.
-- Runtime-only session storage through `OPENCARE_SESSION_DB_PATH`, outside
-  Product Core backup and recovery.
-- Immutable Product Core source files through `OPENCARE_SOURCE_DIR`.
-- Deterministic medication/condition/lab lifecycle, persistent Visits and Visit
-  Questions, persisted Visit Briefs (content schema v2; v1 revisions readable),
-  and deterministic Person export v3 under `app/product_core/`.
-- Versioned Product Core JSON API under `/api/product-core/v1` for source
-  registration, candidate review, canonical medication/condition/lab records,
-  timeline, Visits, Visit Questions, Visit Brief generation, and portable vault
-  export.
-- Dockerfile, compose foundation, and deployment guide for self-hosted use.
-- Single-node VPS deployment pack with production compose, Caddy example, env template, and smoke check script.
-- Existing Medication-to-Doctor Briefing / PGx reference workflow, report, audit, and eval path.
+- Actor-scoped `/workspace`, `/vault`, `/chat`, `/family-access`, and
+  `/genetics` surfaces.
+- Product Core schema v9 with Person-scoped Sources, medications, recorded
+  conditions, labs, timeline, Visits, Visit Questions, and Visit Briefs
+  (content schema v2; v1 revisions readable).
+- Immutable PDF/TXT evidence documents with bounded embedded-text extraction,
+  page/span provenance, review lifecycle, document grants, export v4, and
+  backup/recovery.
+- Separate genetics Sources, bounded consumer-genotype import, selective
+  indexed observations, evidence packs, reviewed findings, explicit genetics
+  grants, PGx lens, family comparison, Research Studio, and Genetics Export.
+- G1 Trust Envelope, G2 consent-gated runtime, G2.5 compatibility spike, G3
+  provider portability, G4 portable trust package, and G5 ecosystem reviewer.
+- Deterministic reviewers and GitHub Actions CI for tests, lint, types, evals,
+  trust metrics, and final phase gates.
+- Synthetic/demo Health/Family Vault artifacts at `/demo/health-vault`, kept
+  separate from live actor-scoped Product Core.
 
 ## What OpenCare Is
 
-- A privacy-first personal/family medical workspace foundation.
-- A local-first repo for source-grounded, fail-closed health-agent infrastructure.
-- A vault-first design that is useful before any genetics layer exists.
-- A deterministic provenance, safety, audit, and eval discipline around synthetic/demo health data.
-- A reviewer-friendly proof kit with inspectable artifacts, docs, UI, CI, and trust metrics.
+OpenCare is a privacy-first personal/family health workspace foundation and a
+local-first source-grounded trust layer. It is useful before genetics, while
+also providing an explicit secondary Genetics Research Studio for authorized
+local data. Synthetic public fixtures remain separate from self-hosted runtime
+data.
 
 ## What OpenCare Is Not
 
@@ -230,9 +245,7 @@ downstream adapters, and the
 - Not medication selection advice.
 - Not start/stop medication advice.
 - Not clinical decision support.
-- Not clinical validation.
-- Not real-patient support.
-- Not real-genetic-data support.
+- Not clinical validation or clinical authority.
 - Not a FASTQ, BAM, WGS, or production genomics pipeline.
 
 ## Why The Repo Is Vault-First
@@ -327,34 +340,33 @@ the constraints and run the full validation suite whenever dependencies change.
 Pip build isolation resolves the declared build backend separately, so this does
 not claim byte-for-byte reproducible wheels.
 
-Core validation:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m ruff check app tests evals
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
 .\.venv\Scripts\python.exe -m evals.trust_metrics
+.\.venv\Scripts\python.exe -m evals.g5_review
+.\.venv\Scripts\python.exe -m evals.p1_review
 .\.venv\Scripts\python.exe -m evals.p2_review
+.\.venv\Scripts\python.exe -m evals.d1_review
+.\.venv\Scripts\python.exe -m evals.p3_review
+.\.venv\Scripts\python.exe -m pip check
 git diff --check
+node --check app/static/product_core_workspace.js
+node --check app/static/genetics.js
 ```
 
 Product Core migration smoke test:
 
-```powershell
-.\.venv\Scripts\python.exe -c "from app.config import get_settings; from app.product_core.sqlite import SQLiteDatabase; s=get_settings(); SQLiteDatabase(s.product_db_path).migrate()"
-```
-
-Product Core persists medication/condition/lab lifecycle records, active
-people profiles, Visits, user-authored Visit Questions, and schema v7 Family
-identity/access state. The API uses the same
+Product Core persists medication/condition/lab lifecycle records, active people
+profiles, Visits, user-authored Visit Questions, Visit Briefs (content schema
+v2 with readable v1 revisions), immutable document Sources/extractions, and
+schema v9 Family identity/access state. Ordinary Person portable vault export
+is v4; Genetics Export is a separate explicit package. The API uses the same
 SQLite metadata and immutable UTF-8 source payloads configured through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
-application startup. The API has persisted active people profiles; legacy opaque
-person IDs are retained through non-medical `Imported profile` placeholders during
-migration. The outer shared password gate is not Person authorization: every
-live Product Core request resolves the Actor session, resource owner, and fixed
-scope server-side.
+application startup. Every live Product Core request resolves the Actor
+session, resource owner, and fixed scope server-side.
 
 Family identity and access endpoints use `/api/family-access/v1`. They cover
 bootstrap, login/logout, password replacement, current Actor and active Person,
@@ -414,12 +426,13 @@ verifies, atomically activates, verifies again, and rolls back handled failures.
 It cannot guarantee crash- or power-loss safety between filesystem operations;
 exact abandoned recovery artifacts block subsequent recovery until inspected.
 
-Recovery restores durable Actor credentials and the complete v7 access state,
-including revocations. It restores neither `.env`, plaintext passwords,
-invitation codes, `OPENCARE_SECRET_KEY`, provider keys, cookies, sessions, TLS
-files, nor deployment configuration. Every Actor logs in again and creates a
-new runtime session. Import, merge, encryption, and populated-target recovery
-remain unsupported.
+Recovery restores durable Actor credentials, schema v9 access/genetics state,
+and revocations.
+It restores neither `.env`, plaintext passwords, invitation codes,
+`OPENCARE_SECRET_KEY`, provider keys, cookies, sessions, TLS files, nor
+deployment configuration. Every Actor logs in again and creates a new runtime
+session. Import, merge, encryption, and populated-target recovery remain
+unsupported.
 
 Start the local app:
 
@@ -427,7 +440,7 @@ Start the local app:
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-On a fresh schema v7 installation, open `/bootstrap` while no Actor exists.
+On a fresh schema v9 installation, open `/bootstrap` while no Actor exists.
 Bootstrap creates the first local Actor and installation administrator; it
 grants no implicit Person access. Any selected existing Person becomes an owner
 grant only after the explicit full-access confirmation. Later sessions start at
@@ -568,30 +581,25 @@ tests            deterministic unit tests
 
 ## Roadmap
 
-Near-term work should stay conservative:
-
-- reviewer/package polish and public GitHub spot-checks;
-- vault-first ingest and provenance improvements;
-- clearer clinician-review handoff exports;
-- genetics only after the vault foundation stays safe and inspectable.
+The current implementation roadmap through P1, P2, D1, and P3 is complete on
+public `main`. Future product work requires a new explicit product decision;
+this repository does not invent a next phase.
 
 See [docs/roadmap/product-core-roadmap.md](docs/roadmap/product-core-roadmap.md)
-for the canonical next-phase roadmap. The older
+for historical evolution and the completed current-state boundary. The older
 [docs/roadmap.md](docs/roadmap.md) is historical.
-# OpenCare Health Workspace
+## Live Product Core Workspace
 
-`/workspace` is the primary OpenCare entry point and `/` redirects there. It uses the
-versioned Product Core API for capability-aware Person switching, all-three-type
-Review Inbox and Timeline surfaces, current/history records, human-readable
-provenance, source-backed medication/condition/lab review, persistent Visits and
-user-authored Visit Questions, and Visit-scoped persisted Brief revisions with
-confirmed-evidence selection, editable preparation notes, history/restore,
-Markdown copy/download, and an explicit Person-scoped portable vault v3
-download. Visit Brief content schema v2 remains readable for v1 revisions.
-The legacy deterministic Person-scoped Brief endpoint remains available.
-Profiles and selected Visits remain only in page memory; the active Person
-selection is held in the server-side Actor session.
-Legacy opaque person IDs migrate to `Imported profile` records without inferred data.
-`/chat` remains a supporting feature behind the same Actor and Person policy.
-Family/access management and Actor deactivation are implemented. Person
-deletion, document upload, extraction, OCR, and Phase 3 ingest remain out of scope.
+`/workspace` is the primary OpenCare entry point and `/` redirects there. It
+uses the versioned Product Core API for capability-aware Person switching,
+medication/condition/lab review, document evidence, timeline, Visits,
+Visit Questions, Visit Brief revisions, provenance, and portable vault v4.
+`/genetics` provides the separate Genetics Workspace, reviewed evidence,
+PGx associations, family comparison, Research Studio, and explicit Genetics
+Export. `/family-access` manages explicit identity/access consent. `/chat`
+remains a supporting guarded feature.
+
+OpenCare does not delete Persons, process OCR, claim clinical authority, or
+provide diagnosis, treatment, dosage, medication selection, or start/stop
+instructions. Product Core can process user-owned sensitive data locally under
+explicit authorization; public fixtures and reviewer artifacts remain synthetic.

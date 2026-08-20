@@ -2,37 +2,41 @@
 
 ## Project overview
 
-OpenCare Proof Kit is an open-source, local-first toolkit for building private, evidence-grounded health AI agents.
+OpenCare Proof Kit is an open-source, self-hosted Personal and Family Health
+Workspace plus reusable trust infrastructure for sensitive personal AI agents.
+Public `main` includes G1-G5, P1, P2, D1, and P3. Product Core schema is v9.
+The implementation supports Person-scoped records, provenance/review, PDF/TXT
+evidence documents, Family Access v1-v3, separate genetics grants, a Genetics
+Workspace, and bounded Evidence/Explore Research Mode.
 
-The reference MVP workflow is Medication-to-Doctor Briefing: a local pipeline that uses synthetic/demo health vault data, demo genotype/VCF-like data, deterministic evidence rules, safety policy checks, and an LLM report writer to produce clinician-reviewable Markdown/JSON reports.
-
-This project is not an AI doctor, not a diagnostic system, and not a medication recommendation engine.
+Public repository fixtures, tests, screenshots, and reviewer artifacts are
+synthetic/de-identified only. A self-hosted runtime is designed to process
+user-owned sensitive health, document, and genetic data locally under explicit
+authorization and provenance boundaries.
 
 ## Grant positioning
 
 The project targets the Sentient Foundation open-source AI grant direction:
 
-- open-source infrastructure;
-- local-first and private-by-default;
-- useful for sensitive health data;
-- empowering, not extractive;
-- reusable trust/evidence/safety layer for health AI agents.
+## Current boundaries and permanent non-goals
 
-## Non-goals for MVP
+The following capabilities are implemented and must not be treated as future
+work: Product Core migrations through v9, document upload/extraction,
+Family Access, Genetics Workspace, separate genetics grants, and bounded
+Research Mode.
 
-Do not implement in v0.1 unless explicitly approved:
+Never implement:
 
 - diagnosis;
 - dosage recommendation;
 - start/stop medication advice;
-- real patient data in demo;
-- FASTQ/BAM/WGS pipeline;
+- clinical genetics authority or clinical validation;
+- real patient/genetic data in repository fixtures;
+- FASTQ/BAM/CRAM/gVCF/WGS pipelines;
 - AlphaMissense clinical interpretation;
-- SaaS multi-user auth;
-- payments;
-- Telegram bot;
-- blockchain;
-- cloud upload of raw health/genetic data by default.
+- SaaS multi-user auth, payments, Telegram, blockchain, or cloud raw-genome
+  upload by default;
+- autonomous canonical-record mutation.
 
 ## Setup
 
@@ -53,6 +57,14 @@ pytest
 ruff check app tests evals
 mypy app evals
 python -m evals.runner
+python -m evals.trust_metrics
+python -m evals.g5_review
+python -m evals.p1_review
+python -m evals.p2_review
+python -m evals.d1_review
+python -m evals.p3_review
+python -m pip check
+git diff --check
 uvicorn app.main:app --reload
 docker compose up --build
 ```
@@ -63,30 +75,35 @@ Core pipeline:
 
 ```txt
 Local UI / CLI
-  -> Health Vault Loader
-  -> Genotype Parser
-  -> Evidence Pack Loader
-  -> PGx Rule Matcher
-  -> Safety Policy Engine
-  -> LLM Report Writer
-  -> Markdown Report + JSON Audit
-  -> Eval Runner
+  -> Actor + Person authorization
+  -> Immutable Source
+  -> Candidate/review lifecycle
+  -> Visit/Brief or document extraction
+  -> Deterministic evidence/PGx/genetics rules
+  -> Bounded Trust/Research context
+  -> Validated output + audit
+  -> Offline reviewers
 ```
-
 Directory map:
 
 ```txt
-app/vault       health vault schemas, loaders, validators
-app/genetics    genotype/VCF-like parsing and normalization
-app/evidence    evidence pack schema and loading
-app/pgx         deterministic medication/genotype rule matching
-app/safety      medical safety policy engine
-app/ai          LLM adapter and report drafting
-app/reports     Markdown and audit JSON output
-evals           synthetic safety/evidence evals
-data            demo-only data and local evidence packs
-docs            product, grant, safety, architecture documents
-tests           deterministic unit tests
+app/product_core       Product Core schema v9, records, documents, genetics, export/recovery
+app/family_access      Actor sessions, consent, Family Access v1-v3
+app/agent_trust        Trust Envelope and execution receipt contracts
+app/agent              bounded agent context, providers, validation, audit
+app/genetics           consumer-genotype parsing, evidence, comparison, Research contracts
+app/product_core/genetics.py  persisted genetics source/dataset/research service
+app/templates/genetics.html  Genetics Workspace
+app/static/genetics.js        Genetics Workspace behavior
+app/vault               synthetic/local vault schemas and loaders
+app/evidence            evidence pack schema and loading
+app/pgx                 deterministic medication/genotype rule matching
+app/safety              medical safety policy
+app/reports             Markdown and audit JSON output
+evals                   deterministic G5/P1/P2/D1/P3 reviewers
+data                    synthetic demo data and local evidence packs
+docs                    product, grant, safety, architecture documents
+tests                   deterministic unit and integration tests
 ```
 
 ## Boundaries

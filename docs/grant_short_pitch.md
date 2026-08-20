@@ -10,35 +10,53 @@ OpenCare Proof Kit is not a medical chatbot. It is an open-source, self-hosted p
 
 ## 30-Second Pitch
 
-OpenCare Proof Kit is a vault-first repo for trustworthy personal and family health-agent infrastructure. The current implementation combines a synthetic reviewer surface with live Actor sessions, explicit consent, person-scoped permissions, deny-by-default family access, audit, export, backup/recovery boundaries, CI, and trust metrics. Genetics comes later; the LLM is an interface layer, not the source of truth.
+OpenCare Proof Kit is a vault-first repo for trustworthy personal and family
+health-agent infrastructure. The current implementation combines a synthetic
+reviewer surface with live Actor sessions, explicit consent, person-scoped
+permissions, deny-by-default family access, D1 document evidence, P3 Genetics
+Research Studio, audit, export, backup/recovery boundaries, CI, and trust
+metrics. Genetics remains secondary; the LLM is an interface layer, not the
+source of truth.
 
 ## 60-Second Pitch
 
-OpenCare Proof Kit is not trying to be an AI doctor. It is building the foundation that should exist before that kind of claim is even discussed: a privacy-first personal/family health workspace with provenance, safety boundaries, auditability, explicit consent, and person-scoped access. Today the repo includes the Health/Family Vault reviewer surface and a Phase 2 family identity/access boundary with deny-by-default authorization, audit, export, and recovery controls. Reviewers can inspect the artifacts, UI, threat models, authorization matrix, and validation evidence directly. Genetics remains later, and no diagnosis, treatment recommendation, dosage guidance, medication selection, or clinical decision support is added.
+OpenCare Proof Kit is not trying to be an AI doctor. It is building a
+privacy-first personal/family health workspace with provenance, safety
+boundaries, auditability, explicit consent, and person-scoped access. Public
+fixtures are synthetic, while the self-hosted runtime is designed for
+user-owned local health, document, and genetic data. Reviewers can inspect
+`/workspace`, `/family-access`, `/genetics`, `/demo/health-vault`, threat models,
+authorization docs, CI, and validation evidence. No diagnosis, treatment,
+dosage, medication selection, or clinical decision support is claimed.
 
 ## 5-Bullet Reviewer Summary
 
 - OpenCare is an open-source, self-hosted personal/family health workspace.
-- Phase 2 adds explicit family identity, consent, and person-scoped access.
-- The current repo is vault-first and useful without DNA.
-- Reviewers can inspect artifacts, reviewer routes, authorization docs, threat models, CI, and trust metrics.
-- The existing Medication-to-Doctor Briefing / PGx demo remains intact as a narrow reference workflow.
-- The repo is synthetic/demo-only and does not claim real-patient, real-genetic, or clinical-decision capability.
+- P1/P2/D1/P3 are implemented with explicit consent and Person isolation.
+- The repo is vault-first and useful without DNA.
+- `/workspace`, `/family-access`, `/genetics`, and `/demo/health-vault` are
+  distinct reviewer paths.
+- D1 documents and P3 Genetics Research are bounded, deterministic, and
+  source/provenance driven.
+- The repo is synthetic/de-identified and makes no clinical-authority claim.
 
 ## 5-Bullet Technical Summary
 
-- Deterministic Health/Family Vault schemas, loader/validation, read model, artifacts, and trace graph.
-- FastAPI/Jinja local reviewer route at `/demo/health-vault`.
-- GitHub Actions CI for tests, lint, type checks, evals, and trust metrics.
-- Local trust metrics that read committed manifest safety flags and eval totals.
-- Existing PGx demo pipeline for report/audit/eval coverage remains unchanged.
+- Product Core schema v9 with records, documents, review, Visit Briefs, export,
+  backup, and recovery.
+- FastAPI/Jinja `/workspace`, `/family-access`, `/genetics`, and
+  `/demo/health-vault` surfaces.
+- D1 immutable PDF/TXT evidence and P3 selective genetics/research boundaries.
+- G1-G5 trust infrastructure and GitHub Actions CI.
+- Deterministic P1/P2/D1/P3 reviewers and trust metrics.
 
 ## 5-Bullet Safety Summary
 
-- Synthetic/demo-only current repo state.
-- No real patient support and no real genetic data support yet.
-- No diagnosis, treatment recommendation, dosage guidance, medication selection, or start/stop advice.
-- Reviewer trace graph is provenance/traceability only, not medical interpretation.
+- Public fixtures and reviewer artifacts are synthetic/de-identified only.
+- Self-hosted runtime data is local, sensitive, authorized, and provenance-bound.
+- No diagnosis, treatment recommendation, dosage guidance, medication selection,
+  or start/stop advice.
+- Raw genome never enters provider context; Explore hypotheses remain labelled.
 - Evals and trust metrics are engineering checks, not clinical validation.
 
 ## Application Wording Guardrails
@@ -47,9 +65,8 @@ Use:
 
 - "not a medical chatbot"
 - "privacy-first personal/family medical workspace foundation"
-- "vault first; genetics later"
 - "synthetic/demo-only"
-- "read-only reviewer UI"
+- "vault first; genetics secondary"
 - "provenance trace graph"
 - "CI and trust metrics"
 

@@ -1,63 +1,49 @@
 # OpenCare current project status
 
-This is the canonical status for the public `main` branch as of 2026-08-13.
-The published `v0.1.0` tag remains the controlled private-alpha baseline.
-Phase 2 Family Identity and Access Boundary is implemented on public `main`
-and published as `v0.2.0`. P1 and P2 are integrated on public `main` after the
-`v0.2.0` boundary; neither has a separate release tag. The Sentient G1–G4
-trust work — G1 Trust Envelope, G2 Consent-Gated Agent Runtime, G2.5 optional
-integration spike, G3 Model Portability, G4 Portable Trust Package, and G5
-Ecosystem Validation — is integrated on `main` **after the `v0.2.0` release
-boundary**; none of it is itself a release tag.
+This is the canonical status for public `main` at repository update date
+2026-08-20. Public `main` is
+`0937d352cc74a3050609e826baa6bad82f6ac9ee`. The only published tags/releases
+are `v0.1.0` and `v0.2.0`; neither is a production-readiness or clinical-
+readiness claim.
+- Package/runtime development identity: `0.3.0.dev0`; this is not a published
+  `v0.3.0` release.
+
+The completed sequence on public `main` is:
+
+```text
+G1 -> G2 -> G2.5 -> G3 -> G4 -> G5 -> P1 -> P2 -> D1 -> P3
+```
+
+There is no G6. G5 machine state remains exactly
+`READY_FOR_SECOND_CLIENT_SMOKE`: Agent Skills interoperability is verified,
+while root Agent Plugins two-independent-client validation remains external
+ecosystem evidence pending.
 
 ## Implemented boundary
 
-- Product Core schema v7 preserves the Medication/Visit lifecycle and adds durable
-  Actors, versioned scrypt credentials, installation administrators, Families,
-  memberships, relationships, append-only consent, explicit Person assignments,
-  one-to-one own-Person links, hash-only invitations, metadata-only access audit,
-  the generic evidence lifecycle (medication/condition/lab candidates and
-  canonical records), and versioned Family Access scope generations.
-- A generation-aware Family Access policy protects live `/workspace`, `/vault`,
-  `/api/product-core/v1`, `/chat`, and `/api/chat`: `family-access-v1` scope
-  sets are frozen verbatim for legacy grants, and the current
-  `family-access-v2` generation adds `condition.read/write` and
-  `lab.read/write`. An assignment's generation is inferred from its stored
-  scopes, so existing delegated consent never automatically gains new
-  capabilities (no silent privilege expansion); upgrades are explicit
-  owner/caregiver actions. Resource ownership is resolved server-side and
-  authorization is deny-by-default.
-- Installation administration grants no Person access. The final active owner
-  of each Person and the final active installation administrator are protected
-  by independent service and database invariants.
-- Eight-hour Actor sessions live at `OPENCARE_SESSION_DB_PATH`, outside Product
-  Core storage, export, backup, and recovery. Production Compose uses
-  `/run/opencare/sessions.sqlite3` on mode-`0700` tmpfs with no session volume.
-- Authenticated mutations require same-origin and CSRF proof. Successful
-  sensitive mutations share a transaction with their audit; audit failure
-  rolls the mutation back. A denial-audit failure preserves the original
-  privacy-safe denial.
-- Owner grants require explicit full-access confirmation and always use the
-  fixed complete owner scope set. Caregivers receive the fixed base set plus
-  only bounded optional scopes and cannot manage access or become owners by
-  revision.
-- Authenticated Person creation requires `confirm_owner_assignment: true` and
-  atomically creates the Person, self-consent, full owner assignment, optional
-  valid identity link, and access audit. Installation-admin status is not
-  required.
-- Invitation codes are random 256-bit bearer secrets accepted only in POST
-  bodies. Plaintext is returned once and never persisted, logged, audited,
-  exported, backed up, or placed in a URL.
-- Person export v2 contains only the authorized Person's Product Core graph and
-  relevant non-secret Family/consent/assignment history. Credentials, sessions,
-  invitation state, access audit, unrelated identities, and installation totals
-  are excluded.
-- Offline `backup`, `verify`, `preflight`, and `recover` remain operator
-  workflows with no Actor session or Person impersonation. They preserve and
-  verify durable schema v7 access state. Recovery restores credentials and
-  revocations but no sessions, so every Actor logs in again.
-- `/demo/health-vault`, reviewer routes, and the frozen PGx workflow remain
-  synthetic and separate from live actor-scoped data.
+- Product Core schema v9 owns Person-scoped Sources, medications, recorded
+  conditions, labs, Visits, Visit Questions, Visit Briefs, document
+  extractions, genetics datasets, findings, grants, research sessions, export,
+  backup, and recovery.
+- Visit Brief content schema remains v2; v1 revisions remain readable.
+- Family Access v1 and v2 are frozen. v3 adds `document.read` and
+  `document.write` without silent legacy expansion.
+- Genetics authority is separate from Family Access generations:
+  `genetics.read`, `genetics.write`, `genetics.research`,
+  `genetics.compare`, and `genetics.export`.
+- D1 PDF/TXT document ingest is implemented and published on public `main`:
+  immutable Source bytes, bounded embedded-text extraction, page/span
+  provenance, document grants, review lifecycle, export v4, and recovery.
+- P3 Genetics Research Studio is implemented and published on public `main`:
+  bounded local consumer-genotype import, selective indexing, evidence-backed
+  reviewed findings, PGx associations, family comparison, Genetics Workspace,
+  Evidence/Explore Research Mode, and separate Genetics Export.
+- Raw genome never enters provider context. Genetics Research cannot mutate
+  canonical health records.
+- `/demo/health-vault` and committed reviewer artifacts remain synthetic/demo
+  surfaces separate from live actor-scoped Product Core.
+- The self-hosted runtime is designed for user-owned sensitive local data;
+  repository fixtures and public artifacts remain synthetic/de-identified.
 
 ## HTTP privacy contract
 
@@ -75,32 +61,27 @@ The complete policy is in
 
 ## Validation baseline
 
-The most recent full validation run recorded for the Phase 2 implementation
-reported:
+The final local verification for public-main implementation was run on Python
+3.12. It is local evidence, not a claim that GitHub Actions ran every command.
 
-- pytest: `399 passed, 2 skipped`;
+- pytest: `675 passed, 4 skipped, 4 warnings`;
 - Ruff: all checks passed;
-- mypy: no issues in `77` source files;
-- focused recovery/credential/smoke tests: passed;
-- JavaScript syntax and live browser flows: passed earlier in the six-commit
-  implementation sequence.
+- mypy: no issues in `121` source files;
+- `python -m evals.runner`: `30/30`;
+- `python -m evals.trust_metrics`: passed;
+- G5: `20/20`, `READY_FOR_SECOND_CLIENT_SMOKE`;
+- P1: `PASS`;
+- P2: `PASS`;
+- D1: `PASS`;
+- P3: `PASS`;
+- all P3 security counters: `0`;
+- `pip check`: no broken requirements;
+- `git diff --check`: passed;
+- runtime JavaScript syntax checks: passed.
 
-The deterministic P2 reviewer is also covered by
-`tests/test_p2_reviewer.py` and `python -m evals.p2_review`; its fixed-clock
-offline scenario passes with all six P2 security counters at zero. Invocation
-guarantees and scope are documented in
-[`docs/p2-reviewer-guide.md`](p2-reviewer-guide.md).
-
-Final evals, trust metrics, package installation, Uvicorn/production Compose
-smoke, and clean-worktree evidence are recorded in the implementation report,
-not projected here before execution.
-
-The current G1–G5 validation state (2026-08-13, at G5 implementation
-completion) reports: pytest `570 passed, 3 skipped, 0 failed`; the G5
-reviewer (`python -m evals.g5_review`) passes with 20/20 adversarial cases
-and all eight security invariants at zero violations, state
-`READY_FOR_SECOND_CLIENT_SMOKE` (Cursor 3.0.13 verified; second independent
-client pending).
+G5 Agent Skills interoperability is verified across OMP 17.3.5 and Hermes
+Agent 0.19.0. Root Agent Plugins two-independent-client interoperability
+remains external ecosystem evidence pending; it is not a G5 PASS claim.
 
 ## Sentient G3 provider portability (on main after v0.2.0)
 
@@ -199,6 +180,8 @@ pending, not an internal security defect; the machine gate therefore still
 reports `READY_FOR_SECOND_CLIENT_SMOKE`. This work is integrated on `main`
 after the published `v0.2.0` baseline; it is not itself a release tag.
 
+## Historical phase notes
+
 ## Sentient P1 evidence-grounded ingest (integrated on public main)
 
 P1 generalizes the prior medication evidence lifecycle into one reusable
@@ -276,28 +259,27 @@ extraction remain out of scope. Family Access v1/v2 remain frozen; v3 adds
 explicit document scopes. Portable export v4 includes authorized document
 payloads and immutable extraction metadata.
 
-## P3 Genetics Research Studio (implemented on this branch; pending public-main integration)
+## P3 Genetics Research Studio (implemented and published on public `main`)
 
-P3 is implemented on
-`codex/p3-genetics-research-studio` and remains pending integration into public
-`main`. It adds schema v9 immutable local consumer-genotype sources, selective
-indexed observations, versioned synthetic evidence, reviewed genetics findings,
-explicit revocable genetics grants, a responsive Genetics Workspace,
-deterministic family comparison, and offline Evidence/Explore Research Mode.
-VCF remains demo-only; clinical genetics, diagnosis, treatment, dosage changes,
-and raw-genome provider disclosure remain out of scope. See
+P3 is implemented on public `main` at
+`0937d352cc74a3050609e826baa6bad82f6ac9ee`. It adds schema v9 immutable local
+consumer-genotype sources, selective indexed observations, versioned synthetic
+evidence, reviewed genetics findings, explicit revocable genetics grants, a
+responsive Genetics Workspace, deterministic family comparison, and offline
+Evidence/Explore Research Mode. VCF remains demo-only. See
 `docs/architecture/p3-genetics-research-studio.md` and
 `python -m evals.p3_review`.
 
 ## Preserved boundaries
 
-- published `v0.1.0` controlled private-alpha baseline and current `v0.2.0`
-  Phase 2 implementation;
-- deterministic Medication and Visit lifecycle, exports, and offline recovery;
-- guarded answer validation and medical-safety restrictions;
-- no new runtime dependency;
-- on public `main`: no Phase 3 ingest, OCR, document upload, FHIR, Sentient,
-  EvoSkill, genetics expansion, cloud synchronization, or public SaaS identity.
+- `v0.1.0` and `v0.2.0` remain the only published release tags;
+- deterministic tools remain before bounded AI;
+- synthetic repository fixtures remain separate from local user-owned runtime
+  data;
+- no OCR, FHIR/EHR sync, public SaaS identity, cloud raw-genome upload, or
+  clinical-authority claim;
+- no diagnosis, treatment, dosage, medication selection, or start/stop advice;
+- no populated-installation import/merge guarantee.
 
 ## Remaining product limits
 

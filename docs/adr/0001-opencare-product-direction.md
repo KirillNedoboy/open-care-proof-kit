@@ -4,6 +4,13 @@
 - Date: 2026-07-26
 - Decision owners: OpenCare maintainers
 
+## Current implementation status
+
+The deferred Product Core sequence described by this historical ADR is now
+implemented on public `main`: G1-G5, P1, P2, D1, and P3. The original thesis
+remains unchanged: vault first, AI bounded, genetics secondary. This note does
+not rewrite the historical decision or claim clinical validation.
+
 ## Context
 
 The repository contains a useful Health/Family Vault data model, deterministic

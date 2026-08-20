@@ -1,10 +1,15 @@
 # Grant Milestones (Supporting Grant Artifact)
 
 > These milestones are supporting grant context, not the canonical product
-> roadmap. Use [the Product Core roadmap](roadmap/product-core-roadmap.md) for
-> approved next work.
+> roadmap. The implementation sequence through G1-G5, P1, P2, D1, and P3 is
+> complete on public `main`. The month-by-month material below is historical
+> planning context, not a pending roadmap.
 
-These milestones are conservative and vault-first. They do not promise diagnosis, treatment recommendation, dosage guidance, medication selection, start/stop advice, real patient support, real genetic data support, or clinical deployment.
+These milestones are conservative and vault-first. They do not promise
+diagnosis, treatment recommendation, dosage guidance, medication selection,
+start/stop advice, clinical validation, or clinical deployment. Public
+repository fixtures remain synthetic/de-identified; self-hosted runtime data
+may be user-owned sensitive local data.
 
 ## Month 1: Public Reviewer Packaging And Hygiene
 

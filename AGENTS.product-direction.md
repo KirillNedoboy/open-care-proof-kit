@@ -35,12 +35,17 @@ Product Core may depend on Trust Foundation. Trust Foundation must not depend on
 reviewer UI. Reference and reviewer artifacts may consume both, but canonical
 records must not depend on LLM output.
 
-## Current non-goals
+## Current status and permanent non-goals
 
-Do not implement SQLite migration, document upload, OCR, genetics expansion,
-new LLM providers, multi-user SaaS, family permissions, autonomous record
-mutation, or deployment changes in Phase 0. Chat remains nested future
-functionality, and PGx remains a frozen reference workflow.
+Product Core migrations through v9, document upload/extraction, Family Access,
+Genetics Workspace, separate genetics grants, family comparison, and bounded
+Research Mode are implemented on public `main`. Do not reopen them as future
+foundation work or create parallel implementations.
+
+Permanent non-goals remain diagnosis, treatment/dosage/start-stop authority,
+clinical validation, FASTQ/BAM/CRAM/gVCF/WGS, OCR, SaaS/cloud raw-genome
+upload by default, autonomous canonical-record mutation, MCP, and deployment
+changes without an explicit product decision.
 
 ## Prohibited product drift
 

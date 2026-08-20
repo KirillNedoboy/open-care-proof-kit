@@ -9,29 +9,23 @@
   provenance. OCR and automated clinical/model extraction remain out of scope.
   Family Access v1/v2/v3 behavior and portable export v4 are integrated.
 
-- P3 Genetics Research Studio is implemented on
-  `codex/p3-genetics-research-studio`: schema v9 immutable local consumer
-  genotype sources, bounded selective indexing, genome-build and coverage
-  provenance, versioned synthetic genetics evidence, reviewed findings,
-  explicit revocable genetics grants, the `/genetics` workspace, deterministic
-  family comparison, Evidence/Explore Research Mode with epistemic labels and
-  counterevidence, explicit genetics export, and offline `python -m
-  evals.p3_review`. VCF remains demo-only; no clinical genetics, diagnosis,
-  autonomous treatment, dosage, or mandatory external genetics service.
+- P3 Genetics Research Studio is implemented and published on public `main`:
+  schema v9 immutable local consumer-genotype sources, bounded selective
+  indexing, genome-build and coverage provenance, versioned synthetic genetics
+  evidence, reviewed findings, explicit revocable genetics grants, the
+  `/genetics` workspace, deterministic family comparison, Evidence/Explore
+  Research Mode with epistemic labels and counterevidence, explicit genetics
+  export, and offline `python -m evals.p3_review`. VCF remains demo-only; no
+  clinical genetics, diagnosis, autonomous treatment, dosage, or mandatory
+  external genetics service.
 
 - Sentient P1 evidence-grounded ingest (integrated on public `main` after the
-  `v0.2.0` boundary; no separate P1 release tag): one generic evidence
-  lifecycle for medication/condition/lab facts — migration v7 (generic
-  `candidate_facts` and `canonical_records` with typed detail tables,
-  `unsupported` review status, correction supersession lineage, provenance
-  locators, `scope_generation` on assignments); source-backed condition and
-  lab lifecycles with validated immutable-source provenance and deterministic
-  timeline events; Family Access scope generations (`family-access-v1` frozen,
-  `family-access-v2` current); Visit Brief content schema v2 with condition/lab
-  evidence selections while v1 revisions remain readable; confirmed
-  condition/lab records in the agent context; portable export format v3; and
-  backup/verify/preflight/recover on schema v7. P1 adds no OCR/upload/model
-  extraction, no FHIR/EHR sync, and no diagnosis/treatment/interpretation.
+  `v0.2.0` boundary; no separate P1 release tag): historical migration v7
+  generalized the candidate/canonical lifecycle for medication/condition/lab
+  facts, added provenance locators and unsupported review, and established the
+  condition/lab review boundaries. Current Product Core is schema v9 and
+  ordinary portable vault export is v4. P1 adds no OCR, FHIR/EHR sync, or
+  diagnosis/treatment/interpretation.
 
 
 - Optional Sentient Agent Framework compatibility spike (`[sentient]` extra,

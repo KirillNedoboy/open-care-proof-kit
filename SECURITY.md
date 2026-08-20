@@ -1,6 +1,10 @@
 # Security Policy
 
-OpenCare Proof Kit is a local-first proof kit for sensitive health-agent workflows. The current demo uses synthetic data only and is not designed to store, process, or transmit real patient data.
+OpenCare Proof Kit is an open-source, self-hosted Personal and Family Health
+Workspace with local-first trust, provenance, review, and authorization
+boundaries. Public repository content is synthetic/de-identified only. The
+self-hosted runtime is designed to store user-owned sensitive health, document,
+and genetic data locally; this is not a clinical-readiness or compliance claim.
 
 ## Do Not Submit Sensitive Data
 
@@ -30,9 +34,19 @@ Please include:
 
 ## Local-First Privacy Model
 
-The reference workflow runs locally and uses synthetic/demo data. Audit metadata records whether raw health or genetic data was exported. Cloud raw genotype upload is not enabled by default and is outside the current MVP boundary.
+Self-hosted runtime operators are responsible for protecting local Product Core
+databases, immutable Source directories, backups, exports, and recovery media.
+Sources are Person-bound and immutable; access is Actor- and consent-scoped.
+Genetics uses separate `genetics.read`, `genetics.write`, `genetics.research`,
+`genetics.compare`, and `genetics.export` grants rather than inheriting ordinary
+Family Access.
 
-Any future adapter that could move sensitive data outside the local environment must be reviewed as a separate privacy and security design before implementation.
+Ordinary Person portable vault export excludes genetics. Genetics Export is a
+separate high-friction artifact containing especially sensitive raw and derived
+data. Installation backups may contain sensitive database and Source state.
+Raw genome content must never enter provider context. External provider
+disclosure requires explicit genetics-specific consent; self-hosted providers
+receive only authorized selected context.
 
 ## Secret Handling
 
