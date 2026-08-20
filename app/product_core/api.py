@@ -29,6 +29,11 @@ from app.product_core.api_models import (
     ConditionRecordListResponse,
     ConditionRecordResponse,
     CorrectCandidateRequest,
+    DocumentExtractionResponse,
+    DocumentListResponse,
+    DocumentPageResponse,
+    DocumentRegistrationResponse,
+    DocumentResponse,
     EmptyActionRequest,
     ErrorResponse,
     LabCandidateListResponse,
@@ -80,6 +85,7 @@ from app.product_core.errors import (
     AccessAuditUnavailableError,
     CandidateNotFoundError,
     CanonicalRecordNotFoundError,
+    DocumentValidationError,
     IntegrityStorageError,
     InvalidTransitionError,
     NotFoundError,
@@ -107,6 +113,7 @@ from app.product_core.errors import (
 from app.product_core.models import ConditionCandidateInput, LabCandidateInput, VisitBriefRequest
 from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import ProductCoreRuntime
+from app.product_core.services import MAX_DOCUMENT_PAGES, MAX_DOCUMENT_UPLOAD_BYTES
 
 ProductCoreIdentifier = Annotated[
     str,
@@ -147,6 +154,19 @@ def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
             503,
             "access_audit_unavailable",
             "Sensitive access could not be audited.",
+        )
+    if isinstance(exc, DocumentValidationError):
+        status_code = {
+            "upload_bytes_limit_exceeded": 413,
+            "content_length_exceeded": 413,
+            "unsupported_media_type": 415,
+            "pdf_signature_invalid": 415,
+            "content_length_required": 411,
+        }.get(exc.reason_code, 422)
+        return _error_response(
+            status_code,
+            exc.reason_code,
+            "The document could not be accepted.",
         )
     if isinstance(exc, PersonValidationError):
         return _error_response(422, "request_validation_failed", "The request is invalid.")
@@ -221,10 +241,17 @@ def _map_product_core_error(exc: ProductCoreError) -> JSONResponse:
     )
 
 
-async def _check_request_safety(request: Request) -> JSONResponse | None:
+async def _check_request_safety(request: Request, operation_id: str) -> JSONResponse | None:
     if request.method in {"POST", "PUT", "PATCH"}:
         media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-        if media_type != "application/json":
+        if operation_id == "product_core_register_document":
+            if media_type not in {"application/pdf", "text/plain"}:
+                return _error_response(
+                    415,
+                    "unsupported_document_media_type",
+                    "Only PDF and plain-text documents are supported.",
+                )
+        elif media_type != "application/json":
             return _error_response(
                 415,
                 "json_content_type_required",
@@ -245,6 +272,10 @@ _PERSON_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_list_lab_candidates": ("lab.read",),
     "product_core_list_timeline": ("timeline.read",),
     "product_core_generate_visit_brief": ("brief.write",),
+    "product_core_list_documents": ("document.read",),
+    "product_core_get_document": ("document.read",),
+    "product_core_get_document_page": ("document.read",),
+    "product_core_register_document": ("source.write", "document.write"),
 }
 _VISIT_PATH_SCOPES: dict[str, tuple[str, ...]] = {
     "product_core_get_visit": ("visit.read",),
@@ -309,6 +340,7 @@ _ATOMIC_MUTATION_OPERATIONS = {
     "product_core_register_manual_condition_source",
     "product_core_register_manual_lab_source",
     "product_core_register_plain_text_source",
+    "product_core_register_document",
     "product_core_create_medication_candidate",
     "product_core_create_condition_candidate",
     "product_core_create_lab_candidate",
@@ -389,9 +421,7 @@ async def _authorize_route_request(
                 _validate_identifier(payload["source_id"])
             except ValueError:
                 return
-            access.preflight_source_for_person(
-                payload["source_id"], person_id, "source.read"
-            )
+            access.preflight_source_for_person(payload["source_id"], person_id, "source.read")
         return
     if operation_id in _PERSON_PATH_SCOPES:
         access.require_person(
@@ -462,9 +492,7 @@ async def _authorize_route_request(
     except ValueError:
         return
     access.require_person(person_id, *_BODY_PERSON_SCOPES[operation_id])
-    if operation_id in _CANDIDATE_CREATE_OPERATIONS and isinstance(
-        payload.get("source_id"), str
-    ):
+    if operation_id in _CANDIDATE_CREATE_OPERATIONS and isinstance(payload.get("source_id"), str):
         try:
             _validate_identifier(payload["source_id"])
         except ValueError:
@@ -515,7 +543,7 @@ class ProductCoreRoute(APIRoute):
                 if isinstance(access, JSONResponse):
                     return access
                 request.state.product_core_access = access
-                safety_response = await _check_request_safety(request)
+                safety_response = await _check_request_safety(request, self.operation_id or "")
                 if safety_response is not None:
                     return safety_response
                 await _authorize_route_request(request, self.operation_id or "", access)
@@ -528,9 +556,8 @@ class ProductCoreRoute(APIRoute):
                     _validation_details(exc),
                 )
             except ProductCoreError as exc:
-                if (
-                    self.operation_id in _ATOMIC_MUTATION_OPERATIONS
-                    and isinstance(exc, (NotFoundError, ScopeForbiddenError))
+                if self.operation_id in _ATOMIC_MUTATION_OPERATIONS and isinstance(
+                    exc, (NotFoundError, ScopeForbiddenError)
                 ):
                     resolved_access = getattr(request.state, "product_core_access", None)
                     if isinstance(resolved_access, ProductCoreAccess):
@@ -583,6 +610,49 @@ def get_product_core_access(request: Request) -> ProductCoreAccess:
 
 
 AccessDependency = Annotated[ProductCoreAccess, Depends(get_product_core_access)]
+
+
+async def _read_bounded_document_body(request: Request) -> bytes:
+    raw_length = request.headers.get("content-length")
+    if raw_length is None:
+        raise DocumentValidationError("content_length_required")
+    if not raw_length.isdecimal():
+        raise DocumentValidationError("content_length_invalid")
+    declared_length = int(raw_length)
+    if declared_length > MAX_DOCUMENT_UPLOAD_BYTES:
+        raise DocumentValidationError("upload_bytes_limit_exceeded")
+    payload = bytearray()
+    async for chunk in request.stream():
+        if len(payload) + len(chunk) > MAX_DOCUMENT_UPLOAD_BYTES:
+            raise DocumentValidationError("upload_bytes_limit_exceeded")
+        payload.extend(chunk)
+    if len(payload) != declared_length:
+        raise DocumentValidationError("content_length_mismatch")
+    return bytes(payload)
+
+
+def _document_response(source: Any, extraction: Any) -> DocumentResponse:
+    return DocumentResponse(
+        source_id=source.id,
+        person_id=source.person_id,
+        source_type="document",
+        media_type=source.media_type,
+        content_hash=source.content_hash,
+        size_bytes=source.size_bytes,
+        original_filename=source.original_filename,
+        document_kind=source.document_kind,
+        created_at=source.created_at,
+        extraction=DocumentExtractionResponse(
+            extraction_id=extraction.extraction_id,
+            extractor=extraction.extractor,
+            extractor_version=extraction.extractor_version,
+            status=extraction.status,
+            text_hash=extraction.text_hash,
+            total_chars=extraction.total_chars,
+            page_count=extraction.page_count,
+            extracted_at=extraction.extracted_at,
+        ),
+    )
 
 
 def _source_response(source: Any) -> SourceResponse:
@@ -831,9 +901,7 @@ def create_person(
     operation_id="product_core_list_people",
 )
 def list_people(access: AccessDependency) -> PeopleListResponse:
-    return PeopleListResponse(
-        people=[_person_response(person) for person in access.list_people()]
-    )
+    return PeopleListResponse(people=[_person_response(person) for person in access.list_people()])
 
 
 @router.post(
@@ -1045,6 +1113,8 @@ def get_workspace_capabilities(
         capabilities=WorkspaceCapabilities(
             person_update="person.update" in scopes,
             source_write="source.write" in scopes,
+            document_read="document.read" in scopes,
+            document_write="document.write" in scopes,
             candidate_review="candidate.review" in scopes,
             medication_read="medication.read" in scopes,
             medication_write="medication.write" in scopes,
@@ -1150,6 +1220,7 @@ def register_plain_text_source(
         source=_source_response(result.source),
     )
 
+
 @router.get(
     "/sources/{source_id}",
     response_model=SourceMetadataResponse,
@@ -1171,6 +1242,8 @@ def get_source_metadata(
     access.require_source(source_id, "source.read")
     source = runtime.sources.get(source_id)
     runtime.sources.store.read(source)
+    if source.source_type == "document":
+        runtime.documents.get(source_id)
     return SourceMetadataResponse(
         source_id=source.id,
         source_type=source.source_type,
@@ -1179,6 +1252,111 @@ def get_source_metadata(
         media_type=source.media_type,
         created_at=source.created_at,
         integrity_verified=True,
+    )
+
+
+@router.post(
+    "/people/{person_id}/documents",
+    response_model=DocumentRegistrationResponse,
+    responses={
+        409: {"model": DocumentRegistrationResponse, "description": "Existing document."},
+        411: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+        415: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
+    status_code=201,
+    operation_id="product_core_register_document",
+)
+async def register_document(
+    person_id: ProductCoreIdentifier,
+    request: Request,
+    response: Response,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> DocumentRegistrationResponse:
+    payload = await _read_bounded_document_body(request)
+    media_type = request.headers["content-type"].split(";", 1)[0].strip().lower()
+    result = runtime.documents.register(
+        person_id,
+        payload,
+        media_type,
+        original_filename=request.headers.get("x-opencare-filename"),
+        authorize=access.authorize_person_mutation(
+            person_id,
+            "source.write",
+            "document.write",
+            action="document.create",
+        ),
+    )
+    response.status_code = 201 if result.created else 409
+    return DocumentRegistrationResponse(
+        created=result.created,
+        document=_document_response(result.source, result.extraction),
+    )
+
+
+@router.get(
+    "/people/{person_id}/documents",
+    response_model=DocumentListResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    operation_id="product_core_list_documents",
+)
+def list_documents(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> DocumentListResponse:
+    access.require_person(person_id, "document.read")
+    return DocumentListResponse(
+        documents=[
+            _document_response(source, extraction)
+            for source, extraction in runtime.documents.list_for_person(person_id)
+        ]
+    )
+
+
+@router.get(
+    "/people/{person_id}/documents/{source_id}",
+    response_model=DocumentResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    operation_id="product_core_get_document",
+)
+def get_document(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> DocumentResponse:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    source, extraction = runtime.documents.get(source_id)
+    return _document_response(source, extraction)
+
+
+@router.get(
+    ("/people/{person_id}/documents/{source_id}/extractions/{extraction_id}/pages/{page_number}"),
+    response_model=DocumentPageResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    operation_id="product_core_get_document_page",
+)
+def get_document_page(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    extraction_id: ProductCoreIdentifier,
+    page_number: Annotated[int, Path(ge=1, le=MAX_DOCUMENT_PAGES)],
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> DocumentPageResponse:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    snapshot, page = runtime.documents.get_page(source_id, extraction_id, page_number)
+    return DocumentPageResponse(
+        source_id=source_id,
+        extraction_id=snapshot.extraction_id,
+        page_number=page.page_number,
+        normalized_text=page.normalized_text,
+        decoded_content_bytes=page.decoded_content_bytes,
+        extracted_chars=page.extracted_chars,
+        page_hash=page.page_hash,
     )
 
 
@@ -1336,7 +1514,9 @@ def correct_candidate(
         source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
         authorize=access.authorize_candidate_review_mutation(
-            candidate_id, action="candidate.correct"
+            candidate_id,
+            action="candidate.correct",
+            replacement_source_id=payload.source_id,
         ),
     )
     return _candidate_response(replacement)
@@ -1481,7 +1661,9 @@ def correct_condition_candidate(
         source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
         authorize=access.authorize_candidate_review_mutation(
-            candidate_id, action="candidate.correct"
+            candidate_id,
+            action="candidate.correct",
+            replacement_source_id=payload.source_id,
         ),
     )
     return _condition_candidate_response(replacement)
@@ -1500,9 +1682,7 @@ def list_condition_candidates(
     status: Annotated[CandidateStatus | None, Query()] = None,
 ) -> ConditionCandidateListResponse:
     access.require_person(person_id, "condition.read")
-    candidates = runtime.lifecycle.list_fact_candidates(
-        person_id, status, fact_type="condition"
-    )
+    candidates = runtime.lifecycle.list_fact_candidates(person_id, status, fact_type="condition")
     return ConditionCandidateListResponse(
         candidates=[_condition_candidate_response(item) for item in candidates]
     )
@@ -1653,9 +1833,7 @@ def list_lab_candidates(
     status: Annotated[CandidateStatus | None, Query()] = None,
 ) -> LabCandidateListResponse:
     access.require_person(person_id, "lab.read")
-    candidates = runtime.lifecycle.list_fact_candidates(
-        person_id, status, fact_type="lab"
-    )
+    candidates = runtime.lifecycle.list_fact_candidates(person_id, status, fact_type="lab")
     return LabCandidateListResponse(
         candidates=[_lab_candidate_response(item) for item in candidates]
     )
@@ -1703,7 +1881,9 @@ def correct_lab_candidate(
         source_id=payload.source_id,
         provenance_locator=payload.provenance_locator,
         authorize=access.authorize_candidate_review_mutation(
-            candidate_id, action="candidate.correct"
+            candidate_id,
+            action="candidate.correct",
+            replacement_source_id=payload.source_id,
         ),
     )
     return _lab_candidate_response(replacement)
@@ -1767,8 +1947,7 @@ def export_person_portable_vault(
         media_type="application/zip",
         headers={
             "Content-Disposition": (
-                f'attachment; filename="opencare-person-vault-v'
-                f'{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
+                f'attachment; filename="opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
             ),
         },
     )
@@ -1916,9 +2095,7 @@ def generate_persisted_visit_brief_revision(
         visit_id,
         selected_record_ids=payload.selected_record_ids,
         expected_current_revision_number=payload.expected_current_revision_number,
-        authorize=access.authorize_visit_mutation(
-            visit_id, "brief.write", action="brief.generate"
-        ),
+        authorize=access.authorize_visit_mutation(visit_id, "brief.write", action="brief.generate"),
     )
     return _persisted_revision_response(runtime, visit_id, revision)
 
@@ -1944,9 +2121,7 @@ def save_persisted_visit_brief_user_edit(
         visit_id,
         preparation_notes=payload.preparation_notes,
         expected_current_revision_number=payload.expected_current_revision_number,
-        authorize=access.authorize_visit_mutation(
-            visit_id, "brief.write", action="brief.update"
-        ),
+        authorize=access.authorize_visit_mutation(visit_id, "brief.write", action="brief.update"),
     )
     return _persisted_revision_response(runtime, visit_id, revision)
 
@@ -1971,9 +2146,7 @@ def restore_persisted_visit_brief_revision(
         visit_id,
         revision_number=payload.revision_number,
         expected_current_revision_number=payload.expected_current_revision_number,
-        authorize=access.authorize_visit_mutation(
-            visit_id, "brief.write", action="brief.restore"
-        ),
+        authorize=access.authorize_visit_mutation(visit_id, "brief.write", action="brief.restore"),
     )
     return _persisted_brief_response(runtime, visit_id, brief)
 
@@ -1991,9 +2164,7 @@ def export_current_persisted_visit_brief(
 ) -> Response:
     markdown, revision_number = runtime.persisted_visit_briefs.export_current(
         visit_id,
-        authorize=access.authorize_visit_mutation(
-            visit_id, "brief.export", action="brief.export"
-        ),
+        authorize=access.authorize_visit_mutation(visit_id, "brief.export", action="brief.export"),
     )
     return Response(
         content=markdown.encode("utf-8"),

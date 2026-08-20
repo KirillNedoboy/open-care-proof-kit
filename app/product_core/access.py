@@ -102,8 +102,7 @@ class ProductCoreAccess:
         required_audit: bool = False,
     ) -> str:
         return self._require_query(
-            "SELECT p.person_id FROM people AS p "
-            "WHERE p.person_id = ? AND p.is_active = 1",
+            "SELECT p.person_id FROM people AS p WHERE p.person_id = ? AND p.is_active = 1",
             (person_id,),
             required_scopes,
             PersonNotFoundError,
@@ -142,14 +141,11 @@ class ProductCoreAccess:
             with self.runtime.database.uow() as uow:
                 assert uow.connection is not None
                 row = uow.connection.execute(
-                    "SELECT p.person_id FROM people AS p "
-                    "WHERE p.person_id = ? AND p.is_active = 1",
+                    "SELECT p.person_id FROM people AS p WHERE p.person_id = ? AND p.is_active = 1",
                     (person_id,),
                 ).fetchone()
                 resolved_person_id = None if row is None else str(row["person_id"])
-                assignment_state = self._active_assignment_state(
-                    uow.connection, resolved_person_id
-                )
+                assignment_state = self._active_assignment_state(uow.connection, resolved_person_id)
                 if resolved_person_id is None or assignment_state is None:
                     raise PersonNotFoundError("Person was not found.")
                 return assignment_state[1]
@@ -185,7 +181,7 @@ class ProductCoreAccess:
     ) -> str:
         return self._require_query(
             """
-            SELECT s.person_id
+            SELECT s.person_id, s.source_type
             FROM sources AS s
             JOIN people AS p ON p.person_id = s.person_id AND p.is_active = 1
             WHERE s.id = ? AND s.person_id = ?
@@ -305,8 +301,7 @@ class ProductCoreAccess:
 
     def preflight_person(self, person_id: str, *required_scopes: str) -> str:
         return self._preflight_query(
-            "SELECT p.person_id FROM people AS p "
-            "WHERE p.person_id = ? AND p.is_active = 1",
+            "SELECT p.person_id FROM people AS p WHERE p.person_id = ? AND p.is_active = 1",
             (person_id,),
             required_scopes,
             PersonNotFoundError,
@@ -320,7 +315,7 @@ class ProductCoreAccess:
     ) -> str:
         return self._preflight_query(
             """
-            SELECT s.person_id
+            SELECT s.person_id, s.source_type
             FROM sources AS s
             JOIN people AS p ON p.person_id = s.person_id AND p.is_active = 1
             WHERE s.id = ? AND s.person_id = ?
@@ -333,8 +328,9 @@ class ProductCoreAccess:
     def preflight_candidate(self, candidate_id: str, *required_scopes: str) -> str:
         return self._preflight_query(
             """
-            SELECT c.person_id
+            SELECT c.person_id, s.source_type
             FROM candidate_facts AS c
+            JOIN sources AS s ON s.id = c.source_id AND s.person_id = c.person_id
             JOIN people AS p ON p.person_id = c.person_id AND p.is_active = 1
             WHERE c.id = ?
             """,
@@ -377,8 +373,7 @@ class ProductCoreAccess:
         action: str | None = None,
     ) -> MutationAuthorizer:
         return self._mutation_authorizer(
-            "SELECT p.person_id FROM people AS p "
-            "WHERE p.person_id = ? AND p.is_active = 1",
+            "SELECT p.person_id FROM people AS p WHERE p.person_id = ? AND p.is_active = 1",
             (person_id,),
             required_scopes,
             PersonNotFoundError,
@@ -394,7 +389,7 @@ class ProductCoreAccess:
     ) -> MutationAuthorizer:
         return self._mutation_authorizer(
             """
-            SELECT s.person_id
+            SELECT s.person_id, s.source_type
             FROM sources AS s
             JOIN people AS p ON p.person_id = s.person_id AND p.is_active = 1
             WHERE s.id = ? AND s.person_id = ?
@@ -413,8 +408,9 @@ class ProductCoreAccess:
     ) -> MutationAuthorizer:
         return self._mutation_authorizer(
             """
-            SELECT c.person_id
+            SELECT c.person_id, s.source_type
             FROM candidate_facts AS c
+            JOIN sources AS s ON s.id = c.source_id AND s.person_id = c.person_id
             JOIN people AS p ON p.person_id = c.person_id AND p.is_active = 1
             WHERE c.id = ?
             """,
@@ -428,15 +424,14 @@ class ProductCoreAccess:
         """Preflight a review decision with the fact-type-typed write scope."""
         with self.runtime.database.uow() as uow:
             assert uow.connection is not None
-            return self._require_candidate_review_in_connection(
-                uow.connection, candidate_id
-            )
+            return self._require_candidate_review_in_connection(uow.connection, candidate_id)
 
     def authorize_candidate_review_mutation(
         self,
         candidate_id: str,
         *,
         action: str,
+        replacement_source_id: str | None = None,
     ) -> MutationAuthorizer:
         """Authorize a review decision inside the mutation transaction.
 
@@ -447,6 +442,22 @@ class ProductCoreAccess:
 
         def authorize(connection: sqlite3.Connection) -> None:
             person_id = self._require_candidate_review_in_connection(connection, candidate_id)
+            if replacement_source_id is not None:
+                self._require_query_in_connection(
+                    connection,
+                    """
+                    SELECT s.person_id, s.source_type
+                    FROM sources AS s
+                    JOIN candidate_facts AS c
+                      ON c.person_id = s.person_id AND c.id = ?
+                    JOIN people AS p
+                      ON p.person_id = s.person_id AND p.is_active = 1
+                    WHERE s.id = ?
+                    """,
+                    (candidate_id, replacement_source_id),
+                    ("source.read",),
+                    SourceNotFoundError,
+                )
             self.family_runtime.service._audit(
                 connection,
                 self.actor_id,
@@ -465,8 +476,9 @@ class ProductCoreAccess:
     ) -> str:
         row = connection.execute(
             """
-            SELECT c.person_id, c.fact_type
+            SELECT c.person_id, c.fact_type, s.source_type
             FROM candidate_facts AS c
+            JOIN sources AS s ON s.id = c.source_id AND s.person_id = c.person_id
             JOIN people AS p ON p.person_id = c.person_id AND p.is_active = 1
             WHERE c.id = ?
             """,
@@ -494,7 +506,11 @@ class ProductCoreAccess:
         }.get(fact_type)
         if write_scope is None:
             raise CandidateNotFoundError("Record was not found.")
-        required_scopes = ("candidate.review", write_scope)
+        required_scopes = (
+            ("candidate.review", write_scope, "document.read")
+            if str(row["source_type"]) == "document"
+            else ("candidate.review", write_scope)
+        )
         if not all(
             self.policy.authorize(
                 actor_id=self.actor_id,
@@ -669,6 +685,13 @@ class ProductCoreAccess:
             "scopes": scopes,
             "is_active": True,
         }
+        effective_scopes = tuple(required_scopes)
+        try:
+            source_type = str(row["source_type"])
+        except IndexError:
+            source_type = None
+        if source_type == "document":
+            effective_scopes = (*effective_scopes, "document.read")
         if not all(
             self.policy.authorize(
                 actor_id=self.actor_id,
@@ -676,7 +699,7 @@ class ProductCoreAccess:
                 required_scope=scope,
                 assignment=mapping,
             ).allowed
-            for scope in required_scopes
+            for scope in effective_scopes
         ):
             raise ScopeForbiddenError("Required scope is not granted.")
         return person_id
@@ -737,9 +760,7 @@ class ProductCoreAccess:
         try:
             with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
                 assert uow.connection is not None
-                if not self._assignment_allows(
-                    uow.connection, person_id, required_scopes
-                ):
+                if not self._assignment_allows(uow.connection, person_id, required_scopes):
                     raise ScopeForbiddenError("Required scope is not granted.")
                 self.family_runtime.service._audit(
                     uow.connection,
@@ -753,9 +774,7 @@ class ProductCoreAccess:
             self._best_effort_denial_audit(person_id)
             raise
         except Exception as exc:
-            raise AccessAuditUnavailableError(
-                "Sensitive access could not be audited."
-            ) from exc
+            raise AccessAuditUnavailableError("Sensitive access could not be audited.") from exc
 
     def _best_effort_allowed_audit(self, action: str, person_id: str | None) -> None:
         try:

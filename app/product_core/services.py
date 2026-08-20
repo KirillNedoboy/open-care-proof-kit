@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import stat
+import unicodedata
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Literal
 
 import pypdf
+from pypdf import filters as pypdf_filters
 
 from app.product_core.errors import (
     CandidateNotFoundError,
@@ -78,6 +80,11 @@ MAX_DOCUMENT_PAGES = 200
 MAX_DECODED_PAGE_BYTES = 200_000
 MAX_PAGE_CHARS = 100_000
 MAX_TOTAL_CHARS = 1_000_000
+
+# pypdf's Flate decoder otherwise permits a 75 MB output allocation. Cap it
+# one byte above the contract threshold so extraction can detect overflow
+# without materializing attacker-controlled decompression output.
+pypdf_filters.ZLIB_MAX_OUTPUT_LENGTH = MAX_DECODED_PAGE_BYTES + 1
 
 
 def default_clock() -> datetime:
@@ -813,7 +820,11 @@ class DocumentService:
             return None
         leaf = value.replace("\\", "/").rsplit("/", 1)[-1]
         cleaned = (
-            "".join(character for character in leaf if character >= " " and character != "\x7f")
+            "".join(
+                character
+                for character in leaf
+                if not unicodedata.category(character).startswith("C")
+            )
             .strip()
             .strip(".")
         )

@@ -443,6 +443,8 @@ class WorkspaceCapabilities(APIModel):
 
     person_update: bool
     source_write: bool
+    document_read: bool
+    document_write: bool
     candidate_review: bool
     medication_read: bool
     medication_write: bool
@@ -479,12 +481,55 @@ class SourceMetadataResponse(APIModel):
     """
 
     source_id: str
-    source_type: Literal["manual_entry", "plain_text"]
+    source_type: Literal["manual_entry", "plain_text", "document"]
     content_hash: str
     size_bytes: int
     media_type: str
     created_at: datetime
     integrity_verified: bool
+
+
+class DocumentExtractionResponse(APIModel):
+    extraction_id: str
+    extractor: str
+    extractor_version: str
+    status: Literal["complete"]
+    text_hash: str
+    total_chars: int
+    page_count: int
+    extracted_at: datetime
+
+
+class DocumentResponse(APIModel):
+    source_id: str
+    person_id: str
+    source_type: Literal["document"]
+    media_type: Literal["application/pdf", "text/plain"]
+    content_hash: str
+    size_bytes: int
+    original_filename: str | None
+    document_kind: Literal["pdf", "text"]
+    created_at: datetime
+    extraction: DocumentExtractionResponse
+
+
+class DocumentRegistrationResponse(APIModel):
+    created: bool
+    document: DocumentResponse
+
+
+class DocumentListResponse(APIModel):
+    documents: list[DocumentResponse]
+
+
+class DocumentPageResponse(APIModel):
+    source_id: str
+    extraction_id: str
+    page_number: int
+    normalized_text: str
+    decoded_content_bytes: int
+    extracted_chars: int
+    page_hash: str
 
 
 class CandidateResponse(APIModel):

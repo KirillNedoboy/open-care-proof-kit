@@ -5,6 +5,7 @@ missing Person, or a missing/revoked assignment, fails closed with 404
 person_not_found; install admins without a Person assignment have no Person
 surface; legacy family-access-v1 grants never gain condition/lab capability.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,8 @@ CAPABILITY_KEYS = frozenset(
     {
         "person_update",
         "source_write",
+        "document_read",
+        "document_write",
         "candidate_review",
         "medication_read",
         "medication_write",
@@ -52,6 +55,8 @@ ALL_TRUE = dict.fromkeys(sorted(CAPABILITY_KEYS), True)
 CAREGIVER_READ_ONLY = {
     "person_update": False,
     "source_write": False,
+    "document_read": True,
+    "document_write": False,
     "candidate_review": False,
     "medication_read": True,
     "medication_write": False,
@@ -72,6 +77,8 @@ CAREGIVER_READ_ONLY = {
 V1_CAREGIVER_READ_ONLY = {
     "person_update": False,
     "source_write": False,
+    "document_read": False,
+    "document_write": False,
     "candidate_review": False,
     "medication_read": True,
     "medication_write": False,
@@ -105,15 +112,11 @@ class AccessHarness:
         assert response.status_code == 200, response.text
         csrf = self.client.cookies.get("opencare_csrf")
         assert csrf is not None
-        self.client.headers.update(
-            {"origin": "http://testserver", "x-opencare-csrf": csrf}
-        )
+        self.client.headers.update({"origin": "http://testserver", "x-opencare-csrf": csrf})
 
 
 @pytest.fixture
-def access_harness(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Iterator[AccessHarness]:
+def access_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[AccessHarness]:
     monkeypatch.setenv("OPENCARE_PRODUCT_DB_PATH", str(tmp_path / "product" / "db.sqlite3"))
     monkeypatch.setenv("OPENCARE_SOURCE_DIR", str(tmp_path / "product" / "sources"))
     monkeypatch.setenv("OPENCARE_SESSION_DB_PATH", str(tmp_path / "runtime" / "sessions.sqlite3"))
@@ -241,9 +244,7 @@ def access_harness(
 
 
 def _capabilities(harness: AccessHarness, person_id: str) -> dict[str, bool]:
-    response = harness.client.get(
-        f"/api/product-core/v1/people/{person_id}/workspace-capabilities"
-    )
+    response = harness.client.get(f"/api/product-core/v1/people/{person_id}/workspace-capabilities")
     assert response.status_code == 200, response.text
     payload = response.json()
     assert set(payload.keys()) == {"person_id", "capabilities"}
@@ -372,10 +373,10 @@ def test_hidden_person_returns_standard_error_envelope(
     }
 
 
-def test_response_shape_is_closed_with_exactly_seventeen_keys(
+def test_response_shape_is_closed_with_exactly_nineteen_keys(
     access_harness: AccessHarness,
 ) -> None:
     access_harness.login("alice")
     capabilities = _capabilities(access_harness, "alice-person")
-    assert len(capabilities) == 17
+    assert len(capabilities) == 19
     assert all(isinstance(value, bool) for value in capabilities.values())
