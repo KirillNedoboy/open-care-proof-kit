@@ -95,7 +95,7 @@ def test_review_and_research_preserve_epistemic_contract(tmp_path: Path) -> None
     )
     assert result["packet"]["raw_genome_included"] is False
     assert result["output"]["claims"][0]["epistemic_status"] == "plausible"
-    assert result["output"]["evidence_against"] == []
+    assert result["output"]["evidence_against"]
 
 
 def test_research_rejects_invented_citation_and_unconfirmed_import(tmp_path: Path) -> None:

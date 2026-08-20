@@ -555,7 +555,9 @@ class GeneticsService:
         output: dict[str, Any] = {
             "what_may_be_happening": "Selected reviewed findings may be relevant to the question; this is not a diagnosis.",
             "evidence_supporting": ids,
-            "evidence_against": [],
+            "evidence_against": [
+                "Consumer-chip coverage is incomplete and the selected record may have non-genetic explanations."
+            ],
             "alternative_explanations": [
                 "The observed relationship may be coincidental or explained by non-genetic factors."
             ],
