@@ -9,33 +9,33 @@ This is the fastest path for a reviewer who wants to inspect the current repo st
 
 ## What To Inspect First
 
-1. Open the local reviewer route: `http://127.0.0.1:8000/demo/health-vault`
-2. Open the guarded chat runtime surface: `http://127.0.0.1:8000/chat`
-3. Inspect the family access surface: `http://127.0.0.1:8000/family-access`
-4. Read [docs/health_family_vault_demo.md](health_family_vault_demo.md)
-5. Read [docs/security/family-access-authorization-matrix.md](security/family-access-authorization-matrix.md)
-6. Read [docs/security/family-access-threat-model.md](security/family-access-threat-model.md)
-7. Read [docs/privacy_safety_threat_model.md](privacy_safety_threat_model.md)
-8. Read [docs/provenance_semantics.md](provenance_semantics.md)
+1. Open `/workspace` for the actor-scoped Health Workspace.
+2. Open `/family-access` for explicit Person and Family authorization.
+3. Open `/genetics` for the Genetics Workspace and Research Studio.
+4. Open `/demo/health-vault` for the synthetic read-only reviewer surface.
+5. Read [docs/p3-reviewer-guide.md](p3-reviewer-guide.md).
+6. Read [docs/security/family-access-authorization-matrix.md](security/family-access-authorization-matrix.md).
+7. Read [docs/privacy_safety_threat_model.md](privacy_safety_threat_model.md).
+8. Read [docs/provenance_semantics.md](provenance_semantics.md).
 
 ## Local Routes
 
-- `/demo/health-vault` - read-only Health/Family Vault reviewer page
-- `/` and `/chat` - guarded source-constrained chat workspace
-- `/family-access` - local family identity and access management surface
-- `POST /api/chat` - buffered and validated structured answer API
-- `/demo/report-view?drug=sertraline` - existing supported PGx briefing path
-- `/demo/report-view?drug=aspirin` - existing unsupported-drug safe no-claim path
+- `/workspace` — actor-scoped Health Workspace.
+- `/family-access` — explicit Family Access and consent.
+- `/genetics` — Genetics Workspace, PGx, comparison, and Research Studio.
+- `/demo/health-vault` — synthetic read-only reviewer page.
+- `/chat` — guarded source-constrained chat.
+- `/demo/report-view?drug=sertraline` — frozen supported PGx reference path.
+- `/demo/report-view?drug=aspirin` — frozen unsupported-drug safe no-claim path.
 
 ## Key Docs
 
 - [README.md](../README.md)
-- [Portable health-agent skill](../skills/opencare-health-agent/README.md)
-- [Portable skill reference notes](portable_skill_reference_notes.md)
-- [docs/reviewer_quickstart.md](reviewer_quickstart.md)
-- [docs/health_family_vault_demo.md](health_family_vault_demo.md)
-- [docs/project-status.md](project-status.md)
-- [docs/final_submission_checklist.md](final_submission_checklist.md)
+- [Current project status](project-status.md)
+- [Capability matrix](capability-matrix.md)
+- [P3 reviewer guide](p3-reviewer-guide.md)
+- [Reviewer quickstart](reviewer_quickstart.md)
+- [Final submission checklist](final_submission_checklist.md)
 
 ## Key Artifacts
 
@@ -46,38 +46,35 @@ This is the fastest path for a reviewer who wants to inspect the current repo st
 ## Key Commands
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m ruff check app tests evals
 .\.venv\Scripts\python.exe -m mypy app evals
 .\.venv\Scripts\python.exe -m evals.runner
 .\.venv\Scripts\python.exe -m evals.trust_metrics
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m evals.g5_review
+.\.venv\Scripts\python.exe -m evals.p1_review
+.\.venv\Scripts\python.exe -m evals.p2_review
+.\.venv\Scripts\python.exe -m evals.d1_review
+.\.venv\Scripts\python.exe -m evals.p3_review
+.\.venv\Scripts\python.exe -m pip check
+git diff --check
+node --check app/static/product_core_workspace.js
+node --check app/static/genetics.js
 ```
-
-## Validation
-
-Use the commands above and record the fresh results in
-[docs/project-status.md](project-status.md). Counts in older reviewer
-snapshots are historical and are not a current baseline.
 
 ## What Is Implemented
 
-- synthetic Health/Family Vault Core
-- deterministic loader/validation
-- deterministic read model
-- deterministic local reviewer artifacts
-- read-only reviewer UI at `/demo/health-vault`
-- deterministic context/provenance trace graph
-- privacy/safety threat model
-- provenance semantics
-- vault artifact guarantees
-- GitHub Actions CI
-- deterministic local trust metrics
-- existing Medication-to-Doctor Briefing / PGx reference workflow
-- Phase 2 Family Identity and Access Boundary with explicit consent and person-scoped permissions
-- deny-by-default authorization, access audit, person export, and offline backup/recovery boundaries
-- guarded chat with deterministic demo answers and optional operator-configured Responses adapter
-- portable OpenCare health-agent skill with context export and answer validation CLI
+- Actor-scoped `/workspace`, `/family-access`, `/genetics`, `/vault`, and
+  `/chat` surfaces.
+- Product Core schema v9 with medications, conditions, labs, Visits, Visit
+  Briefs, document evidence, genetics datasets/findings, export, backup, and
+  recovery.
+- D1 authenticated PDF/TXT evidence ingest with immutable bytes, bounded
+  extraction, provenance, review, and Family Access v3 document grants.
+- P3 selective consumer-genotype indexing, reviewed evidence, PGx associations,
+  family comparison, explicit genetics grants, Genetics Export, and
+  Evidence/Explore Research Mode.
+- G1-G5 trust infrastructure and deterministic final-phase reviewers.
 
 ## Portable Skill Commands
 
@@ -88,25 +85,30 @@ snapshots are historical and are not a current baseline.
 ```
 
 The skill is manually copied into another agent workspace. OpenCare does not
-perform universal installation, provide MCP, ingest documents, support genetics,
-or provide diagnosis, treatment, or dosage-change advice. Validation reduces
-unsupported output but cannot guarantee medical correctness.
+perform universal installation or provide MCP. Product Core document ingest and
+Genetics Research Studio are separate authenticated Workspace surfaces.
+Diagnosis, treatment, dosage, medication selection, and start/stop advice remain
+outside the product boundary.
 
 ## What Is Explicitly Not Implemented
 
-- diagnosis
-- treatment recommendation
-- dosage guidance
-- medication selection advice
-- start/stop medication advice
-- clinical decision support
-- clinical validation
-- real patient support
-- real genetic data support
-- upload or user-input surface for the reviewer UI
+- diagnosis;
+- treatment recommendation;
+- dosage guidance;
+- medication selection advice;
+- start/stop medication advice;
+- clinical decision support;
+- clinical validation or clinical authority;
+- real patient/genetic fixtures in the public repository;
+- upload or user-input surface on the synthetic `/demo/health-vault` page.
 
 ## Grant Reviewer Summary
 
-OpenCare is best reviewed as an open-source, self-hosted personal/family health workspace with a synthetic reviewer surface and a real Phase 2 family identity/access boundary. Reviewers can inspect artifacts, reviewer routes, the authorization matrix, threat models, CI, and trust metrics directly. Genetics is a later layer. The LLM is a later interface layer. The repo does not claim medical authority.
+OpenCare is best reviewed as an open-source, self-hosted personal/family health
+workspace with a synthetic reviewer surface and authenticated live Product Core.
+Reviewers can inspect `/workspace`, `/family-access`, `/genetics`, and
+`/demo/health-vault`, plus the authorization matrix, threat models, CI, and
+deterministic reviewers. Genetics is a secondary, bounded workspace layer. The
+LLM remains an interface layer. The repository does not claim medical authority.
 
 Chat answers are source-constrained, policy-checked, and validated before display. They fail closed when checks fail, but they do not guarantee medical correctness or clinical safety. Demo conversations are not persisted. If an operator enables external Responses mode, compact vault context leaves OpenCare for that configured endpoint; the public synthetic demo remains deterministic and local.

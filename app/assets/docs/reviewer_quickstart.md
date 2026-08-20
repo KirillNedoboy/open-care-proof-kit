@@ -1,8 +1,10 @@
 # Reviewer Quickstart (Supporting Evidence)
 
-> This is a reviewer procedure for the current demo/reference surfaces. It is
-> not the product roadmap. The authoritative direction is [ADR 0001](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/adr/0001-opencare-product-direction.md)
-> and the authoritative status is [project-status.md](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/project-status.md).
+> This packaged copy points reviewers to current public-main Product Core and
+> synthetic reviewer surfaces. See the canonical repository
+> [project status](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/project-status.md)
+> and [P3 guide](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/p3-reviewer-guide.md).
+> [ADR 0001](https://github.com/KirillNedoboy/open-care-proof-kit/blob/main/docs/adr/0001-opencare-product-direction.md)
 
 Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generated report, audit JSON, Health/Family Vault reviewer UI, API endpoints, and evals.
 

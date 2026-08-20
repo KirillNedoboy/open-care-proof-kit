@@ -1,8 +1,7 @@
 # D1 reviewer guide
 
-D1 is the branch-only evidence document-ingest implementation on
-`codex/d1-evidence-document-ingest`. It is implemented here but remains
-pending integration into public `main`.
+D1 is implemented and published on public `main` at
+`c6ae91e40f02582c0e07c1bca8c95765970c93ff`.
 
 ## Run the reviewer
 
@@ -31,7 +30,7 @@ The reviewer proves the bounded D1 contract:
 - wrong-Person, denial, malformed/encrypted/no-text, duplicate-integrity, and
   resource-limit fail-closed behavior;
 - provenance preservation for condition, lab, and medication review; and
-- branch-only portable v4 document inclusion and integrity boundaries.
+- portable v4 document inclusion and integrity boundaries.
 
 ## Explicit non-goals
 
@@ -52,7 +51,7 @@ immutable source hash, extraction snapshot, page, code-point span, and selected
 text hash. Raw document bytes are not exposed through a download endpoint, and
 normal agent context does not contain raw document text.
 
-Deferred work includes integration into public `main`, future extractor
-versions and their determinism fixtures, OCR or other explicitly designed
-extraction capabilities, and any future genetics/Product Core workflow. These
-are design changes, not implicit D1 behavior.
+Future extractor versions, OCR, or other explicitly designed extraction
+capabilities remain separate design work. P3 genetics is already implemented
+on public `main` and is reviewed independently by `python -m evals.p3_review`.
+These boundaries do not claim clinical correctness.

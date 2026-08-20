@@ -14,6 +14,18 @@ Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generate
 
 No database, cloud service, API key, real patient data, or model provider is required for the deterministic demo.
 
+## Current reviewer path
+
+The live Product Core path is:
+
+1. `/workspace`
+2. `/family-access`
+3. `/genetics`
+
+The synthetic reviewer path remains `/demo/health-vault`. The latter is
+read-only and intentionally has no upload or genetics surface; that limitation
+does not describe the live Product Core.
+
 ## 1. Install
 
 Unix/macOS:
@@ -124,63 +136,30 @@ Expected success signals:
 - `/demo/report.md` returns Markdown;
 - `/demo/audit` returns audit JSON only.
 
-## 5. Run Evals
+## 5. Run final reviewers
 
 ```bash
 python -m evals.runner
-```
-
-Windows PowerShell without activating:
-
-```powershell
-.\.venv\Scripts\python.exe -m evals.runner
-```
-
-Expected success signal:
-
-```txt
-"total_cases": 12
-"static_text_cases": 7
-"pipeline_cases": 5
-"passed_cases": 12
-"failed_cases": 0
-"pipeline_failure_rate": 0.0
-```
-
-Interpretation:
-
-- static-text evals are wording/safety guardrails;
-- pipeline evals execute the real local demo pipeline for supported and unsupported drug paths;
-- neither mode is clinical validation.
-
-## 6. Run Trust Metrics
-
-```bash
 python -m evals.trust_metrics
+python -m evals.g5_review
+python -m evals.p1_review
+python -m evals.p2_review
+python -m evals.d1_review
+python -m evals.p3_review
+python -m pip check
+git diff --check
 ```
 
-Windows PowerShell without activating:
+Expected final local evidence:
 
-```powershell
-.\.venv\Scripts\python.exe -m evals.trust_metrics
-```
+- pytest: `675 passed, 4 skipped, 4 warnings`;
+- `evals.runner`: `30/30`;
+- G5: `20/20`, `READY_FOR_SECOND_CLIENT_SMOKE`;
+- P1/P2/D1/P3: `PASS`;
+- P3 security counters: all zero.
 
-Expected sections:
-
-- `Trust Metrics`
-- `Eval Metrics`
-- `Health/Family Vault Artifact Safety`
-- `Safety Boundary Checks`
-- `Residual Risks`
-
-Interpretation:
-
-- trust metrics are automated demo/reviewer trust checks;
-- eval metrics come from the existing deterministic eval runner;
-- Health/Family Vault safety flags come from the committed synthetic artifact manifest;
-- `provenance_complete: true` means the demo manifest reports no missing provenance;
-- `generated_reports_ignored: true` means generated `reports/` demo outputs are configured as ignored artifacts;
-- the report is not clinical validation and does not prove clinical correctness.
+These are local verification results, not a claim that every command ran in
+GitHub Actions or that the software is clinically validated.
 
 ## Health/Family Vault Reviewer Path
 

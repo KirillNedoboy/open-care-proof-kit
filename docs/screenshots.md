@@ -1,8 +1,13 @@
 # Screenshot Guide
 
-Phase 1.9 includes committed screenshots captured from the local FastAPI demo using synthetic/demo data only. These screenshots are intended for GitHub and grant review. Recapture them when the web demo presentation changes.
+The committed PNGs are historical Phase 1.9/PGx reference captures using
+synthetic/demo data only. They do not represent the current `/workspace`,
+`/family-access`, or `/genetics` visuals. No new screenshots are committed in
+R1 because a stable authenticated capture pipeline for those live surfaces is
+not available; screenshots must not be fabricated.
 
-The report-view screenshots use neutral "Medication-to-Doctor Briefing demo" subtitle copy so supported and unsupported drug pages do not imply the page is sertraline-specific.
+The current reviewer path is `/workspace` → `/family-access` → `/genetics`,
+with `/demo/health-vault` kept as the synthetic read-only reviewer surface.
 
 Start the server:
 
