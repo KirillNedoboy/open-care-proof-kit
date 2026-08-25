@@ -1,0 +1,35 @@
+{
+  "date": "2026-08-25",
+  "validated_code_sha": "a226413b701fa004fa444c2071d0984f6cc14aff",
+  "evidence_commit_is_documentation_only": true,
+  "python": "3.12.10",
+  "pytest": {"passed": 707, "skipped": 4, "warnings": 4},
+  "commands": {
+    "ruff": "passed",
+    "mypy": "passed (123 source files)",
+    "evals.runner": "30/30",
+    "evals.trust_metrics": "passed",
+    "evals.g5_review": "20/20; READY_FOR_SECOND_CLIENT_SMOKE; counters=0",
+    "evals.p1_review": "PASS; counters=0",
+    "evals.p2_review": "PASS; counters=0",
+    "evals.d1_review": "PASS; counters=0",
+    "evals.p3_review": "PASS; counters=0",
+    "pip_check": "passed",
+    "git_diff_check": "passed",
+    "node_checks": "product_core_workspace.js, genetics.js, chat.js, actor_auth.js passed"
+  },
+  "counters": {
+    "unauthorized_evidence_exposures": 0,
+    "external_calls_without_consent": 0,
+    "canonical_mutations_via_agent_path": 0,
+    "provider_calls_after_revocation": 0,
+    "provider_calls_after_context_change": 0,
+    "raw_genome_agent_disclosures": 0,
+    "cross_person_genetics_exposures": 0
+  },
+  "provider_truth": {
+    "deterministic": "IMPLEMENTED",
+    "ollama": "IMPLEMENTED; READY_FOR_LIVE_SMOKE",
+    "responses": "IMPLEMENTED contract/configuration; external live smoke unverified"
+  }
+}
