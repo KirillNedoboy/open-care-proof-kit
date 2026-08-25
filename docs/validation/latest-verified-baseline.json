@@ -1,9 +1,9 @@
 {
   "date": "2026-08-25",
-  "validated_code_sha": "a226413b701fa004fa444c2071d0984f6cc14aff",
+  "validated_code_sha": "bdd21afcee298a26aa9526a75e3621dc09626bdb",
   "evidence_commit_is_documentation_only": true,
   "python": "3.12.10",
-  "pytest": {"passed": 707, "skipped": 4, "warnings": 4},
+  "pytest": {"passed": 722, "skipped": 4, "warnings": 4},
   "commands": {
     "ruff": "passed",
     "mypy": "passed (123 source files)",
@@ -16,7 +16,8 @@
     "evals.p3_review": "PASS; counters=0",
     "pip_check": "passed",
     "git_diff_check": "passed",
-    "node_checks": "product_core_workspace.js, genetics.js, chat.js, actor_auth.js passed"
+    "node_checks": "product_core_workspace.js, genetics.js, chat.js, actor_auth.js, account_registration.js passed",
+    "auth_smoke": "tests/test_family_access_api.py::test_r4_local_auth_smoke_isolates_signup_until_explicit_invitation passed"
   },
   "counters": {
     "unauthorized_evidence_exposures": 0,
