@@ -29,6 +29,7 @@ from app.family_access.errors import (
     LastOwnerError,
     NotFoundError,
     PersonAccessDeniedError,
+    RegistrationUnavailableError,
     ValidationError,
 )
 from app.family_access.models import (
@@ -41,6 +42,7 @@ from app.family_access.models import (
     InvitationPreview,
     MembershipRecord,
     RelationshipRecord,
+    SelfRegistrationResult,
 )
 from app.family_access.policy import (
     POLICY_VERSION,
@@ -104,6 +106,21 @@ class FamilyAccessService:
                 connection.execute("SELECT COUNT(*) FROM actors").fetchone()[0]
             )
         return actor_count == 0
+
+    def installation_initialized(self) -> bool:
+        with self.database.connect() as connection:
+            return (
+                connection.execute(
+                    """
+                    SELECT 1
+                    FROM installation_admin_assignments AS ia
+                    JOIN actors AS a ON a.actor_id = ia.actor_id
+                    WHERE ia.is_active = 1 AND a.status = 'active'
+                    LIMIT 1
+                    """
+                ).fetchone()
+                is not None
+            )
 
     def bootstrap(
         self,
@@ -179,6 +196,97 @@ class FamilyAccessService:
     def authenticate(self, username: str, password: str) -> ActorRecord | None:
         authenticated = self.authenticate_for_session(username, password)
         return None if authenticated is None else authenticated.actor
+
+    def register_self_service_actor(
+        self,
+        *,
+        username: str,
+        display_name: str,
+        password: str,
+    ) -> SelfRegistrationResult:
+        username_normalized = normalize_username(username)
+        display_name_clean = self._clean_display_name(display_name)
+        credential = hash_password(password)
+        actor_id = self._id()
+        person_id = self._id()
+        now_value = self._now()
+        now = isoformat_utc(now_value)
+        with self.database.uow(begin_mode="IMMEDIATE") as uow:
+            assert uow.connection is not None
+            connection = uow.connection
+            if connection.execute(
+                """
+                SELECT 1
+                FROM installation_admin_assignments AS ia
+                JOIN actors AS a ON a.actor_id = ia.actor_id
+                WHERE ia.is_active = 1 AND a.status = 'active'
+                LIMIT 1
+                """
+            ).fetchone() is None:
+                raise RegistrationUnavailableError("installation is not initialized")
+            if connection.execute(
+                "SELECT 1 FROM actors WHERE username_normalized = ?",
+                (username_normalized,),
+            ).fetchone() is not None:
+                raise ConflictError("normalized username is already registered")
+            connection.execute(
+                """
+                INSERT INTO actors (
+                    actor_id, username_normalized, display_name, status, created_at
+                ) VALUES (?, ?, ?, 'active', ?)
+                """,
+                (actor_id, username_normalized, display_name_clean, now),
+            )
+            self._insert_credential(connection, actor_id, credential, now)
+            uow.people.insert(
+                Person(
+                    person_id=person_id,
+                    display_name=display_name_clean,
+                    date_of_birth=None,
+                    created_at=now_value,
+                    updated_at=now_value,
+                    is_active=True,
+                )
+            )
+            self._audit(
+                connection,
+                actor_id,
+                "actor.register",
+                "actor",
+                actor_id,
+                "self_registration",
+            )
+            self._audit(
+                connection,
+                actor_id,
+                "credential.create",
+                "credential",
+                None,
+                "self_registration",
+            )
+            self._insert_assignment(
+                connection,
+                acting_actor_id=actor_id,
+                recipient_actor_id=actor_id,
+                person_id=person_id,
+                role="owner",
+                scopes=build_scopes("owner"),
+                event_type="grant",
+                reason_code="self_registration_owner_grant",
+                now=now,
+            )
+            self._insert_own_link(connection, actor_id, person_id, actor_id, now)
+            self._audit(
+                connection,
+                actor_id,
+                "person.create",
+                "person",
+                person_id,
+                "self_registration",
+            )
+        actor = self.get_actor(actor_id)
+        assert actor is not None
+        return SelfRegistrationResult(actor=actor, person_id=person_id)
 
     def authenticate_for_session(
         self, username: str, password: str

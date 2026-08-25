@@ -47,6 +47,12 @@ def validate_vault_without_password(result: HttpResult) -> str:
         return "actor_session_required"
     if result.status in REDIRECT_STATUS_CODES and _is_expected_redirect(
         result.location,
+        path="/login",
+        next_path="/vault",
+    ):
+        return "actor_session_required"
+    if result.status in REDIRECT_STATUS_CODES and _is_expected_redirect(
+        result.location,
         path="/access",
         next_path="/vault",
     ):

@@ -9,12 +9,12 @@
   <script src="{{ url_for('static', path='/invitation.js') }}" defer></script>
 </head>
 <body>
-  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/login">Sign in</a><a href="/bootstrap">Set up installation</a></nav></header>
+  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/login">Sign in</a><a href="/register">Create account</a></nav></header>
   <main>
     <section>
       <p>Private invitation</p>
       <h1>Enter an invitation code</h1>
-      <p>The code is submitted in the request body. It is never added to this page’s address.</p>
+      <p>Invitation codes are for access shared by another person or family. They are not required for normal sign-in. The code is submitted in the request body and never added to this page’s address.</p>
       <p id="invitation-status" role="status" aria-live="polite"></p>
       <form id="invitation-preview-form">
         <label for="invitation-code">Invitation code</label><input id="invitation-code" type="password" required maxlength="512" autocomplete="off">

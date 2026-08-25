@@ -15,8 +15,10 @@ def test_normalize_base_url_trims_trailing_slash() -> None:
     )
 
 
-def test_validate_vault_without_password_accepts_actor_session_boundary() -> None:
-    result = validate_vault_without_password(HttpResult(status=401, location=None))
+def test_validate_vault_without_password_accepts_actor_login_redirect() -> None:
+    result = validate_vault_without_password(
+        HttpResult(status=307, location="/login?next=%2Fvault")
+    )
 
     assert result == "actor_session_required"
 

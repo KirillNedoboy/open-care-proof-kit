@@ -19,6 +19,22 @@ def test_load_settings_defaults_to_easy_development_mode() -> None:
     assert settings.allow_cloud_llm is False
     assert settings.secret_key is None
     assert settings.access_password is None
+    assert settings.public_registration is False
+
+
+@pytest.mark.parametrize("raw, expected", [("true", True), ("false", False)])
+def test_load_settings_parses_public_registration_strict_boolean(
+    raw: str, expected: bool
+) -> None:
+    settings = load_settings({"OPENCARE_PUBLIC_REGISTRATION": raw})
+
+    assert settings.public_registration is expected
+
+
+@pytest.mark.parametrize("raw", ["1", "yes", "false-ish"])
+def test_load_settings_rejects_noncanonical_public_registration(raw: str) -> None:
+    with pytest.raises(ConfigError, match="OPENCARE_PUBLIC_REGISTRATION"):
+        load_settings({"OPENCARE_PUBLIC_REGISTRATION": raw})
 
 
 def test_load_settings_accepts_product_core_storage_paths() -> None:

@@ -18,6 +18,10 @@ class AuthorizationError(FamilyAccessError):
     pass
 
 
+class RegistrationUnavailableError(AuthorizationError):
+    pass
+
+
 class PersonAccessDeniedError(AuthorizationError):
     def __init__(self, person_id: str, required_scope: str) -> None:
         super().__init__("Person was not found.")

@@ -613,7 +613,8 @@ def test_live_pages_require_session_and_revalidate_active_person(
     client.cookies.clear()
     for path in ("/workspace", "/vault", "/chat"):
         response = client.get(path, follow_redirects=False)
-        assert response.status_code == 401
+        assert response.status_code == 307
+        assert response.headers["location"] == f"/login?next=%2F{path.lstrip('/')}"
 
     access_harness.login("bob")
     assert client.get("/workspace").status_code == 200

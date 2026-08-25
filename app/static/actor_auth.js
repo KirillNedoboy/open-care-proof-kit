@@ -18,6 +18,22 @@
     return response;
   };
 
+  const registrationLink = byId("registration-link");
+  if (registrationLink) {
+    fetch("/api/family-access/v1/registration-status", { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((payload) => { registrationLink.hidden = !payload.registration_available; })
+      .catch(() => {});
+  }
+
+  const bootstrapLink = byId("bootstrap-link");
+  if (bootstrapLink) {
+    fetch("/api/family-access/v1/bootstrap-status", { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((payload) => { bootstrapLink.hidden = !payload.bootstrap_available; })
+      .catch(() => {});
+  }
+
   const loginForm = byId("actor-login-form");
   if (loginForm) {
     loginForm.addEventListener("submit", async (event) => {
@@ -31,9 +47,7 @@
           password: byId("login-password").value,
         });
         byId("login-password").value = "";
-        loginForm.hidden = true;
-        complete.hidden = false;
-        showStatus("Signed in.", "success");
+        window.location.assign(byId("login-next").value || "/workspace");
       } catch (error) {
         showStatus(error.message, "error");
       } finally {

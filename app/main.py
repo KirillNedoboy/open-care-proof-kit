@@ -229,6 +229,7 @@ def _uses_actor_session_boundary(path: str) -> bool:
             "/chat",
             "/api/chat",
             "/login",
+            "/register",
             "/bootstrap",
             "/invite",
             "/family-access",
@@ -239,17 +240,17 @@ def _uses_actor_session_boundary(path: str) -> bool:
     )
 
 
-def _normalize_next_path(next_path: str | None) -> str:
+def _normalize_next_path(next_path: str | None, *, default: str = "/") -> str:
     if next_path is None or not next_path.strip():
-        return "/"
+        return default
 
     parsed = urlsplit(next_path)
     if parsed.scheme or parsed.netloc:
-        return "/"
+        return default
     if not parsed.path.startswith("/"):
-        return "/"
+        return default
     if parsed.path.startswith("/access"):
-        return "/"
+        return default
 
     normalized = parsed.path
     if parsed.query:
@@ -328,6 +329,19 @@ def _live_access_error(exc: Exception) -> JSONResponse:
     return JSONResponse({"detail": "Person was not found."}, status_code=404)
 
 
+def _resolve_browser_access(request: Request) -> Any:
+    access = resolve_product_core_access(request)
+    if isinstance(access, JSONResponse) and access.status_code == 401:
+        next_path = request.url.path
+        if request.url.query:
+            next_path = f"{next_path}?{request.url.query}"
+        return RedirectResponse(
+            url=f"/login?next={quote(next_path, safe='')}",
+            status_code=307,
+        )
+    return access
+
+
 def _actor_page(
     request: Request,
     template_name: str,
@@ -344,8 +358,17 @@ def _actor_page(
 
 
 @app.get("/login", response_class=HTMLResponse)
-def actor_login_page(request: Request) -> HTMLResponse:
-    return _actor_page(request, "actor_login.html")
+def actor_login_page(request: Request, next: str | None = None) -> HTMLResponse:
+    return _actor_page(
+        request,
+        "actor_login.html",
+        {"next_path": _normalize_next_path(next, default="/workspace")},
+    )
+
+
+@app.get("/register", response_class=HTMLResponse)
+def actor_register_page(request: Request) -> HTMLResponse:
+    return _actor_page(request, "actor_register.html")
 
 
 @app.get("/bootstrap", response_class=HTMLResponse)
@@ -364,16 +387,16 @@ def invitation_page(request: Request) -> HTMLResponse:
 
 @app.get("/family-access", response_class=HTMLResponse)
 def family_access_page(request: Request) -> Response:
-    access = resolve_product_core_access(request)
-    if isinstance(access, JSONResponse):
+    access = _resolve_browser_access(request)
+    if isinstance(access, Response):
         return access
     return _actor_page(request, "family_access_workspace.html")
 
 
 @app.get("/workspace", response_class=HTMLResponse)
 def workspace(request: Request) -> Response:
-    access = resolve_product_core_access(request)
-    if isinstance(access, JSONResponse):
+    access = _resolve_browser_access(request)
+    if isinstance(access, Response):
         return access
     if access.active_person_id is not None:
         try:
@@ -389,8 +412,8 @@ def workspace(request: Request) -> Response:
 
 @app.get("/genetics", response_class=HTMLResponse)
 def genetics_page(request: Request) -> Response:
-    access = resolve_product_core_access(request)
-    if isinstance(access, JSONResponse):
+    access = _resolve_browser_access(request)
+    if isinstance(access, Response):
         return access
     if access.active_person_id is not None:
         try:
@@ -406,8 +429,8 @@ def genetics_page(request: Request) -> Response:
 
 @app.get("/chat", response_class=HTMLResponse)
 def chat_page(request: Request) -> Response:
-    access = resolve_product_core_access(request)
-    if isinstance(access, JSONResponse):
+    access = _resolve_browser_access(request)
+    if isinstance(access, Response):
         return access
     try:
         person_id = access.require_active_person("chat.use", "person.read")
@@ -1054,8 +1077,8 @@ def health_vault_page(request: Request) -> HTMLResponse:
 
 @app.get("/vault", response_class=HTMLResponse)
 def vault_page(request: Request) -> Response:
-    access = resolve_product_core_access(request)
-    if isinstance(access, JSONResponse):
+    access = _resolve_browser_access(request)
+    if isinstance(access, Response):
         return access
     try:
         person_id = access.require_active_person(

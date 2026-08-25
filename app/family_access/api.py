@@ -28,6 +28,7 @@ from app.family_access.api_models import (
     MembershipCreateRequest,
     PasswordChangeRequest,
     PersonCreateRequest,
+    RegistrationRequest,
     RelationshipCreateRequest,
 )
 from app.family_access.errors import (
@@ -42,6 +43,7 @@ from app.family_access.errors import (
     LastOwnerError,
     NotFoundError,
     PersonAccessDeniedError,
+    RegistrationUnavailableError,
     ValidationError,
 )
 from app.family_access.models import ActorRecord
@@ -73,6 +75,8 @@ async def family_access_exception_handler(_request: Request, exc: Exception) -> 
         return _error(401, "authentication_required", "Authentication is required.")
     if isinstance(exc, ConfirmationRequiredError):
         return _error(403, "owner_confirmation_required", "Explicit confirmation is required.")
+    if isinstance(exc, RegistrationUnavailableError):
+        return _error(403, "registration_unavailable", "Account registration is unavailable.")
     if isinstance(exc, AuthorizationError):
         return _error(403, "forbidden", "The operation is not permitted.")
     if isinstance(exc, BootstrapUnavailableError):
@@ -203,8 +207,13 @@ def _session_json_response(
     *,
     status_code: int,
     extra: dict[str, object] | None = None,
+    active_person_id: str | None = None,
 ) -> JSONResponse:
-    created = runtime.sessions.create(actor.actor_id, credential_id)
+    created = runtime.sessions.create(
+        actor.actor_id,
+        credential_id,
+        active_person_id=active_person_id,
+    )
     content: dict[str, object] = {"actor": _actor_payload(actor)}
     if extra:
         content.update(extra)
@@ -258,6 +267,17 @@ def bootstrap_status(runtime: RuntimeDependency) -> dict[str, bool]:
     return {
         "bootstrap_available": runtime.service.bootstrap_available(),
         "bootstrap_secret_required": runtime.settings.is_production,
+    }
+
+
+@router.get("/registration-status")
+def registration_status(runtime: RuntimeDependency) -> dict[str, bool]:
+    registration_enabled = runtime.settings.public_registration
+    return {
+        "registration_enabled": registration_enabled,
+        "registration_available": (
+            registration_enabled and runtime.service.installation_initialized()
+        ),
     }
 
 
@@ -325,6 +345,37 @@ def login(
         authenticated.actor,
         authenticated.credential_id,
         status_code=200,
+    )
+
+
+@router.post("/register", status_code=201)
+def register(
+    payload: RegistrationRequest,
+    request: Request,
+    runtime: RuntimeDependency,
+    _same_origin: Annotated[None, Depends(require_same_origin)],
+) -> JSONResponse:
+    if not runtime.settings.public_registration:
+        raise RegistrationUnavailableError("public registration is disabled")
+    result = runtime.service.register_self_service_actor(
+        username=payload.username,
+        display_name=payload.display_name,
+        password=payload.password,
+    )
+    credential_id = runtime.service.get_active_credential_id(result.actor.actor_id)
+    if credential_id is None:
+        raise AuthenticationError("active credential is unavailable")
+    return _session_json_response(
+        request,
+        runtime,
+        result.actor,
+        credential_id,
+        status_code=201,
+        active_person_id=result.person_id,
+        extra={
+            "person_id": result.person_id,
+            "active_person_id": result.person_id,
+        },
     )
 
 

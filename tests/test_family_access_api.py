@@ -21,6 +21,7 @@ def _configure_environment(
     monkeypatch: pytest.MonkeyPatch,
     *,
     environment: str = "development",
+    public_registration: bool = False,
 ) -> None:
     monkeypatch.setenv("OPENCARE_PRODUCT_DB_PATH", str(tmp_path / "product" / "db.sqlite3"))
     monkeypatch.setenv("OPENCARE_SOURCE_DIR", str(tmp_path / "product" / "sources"))
@@ -29,6 +30,7 @@ def _configure_environment(
     )
     monkeypatch.setenv("OPENCARE_ENV", environment)
     monkeypatch.setenv("OPENCARE_DEMO_MODE", "true")
+    monkeypatch.setenv("OPENCARE_PUBLIC_REGISTRATION", str(public_registration).lower())
     if environment == "production":
         monkeypatch.setenv("OPENCARE_SECRET_KEY", "s" * 32)
         monkeypatch.setenv("OPENCARE_BOOTSTRAP_SECRET", "b" * 32)
@@ -806,3 +808,229 @@ def test_password_epoch_rejects_old_session_when_bulk_invalidation_fails(
 
     assert denied.status_code == 401
     assert runtime.sessions.resolve(old_token) is None
+
+
+def test_registration_status_is_disabled_by_default_and_blocks_signup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_environment(tmp_path, monkeypatch)
+    try:
+        with TestClient(main_module.app) as client:
+            status = client.get("/api/family-access/v1/registration-status")
+            assert status.status_code == 200
+            assert status.json() == {
+                "registration_enabled": False,
+                "registration_available": False,
+            }
+            blocked = client.post(
+                "/api/family-access/v1/register",
+                headers=SAME_ORIGIN,
+                json={
+                    "username": "new-user",
+                    "display_name": "New user",
+                    "password": "new user password",
+                },
+            )
+            assert blocked.status_code == 403
+            assert blocked.json() == {
+                "error": {
+                    "code": "registration_unavailable",
+                    "message": "Account registration is unavailable.",
+                }
+            }
+    finally:
+        clear_settings_cache()
+
+
+def test_registration_requires_bootstrap_and_creates_only_own_person(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_environment(tmp_path, monkeypatch, public_registration=True)
+    try:
+        with TestClient(main_module.app) as client:
+            before = client.get("/api/family-access/v1/registration-status")
+            assert before.json() == {
+                "registration_enabled": True,
+                "registration_available": False,
+            }
+            prebootstrap = client.post(
+                "/api/family-access/v1/register",
+                headers=SAME_ORIGIN,
+                json={
+                    "username": "new-user",
+                    "display_name": "New user",
+                    "password": "new user password",
+                },
+            )
+            assert prebootstrap.status_code == 403
+
+            bootstrap = client.post(
+                "/api/family-access/v1/bootstrap",
+                headers=SAME_ORIGIN,
+                json={
+                    "username": "operator",
+                    "display_name": "Operator",
+                    "password": "operator password value",
+                },
+            )
+            assert bootstrap.status_code == 201, bootstrap.text
+            client.cookies.clear()
+
+            after = client.get("/api/family-access/v1/registration-status")
+            assert after.json() == {
+                "registration_enabled": True,
+                "registration_available": True,
+            }
+            extra = client.post(
+                "/api/family-access/v1/register",
+                headers=SAME_ORIGIN,
+                json={
+                    "username": "new-user",
+                    "display_name": "New user",
+                    "password": "new user password",
+                    "installation_admin": True,
+                },
+            )
+            assert extra.status_code == 422
+
+            created = client.post(
+                "/api/family-access/v1/register",
+                headers=SAME_ORIGIN,
+                json={
+                    "username": "  Ｎew-user ",
+                    "display_name": "New user",
+                    "password": "new user password",
+                },
+            )
+            assert created.status_code == 201, created.text
+            payload = created.json()
+            assert payload["person_id"] == payload["active_person_id"]
+            assert client.get("/api/family-access/v1/me").json()["active_person_id"] == payload[
+                "person_id"
+            ]
+            assert client.get("/workspace").status_code == 200
+
+            duplicate = client.post(
+                "/api/family-access/v1/register",
+                headers=SAME_ORIGIN,
+                json={
+                    "username": "new-user",
+                    "display_name": "Duplicate",
+                    "password": "duplicate password value",
+                },
+            )
+            assert duplicate.status_code == 409
+            assert "new-user" not in duplicate.text
+            assert "UNIQUE" not in duplicate.text
+    finally:
+        clear_settings_cache()
+
+
+def test_r4_local_auth_smoke_isolates_signup_until_explicit_invitation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_environment(tmp_path, monkeypatch, public_registration=False)
+    origin = {"origin": "https://testserver"}
+    try:
+        with TestClient(main_module.app, base_url="https://testserver") as client:
+            runtime = main_module.app.state.product_core_runtime
+            now = runtime.clock()
+            with runtime.database.uow() as uow:
+                uow.people.insert(
+                    Person(
+                        person_id="operator-person",
+                        display_name="Operator profile",
+                        created_at=now,
+                        updated_at=now,
+                        is_active=True,
+                    )
+                )
+            bootstrap = client.post(
+                "/api/family-access/v1/bootstrap",
+                headers=origin,
+                json={
+                    "username": "operator",
+                    "display_name": "Operator",
+                    "password": "operator password value",
+                    "person_ids": ["operator-person"],
+                    "own_person_id": "operator-person",
+                    "confirm_full_owner_access": True,
+                    "bootstrap_secret": "b" * 32,
+                },
+            )
+            assert bootstrap.status_code == 201, bootstrap.text
+            logout = client.post(
+                "/api/family-access/v1/logout", headers={**_csrf_headers(client), **origin}, json={}
+            )
+            assert logout.status_code == 204
+            login = client.post(
+                "/api/family-access/v1/login",
+                headers=origin,
+                json={"username": "operator", "password": "operator password value"},
+            )
+            assert login.status_code == 200
+            assert client.get("/workspace").status_code == 200
+
+        monkeypatch.setenv("OPENCARE_PUBLIC_REGISTRATION", "true")
+        clear_settings_cache()
+        with TestClient(main_module.app, base_url="https://testserver") as client:
+            status = client.get("/api/family-access/v1/registration-status")
+            assert status.json() == {
+                "registration_enabled": True,
+                "registration_available": True,
+            }
+            registered = client.post(
+                "/api/family-access/v1/register",
+                headers=origin,
+                json={
+                    "username": "second",
+                    "display_name": "Second profile",
+                    "password": "second password value",
+                },
+            )
+            assert registered.status_code == 201, registered.text
+            _assert_session_cookies_are_secure(registered)
+            second_person = registered.json()["person_id"]
+            assert client.get("/api/product-core/v1/people/operator-person").status_code == 404
+
+            client.post(
+                "/api/family-access/v1/logout",
+                headers={**_csrf_headers(client), **origin},
+                json={},
+            )
+            owner_login = client.post(
+                "/api/family-access/v1/login",
+                headers=origin,
+                json={"username": "operator", "password": "operator password value"},
+            )
+            assert owner_login.status_code == 200
+            runtime = main_module.app.state.family_access_runtime
+            invitation = runtime.service.create_invitation(
+                runtime.service.authenticate("operator", "operator password value").actor_id,  # type: ignore[union-attr]
+                "operator-person",
+                role="caregiver",
+                optional_scopes=set(),
+                expires_at=runtime.service.clock() + timedelta(days=1),
+                confirm_full_owner_access=False,
+            )
+            client.post(
+                "/api/family-access/v1/logout",
+                headers={**_csrf_headers(client), **origin},
+                json={},
+            )
+            second_login = client.post(
+                "/api/family-access/v1/login",
+                headers=origin,
+                json={"username": "second", "password": "second password value"},
+            )
+            assert second_login.status_code == 200
+            accepted = client.post(
+                "/api/family-access/v1/invite/accept",
+                headers={**_csrf_headers(client), **origin},
+                json={"secret": invitation.secret, "confirm_full_owner_access": False},
+            )
+            assert accepted.status_code == 201
+            assert client.get("/api/product-core/v1/people/operator-person").status_code == 200
+            assert client.get("/api/product-core/v1/people/" + second_person).status_code == 200
+    finally:
+        clear_settings_cache()

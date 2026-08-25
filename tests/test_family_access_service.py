@@ -8,6 +8,7 @@ import pytest
 from app.family_access.errors import (
     AuditWriteError,
     AuthenticationError,
+    AuthorizationError,
     BootstrapUnavailableError,
     ConfirmationRequiredError,
     ConflictError,
@@ -1911,3 +1912,115 @@ def test_caregiver_v3_upgrade_is_explicit_and_exact(tmp_path: Path) -> None:
     assert service.authorize_person(
         caregiver.actor_id, "existing-person", "document.write"
     ).allowed
+
+
+def test_self_registration_requires_bootstrap_and_isolated_owner_creation(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+
+    assert service.installation_initialized() is False
+    with pytest.raises(AuthorizationError):
+        service.register_self_service_actor(
+            username="before-bootstrap",
+            display_name="Before bootstrap",
+            password="correct horse battery",
+        )
+
+    service.bootstrap(
+        username="operator",
+        display_name="Operator",
+        password="operator password value",
+    )
+    assert service.installation_initialized() is True
+
+    result = service.register_self_service_actor(
+        username="  Ｂob ",
+        display_name="Bob's profile",
+        password="bob password value",
+    )
+
+    assert result.actor.username_normalized == "bob"
+    assert result.person_id
+    with service.database.connect() as connection:
+        actor_id = result.actor.actor_id
+        assert connection.execute(
+            "SELECT COUNT(*) FROM installation_admin_assignments WHERE actor_id = ?",
+            (actor_id,),
+        ).fetchone()[0] == 0
+        assignments = connection.execute(
+            "SELECT person_id, role FROM person_access_assignments "
+            "WHERE actor_id = ? AND is_active = 1",
+            (actor_id,),
+        ).fetchall()
+        own_links = connection.execute(
+            "SELECT person_id FROM own_person_links WHERE actor_id = ? AND is_active = 1",
+            (actor_id,),
+        ).fetchall()
+        assert [(row[0], row[1]) for row in assignments] == [(result.person_id, "owner")]
+        assert [row[0] for row in own_links] == [result.person_id]
+        assert connection.execute(
+            "SELECT COUNT(*) FROM actor_credentials WHERE actor_id = ? AND revoked_at IS NULL",
+            (actor_id,),
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM access_audit_events "
+            "WHERE actor_id = ? AND reason_code LIKE '%self_registration%'",
+            (actor_id,),
+        ).fetchone()[0] >= 1
+
+    assert service.authenticate("BOB", "bob password value") == result.actor
+    assert service.authenticate("bob", "wrong password value") is None
+
+
+def test_self_registration_rolls_back_all_records_when_audit_fails(tmp_path: Path) -> None:
+    service = _service(tmp_path)
+    service.bootstrap(
+        username="operator",
+        display_name="Operator",
+        password="operator password value",
+    )
+    tables = (
+        "actors",
+        "actor_credentials",
+        "people",
+        "person_access_assignments",
+        "own_person_links",
+    )
+    with service.database.connect() as connection:
+        before = {
+            table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in tables
+        }
+
+    def fail_audit(_connection: sqlite3.Connection, _event: dict[str, str | None]) -> None:
+        raise AuditWriteError("audit unavailable")
+
+    failure_ids = iter(
+        (
+            "failure-actor",
+            "failure-credential",
+            "failure-person",
+            "failure-assignment",
+            "failure-audit",
+        )
+    )
+    failing = FamilyAccessService(
+        service.database,
+        clock=lambda: NOW,
+        id_factory=lambda: next(failure_ids),
+        audit_writer=fail_audit,
+    )
+    with pytest.raises(AuditWriteError):
+        failing.register_self_service_actor(
+            username="rollback",
+            display_name="Rollback",
+            password="rollback password value",
+        )
+
+    with service.database.connect() as connection:
+        after = {
+            table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in tables
+        }
+    assert after == before

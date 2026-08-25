@@ -28,6 +28,12 @@ class AuthenticatedCredential:
 
 
 @dataclass(frozen=True)
+class SelfRegistrationResult:
+    actor: ActorRecord
+    person_id: str
+
+
+@dataclass(frozen=True)
 class FamilyRecord:
     family_id: str
     display_name: str

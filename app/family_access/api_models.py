@@ -73,6 +73,22 @@ class LoginRequest(APIModel):
     password: str = Field(min_length=1, max_length=1024)
 
 
+class RegistrationRequest(APIModel):
+    username: str = Field(min_length=1, max_length=MAX_USERNAME_LENGTH)
+    display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    password: str = Field(min_length=12, max_length=1024)
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, value: str) -> str:
+        return _clean_text(value, field_name="username", max_length=MAX_USERNAME_LENGTH)
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return _clean_text(value, field_name="display_name", max_length=MAX_DISPLAY_NAME_LENGTH)
+
+
 class PasswordChangeRequest(APIModel):
     current_password: str = Field(min_length=1, max_length=1024)
     new_password: str = Field(min_length=12, max_length=1024)

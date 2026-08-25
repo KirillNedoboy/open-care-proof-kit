@@ -202,7 +202,13 @@ class SessionStore:
         if stat.S_IMODE(self.path.stat().st_mode) != 0o600:
             raise PermissionError("session database permissions must be 0600")
 
-    def create(self, actor_id: str, credential_id: str) -> CreatedSession:
+    def create(
+        self,
+        actor_id: str,
+        credential_id: str,
+        *,
+        active_person_id: str | None = None,
+    ) -> CreatedSession:
         if not actor_id.strip() or not credential_id.strip():
             raise ValueError("session identity must be non-empty")
         now = self.clock().astimezone(UTC)
@@ -216,7 +222,7 @@ class SessionStore:
                 INSERT INTO sessions (
                     session_id, session_token_hash, actor_id, credential_id,
                     csrf_token_hash, active_person_id, issued_at, expires_at, revoked_at
-                ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, NULL)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 """,
                 (
                     session_id,
@@ -224,6 +230,7 @@ class SessionStore:
                     actor_id,
                     credential_id,
                     _token_hash(csrf_token),
+                    active_person_id,
                     _isoformat(now),
                     _isoformat(expires_at),
                 ),

@@ -26,6 +26,7 @@ class Settings:
     allow_cloud_llm: bool
     secret_key: str | None
     access_password: str | None
+    public_registration: bool = False
     vault_source: str = "demo"
     vault_file: Path | None = None
     agent_mode: str = "demo"
@@ -89,6 +90,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     allow_cloud_llm = _parse_bool(
         values.get("OPENCARE_ALLOW_CLOUD_LLM", "false"),
         var_name="OPENCARE_ALLOW_CLOUD_LLM",
+    )
+    public_registration = _parse_bool(
+        values.get("OPENCARE_PUBLIC_REGISTRATION", "false"),
+        var_name="OPENCARE_PUBLIC_REGISTRATION",
     )
     agent_mode = values.get("OPENCARE_AGENT_MODE", "demo").strip().lower()
     if agent_mode not in {"demo", "openai_responses", "ollama"}:
@@ -158,6 +163,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         allow_cloud_llm=allow_cloud_llm,
         secret_key=secret_key,
         access_password=access_password,
+        public_registration=public_registration,
         bootstrap_secret=_read_optional_secret(values, "OPENCARE_BOOTSTRAP_SECRET"),
         vault_source=vault_source,
         vault_file=vault_file,

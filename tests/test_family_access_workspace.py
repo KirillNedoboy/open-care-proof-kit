@@ -27,6 +27,24 @@ def test_actor_entry_pages_are_body_only_and_non_cacheable(
     assert product_core_client.get("/favicon.ico").status_code == 204
 
 
+def test_register_page_is_body_only_and_uses_status_contract(
+    product_core_client: TestClient,
+) -> None:
+    register = product_core_client.get("/register")
+
+    assert register.status_code == 200
+    assert 'id="actor-register-form"' in register.text
+    assert 'id="register-password-confirm"' in register.text
+    assert 'autocomplete="new-password"' in register.text
+    assert "/api/family-access/v1/registration-status" in register.text
+    registration_script = (ROOT / "app" / "static" / "account_registration.js").read_text(
+        encoding="utf-8"
+    )
+    assert "register-password-confirm" not in registration_script.split("JSON.stringify", 1)[-1]
+    assert register.headers["cache-control"] == "no-store"
+    assert register.headers["referrer-policy"] == "no-referrer"
+
+
 def test_family_access_workspace_requires_session_and_renders_management_states(
     product_core_client: TestClient,
 ) -> None:
@@ -44,8 +62,38 @@ def test_family_access_workspace_requires_session_and_renders_management_states(
     product_core_client.cookies.clear()
     anonymous = product_core_client.get("/family-access", follow_redirects=False)
 
-    assert anonymous.status_code == 401
-    assert anonymous.json()["error"]["code"] == "authentication_required"
+    assert anonymous.status_code == 307
+    assert anonymous.headers["location"] == "/login?next=%2Ffamily-access"
+
+
+def test_unauthenticated_live_html_pages_redirect_with_safe_next(
+    product_core_client: TestClient,
+) -> None:
+    product_core_client.cookies.clear()
+
+    for path in ("/workspace", "/genetics", "/chat", "/vault"):
+        response = product_core_client.get(path, follow_redirects=False)
+        assert response.status_code == 307
+        assert response.headers["location"] == f"/login?next=%2F{path.lstrip('/')}"
+
+    api_response = product_core_client.get("/api/family-access/v1/me")
+    assert api_response.status_code == 401
+    assert api_response.json() == {"detail": "Authentication required."}
+
+
+def test_login_next_rejects_external_values_and_defaults_to_workspace(
+    product_core_client: TestClient,
+) -> None:
+    unsafe = product_core_client.get(
+        "/login?next=https%3A%2F%2Fevil.example%2Fsteal"
+    )
+    assert 'value="/workspace"' in unsafe.text
+
+    protocol_relative = product_core_client.get("/login?next=%2F%2Fevil.example")
+    assert 'value="/workspace"' in protocol_relative.text
+
+    safe = product_core_client.get("/login?next=%2Fgenetics")
+    assert 'value="/genetics"' in safe.text
 
 
 def test_family_access_browser_code_keeps_invitation_secrets_out_of_urls() -> None:
