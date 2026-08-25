@@ -94,6 +94,7 @@ def build_demo_context(
         def _prepare_envelope(
             *,
             actor_id: str,
+            credential_id: str,
             person_id: str,
             purpose_id: PurposeId,
             action_id: ActionId,
@@ -104,7 +105,7 @@ def build_demo_context(
                 raise BuildRefused(["identity_binding_required"])
             request = EnvelopeRequest(
                 actor_id=actor_id,
-                credential_id=CREDENTIAL_ID,
+                credential_id=credential_id,
                 person_id=person_id,
                 purpose_id=purpose_id,
                 action_id=action_id,
@@ -145,6 +146,7 @@ def build_demo_context(
         )
         envelope = runtime.prepare_envelope(
             actor_id=ACTOR_ID,
+            credential_id=CREDENTIAL_ID,
             person_id=PERSON_ID,
             purpose_id=PURPOSE_ID,
             action_id=ACTION_ID,

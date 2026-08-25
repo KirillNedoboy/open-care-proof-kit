@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any
 
 from app.agent_trust.models import ExecutionReceipt
@@ -56,7 +57,7 @@ class ProductCoreG2Repository:
                 (audit_event_id, actor_id, action_code, target_class, target_id,
                  outcome, reason_code, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (audit_id, actor_id, "agent.consent", "execution", execution_id,
+                (audit_id, actor_id, "agent.consent", "session", execution_id,
                  "success", "consent_granted", consented_at.isoformat()),
             )
 
@@ -91,7 +92,14 @@ class ProductCoreG2Repository:
                     "mutation_attempted": int(mutation_attempted),
                     "reason_codes_json": json.dumps(receipt.reason_codes),
                     "receipt_sha256": receipt.receipt_sha256,
-                    "metadata_json": json.dumps({"access_audit_id": audit_id}),
+                    "metadata_json": json.dumps(
+                        {
+                            "access_audit_id": audit_id,
+                            "model_id": receipt.model_id,
+                            "provider_kind": receipt.provider_kind,
+                            "external": receipt.external,
+                        }
+                    ),
                 }
             )
             uow.connection.execute(
@@ -99,12 +107,40 @@ class ProductCoreG2Repository:
                 (audit_event_id, actor_id, action_code, target_class, target_id,
                  outcome, reason_code, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (audit_id, actor_id, "agent.execute", "execution", execution_id,
-                 receipt.status, "execution_observed", receipt.completed_at.isoformat()),
+                (audit_id, actor_id, "agent.execute", "session", execution_id,
+                 {"completed": "success", "failed": "failure", "refused": "denied"}.get(
+                     receipt.status, "failure"
+                 ), "execution_observed", receipt.completed_at.isoformat()),
             )
 
 
-    def get_execution_receipt(self, execution_id: str) -> dict[str, object] | None:
+    def get_execution_receipt(
+        self, execution_id: str, *, actor_id: str, person_id: str
+    ) -> dict[str, object] | None:
         with self.database.uow() as uow:
-            row = uow.execution_receipts.get_by_execution(execution_id)
-        return None if row is None else dict(row)
+            row = uow.connection.execute(
+                """SELECT * FROM agent_execution_receipts
+                   WHERE execution_id = ? AND actor_id = ? AND person_id = ?""",
+                (execution_id, actor_id, person_id),
+            ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        metadata = json.loads(str(data.get("metadata_json") or "{}"))
+        return {
+            "contract_version": "opencare-execution-receipt/1",
+            "receipt_id": data["receipt_id"],
+            "envelope_id": data["envelope_id"],
+            "started_at": datetime.fromisoformat(str(data["started_at"])),
+            "completed_at": datetime.fromisoformat(str(data["completed_at"])),
+            "status": data["status"],
+            "provider_id": data["provider_id"],
+            "model_id": metadata.get("model_id"),
+            "provider_kind": metadata.get("provider_kind"),
+            "external": metadata.get("external"),
+            "used_evidence_ids": json.loads(str(data["used_evidence_ids_json"])),
+            "used_tools": json.loads(str(data["used_tools_json"])),
+            "output_sha256": data["output_sha256"],
+            "reason_codes": json.loads(str(data["reason_codes_json"])),
+            "receipt_sha256": data["receipt_sha256"],
+        }

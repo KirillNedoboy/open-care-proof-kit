@@ -13,7 +13,7 @@ from app.agent.providers.contract import (
     build_provider_execution_request,
 )
 from app.agent.validation import ValidationResult
-from app.agent_trust.builders import build_execution_receipt
+from app.agent_trust.builders import BuildRefused, build_execution_receipt
 from app.agent_trust.canonical import (
     canonical_bytes,
     digest_matches,
@@ -109,6 +109,7 @@ class EnvelopeProjection:
             evidence=tuple(
                 {
                     "evidence_id": item.evidence_id,
+                    "content_sha256": item.content_sha256,
                     "selected_fields": tuple(item.selected_fields),
                     "source_ids": tuple(item.source_ids),
                 }
@@ -181,7 +182,7 @@ class G2Repository(Protocol):
     ) -> None: ...
 
     def get_execution_receipt(
-        self, execution_id: str
+        self, execution_id: str, *, actor_id: str, person_id: str
     ) -> ExecutionReceipt | dict[str, Any] | None: ...
 
 
@@ -198,6 +199,8 @@ class G2Runtime:
         provider: AgentProvider,
         repository: G2Repository | None = None,
         project: Callable[[EnvelopeProjection, str], dict[str, Any]] | None = None,
+        resolve_evidence: Callable[[TrustEnvelope], tuple[dict[str, Any], ...]] | None = None,
+        authorize_receipt: Callable[[str, str, str], bool] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.sessions, self.prepare_envelope, self.revalidate = (
@@ -206,6 +209,18 @@ class G2Runtime:
             revalidate,
         )
         self.repository = repository
+        self.resolve_evidence = resolve_evidence or (
+            lambda envelope: tuple(
+                {
+                    "evidence_id": item.evidence_id,
+                    "content_sha256": item.content_sha256,
+                    "selected_fields": tuple(item.selected_fields),
+                    "source_ids": tuple(item.source_ids),
+                }
+                for item in envelope.evidence
+            )
+        )
+        self.authorize_receipt = authorize_receipt or (lambda _actor, _credential, _person: True)
         self.provider, self.project = (
             provider,
             project
@@ -220,6 +235,7 @@ class G2Runtime:
         self.clock = clock or (lambda: datetime.now(UTC))
         self._consents: dict[str, dict[str, object]] = {}
         self._receipts: dict[str, ExecutionReceipt] = {}
+        self._envelopes: dict[str, TrustEnvelope] = {}
 
     def prepare(
         self, session_token: str, question: str, *, purpose_id: str, action_id: str
@@ -229,6 +245,7 @@ class G2Runtime:
             raise PermissionError("session_or_person_unavailable")
         envelope = self.prepare_envelope(
             actor_id=session.actor_id,
+            credential_id=session.credential_id,
             person_id=session.active_person_id,
             purpose_id=purpose_id,
             action_id=action_id,
@@ -245,6 +262,7 @@ class G2Runtime:
             provider_id=self.provider.descriptor.provider_id,
             provider_hash=self.provider.descriptor.descriptor_hash,
         )
+        self._envelopes[pending.execution_id] = envelope
         return PrepareResult(
             pending.execution_id,
             envelope.envelope_id,
@@ -258,13 +276,22 @@ class G2Runtime:
     ) -> ConsentResult:
         session = self.sessions.resolve(session_token)
         pending = self.sessions.get_pending(execution_id)
-        if session is None or pending is None or pending.session_id != session.session_id:
+        if (
+            session is None
+            or pending is None
+            or pending.session_id != session.session_id
+            or session.active_person_id != pending.person_id
+            or not self.revalidate(pending, session)
+        ):
             raise PermissionError("pending_execution_unavailable")
-        envelope = self.prepare_envelope(
-            actor_id=session.actor_id, person_id=pending.person_id,
-            purpose_id=pending.purpose_id, action_id=pending.action_id,
-            question="",
-        )
+        envelope = self._envelopes.get(execution_id)
+        if envelope is None:
+            envelope = self.prepare_envelope(
+                actor_id=session.actor_id, credential_id=session.credential_id,
+                person_id=pending.person_id,
+                purpose_id=pending.purpose_id, action_id=pending.action_id,
+                question="",
+            )
         projection = EnvelopeProjection.from_envelope(envelope)
         consent_fields = sorted(set(fields))
         bound_provider_id, bound_provider_hash = _bound_provider_identity(
@@ -336,18 +363,24 @@ class G2Runtime:
             or not self.revalidate(pending, session)
         ):
             return ExecuteResult(execution_id, "refused", None, reason_code="context_changed")
-        envelope = self.prepare_envelope(
-            actor_id=session.actor_id, person_id=pending.person_id,
-            purpose_id=pending.purpose_id, action_id=pending.action_id,
-            question=question,
-        )
+        envelope = self._envelopes.get(execution_id)
+        if envelope is None:
+            envelope = self.prepare_envelope(
+                actor_id=session.actor_id, credential_id=session.credential_id,
+                person_id=pending.person_id,
+                purpose_id=pending.purpose_id, action_id=pending.action_id,
+                question=question,
+            )
         envelope_expires_at = getattr(envelope, "expires_at", consent["expires_at"])
         _, bound_provider_hash = _bound_provider_identity(envelope.provider_disclosure)
         if (
             envelope.envelope_id != pending.envelope_id
             or (
                 bound_provider_hash is not None
-                and bound_provider_hash != pending.provider_hash
+                and (
+                    bound_provider_hash != pending.provider_hash
+                    or bound_provider_hash != self.provider.descriptor.descriptor_hash
+                )
             )
             or envelope_expires_at != consent["expires_at"]
         ):
@@ -362,12 +395,34 @@ class G2Runtime:
         started_at = self.clock()
         provider_id, model_id, provider_kind, external = _receipt_provider_facts(envelope)
         try:
-            request = build_provider_execution_request(projection, question)
+            resolved_evidence = self.resolve_evidence(envelope)
+            request = build_provider_execution_request(
+                projection, question, evidence=resolved_evidence
+            )
             result = self.provider.execute(request)
             if result.failure is not None:
                 raise ProviderUnavailableError(result.failure.message)
             if result.answer is None:
                 raise ProviderUnavailableError("Provider returned no answer.")
+        except BuildRefused as refused:
+            completed_at = self.clock()
+            reasons = refused.reason_codes or ["context_changed"]
+            receipt = build_execution_receipt(
+                envelope=envelope, started_at=started_at, completed_at=completed_at,
+                status="refused", provider_id=provider_id, model_id=model_id,
+                provider_kind=provider_kind, external=external,
+                used_evidence_ids=[item["evidence_id"] for item in projection.evidence],
+                used_tools=[], output=None, reason_codes=reasons,
+            )
+            self._receipts[execution_id] = receipt
+            if self.repository is not None:
+                self.repository.save_execution_receipt(
+                    receipt, execution_id=execution_id, consent_id=str(consent["consent_id"]),
+                    actor_id=session.actor_id, person_id=pending.person_id,
+                    mutation_attempted=False,
+                )
+            return ExecuteResult(execution_id, "refused", None,
+                                 reason_code=reasons[0], receipt_id=receipt.receipt_id)
         except Exception:
             completed_at = self.clock()
             receipt = build_execution_receipt(
@@ -454,8 +509,14 @@ class G2Runtime:
         session = self.sessions.resolve(session_token)
         if session is None:
             return None
+        if session.active_person_id is None or not self.authorize_receipt(
+            session.actor_id, session.credential_id, session.active_person_id
+        ):
+            return None
         if self.repository is not None:
-            receipt = self.repository.get_execution_receipt(execution_id)
+            receipt = self.repository.get_execution_receipt(
+                execution_id, actor_id=session.actor_id, person_id=session.active_person_id
+            )
             if receipt is None:
                 return None
             try:

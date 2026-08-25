@@ -90,11 +90,11 @@ def setup(tmp_path: Path):
     store.set_active_person(created.session_token, "person-alice")
     provider = Provider()
     runtime = G2Runtime(store, prepare_envelope=envelope_factory, revalidate=lambda *_: True, provider=provider, clock=lambda: now)
-    return runtime, created.session_token, provider
+    return runtime, created.session_token, provider, created.csrf_token
 
 
 def test_runtime_is_consent_gated_and_replay_safe(tmp_path):
-    runtime, token, provider = setup(tmp_path)
+    runtime, token, provider, _ = setup(tmp_path)
     prepared = runtime.prepare(token, "What is recorded?", purpose_id="visit_preparation", action_id="summarize_records")
     assert provider.calls == 0
     refused = runtime.execute(token, prepared.execution_id, "What is recorded?")
@@ -109,25 +109,26 @@ def test_runtime_is_consent_gated_and_replay_safe(tmp_path):
 
 
 def test_http_prepare_consent_execute_receipt(tmp_path):
-    runtime, token, _ = setup(tmp_path)
+    runtime, token, _, csrf = setup(tmp_path)
     app.state.g2_runtime = runtime
     async def run():
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             cookies = {"opencare_session": token}
-            p = await client.post("/api/chat/prepare", json={"question": "What is recorded?"}, cookies=cookies)
+            headers = {"origin": "http://test", "x-opencare-csrf": csrf}
+            p = await client.post("/api/chat/prepare", json={"question": "What is recorded?"}, cookies=cookies, headers=headers)
             assert p.status_code == 200
             execution_id = p.json()["execution_id"]
-            c = await client.post(f"/api/chat/executions/{execution_id}/consent", json={"fields": ["medication.name"]}, cookies=cookies)
+            c = await client.post(f"/api/chat/executions/{execution_id}/consent", json={"fields": ["medication.name"]}, cookies=cookies, headers=headers)
             assert c.status_code == 200
-            e = await client.post(f"/api/chat/executions/{execution_id}/execute", json={"question": "What is recorded?"}, cookies=cookies)
+            e = await client.post(f"/api/chat/executions/{execution_id}/execute", json={"question": "What is recorded?"}, cookies=cookies, headers=headers)
             assert e.status_code == 200 and e.json()["status"] == "answered"
             r = await client.get(f"/api/chat/executions/{execution_id}/receipt", cookies=cookies)
             assert r.status_code == 200 and r.json()["receipt_id"].startswith("sha256:")
     asyncio.run(run())
 
 def test_provider_tool_mutation_is_refused_and_not_returned(tmp_path):
-    runtime, token, _ = setup(tmp_path)
+    runtime, token, _, _ = setup(tmp_path)
     provider = MutationProvider()
     runtime.provider = provider
     prepared = runtime.prepare(token, "What is recorded?", purpose_id="visit_preparation", action_id="summarize_records")
@@ -135,3 +136,39 @@ def test_provider_tool_mutation_is_refused_and_not_returned(tmp_path):
     result = runtime.execute(token, prepared.execution_id, "What is recorded?")
     assert result.status == "refused"
     assert result.reason_code == "tool_not_allowed"
+
+
+def test_runtime_keeps_prepared_envelope_stable_across_consent_and_execute(tmp_path):
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    store = SessionStore(tmp_path / "sessions.sqlite", clock=lambda: now)
+    created = store.create("actor-alice", "credential-alice")
+    store.set_active_person(created.session_token, "person-alice")
+    calls = 0
+
+    def factory(**kwargs):
+        nonlocal calls
+        calls += 1
+        return envelope_factory(**kwargs)
+
+    runtime = G2Runtime(
+        store,
+        prepare_envelope=factory,
+        revalidate=lambda *_: True,
+        provider=Provider(),
+        clock=lambda: now,
+    )
+    prepared = runtime.prepare(
+        created.session_token,
+        "What is recorded?",
+        purpose_id="visit_preparation",
+        action_id="summarize_records",
+    )
+    runtime.grant_disclosure_consent(
+        created.session_token, prepared.execution_id, fields=["medication.name"]
+    )
+    result = runtime.execute(
+        created.session_token, prepared.execution_id, "What is recorded?"
+    )
+
+    assert result.status == "answered"
+    assert calls == 1

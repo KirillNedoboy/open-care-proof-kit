@@ -181,6 +181,7 @@ def build_runtime(
     def prepare_envelope(
         *,
         actor_id: str,
+        credential_id: str,
         person_id: str,
         purpose_id: str,
         action_id: str,
@@ -190,7 +191,7 @@ def build_runtime(
         descriptor = _descriptor_contract(box["provider"])
         request = EnvelopeRequest(
             actor_id=actor_id,
-            credential_id="credential-alice",
+            credential_id=credential_id,
             person_id=person_id,
             purpose_id=purpose_id,
             action_id=action_id,

@@ -19,7 +19,13 @@ from app.family_access.runtime import create_family_access_runtime
 from app.product_core.models import Person
 from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import create_product_core_runtime
-from tests.product_core_api_support import FixedClock, SequenceIds, json_headers
+from tests.product_core_api_support import (
+    FixedClock,
+    SequenceIds,
+    create_candidate,
+    create_source,
+    json_headers,
+)
 
 SAME_ORIGIN = {"origin": "http://testserver"}
 
@@ -669,6 +675,59 @@ def test_legacy_chat_gate_does_not_call_provider(
     response = access_harness.client.post("/api/chat", json={"question": "What is recorded?"})
     assert response.status_code == 410
     assert provider_calls == 0
+
+
+def test_live_chat_prepare_consent_execute_receipt_uses_normal_lifespan(
+    access_harness: AccessHarness,
+) -> None:
+    access_harness.login("bob")
+    access_harness.select("bob-person")
+    client = access_harness.client
+    source_id = create_source(client, "bob-person")
+    candidate_id = create_candidate(client, source_id, person_id="bob-person")
+    assert (
+        client.post(f"/api/product-core/v1/candidates/{candidate_id}/confirm", json={}).status_code
+        == 200
+    )
+    prepared = client.post("/api/chat/prepare", json={"question": "What is recorded?"})
+    assert prepared.status_code == 200, prepared.text
+    payload = prepared.json()
+    assert payload["status"] == "prepared"
+    assert payload["preview"]["provider_id"] == "opencare.deterministic.local"
+    assert "evidence" not in payload["preview"]
+    assert payload["preview"]["external"] is False
+    execution_id = payload["execution_id"]
+    fields = payload["preview"]["fields"]
+    consent = client.post(f"/api/chat/executions/{execution_id}/consent", json={"fields": fields})
+    assert consent.status_code == 200, consent.text
+    answered = client.post(
+        f"/api/chat/executions/{execution_id}/execute",
+        json={"question": "What is recorded?"},
+    )
+    assert answered.status_code == 200, answered.text
+    assert answered.json()["status"] == "answered"
+    receipt = client.get(f"/api/chat/executions/{execution_id}/receipt")
+    assert receipt.status_code == 200, receipt.text
+    safe = receipt.json()
+    assert "output" not in safe
+    assert "context" not in safe
+
+
+def test_live_chat_policy_refusal_does_not_prepare_or_call_provider(
+    access_harness: AccessHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    access_harness.login("bob")
+    access_harness.select("bob-person")
+    monkeypatch.setattr(
+        main_module.DeterministicProvider,
+        "execute",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("provider bypass")),
+    )
+    response = access_harness.client.post(
+        "/api/chat/prepare", json={"question": "What diagnosis do I have?"}
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "refused"
 
 
 def test_brief_export_requires_scope_and_durable_access_audit(

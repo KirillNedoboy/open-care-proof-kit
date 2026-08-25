@@ -157,7 +157,10 @@ class AgentProvider(Protocol):
 
 
 def build_provider_execution_request(
-    projection: EnvelopeProjection, question: str
+    projection: EnvelopeProjection,
+    question: str,
+    *,
+    evidence: tuple[dict[str, Any], ...] | None = None,
 ) -> ProviderExecutionRequest:
     """Build the provider request from the authorized Envelope projection.
 
@@ -169,7 +172,9 @@ def build_provider_execution_request(
         purpose_id=projection.purpose_id,
         action_id=projection.action_id,
         requested_action=projection.requested_action,
-        evidence=tuple(
+        evidence=tuple(evidence)
+        if evidence is not None
+        else tuple(
             {
                 "evidence_id": item["evidence_id"],
                 "selected_fields": tuple(item["selected_fields"]),

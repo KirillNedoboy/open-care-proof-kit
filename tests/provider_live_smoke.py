@@ -62,6 +62,7 @@ def test_live_ollama_flow_fails_closed_or_completes_with_receipt(tmp_path: Path)
     def prepare_envelope(
         *,
         actor_id: str,
+        credential_id: str,
         person_id: str,
         purpose_id: str,
         action_id: str,
@@ -71,7 +72,7 @@ def test_live_ollama_flow_fails_closed_or_completes_with_receipt(tmp_path: Path)
         return builder.build(
             EnvelopeRequest(
                 actor_id=actor_id,
-                credential_id="credential-alice",
+            credential_id=credential_id,
                 person_id=person_id,
                 purpose_id=purpose_id,
                 action_id=action_id,

@@ -20,14 +20,28 @@ from starlette.middleware.base import RequestResponseEndpoint
 from app import __version__
 from app.agent.g2_product_repository import ProductCoreG2Repository
 from app.agent.g2_runtime import G2Runtime
+from app.agent.live_chat import (
+    LIVE_CHAT_ACTION,
+    LiveChatAuthority,
+    resolve_live_chat_evidence,
+)
 from app.agent.models import AgentQuestion
+from app.agent.policy import classify_question
 from app.agent.providers.contract import AgentProvider
 from app.agent.providers.deterministic import DeterministicProvider
 from app.agent.providers.ollama import OllamaProvider, OllamaProviderConfig
+from app.agent.providers.openai_responses import OpenAIResponsesProvider
 from app.agent.service import GuardedChatService
+from app.agent.trust_adapter import OpenCareAuthorizationAdapter
+from app.agent_trust.builders import BuildRefused
+from app.agent_trust.identifiers import ACTION_REQUIREMENTS
 from app.config import ConfigError, Settings, get_settings
 from app.demo_pipeline import DemoBriefingResult, build_demo_briefing
-from app.family_access.api import family_access_exception_handler
+from app.family_access.api import (
+    CSRF_HEADER_NAME,
+    SESSION_COOKIE_NAME,
+    family_access_exception_handler,
+)
 from app.family_access.api import router as family_access_router
 from app.family_access.errors import FamilyAccessError
 from app.family_access.runtime import create_family_access_runtime
@@ -60,6 +74,8 @@ def _build_agent_provider(settings: Settings) -> AgentProvider:
                 max_response_bytes=settings.ollama_max_response_bytes,
             )
         )
+    if settings.agent_mode == "openai_responses":
+        return OpenAIResponsesProvider.from_settings(settings)
     return DeterministicProvider()
 
 
@@ -93,14 +109,73 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             )
         else:
             family_runtime = family_runtime_factory(get_settings(), runtime)
+        settings = get_settings()
+        provider = _build_agent_provider(settings)
+        adapter = OpenCareAuthorizationAdapter(family_runtime.service)
+
+        def build_envelope(**kwargs: Any) -> Any:
+            authority = LiveChatAuthority(
+                runtime,
+                family_runtime.service,
+                provider,
+                question=str(kwargs["question"]),
+                clock=runtime.clock,
+            )
+            return authority.build_envelope(
+                actor_id=str(kwargs["actor_id"]),
+                credential_id=str(kwargs["credential_id"]),
+                person_id=str(kwargs["person_id"]),
+            )
+
+        def revalidate(pending: Any, session: Any) -> bool:
+            if session.active_person_id != pending.person_id:
+                return False
+            required_scopes = ACTION_REQUIREMENTS.get(
+                pending.action_id, (frozenset(), frozenset())
+            )[0]
+            decision = adapter.authorize(
+                actor_id=session.actor_id,
+                credential_id=session.credential_id,
+                person_id=pending.person_id,
+                required_scopes=required_scopes,
+                authorized_at=runtime.clock(),
+            )
+            return (
+                decision.decision == "allow"
+                and decision.snapshot is not None
+                and pending.provider_hash == provider.descriptor.descriptor_hash
+            )
+
+        def authorize_receipt(actor_id: str, credential_id: str, person_id: str) -> bool:
+            decision = adapter.authorize(
+                actor_id=actor_id,
+                credential_id=credential_id,
+                person_id=person_id,
+                required_scopes=ACTION_REQUIREMENTS[LIVE_CHAT_ACTION][0],
+                authorized_at=runtime.clock(),
+            )
+            return decision.decision == "allow"
+
         g2_runtime = G2Runtime(
             family_runtime.sessions,
-            prepare_envelope=lambda **_: (_ for _ in ()).throw(
-                PermissionError("g2_builder_requires_authority")
-            ),
-            revalidate=lambda pending, session: bool(pending and session),
-            provider=_build_agent_provider(get_settings()),
+            prepare_envelope=build_envelope,
+            revalidate=revalidate,
+            provider=provider,
             repository=ProductCoreG2Repository(runtime.database),
+            project=lambda projection, _question: {
+                "provider_id": provider.descriptor.provider_id,
+                "model_id": provider.descriptor.model_id,
+                "provider_kind": provider.descriptor.provider_kind,
+                "external": provider.descriptor.external,
+                "retention": "provider policy; OpenCare does not retain provider payloads",
+                "evidence_count": len(projection.evidence),
+                "fields": list(projection.allowed_fields),
+                "disclosure_constraints": list(projection.disclosure_constraints),
+            },
+            resolve_evidence=lambda envelope: resolve_live_chat_evidence(
+                runtime, envelope, runtime.clock()
+            ),
+            authorize_receipt=authorize_receipt,
             clock=runtime.clock,
         )
     except Exception:
@@ -158,6 +233,7 @@ def _uses_actor_session_boundary(path: str) -> bool:
             "/invite",
             "/family-access",
         }
+        or path.startswith("/api/chat/")
         or path.startswith("/api/product-core/")
         or path.startswith("/api/family-access/")
     )
@@ -274,7 +350,11 @@ def actor_login_page(request: Request) -> HTMLResponse:
 
 @app.get("/bootstrap", response_class=HTMLResponse)
 def actor_bootstrap_page(request: Request) -> HTMLResponse:
-    return _actor_page(request, "actor_bootstrap.html")
+    return _actor_page(
+        request,
+        "actor_bootstrap.html",
+        {"bootstrap_secret_required": get_settings().is_production},
+    )
 
 
 @app.get("/invite", response_class=HTMLResponse)
@@ -371,30 +451,87 @@ def _session_token(request: Request) -> str:
     return token
 
 
+def _chat_request_guard(request: Request) -> JSONResponse | None:
+    """Apply the normal Product Core session and CSRF boundary to G2 routes."""
+    if getattr(request.app.state, "family_access_runtime", None) is not None:
+        access = resolve_product_core_access(request)
+        return access if isinstance(access, JSONResponse) else None
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    runtime = getattr(request.app.state, "g2_runtime", None)
+    if runtime is None or not token or runtime.sessions.resolve(token) is None:
+        return JSONResponse({"detail": "Authentication required."}, status_code=401)
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.headers.get("origin") is None or not is_same_origin(request):
+            return JSONResponse({"detail": "The request origin is not allowed."}, status_code=403)
+        csrf = request.headers.get(CSRF_HEADER_NAME)
+        if csrf is None or not runtime.sessions.verify_csrf(token, csrf):
+            return JSONResponse({"detail": "CSRF validation failed."}, status_code=403)
+    return None
+
+
+async def _chat_json(request: Request, *, keys: set[str]) -> dict[str, Any] | JSONResponse:
+    content_type = request.headers.get("content-type", "").lower()
+    if not content_type.startswith("application/json"):
+        return JSONResponse({"detail": "JSON content type is required."}, status_code=415)
+    body = await request.body()
+    if len(body) > 10_000:
+        return JSONResponse({"detail": "Request is too large."}, status_code=413)
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JSONResponse({"detail": "Malformed JSON request."}, status_code=400)
+    if not isinstance(payload, dict) or set(payload) != keys:
+        return JSONResponse({"detail": "The request shape is invalid."}, status_code=422)
+    return payload
+
+
 @app.post("/api/chat/prepare")
 async def chat_prepare(request: Request) -> JSONResponse:
+    guarded = _chat_request_guard(request)
+    if guarded is not None:
+        return guarded
     runtime = _g2_runtime_or_unavailable()
-    payload = await request.json()
-    question = payload.get("question") if isinstance(payload, dict) else None
-    if not isinstance(question, str) or not question.strip():
-        raise HTTPException(status_code=422, detail="A question is required.")
+    payload = await _chat_json(request, keys={"question"})
+    if isinstance(payload, JSONResponse):
+        return payload
+    try:
+        question = AgentQuestion.model_validate(payload).question
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="A question is required.") from exc
+    policy = classify_question(question)
+    if policy.decision != "allowed":
+        return JSONResponse(
+            {
+                "status": "refused",
+                "answer": policy.response_text,
+                "reason_code": policy.reason_code,
+                "boundary_notices": [
+                    "OpenCare does not provide diagnosis or treatment recommendations."
+                ],
+            }
+        )
     try:
         result = runtime.prepare(
             _session_token(request),
-            question.strip(),
-            purpose_id=payload.get("purpose_id", "visit_preparation"),
-            action_id=payload.get("action_id", "summarize_records"),
+            question,
+            purpose_id="record_explanation",
+            action_id="answer_question",
         )
-    except PermissionError as exc:
+    except (PermissionError, BuildRefused, ValueError) as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    return JSONResponse(jsonable_encoder(result.__dict__))
+    return JSONResponse({"status": "prepared", **jsonable_encoder(result.__dict__)})
 
 
 @app.post("/api/chat/executions/{execution_id}/consent")
 async def chat_consent(execution_id: str, request: Request) -> JSONResponse:
+    guarded = _chat_request_guard(request)
+    if guarded is not None:
+        return guarded
     runtime = _g2_runtime_or_unavailable()
-    payload = await request.json()
-    fields = payload.get("fields", []) if isinstance(payload, dict) else []
+    payload = await _chat_json(request, keys={"fields"})
+    if isinstance(payload, JSONResponse):
+        return payload
+    fields = payload.get("fields")
     if not isinstance(fields, list) or not all(isinstance(item, str) for item in fields):
         raise HTTPException(status_code=422, detail="Disclosure fields are required.")
     try:
@@ -408,17 +545,26 @@ async def chat_consent(execution_id: str, request: Request) -> JSONResponse:
 
 @app.post("/api/chat/executions/{execution_id}/execute")
 async def chat_execute(execution_id: str, request: Request) -> JSONResponse:
+    guarded = _chat_request_guard(request)
+    if guarded is not None:
+        return guarded
     runtime = _g2_runtime_or_unavailable()
-    payload = await request.json()
-    question = payload.get("question") if isinstance(payload, dict) else None
-    if not isinstance(question, str) or not question.strip():
-        raise HTTPException(status_code=422, detail="A question is required.")
-    result = runtime.execute(_session_token(request), execution_id, question.strip())
+    payload = await _chat_json(request, keys={"question"})
+    if isinstance(payload, JSONResponse):
+        return payload
+    try:
+        question = AgentQuestion.model_validate(payload).question
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="A question is required.") from exc
+    result = runtime.execute(_session_token(request), execution_id, question)
     return JSONResponse(jsonable_encoder(result.__dict__))
 
 
 @app.get("/api/chat/executions/{execution_id}/receipt")
 async def chat_receipt(execution_id: str, request: Request) -> JSONResponse:
+    guarded = _chat_request_guard(request)
+    if guarded is not None:
+        return guarded
     runtime = _g2_runtime_or_unavailable()
     getter = getattr(runtime, "get_receipt", None)
     if getter is None:
