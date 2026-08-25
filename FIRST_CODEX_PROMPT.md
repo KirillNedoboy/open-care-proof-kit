@@ -1,3 +1,9 @@
+# HISTORICAL PROJECT ARTIFACT
+# DO NOT USE AS CURRENT REPOSITORY INSTRUCTIONS
+
+Current instructions are maintained in `AGENTS.md`, `AGENTS.product-direction.md`,
+and `docs/project-status.md`. This file preserves an earlier bootstrap prompt.
+
 Read AGENTS.md and CHECKPOINT.md first.
 
 Task:

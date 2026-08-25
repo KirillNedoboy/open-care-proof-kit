@@ -16,15 +16,19 @@ No database, cloud service, API key, real patient data, or model provider is req
 
 ## Current reviewer path
 
-The live Product Core path is:
+The first-five-minute reviewer path is:
 
-1. `/workspace`
-2. `/family-access`
-3. `/genetics`
+1. Understand the product identity and non-clinical boundaries in
+   `docs/project-status.md` and `docs/capability-matrix.md`.
+2. Run the deterministic validation commands below.
+3. Inspect `/demo/health-vault` as the synthetic health stress test.
+4. Inspect the reusable Trust Envelope/receipt package and its clean-room test.
+5. Read the Sentient compatibility boundary and exact G5 machine state.
 
-The synthetic reviewer path remains `/demo/health-vault`. The latter is
-read-only and intentionally has no upload or genetics surface; that limitation
-does not describe the live Product Core.
+The current live Product Core surfaces are `/workspace`, `/family-access`,
+`/chat`, and `/genetics`; they are optional follow-up inspection surfaces, not
+a required reviewer route. The synthetic reviewer path remains
+`/demo/health-vault` and is intentionally separate from live Actor/Person data.
 
 ## 1. Install
 

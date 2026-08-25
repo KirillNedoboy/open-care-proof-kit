@@ -111,7 +111,11 @@ Run:
 python -m evals.runner
 ```
 
-## Latest Validation Result
+## Historical Phase 1.5 / Legacy Demo Eval Baseline
+
+The 12-case result below is a historical demo sub-suite baseline. It is not the
+latest whole-repository validation result. Current validation is recorded in
+`docs/validation/latest-verified-baseline.md` with its exact code SHA.
 
 Phase 1.5 target validation after pipeline-backed eval hardening:
 

@@ -1,11 +1,15 @@
 # CHECKPOINT.md
 
+> HISTORICAL PROJECT ARTIFACT — DO NOT USE AS CURRENT REPOSITORY INSTRUCTIONS.
 > Historical chronological record. This file is not the authoritative current
 > status. Use [the Direction ADR](docs/adr/0001-opencare-product-direction.md),
 > [the current project status](docs/project-status.md), and
 > [the capability matrix](docs/capability-matrix.md) for current decisions and
 > verified repository state. Phase labels and validation counts below describe
 > the sessions in which they were recorded.
+>
+> Current repository instructions: `AGENTS.md`, `AGENTS.product-direction.md`,
+> and `docs/project-status.md`.
 
 ## Project
 

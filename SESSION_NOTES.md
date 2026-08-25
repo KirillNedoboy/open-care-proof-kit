@@ -1,11 +1,15 @@
 # SESSION_NOTES.md
 
+> HISTORICAL PROJECT ARTIFACT — DO NOT USE AS CURRENT REPOSITORY INSTRUCTIONS.
 > Historical chronological record, not current status. Current product
 > direction and repository truth are maintained in
 > [docs/adr/0001-opencare-product-direction.md](docs/adr/0001-opencare-product-direction.md),
 > [docs/project-status.md](docs/project-status.md), and
 > [docs/capability-matrix.md](docs/capability-matrix.md). Counts and phase
 > labels in this file are historical session results.
+>
+> Current repository instructions: `AGENTS.md`, `AGENTS.product-direction.md`,
+> and `docs/project-status.md`.
 
 This file records what actually happened in each work session.
 
