@@ -45,10 +45,21 @@ ecosystem evidence pending.
   surfaces separate from live actor-scoped Product Core.
 - The self-hosted runtime is designed for user-owned sensitive local data;
   repository fixtures and public artifacts remain synthetic/de-identified.
+- Normal local username/password login is the default account entry flow;
+  invitations are an explicit family-sharing mechanism rather than a login
+  prerequisite.
+- Optional public self-registration is disabled by default and available only
+  after operator bootstrap when `OPENCARE_PUBLIC_REGISTRATION=true`. It creates
+  only an Actor, that Actor's own Person, its owner assignment, and own-Person
+  link. It does not create installation-admin status or cross-Person access.
+- Email verification, password recovery, CAPTCHA, internet-scale abuse controls,
+  billing, moderation, and organizational SaaS tenancy are not implemented.
 
 ## HTTP privacy contract
 
-- no valid Actor session: `401`;
+- no valid Actor session on an API endpoint: `401`;
+- no valid Actor session on protected browser HTML GET: safe `307` redirect to
+  `/login?next=...`;
 - invalid CSRF or high-risk confirmation: `403`;
 - visible Person but missing known action scope: `403`;
 - hidden/guessed Person or nested resource: `404`;

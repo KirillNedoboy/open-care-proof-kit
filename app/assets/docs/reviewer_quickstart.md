@@ -16,6 +16,16 @@ Goal: run OpenCare Proof Kit locally in under 3 minutes and inspect the generate
 
 No database, cloud service, API key, real patient data, or model provider is required for the deterministic demo.
 
+## Account onboarding smoke
+
+The normal live entry point is `/login` with a local username and password.
+Bootstrap is a one-time operator flow at `/bootstrap`; `/invite` is for sharing
+access to a Person and is not required for ordinary sign-in. Public
+self-registration is disabled by default. A controlled operator may set
+`OPENCARE_PUBLIC_REGISTRATION=true` after bootstrap; each new account receives
+only its own Person, owner assignment, and own-Person link. Email verification,
+self-service password recovery, and public SaaS abuse controls are not provided.
+
 ## 1. Install
 
 Unix/macOS:

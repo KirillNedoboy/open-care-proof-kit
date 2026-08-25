@@ -371,8 +371,8 @@ def test_private_production_live_vault_requires_actor_session(
 
     response = get("/vault", follow_redirects=False)
 
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == "authentication_required"
+    assert response.status_code == 307
+    assert response.headers["location"] == "/login?next=%2Fvault"
 
 
 def test_access_page_renders_in_private_production(monkeypatch: pytest.MonkeyPatch) -> None:

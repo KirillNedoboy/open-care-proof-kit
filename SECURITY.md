@@ -48,6 +48,21 @@ Raw genome content must never enter provider context. External provider
 disclosure requires explicit genetics-specific consent; self-hosted providers
 receive only authorized selected context.
 
+## Account onboarding boundary
+
+Normal account access uses local username/password login and server-side
+HttpOnly sessions with the existing SameSite, Secure-in-production, CSRF, and
+same-origin controls. The one-time operator bootstrap is the only path that
+creates an installation administrator. Invitations share access to an existing
+Person; they are not required for normal sign-in.
+
+Optional public self-registration is disabled by default and becomes available
+only after bootstrap when `OPENCARE_PUBLIC_REGISTRATION=true`. It creates one
+Actor, one own Person, one owner assignment, and one own-Person link, and never
+grants installation-admin status or access to another Person. Email verification,
+password-reset email, self-service recovery, CAPTCHA, durable internet-scale
+rate limiting, and SaaS tenancy are not implemented or claimed.
+
 ## Secret Handling
 
 - Do not commit `.env` files with secrets.

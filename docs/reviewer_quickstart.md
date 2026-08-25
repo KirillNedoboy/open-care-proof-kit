@@ -19,7 +19,7 @@ No database, cloud service, API key, real patient data, or model provider is req
 The first-five-minute reviewer path is:
 
 1. Understand the product identity and non-clinical boundaries in
-   `docs/project-status.md` and `docs/capability-matrix.md`.
+`docs/project-status.md` and `docs/capability-matrix.md`.
 2. Run the deterministic validation commands below.
 3. Inspect `/demo/health-vault` as the synthetic health stress test.
 4. Inspect the reusable Trust Envelope/receipt package and its clean-room test.
@@ -29,6 +29,16 @@ The current live Product Core surfaces are `/workspace`, `/family-access`,
 `/chat`, and `/genetics`; they are optional follow-up inspection surfaces, not
 a required reviewer route. The synthetic reviewer path remains
 `/demo/health-vault` and is intentionally separate from live Actor/Person data.
+
+## Account onboarding smoke
+
+The normal live entry point is `/login` with a local username and password.
+Bootstrap is a one-time operator flow at `/bootstrap`; `/invite` is for sharing
+access to a Person and is not required for ordinary sign-in. Public
+self-registration is disabled by default. A controlled operator may set
+`OPENCARE_PUBLIC_REGISTRATION=true` after bootstrap; each new account receives
+only its own Person, owner assignment, and own-Person link. Email verification,
+self-service password recovery, and public SaaS abuse controls are not provided.
 
 ## 1. Install
 

@@ -47,6 +47,11 @@ release tags.
 | Research Mode | `IMPLEMENTED` | Offline deterministic Evidence/Explore contracts with structured epistemic labels, citations, counterevidence, and no canonical mutation path. |
 | Agent tools | `PARTIAL` | Existing trust tools remain unchanged; Research Mode uses a minimized genetics packet and metadata-only receipt boundary. |
 | Family permissions | `IMPLEMENTED` | Legacy family-access generations remain frozen; separate explicit `genetics.read/write/research/compare/export` grants are required and revocable. |
+| Username/password login | `IMPLEMENTED` | `/login` uses the existing local credential and server-side session boundary; safe browser redirects preserve a relative next path. |
+| Invitation-based family sharing | `IMPLEMENTED` | `/invite` remains body-only and hash-backed; existing-account acceptance and invitation account creation preserve owner/caregiver semantics. |
+| Optional public self-registration | `IMPLEMENTED` | Disabled by default; after bootstrap and explicit `OPENCARE_PUBLIC_REGISTRATION=true`, creates only Actor + own Person + owner assignment + own-Person link. |
+| Email verification / password recovery | `NOT IMPLEMENTED` | No email infrastructure or self-service recovery flow. |
+| Internet-scale abuse controls / SaaS tenancy | `NOT CLAIMED` | Controlled self-hosted account creation is not public SaaS readiness. |
 
 
 ## Reading rules

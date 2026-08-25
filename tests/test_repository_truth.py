@@ -31,6 +31,23 @@ def test_current_repository_truth_is_published_and_versioned() -> None:
     assert PRODUCT_MIGRATIONS[-1].version == 9
 
 
+def test_current_authentication_truth_keeps_registration_and_sharing_boundaries() -> None:
+    status = _read("docs/project-status.md")
+    matrix = _read("docs/capability-matrix.md")
+    readme = _read("README.md")
+    agents = _read("AGENTS.md")
+    environment = _read(".env.example")
+
+    assert "OPENCARE_PUBLIC_REGISTRATION=false" in environment
+    assert "invitations are an explicit family-sharing mechanism" in status
+    assert "Optional public self-registration is disabled by default" in status
+    assert "Email verification / password recovery | `NOT IMPLEMENTED`" in matrix
+    assert "not a claim of public SaaS readiness" in readme
+    assert "never creates installation-admin status" in agents
+    assert "READY_FOR_SECOND_CLIENT_SMOKE" in status
+    assert "0.3.0.dev0" in readme
+
+
 def test_root_agent_artifacts_are_unmistakably_historical() -> None:
     first_prompt = _read("FIRST_CODEX_PROMPT.md")
     checkpoint = _read("CHECKPOINT.md")

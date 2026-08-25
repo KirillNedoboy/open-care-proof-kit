@@ -234,11 +234,13 @@ When `OPENCARE_ENV=production` and `OPENCARE_DEMO_MODE=false`:
 
 - `/health`, `/healthz`, and `/readyz` stay public;
 - `/access` serves the password form;
-- `/vault` requires the configured access password;
+- `/vault` requires a valid Actor session and Person scope;
 - `/demo/health-vault` stays public in demo mode for reviewer/demo compatibility;
-- other non-health routes require the configured access password;
+- other non-health routes require the configured access password when they are
+  outside the Actor session boundary;
 - successful login sets a signed `HttpOnly` cookie;
-- this is a minimal single-password gate, not a multi-user auth system.
+- this is a minimal outer access gate; Actor username/password accounts remain
+  the normal application authentication system.
 
 ## Readiness Model
 
@@ -265,7 +267,10 @@ If any of these are missing, readiness fails closed.
 - No upload support in this phase.
 - No medical advice.
 - No clinical decision support.
-- No user account system.
+- Local username/password Actor accounts are available after operator bootstrap.
+  Public self-registration is disabled by default and can be enabled only as a
+  controlled self-hosted capability with `OPENCARE_PUBLIC_REGISTRATION=true`;
+  this is not public SaaS readiness.
 - Product Core persistence is available only through the required production host mounts.
 - No secrets committed to source control.
 

@@ -116,6 +116,12 @@ docs
 
 Authorization is deny-by-default.
 
+When explicitly enabled, public self-registration may create only one Actor,
+that Actor's own Person, an owner assignment for that Person, and the matching
+own-Person link. It never creates installation-admin status, access to an
+existing Person, arbitrary scopes, or cross-Person grants; invitations remain
+the sharing/delegation mechanism.
+
 - Server-side Actor identity comes from the validated session.
 - Every health operation is explicitly Person-scoped.
 - Relationships alone are not grants.

@@ -371,7 +371,9 @@ session, resource owner, and fixed scope server-side.
 Family identity and access endpoints use `/api/family-access/v1`. They cover
 bootstrap, login/logout, password replacement, current Actor and active Person,
 explicit Person creation, Actor deactivation, Families, memberships,
-relationships, assignments, consent/audit views, and body-only invitations.
+relationships, assignments, consent/audit views, body-only invitations, and
+normal username/password account onboarding. Invitations are for sharing Person
+access, not a basic login requirement.
 See the [authorization matrix](docs/security/family-access-authorization-matrix.md).
 
 Product Core API lifecycle endpoints include:
@@ -444,10 +446,18 @@ On a fresh schema v9 installation, open `/bootstrap` while no Actor exists.
 Bootstrap creates the first local Actor and installation administrator; it
 grants no implicit Person access. Any selected existing Person becomes an owner
 grant only after the explicit full-access confirmation. Later sessions start at
-`/login`. Creating a Person requires the visible
+`/login` with username and password. Creating a Person requires the visible
 `confirm_owner_assignment: true` confirmation and atomically assigns the
-creating Actor as owner. Invitation codes are entered only on the generic
-`/invite` form and never belong in a link.
+creating Actor as owner.
+
+Public self-registration is disabled by default (`OPENCARE_PUBLIC_REGISTRATION=false`).
+On a controlled installation, an operator may enable it after bootstrap; each
+signup creates only an Actor, that account's own Person, its owner assignment,
+and own-Person link, then signs in to `/workspace`. It never creates an
+installation administrator or access to another Person. Invitations remain the
+optional family-sharing mechanism and are entered only on `/invite`, never in a
+link. There is no email verification or self-service password recovery, and
+this controlled capability is not a claim of public SaaS readiness.
 
 Open:
 

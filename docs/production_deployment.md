@@ -66,6 +66,7 @@ The repo ignores those operator-specific files so secrets and real domains do no
 OPENCARE_SECRET_KEY=<32+ character secret>
 OPENCARE_ACCESS_PASSWORD=<strong private password>
 OPENCARE_BOOTSTRAP_SECRET=<32+ character operator bootstrap secret>
+OPENCARE_PUBLIC_REGISTRATION=false
 OPENCARE_PRODUCT_DATA_DIR=./private/opencare-product-core
 OPENCARE_BACKUP_DIR=./private/opencare-backups
 ```
@@ -209,10 +210,12 @@ Protected behavior in the documented production path:
   session and Person policy where Person data is involved;
 - `/access` serves the password form;
 - a legacy gate cookie grants no Actor identity or Person access;
-- `/login`, `/bootstrap`, and generic `/invite` provide the Actor entry flows;
+- `/login` is the normal username/password entry flow; `/bootstrap` is the
+  one-time operator setup flow; `/invite` is the secondary family-sharing flow;
 - legacy non-Actor routes stay behind the private gate in private production;
   Actor entry/live routes enforce their own session boundary directly so a
-  missing Actor session remains `401`.
+  missing Actor session redirects browser HTML GETs safely to `/login`, while
+  API requests remain JSON `401` responses.
 
 ## Product Core backup and recovery
 
@@ -268,6 +271,9 @@ owners, caregivers, and outstanding invitations in the restored snapshot.
 - No clinical decision support.
 - No uploads.
 - Product Core persistence depends on the two required host bind mounts.
-- Local Actor accounts only; no public SaaS identity or account recovery.
+- Local Actor username/password accounts only. Public self-registration is
+  disabled by default and, when explicitly enabled after bootstrap, is a
+  controlled self-hosted capability rather than public SaaS identity. There is
+  no email verification or self-service account recovery.
 - No Phase 3 ingest, OCR, cloud synchronization, or deployment automation.
 

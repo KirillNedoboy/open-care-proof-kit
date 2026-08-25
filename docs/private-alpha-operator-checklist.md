@@ -28,6 +28,10 @@
 - [ ] Bootstrap exactly one first Actor, record who holds installation-admin
   responsibility, and confirm that administrator status alone reveals no
   Person data.
+- [ ] Keep `OPENCARE_PUBLIC_REGISTRATION=false` unless controlled public account
+  creation is explicitly intended; if enabled, verify bootstrap completed first.
+- [ ] Verify normal username/password login works without an invitation and that
+  each self-registered account receives only its own Person and owner access.
 
 ## 4. Synthetic acceptance flow
 
@@ -40,6 +44,8 @@ provider, deployment, or ecosystem integration is available.
   verify the creating Actor becomes that Person's owner atomically.
 - [ ] Create a caregiver invitation through `/invite`, transfer its code out of
   band, and confirm the code never appears in a URL or log.
+- [ ] Confirm invitations remain the explicit family-sharing path and preserve
+  existing-account acceptance, owner confirmation, and caregiver scopes.
 - [ ] Exercise Person switching and confirm inaccessible People, Family members,
   and installation totals are absent rather than merely disabled in the UI.
 - [ ] Add a manual Medication source.
