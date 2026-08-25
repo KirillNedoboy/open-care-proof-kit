@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal, cast
 
 from app.agent.context import build_product_core_agent_context
 from app.agent.models import AgentContext
@@ -18,7 +18,7 @@ from app.agent_trust.builders import (
     TrustedEnvelopeBuilder,
 )
 from app.agent_trust.canonical import canonical_bytes, sha256_hex
-from app.agent_trust.identifiers import ACTION_REQUIREMENTS
+from app.agent_trust.identifiers import ACTION_REQUIREMENTS, ActionId, PurposeId, ToolId
 from app.agent_trust.models import (
     AuthorizationDecision,
     EvidenceItem,
@@ -158,12 +158,16 @@ class LiveChatAuthority(TrustAuthority):
                 actor_id=actor_id,
                 credential_id=credential_id,
                 person_id=person_id,
-                purpose_id=LIVE_CHAT_PURPOSE,
-                action_id=LIVE_CHAT_ACTION,
+                purpose_id=cast(PurposeId, LIVE_CHAT_PURPOSE),
+                action_id=cast(ActionId, LIVE_CHAT_ACTION),
                 requested_action=LIVE_CHAT_REQUESTED_ACTION,
-                requested_tools=sorted(ACTION_REQUIREMENTS[LIVE_CHAT_ACTION][1]),
+                requested_tools=cast(
+                    list[ToolId], sorted(ACTION_REQUIREMENTS[LIVE_CHAT_ACTION][1])
+                ),
                 evidence_ids=[item.evidence_id for item in evidence],
-                disclosure_mode=disclosure_mode,
+                disclosure_mode=cast(
+                    Literal["local_only", "external_provider"], disclosure_mode
+                ),
                 provider_id=descriptor.provider_id,
                 provider_descriptor=provider_descriptor,
                 consent_basis_id=LIVE_CHAT_CONSENT_BASIS,

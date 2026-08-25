@@ -118,6 +118,7 @@ class ProductCoreG2Repository:
         self, execution_id: str, *, actor_id: str, person_id: str
     ) -> dict[str, object] | None:
         with self.database.uow() as uow:
+            assert uow.connection is not None
             row = uow.connection.execute(
                 """SELECT * FROM agent_execution_receipts
                    WHERE execution_id = ? AND actor_id = ? AND person_id = ?""",

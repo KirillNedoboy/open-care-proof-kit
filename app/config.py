@@ -40,6 +40,7 @@ class Settings:
     product_db_path: Path = Path("data/opencare.sqlite3")
     source_dir: Path = Path("data/sources")
     session_db_path: Path = Path(tempfile.gettempdir()) / "opencare-default" / "sessions.sqlite3"
+    bootstrap_secret: str | None = None
 
     @property
     def is_production(self) -> bool:
@@ -157,6 +158,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         allow_cloud_llm=allow_cloud_llm,
         secret_key=secret_key,
         access_password=access_password,
+        bootstrap_secret=_read_optional_secret(values, "OPENCARE_BOOTSTRAP_SECRET"),
         vault_source=vault_source,
         vault_file=vault_file,
         agent_mode=agent_mode,
@@ -217,6 +219,11 @@ def _validate_settings(settings: Settings) -> None:
     if len(settings.secret_key) < SECRET_KEY_MIN_LENGTH:
         raise ConfigError(
             "OPENCARE_SECRET_KEY must be at least "
+            f"{SECRET_KEY_MIN_LENGTH} characters in production."
+        )
+    if settings.bootstrap_secret is None or len(settings.bootstrap_secret) < SECRET_KEY_MIN_LENGTH:
+        raise ConfigError(
+            "OPENCARE_BOOTSTRAP_SECRET must be at least "
             f"{SECRET_KEY_MIN_LENGTH} characters in production."
         )
     if settings.private_mode_enabled and settings.access_password is None:

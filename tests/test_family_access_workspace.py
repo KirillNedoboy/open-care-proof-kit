@@ -101,4 +101,4 @@ def test_live_and_demo_chat_pages_use_separate_body_endpoints(
     assert 'href="/family-access"' in live.text
     assert 'data-chat-endpoint="/api/demo/chat"' in demo.text
     assert 'href="/family-access"' not in demo.text
-    assert 'headers["X-OpenCare-CSRF"] = csrfToken()' in script
+    assert '"X-OpenCare-CSRF": csrfToken()' in script

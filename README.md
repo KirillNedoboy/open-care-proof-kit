@@ -261,14 +261,13 @@ The LLM is intentionally third. Deterministic loaders, read models, rules, prove
 
 ### Guarded chat workspace
 
-The `/chat` route remains a guarded Question Workspace precursor for
-questions about the active Person. A valid Actor session, selected accessible
-Person, and `chat.use` scope are required. The browser sends a question only;
-OpenCare resolves Product Core context server-side, applies an intent policy,
-obtains either a
-deterministic demo response or an optional external response, and validates the
-completed structure before display. Chat messages stay in page memory and are
-not persisted.
+The `/chat` route is the live consent-gated Question Workspace for the active
+Person. A valid Actor session, selected accessible Person, and `chat.use`,
+`person.read`, and `source.read` scopes are required. The browser sends only a
+question; OpenCare prepares a sanitized disclosure preview, requires exact
+field consent, reconstructs and re-hashes selected source-backed records at
+execution, and exposes only safe receipt metadata. Chat messages stay in page
+memory and are not persisted.
 
 The default is `OPENCARE_AGENT_MODE=demo`. It supports questions about clinician preparation, changes in the recorded timeline, source-backed information, and missing information. It does not diagnose, recommend treatment, select medication, calculate or modify a dose, or interpret genetics. Recorded medication or dosage context may be shown only when it is already source-backed in the vault.
 

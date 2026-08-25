@@ -231,5 +231,5 @@ def _extract_output_text(body: object) -> str:
                 and content_item.get("type") == "output_text"
                 and isinstance(content_item.get("text"), str)
             ):
-                return content_item["text"]
+                return str(content_item["text"])
     raise KeyError("output_text")

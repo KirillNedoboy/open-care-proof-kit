@@ -51,7 +51,7 @@ def test_current_eval_and_capability_documents_do_not_overclaim() -> None:
 
     assert "## Latest Validation Result" not in eval_results
     assert "Historical Phase 1.5 / Legacy Demo Eval Baseline" in eval_results
-    assert "| Guarded chat | `PARTIAL` |" in matrix
+    assert "| Guarded chat | `IMPLEMENTED` |" in matrix
     assert "first-five-minute reviewer path" in reviewer
 
 

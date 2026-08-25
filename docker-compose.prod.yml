@@ -23,8 +23,7 @@ services:
     environment:
       OPENCARE_ENV: production
       OPENCARE_DEMO_MODE: "false"
-      OPENCARE_VAULT_SOURCE: local_file
-      OPENCARE_VAULT_FILE: /vault/local-family-vault.json
+      OPENCARE_VAULT_SOURCE: demo
       OPENCARE_DATA_DIR: data
       OPENCARE_REPORTS_DIR: reports
       OPENCARE_PRODUCT_DB_PATH: /var/lib/opencare/product-core/database.sqlite3
@@ -33,11 +32,8 @@ services:
       OPENCARE_ALLOW_CLOUD_LLM: "false"
       OPENCARE_SECRET_KEY: ${OPENCARE_SECRET_KEY}
       OPENCARE_ACCESS_PASSWORD: ${OPENCARE_ACCESS_PASSWORD}
+      OPENCARE_BOOTSTRAP_SECRET: ${OPENCARE_BOOTSTRAP_SECRET}
     volumes:
-      - type: bind
-        source: ${OPENCARE_LOCAL_VAULT_PATH}
-        target: /vault/local-family-vault.json
-        read_only: true
       - type: bind
         source: "${OPENCARE_PRODUCT_DATA_DIR:?OPENCARE_PRODUCT_DATA_DIR is required}"
         target: /var/lib/opencare/product-core

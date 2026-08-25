@@ -20,6 +20,8 @@ def test_production_compose_uses_required_persistent_product_core_mounts() -> No
     assert "target: /var/lib/opencare/product-core" in compose
     assert BACKUP_BIND_SOURCE in compose
     assert "target: /var/backups/opencare" in compose
+    assert "OPENCARE_BOOTSTRAP_SECRET: ${OPENCARE_BOOTSTRAP_SECRET}" in compose
+    assert "OPENCARE_LOCAL_VAULT_PATH" not in compose
 
 
 def test_production_compose_uses_ephemeral_session_tmpfs_outside_persistent_mounts() -> None:
@@ -69,6 +71,7 @@ def test_production_environment_example_has_nonsecret_relative_persistence_paths
     assert "OPENCARE_BACKUP_DIR=./private/opencare-backups" in environment
     assert "OPENCARE_SECRET_KEY=replace-with-" in environment
     assert "OPENCARE_ACCESS_PASSWORD=replace-with-" in environment
+    assert "OPENCARE_BOOTSTRAP_SECRET=replace-with-" in environment
 
 
 def test_production_documentation_describes_product_core_persistence() -> None:

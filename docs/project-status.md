@@ -82,8 +82,9 @@ Actions ran every command.
 
 R1 repository-truth verification at `46141e70d980fc611513e98afe251b1c611089c7`
 reported `677 passed, 4 skipped, 4 warnings`, G5 `20/20`, and P1/P2/D1/P3
-`PASS`. Fresh R2 validation is reported by the task completing this integrity
-pass.
+`PASS`. That is historical R1 evidence; current R3 evidence is published only
+in `docs/validation/latest-verified-baseline.md` after the validated code
+baseline commit.
 - runtime JavaScript syntax checks: passed.
 
 G5 Agent Skills interoperability is verified across OMP 17.3.5 and Hermes

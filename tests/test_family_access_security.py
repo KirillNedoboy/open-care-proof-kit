@@ -312,7 +312,8 @@ def test_production_session_path_defaults_to_ephemeral_run_storage() -> None:
     settings = load_settings(
         {
             "OPENCARE_ENV": "production",
-            "OPENCARE_SECRET_KEY": "x" * 32,
+                "OPENCARE_SECRET_KEY": "x" * 32,
+                "OPENCARE_BOOTSTRAP_SECRET": "b" * 32,
         }
     )
 

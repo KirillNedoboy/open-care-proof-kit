@@ -67,6 +67,7 @@
           username: byId("bootstrap-username").value,
           display_name: byId("bootstrap-display-name").value,
           password: byId("bootstrap-password").value,
+          bootstrap_secret: byId("bootstrap-secret")?.value || null,
           person_ids: personIds,
           own_person_id: null,
           confirm_full_owner_access: byId("bootstrap-owner-confirmation").checked,
@@ -79,6 +80,7 @@
       } catch (error) {
         showStatus(error.message, "error");
       } finally {
+        if (byId("bootstrap-secret")) byId("bootstrap-secret").value = "";
         button.disabled = false;
       }
     });

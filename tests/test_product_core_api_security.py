@@ -49,6 +49,7 @@ def test_product_core_uses_actor_session_instead_of_private_password_gate(
     monkeypatch.setenv("OPENCARE_ENV", "production")
     monkeypatch.setenv("OPENCARE_DEMO_MODE", "false")
     monkeypatch.setenv("OPENCARE_SECRET_KEY", "s" * 32)
+    monkeypatch.setenv("OPENCARE_BOOTSTRAP_SECRET", "b" * 32)
     monkeypatch.setenv("OPENCARE_ACCESS_PASSWORD", "password")
     clear_settings_cache()
 

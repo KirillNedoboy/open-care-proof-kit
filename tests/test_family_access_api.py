@@ -31,6 +31,7 @@ def _configure_environment(
     monkeypatch.setenv("OPENCARE_DEMO_MODE", "true")
     if environment == "production":
         monkeypatch.setenv("OPENCARE_SECRET_KEY", "s" * 32)
+        monkeypatch.setenv("OPENCARE_BOOTSTRAP_SECRET", "b" * 32)
     clear_settings_cache()
 
 
@@ -67,6 +68,7 @@ def _bootstrap(client: TestClient) -> dict[str, object]:
             "person_ids": ["existing-person"],
             "own_person_id": "existing-person",
             "confirm_full_owner_access": True,
+            "bootstrap_secret": "b" * 32,
         },
     )
     assert response.status_code == 201, response.text
@@ -109,7 +111,7 @@ def test_bootstrap_login_logout_and_csrf_contract(family_access_client: TestClie
     client = family_access_client
     status = client.get("/api/family-access/v1/bootstrap-status")
     assert status.status_code == 200
-    assert status.json() == {"bootstrap_available": True}
+    assert status.json() == {"bootstrap_available": True, "bootstrap_secret_required": False}
 
     missing_origin = client.post(
         "/api/family-access/v1/bootstrap",
@@ -123,7 +125,7 @@ def test_bootstrap_login_logout_and_csrf_contract(family_access_client: TestClie
     )
     assert missing_origin.status_code == 403
     assert client.get("/api/family-access/v1/bootstrap-status").json() == {
-        "bootstrap_available": True
+        "bootstrap_available": True, "bootstrap_secret_required": False
     }
 
     coerced_confirmation = client.post(
@@ -139,7 +141,7 @@ def test_bootstrap_login_logout_and_csrf_contract(family_access_client: TestClie
     )
     assert coerced_confirmation.status_code == 422
     assert client.get("/api/family-access/v1/bootstrap-status").json() == {
-        "bootstrap_available": True
+        "bootstrap_available": True, "bootstrap_secret_required": False
     }
 
     payload = _bootstrap(client)
@@ -224,6 +226,7 @@ def test_https_development_secures_bootstrap_login_and_registration_cookies(
                     "username": "owner",
                     "display_name": "Owner",
                     "password": "correct horse battery",
+                    "bootstrap_secret": "b" * 32,
                 },
             )
             assert bootstrap.status_code == 201, bootstrap.text
@@ -292,6 +295,7 @@ def test_trusted_forwarded_https_secures_development_session_cookies(
                     "username": "owner",
                     "display_name": "Owner",
                     "password": "correct horse battery",
+                    "bootstrap_secret": "b" * 32,
                 },
             )
             assert response.status_code == 201, response.text
@@ -314,10 +318,53 @@ def test_production_policy_secures_session_cookies_over_http_test_transport(
                     "username": "owner",
                     "display_name": "Owner",
                     "password": "correct horse battery",
+                    "bootstrap_secret": "b" * 32,
                 },
             )
             assert response.status_code == 201, response.text
             _assert_session_cookies_are_secure(response)
+    finally:
+        clear_settings_cache()
+
+
+def test_production_bootstrap_secret_is_body_only_constant_time_and_one_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_environment(tmp_path, monkeypatch, environment="production")
+    try:
+        with TestClient(main_module.app) as client:
+            payload = {
+                "username": "owner",
+                "display_name": "Owner",
+                "password": "correct horse battery",
+            }
+            wrong = client.post(
+                "/api/family-access/v1/bootstrap",
+                headers=SAME_ORIGIN,
+                json={**payload, "bootstrap_secret": "wrong"},
+            )
+            assert wrong.status_code == 403
+            assert wrong.json() == {
+                "error": {"code": "forbidden", "message": "The operation is not permitted."}
+            }
+            query = client.post(
+                "/api/family-access/v1/bootstrap?bootstrap_secret=" + "b" * 32,
+                headers=SAME_ORIGIN,
+                json=payload,
+            )
+            assert query.status_code == 403
+            created = client.post(
+                "/api/family-access/v1/bootstrap",
+                headers=SAME_ORIGIN,
+                json={**payload, "bootstrap_secret": "b" * 32},
+            )
+            assert created.status_code == 201, created.text
+            replay = client.post(
+                "/api/family-access/v1/bootstrap",
+                headers=SAME_ORIGIN,
+                json={**payload, "bootstrap_secret": "b" * 32},
+            )
+            assert replay.status_code == 409
     finally:
         clear_settings_cache()
 

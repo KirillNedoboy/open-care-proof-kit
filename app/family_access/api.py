@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import logging
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any
@@ -59,9 +60,7 @@ def _error(status_code: int, code: str, message: str) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status_code)
 
 
-async def family_access_exception_handler(
-    _request: Request, exc: Exception
-) -> JSONResponse:
+async def family_access_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, FamilyAccessError):
         return _error(500, "family_access_failure", "Family access storage failed.")
     if isinstance(exc, InvitationUnavailableError):
@@ -256,7 +255,10 @@ router = APIRouter(
 
 @router.get("/bootstrap-status")
 def bootstrap_status(runtime: RuntimeDependency) -> dict[str, bool]:
-    return {"bootstrap_available": runtime.service.bootstrap_available()}
+    return {
+        "bootstrap_available": runtime.service.bootstrap_available(),
+        "bootstrap_secret_required": runtime.settings.is_production,
+    }
 
 
 @router.post("/bootstrap", status_code=201)
@@ -266,6 +268,13 @@ def bootstrap(
     runtime: RuntimeDependency,
     _same_origin: Annotated[None, Depends(require_same_origin)],
 ) -> JSONResponse:
+    if "bootstrap_secret" in request.query_params:
+        raise AuthorizationError("bootstrap_operator_authorization_failed")
+    if runtime.settings.is_production:
+        supplied = payload.bootstrap_secret or ""
+        expected = runtime.settings.bootstrap_secret or ""
+        if not expected or not hmac.compare_digest(supplied, expected):
+            raise AuthorizationError("bootstrap_operator_authorization_failed")
     if payload.person_ids and not payload.confirm_full_owner_access:
         raise ConfirmationRequiredError("owner_confirmation_required")
     actor = runtime.service.bootstrap(
@@ -667,9 +676,7 @@ def register_invitation(
     credential_id = runtime.service.get_active_credential_id(actor.actor_id)
     if credential_id is None:
         raise AuthenticationError("active credential is unavailable")
-    return _session_json_response(
-        request, runtime, actor, credential_id, status_code=201
-    )
+    return _session_json_response(request, runtime, actor, credential_id, status_code=201)
 
 
 @router.post("/invite/accept", status_code=201)

@@ -5,7 +5,7 @@ OpenCare documents one bounded remote deployment path:
 - single-node VPS;
 - Docker Compose;
 - Caddy reverse proxy with HTTPS/TLS;
-- read-only mounted synthetic/reference vault JSON file;
+- Product Core SQLite and immutable source storage;
 - the legacy private password gate for non-Actor surfaces;
 - local Actor sessions and explicit Person assignments for live Product Core data.
 
@@ -23,6 +23,12 @@ This document covers only:
 - `deploy/env.production.example`;
 - `scripts/smoke_check.py`.
 
+The default Compose stack is Product Core-only. The legacy synthetic/reference
+vault is an explicit optional override: add
+`-f deploy/docker-compose.legacy-vault.yml` and set
+`OPENCARE_LOCAL_VAULT_PATH` only when `/demo/health-vault` compatibility is
+needed. It is never a Product Core dependency.
+
 Advanced operators can adapt the container to other reverse proxies or orchestrators later, but that is outside the validated V2C path.
 
 ## Operator Prerequisites
@@ -31,8 +37,8 @@ Advanced operators can adapt the container to other reverse proxies or orchestra
 - Docker Engine with Compose plugin installed;
 - a public DNS record pointed at the VPS;
 - ports `80` and `443` open to the VPS for Caddy TLS;
-- a local vault JSON file you control on the VPS host;
-- strong values for `OPENCARE_SECRET_KEY` and `OPENCARE_ACCESS_PASSWORD`.
+- strong values for `OPENCARE_SECRET_KEY`, `OPENCARE_ACCESS_PASSWORD`, and the
+  32+ character `OPENCARE_BOOTSTRAP_SECRET`.
 
 Do not expose the app container directly on the public internet. In V2C, the documented path is Caddy on `80/443` in front of the app container.
 
@@ -59,7 +65,7 @@ The repo ignores those operator-specific files so secrets and real domains do no
 ```txt
 OPENCARE_SECRET_KEY=<32+ character secret>
 OPENCARE_ACCESS_PASSWORD=<strong private password>
-OPENCARE_LOCAL_VAULT_PATH=/absolute/or/repo-relative/path/to/local-family-vault.json
+OPENCARE_BOOTSTRAP_SECRET=<32+ character operator bootstrap secret>
 OPENCARE_PRODUCT_DATA_DIR=./private/opencare-product-core
 OPENCARE_BACKUP_DIR=./private/opencare-backups
 ```
@@ -68,12 +74,14 @@ Rules:
 
 - `OPENCARE_SECRET_KEY` must be at least 32 characters;
 - `OPENCARE_ACCESS_PASSWORD` should be unique and strong;
-- `OPENCARE_LOCAL_VAULT_PATH` must point to a host file you control;
-- the mounted vault file stays read-only in the container;
+- `OPENCARE_BOOTSTRAP_SECRET` is checked constant-time during the one-time
+  production bootstrap and is never stored, audited, or logged;
 - `OPENCARE_PRODUCT_DATA_DIR` and `OPENCARE_BACKUP_DIR` are required host directories;
 - do not point this path at a committed private data file.
 
-For a safe dry run, you can temporarily use `docs/examples/local-family-vault.template.json`.
+Backups contain sensitive plaintext Product Core data; protect them as private
+operator artifacts. This is a documented controlled self-hosted path, not a
+production-readiness or clinical-readiness claim.
 
 ## Product Core host storage
 
@@ -133,9 +141,7 @@ The production stack:
 - runs the existing app image/build path;
 - sets `OPENCARE_ENV=production`;
 - sets `OPENCARE_DEMO_MODE=false`;
-- sets `OPENCARE_VAULT_SOURCE=local_file`;
-- sets `OPENCARE_VAULT_FILE=/vault/local-family-vault.json`;
-- mounts the host vault file read-only;
+- sets `OPENCARE_VAULT_SOURCE=demo` only for legacy/demo compatibility;
 - mounts persistent Product Core state at `/var/lib/opencare/product-core`;
 - mounts operator backups at `/var/backups/opencare`;
 - keeps the server-side session database on non-persistent `/run/opencare` tmpfs;
@@ -147,6 +153,12 @@ Bring the stack up with your operator env file:
 
 ```powershell
 docker compose --env-file deploy/env.production -f docker-compose.prod.yml up -d --build
+```
+
+For the optional legacy vault override:
+
+```powershell
+docker compose --env-file deploy/env.production -f docker-compose.prod.yml -f deploy/docker-compose.legacy-vault.yml up -d --build
 ```
 
 Stop it:
@@ -219,7 +231,7 @@ docker compose --env-file deploy/env.production -f docker-compose.prod.yml exec 
   --backup /var/backups/opencare/<new-backup-directory>
 ```
 
-Backups contain schema v5 durable identity/access state, including credential
+Backups contain schema v9 durable Product Core and identity/access state, including credential
 verifiers and invitation hashes. They exclude plaintext passwords, invitation
 codes, `.env`, `OPENCARE_SECRET_KEY`, provider credentials, cookies, sessions,
 TLS material, deployment configuration, and generated reports. Store the
@@ -238,11 +250,13 @@ owners, caregivers, and outstanding invitations in the restored snapshot.
 
 - Use a strong `OPENCARE_SECRET_KEY`.
 - Use a strong `OPENCARE_ACCESS_PASSWORD`.
+- Use a unique 32+ character `OPENCARE_BOOTSTRAP_SECRET`; clear it after the
+  first bootstrap attempt.
 - Use real HTTPS/TLS through Caddy.
 - Open only the firewall ports you need, typically `80` and `443`.
 - Do not expose the app container directly without the reverse proxy.
 - Do not commit private vault files.
-- Keep the vault mount read-only.
+- Keep optional legacy vault mounts read-only.
 - Keep `/run/opencare` ephemeral and never copy its session database into a backup.
 - Keep `deploy/env.production` and `deploy/Caddyfile` uncommitted.
 

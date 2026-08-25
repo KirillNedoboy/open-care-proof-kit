@@ -42,6 +42,7 @@ class BootstrapRequest(APIModel):
     person_ids: list[str] = Field(default_factory=list, max_length=MAX_FAMILY_PEOPLE)
     own_person_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
     confirm_full_owner_access: bool = Field(default=False, strict=True)
+    bootstrap_secret: str | None = Field(default=None, max_length=1024)
 
     @field_validator("username")
     @classmethod

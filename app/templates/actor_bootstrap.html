@@ -20,6 +20,7 @@
         <label for="bootstrap-username">Username</label><input id="bootstrap-username" required maxlength="128" autocomplete="username">
         <label for="bootstrap-display-name">Display name</label><input id="bootstrap-display-name" required maxlength="200" autocomplete="name">
         <label for="bootstrap-password">Password</label><input id="bootstrap-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+        {% if bootstrap_secret_required %}<label for="bootstrap-secret">Operator bootstrap secret</label><input id="bootstrap-secret" type="password" required minlength="32" maxlength="1024" autocomplete="off"><p>Required in production. It is checked once and never stored.</p>{% endif %}
         <label for="bootstrap-person-ids">Existing Person IDs (optional, comma-separated)</label><textarea id="bootstrap-person-ids" autocomplete="off"></textarea>
         <label class="confirmation"><input id="bootstrap-owner-confirmation" type="checkbox"> I understand that every listed Person will grant this Actor full owner access.</label>
         <button type="submit">Create administrator</button>

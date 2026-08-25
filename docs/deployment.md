@@ -1,5 +1,14 @@
 # Deployment
 
+Current boundary: Product Core SQLite, immutable sources, and backups are the
+default self-hosted persistence. Sessions live on `/run/opencare` tmpfs in
+production. The legacy local-file vault is optional compatibility only; enable
+it with `deploy/docker-compose.legacy-vault.yml`, never as a Product Core
+dependency. Production bootstrap requires `OPENCARE_BOOTSTRAP_SECRET` (32+
+characters), which is checked once and never persisted. Backups are sensitive
+plaintext operator artifacts; this path is controlled self-hosting, not a
+production-readiness or clinical-readiness claim.
+
 OpenCare Proof Kit V2C is a self-hosted read-only MVP for a private personal/family medical workspace.
 
 This is not clinical software. It does not provide diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice. It does not support real genetics, raw genotype, VCF, FASTQ, BAM, or WGS uploads in this phase.

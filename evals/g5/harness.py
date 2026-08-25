@@ -17,9 +17,9 @@ from typing import Any, cast
 from app.agent.g2_runtime import G2Runtime
 from app.agent.providers.contract import ProviderExecutionRequest
 from app.agent_trust.builders import BuildRefused, EnvelopeRequest, TrustedEnvelopeBuilder
-from app.agent_trust.canonical import canonical_bytes
+from app.agent_trust.canonical import canonical_bytes, sha256_hex
 from app.agent_trust.fixtures import FIXTURE_NOW
-from app.agent_trust.identifiers import ToolId
+from app.agent_trust.identifiers import ACTION_REQUIREMENTS, ToolId
 from app.agent_trust.models import ExecutionReceipt, TrustEnvelope
 from app.agent_trust.validation import validate_envelope_bytes, validate_receipt_bytes
 from app.family_access.sessions import SessionStore
@@ -56,7 +56,10 @@ class MemoryG2Repository:
         del consent_id, actor_id, person_id
         self.receipts.append((execution_id, receipt, mutation_attempted))
 
-    def get_execution_receipt(self, execution_id: str) -> ExecutionReceipt | None:
+    def get_execution_receipt(
+        self, execution_id: str, *, actor_id: str, person_id: str
+    ) -> ExecutionReceipt | None:
+        del actor_id, person_id
         for stored_id, receipt, _ in self.receipts:
             if stored_id == execution_id:
                 return receipt
@@ -153,6 +156,7 @@ class _Harness:
         def _prepare_envelope(
             *,
             actor_id: str,
+            credential_id: str,
             person_id: str,
             purpose_id: Any,
             action_id: Any,
@@ -161,7 +165,7 @@ class _Harness:
             del question
             request = EnvelopeRequest(
                 actor_id=actor_id,
-                credential_id=scenario.credential_id,
+                credential_id=credential_id,
                 person_id=person_id,
                 purpose_id=purpose_id,
                 action_id=action_id,
@@ -183,8 +187,19 @@ class _Harness:
         store.set_active_person(created.session_token, scenario.person_id)
 
         def _revalidate(pending: Any, session: Any) -> bool:
-            del session
-            return self.authority.consent_is_active(pending.actor_id, pending.person_id)
+            required_scopes = ACTION_REQUIREMENTS[pending.action_id][0]
+            decision = self.authority.authorize(
+                actor_id=session.actor_id,
+                credential_id=session.credential_id,
+                person_id=pending.person_id,
+                required_scopes=required_scopes,
+                authorized_at=now,
+            )
+            if decision.decision != "allow":
+                raise BuildRefused(decision.reason_codes or ["context_changed"])
+            return (
+                self.authority.consent_is_active(pending.actor_id, pending.person_id)
+            )
 
         self.runtime = G2Runtime(
             store,
@@ -192,10 +207,27 @@ class _Harness:
             revalidate=_revalidate,
             provider=self.provider,
             repository=self.repository,
+            resolve_evidence=self._resolve_evidence,
             clock=lambda: now,
         )
         self.token = created.session_token
         self.snapshot_evidence()
+
+    def _resolve_evidence(self, envelope: TrustEnvelope) -> tuple[dict[str, Any], ...]:
+        resolved: list[dict[str, Any]] = []
+        for item in envelope.evidence:
+            record = self.authority.evidence.get(item.evidence_id)
+            if record is None or sha256_hex(record.content) != item.content_sha256:
+                raise BuildRefused(["context_changed"])
+            resolved.append(
+                {
+                    "evidence_id": item.evidence_id,
+                    "content_sha256": item.content_sha256,
+                    "selected_fields": tuple(item.selected_fields),
+                    "source_ids": tuple(item.source_ids),
+                }
+            )
+        return tuple(resolved)
 
     def snapshot_evidence(self) -> None:
         self.evidence_snapshot = {

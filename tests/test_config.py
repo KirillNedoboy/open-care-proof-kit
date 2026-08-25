@@ -71,7 +71,8 @@ def test_load_settings_rejects_production_local_file_mode_without_private_protec
             {
                 "OPENCARE_ENV": "production",
                 "OPENCARE_DEMO_MODE": "true",
-                "OPENCARE_SECRET_KEY": "x" * 32,
+                    "OPENCARE_SECRET_KEY": "x" * 32,
+                    "OPENCARE_BOOTSTRAP_SECRET": "b" * 32,
                 "OPENCARE_VAULT_SOURCE": "local_file",
                 "OPENCARE_VAULT_FILE": str(vault_path),
             }
@@ -98,7 +99,8 @@ def test_load_settings_requires_access_password_for_private_production() -> None
         load_settings(
             {
                 "OPENCARE_ENV": "production",
-                "OPENCARE_SECRET_KEY": "x" * 32,
+                    "OPENCARE_SECRET_KEY": "x" * 32,
+                    "OPENCARE_BOOTSTRAP_SECRET": "b" * 32,
                 "OPENCARE_DEMO_MODE": "false",
             }
         )
@@ -108,7 +110,8 @@ def test_load_settings_accepts_private_production_with_required_secrets() -> Non
     settings = load_settings(
         {
             "OPENCARE_ENV": "production",
-            "OPENCARE_SECRET_KEY": "x" * 32,
+                "OPENCARE_SECRET_KEY": "x" * 32,
+                "OPENCARE_BOOTSTRAP_SECRET": "b" * 32,
             "OPENCARE_DEMO_MODE": "false",
             "OPENCARE_ACCESS_PASSWORD": "vault-password",
         }

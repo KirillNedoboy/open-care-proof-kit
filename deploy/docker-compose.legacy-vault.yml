@@ -1,0 +1,10 @@
+services:
+  opencare:
+    environment:
+      OPENCARE_VAULT_SOURCE: local_file
+      OPENCARE_VAULT_FILE: /vault/local-family-vault.json
+    volumes:
+      - type: bind
+        source: ${OPENCARE_LOCAL_VAULT_PATH:?OPENCARE_LOCAL_VAULT_PATH is required only for legacy vault mode}
+        target: /vault/local-family-vault.json
+        read_only: true
