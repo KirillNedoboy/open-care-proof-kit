@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="{{ locale|default('en', true)|e }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f3f6f4">
+  <title>{% block title %}{{ t('app.name') }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/product_shell.css') }}">
+  {% block page_styles %}{% endblock %}
+  <script src="{{ url_for('static', path='/product_shell.js') }}" defer></script>
+  {% block page_scripts %}{% endblock %}
+</head>
+<body class="product-shell {% block page_class %}{% endblock %}" {% block body_attributes %}{% endblock %}>
+  <a class="product-shell__skip-link" href="#product-main">{{ t('shell.skip_to_content') }}</a>
+
+  <aside class="product-shell__sidebar" id="product-sidebar" aria-label="{{ t('shell.primary_navigation') }}">
+    <a class="product-shell__identity" href="/workspace" aria-label="{{ t('app.name') }}">
+      <span class="product-shell__identity-mark" aria-hidden="true">O</span>
+      <span class="product-shell__identity-name" translate="no">OpenCare</span>
+    </a>
+
+    <nav class="product-shell__nav" aria-label="{{ t('shell.primary_navigation') }}">
+      <a class="product-shell__nav-link{% if active_nav == 'overview' %} is-active{% endif %}" href="/workspace#overview"{% if active_nav == 'overview' %} aria-current="page"{% endif %}>{{ t('nav.overview') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'health' %} is-active{% endif %}" href="/workspace#records"{% if active_nav == 'health' %} aria-current="page"{% endif %}>{{ t('nav.health') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'documents' %} is-active{% endif %}" href="/workspace#documents"{% if active_nav == 'documents' %} aria-current="page"{% endif %}>{{ t('nav.documents') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'activity' %} is-active{% endif %}" href="/workspace#timeline"{% if active_nav == 'activity' %} aria-current="page"{% endif %}>{{ t('nav.activity') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'chat' %} is-active{% endif %}" href="/chat"{% if active_nav == 'chat' %} aria-current="page"{% endif %}>{{ t('nav.chat') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'genetics' %} is-active{% endif %}" href="/genetics"{% if active_nav == 'genetics' %} aria-current="page"{% endif %}>{{ t('nav.genetics') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'family' %} is-active{% endif %}" href="/family-access"{% if active_nav == 'family' %} aria-current="page"{% endif %}>{{ t('nav.family_access') }}</a>
+    </nav>
+
+    <div class="product-shell__account" aria-label="{{ t('shell.account') }}">
+      <span class="product-shell__account-label">{{ t('shell.account') }}</span>
+      <a class="product-shell__account-link{% if active_nav == 'settings' %} is-active{% endif %}" href="/family-access#account-settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}>{{ t('nav.settings') }}</a>
+    </div>
+  </aside>
+
+  <header class="product-shell__header">
+    <div class="product-shell__header-start">
+      <button class="product-shell__menu-button" type="button" aria-controls="product-sidebar" aria-expanded="true" aria-label="{{ t('shell.close_navigation') }}">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+      <a class="product-shell__mobile-identity" href="/workspace" translate="no">OpenCare</a>
+      <div class="product-shell__person" id="product-shell-person" data-active-person-id="{{ active_person_id|default('', true)|e }}">
+        <span class="product-shell__person-label">{{ t('shell.person') }}</span>
+        <span class="product-shell__person-status" aria-live="polite">{% if active_person_id %}{{ t('person.selected') }}{% else %}{{ t('person.no_selection') }}{% endif %}</span>
+      </div>
+    </div>
+
+    <label class="product-shell__locale" for="product-shell-locale">
+      <span>{{ t('shell.language') }}</span>
+      <select id="product-shell-locale" name="locale">
+        <option value="en"{% if locale == 'en' %} selected{% endif %}>{{ t('locale.en') }}</option>
+        <option value="ru"{% if locale == 'ru' %} selected{% endif %}>{{ t('locale.ru') }}</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="product-shell__main" id="product-main" tabindex="-1">
+    {% block genetics_local_nav %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script id="product-shell-translations" type="application/json">{{ translations|default({}, true)|tojson }}</script>
+</body>
+</html>

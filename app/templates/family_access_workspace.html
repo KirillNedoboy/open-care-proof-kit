@@ -1,17 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>Family and access · OpenCare</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-  <script src="{{ url_for('static', path='/family_access_workspace.js') }}" defer></script>
-</head>
-<body>
-  <header><a href="/workspace">OpenCare</a><nav aria-label="Primary"><a href="/workspace">Workspace</a><a href="/chat">Chat</a><a href="/vault">Vault</a><a aria-current="page" href="/family-access">Family &amp; access</a></nav></header>
-  <main>
-    <section>
+{% extends "product_shell.html" %}
+{% block title %}{{ t("page.family_title") }}{% endblock %}
+{% block page_styles %}<link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/family_access_workspace.js') }}" defer></script>{% endblock %}
+{% block page_class %}family-access-page{% endblock %}
+{% block content %}
+    <section id="account-settings">
       <p>Private access management</p><h1>Family and permissions</h1>
       <p>Family relationships describe context. Only an active owner or caregiver assignment grants Person access.</p>
       <p id="current-actor" class="meta"></p><button id="actor-logout" type="button">Sign out</button>
@@ -57,6 +50,4 @@
       <form id="add-family-member-form" hidden><h3>Add Person to Family</h3><label for="family-member-person">Person</label><select id="family-member-person"></select><button type="submit">Add Person</button></form>
       <form id="create-relationship-form" hidden><h3>Add relationship</h3><label for="relationship-person">Person</label><select id="relationship-person"></select><label for="relationship-related-person">Related Person</label><select id="relationship-related-person"></select><label for="relationship-type">Relationship</label><select id="relationship-type"><option>parent</option><option>child</option><option>spouse</option><option>partner</option><option>sibling</option><option>guardian</option><option>dependent</option><option>other</option></select><button type="submit">Add relationship</button></form>
     </section>
-  </main>
-</body>
-</html>
+{% endblock %}

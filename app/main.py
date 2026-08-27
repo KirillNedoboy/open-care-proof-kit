@@ -15,6 +15,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
@@ -59,6 +60,11 @@ from app.product_core.errors import (
 from app.product_core.errors import NotFoundError as ProductCoreNotFoundError
 from app.product_core.runtime import create_product_core_runtime
 from app.reports.json_audit import PIPELINE_STEPS
+from app.ui_localization import (
+    get_translations,
+    resolve_locale,
+    translate,
+)
 from app.vault.loader import load_health_vault
 from app.vault.schema import HealthVault
 
@@ -206,6 +212,13 @@ SERVICE_NAME = "opencare-proof-kit"
 ACCESS_COOKIE_NAME = "opencare_access"
 ACCESS_COOKIE_VALUE = "private-access"
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
+@pass_context
+def _template_translate(context: Any, key: str) -> str:
+    locale = context.get("locale")
+    return translate(locale if isinstance(locale, str) else None, key)
+
+
+templates.env.globals["t"] = _template_translate
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 app.include_router(product_core_router)
 app.include_router(family_access_router)
@@ -347,10 +360,17 @@ def _actor_page(
     template_name: str,
     context: dict[str, object] | None = None,
 ) -> HTMLResponse:
+    locale = resolve_locale(request)
+    page_context: dict[str, object] = {
+        "locale": locale,
+        "translations": get_translations(locale),
+    }
+    if context:
+        page_context.update(context)
     response = templates.TemplateResponse(
         request=request,
         name=template_name,
-        context=context or {},
+        context=page_context,
     )
     response.headers["Cache-Control"] = "no-store"
     response.headers["Referrer-Policy"] = "no-referrer"
@@ -390,7 +410,11 @@ def family_access_page(request: Request) -> Response:
     access = _resolve_browser_access(request)
     if isinstance(access, Response):
         return access
-    return _actor_page(request, "family_access_workspace.html")
+    return _actor_page(
+        request,
+        "family_access_workspace.html",
+        {"active_nav": "family", "active_person_id": access.active_person_id},
+    )
 
 
 @app.get("/workspace", response_class=HTMLResponse)
@@ -406,7 +430,7 @@ def workspace(request: Request) -> Response:
     return _actor_page(
         request,
         "product_core_workspace.html",
-        {"active_person_id": access.active_person_id},
+        {"active_nav": "overview", "active_person_id": access.active_person_id},
     )
 
 
@@ -423,7 +447,7 @@ def genetics_page(request: Request) -> Response:
     return _actor_page(
         request,
         "genetics.html",
-        {"active_person_id": access.active_person_id},
+        {"active_nav": "genetics", "active_person_id": access.active_person_id},
     )
 
 
@@ -442,6 +466,8 @@ def chat_page(request: Request) -> Response:
         request,
         "chat.html",
         {
+            "active_nav": "chat",
+            "active_person_id": person_id,
             "vault_source_label": "Product Core",
             "vault_source_name": person.display_name,
             "family_label": person.display_name,
@@ -1091,7 +1117,11 @@ def vault_page(request: Request) -> Response:
         person = access.runtime.people.get(person_id)
     except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
         return _live_access_error(exc)
-    return _actor_page(request, "product_core_vault.html", {"person": person})
+    return _actor_page(
+        request,
+        "product_core_vault.html",
+        {"active_nav": "documents", "active_person_id": person_id, "person": person},
+    )
 
 
 @app.get("/reviewer-quickstart")

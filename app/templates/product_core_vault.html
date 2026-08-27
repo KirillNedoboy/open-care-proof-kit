@@ -1,14 +1,8 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Private Person vault · OpenCare</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-</head>
-<body>
-  <header><a href="/workspace">OpenCare</a><nav aria-label="Primary"><a href="/workspace">Workspace</a><a href="/chat">Chat</a><a aria-current="page" href="/vault">Vault</a><a href="/family-access">Family &amp; access</a></nav></header>
-  <main>
+{% extends "product_shell.html" %}
+{% block title %}{{ t("page.vault_title") }}{% endblock %}
+{% block page_styles %}<link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">{% endblock %}
+{% block page_class %}vault-page{% endblock %}
+{% block content %}
     <section>
       <p>Private Product Core vault</p>
       <h1>{{ person.display_name }}</h1>
@@ -19,6 +13,4 @@
       <h2>Person-scoped records</h2>
       <p>Use the <a href="/workspace">Workspace</a> to review sources, medications, timeline events, visits, and clinician discussion questions available to this Actor.</p>
     </section>
-  </main>
-</body>
-</html>
+{% endblock %}

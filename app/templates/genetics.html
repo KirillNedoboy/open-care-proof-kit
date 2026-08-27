@@ -1,26 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>OpenCare Genetics Workspace</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/genetics.css') }}">
-  <script src="{{ url_for('static', path='/genetics.js') }}" defer></script>
-</head>
-<body data-genetics-mode="demo" data-person-id="{{ active_person_id or '' }}">
-  <a class="skip-link" href="#workspace-main">Skip to genetics workspace</a>
-  <header class="site-header">
-    <a class="brand" href="/workspace" aria-label="OpenCare home">OpenCare</a>
-    <nav class="primary-nav" aria-label="Primary navigation">
-      <a href="/workspace">Workspace</a>
-      <a href="/vault">Vault</a>
-      <a href="/family-access">Family &amp; access</a>
-      <a href="#workspace-main" aria-current="page">Genetics</a>
-    </nav>
-  </header>
-
-  <main id="workspace-main" tabindex="-1">
+{% extends "product_shell.html" %}
+{% block title %}{{ t("page.genetics_title") }}{% endblock %}
+{% block page_styles %}<link rel="stylesheet" href="{{ url_for('static', path='/genetics.css') }}">{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/genetics.js') }}" defer></script>{% endblock %}
+{% block body_attributes %}data-genetics-mode="demo" data-person-id="{{ active_person_id or '' }}"{% endblock %}
+{% block page_class %}genetics-page{% endblock %}
+{% block content %}
     <header class="workspace-heading">
       <div>
         <p class="section-kicker">Genetics Workspace</p>
@@ -240,6 +224,4 @@
         </section>
       </div>
     </div>
-  </main>
-</body>
-</html>
+{% endblock %}

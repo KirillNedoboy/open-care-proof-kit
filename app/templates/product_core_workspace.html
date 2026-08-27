@@ -1,19 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>OpenCare Health Workspace</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-  <script src="{{ url_for('static', path='/workspace_state.js') }}" defer></script>
-  <script src="{{ url_for('static', path='/product_core_workspace.js') }}" defer></script>
-</head>
-<body>
-  <header class="site-header">
-    <a class="brand" href="/workspace">OpenCare</a>
-    <nav class="primary-nav" aria-label="Primary"><a aria-current="page" href="/workspace">Workspace</a><a href="/genetics">Genetics</a><a id="chat-navigation" href="/chat" hidden>Chat</a><a href="/vault">Vault</a><a href="/family-access">Family &amp; access</a></nav>
-  </header>
-  <main>
+{% extends "product_shell.html" %}
+{% block title %}{{ t("page.workspace_title") }}{% endblock %}
+{% block page_styles %}<link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/workspace_state.js') }}" defer></script><script src="{{ url_for('static', path='/product_core_workspace.js') }}" defer></script>{% endblock %}
+{% block body_attributes %}data-workspace-page="true"{% endblock %}
+{% block content %}
     <section class="workspace-intro" aria-labelledby="workspace-title">
       <div><h1 id="workspace-title">OpenCare Health Workspace</h1><p>Review source-backed records, prepare for visits, and manage the health profiles you can access.</p></div>
       <p class="safety-note">OpenCare organizes records. It does not interpret results or make medical recommendations.</p>
@@ -53,6 +43,4 @@
 
       <section id="export" aria-labelledby="export-title" hidden><div class="section-heading"><div><h2 id="export-title">Export</h2><p>Download a portable copy of this Person and reachable source evidence.</p></div><button id="open-vault-export" type="button">Export vault</button></div><div id="vault-export-warning" class="export-warning" role="alertdialog" aria-modal="false" aria-labelledby="vault-export-warning-title" hidden><h3 id="vault-export-warning-title">Export sensitive vault data?</h3><p>This download may contain health information and source evidence. Store it only where you control access.</p><div class="actions"><button id="confirm-vault-export" type="button">Download vault</button><button id="cancel-vault-export" class="button-secondary" type="button">Cancel</button></div></div></section>
     </div>
-  </main>
-</body>
-</html>
+{% endblock %}
