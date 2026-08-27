@@ -55,6 +55,20 @@ ecosystem evidence pending.
 - Email verification, password recovery, CAPTCHA, internet-scale abuse controls,
   billing, moderation, and organizational SaaS tenancy are not implemented.
 
+## R5.1 UI foundation (this branch)
+
+R5.1 adds a reusable authenticated product shell and shared visual tokens for
+the existing Workspace, Genetics, Vault, and Family Access pages. The shell
+keeps existing page-specific content and Genetics local navigation intact.
+The first UI localization foundation supports English (`en`) and Russian
+(`ru`); the selected locale is stored in the dedicated `opencare_locale`
+SameSite cookie and affects UI copy only. It does not change canonical health
+data, identifiers, machine reason codes, audit codes, API contracts, or
+authorization behavior.
+
+Full page-by-page localization, auth-page styling, chat shell convergence,
+and broader product-page redesign remain deferred to later R5 passes.
+
 ## HTTP privacy contract
 
 - no valid Actor session on an API endpoint: `401`;
