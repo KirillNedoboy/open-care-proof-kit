@@ -1,0 +1,309 @@
+body.public-auth-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  font: .9375rem/1.5 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.public-auth-shell *,
+.public-auth-shell *::before,
+.public-auth-shell *::after {
+  box-sizing: border-box;
+}
+
+.public-auth-shell [hidden] {
+  display: none !important;
+}
+
+.public-auth-shell a {
+  color: var(--shell-accent-strong);
+}
+
+.public-auth-shell button,
+.public-auth-shell input,
+.public-auth-shell select,
+.public-auth-shell textarea {
+  font: inherit;
+}
+
+.public-auth-shell__skip-link {
+  position: fixed;
+  z-index: 100;
+  top: .75rem;
+  left: .75rem;
+  padding: .65rem .85rem;
+  border-radius: var(--shell-radius);
+  background: var(--shell-accent-strong);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-180%);
+}
+
+.public-auth-shell__skip-link:focus {
+  transform: translateY(0);
+}
+
+.public-auth-shell__header {
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .75rem clamp(1rem, 4vw, 2rem);
+  border-bottom: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+}
+
+.public-auth-shell__identity {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  color: var(--shell-text);
+  font-size: 1.05rem;
+  font-weight: 760;
+  letter-spacing: -.025em;
+  text-decoration: none;
+}
+
+.public-auth-shell__identity-mark {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--shell-accent);
+  border-radius: 50%;
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent-strong);
+  font-size: .9rem;
+  font-weight: 800;
+}
+
+.public-auth-shell__locale {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--shell-muted);
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.public-auth-shell__locale select {
+  min-height: 2.75rem;
+  padding: .45rem 2rem .45rem .7rem;
+  border: 1px solid var(--shell-border);
+  border-radius: var(--shell-radius);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  cursor: pointer;
+}
+
+.public-auth-shell__main {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 5vw, 4rem) 1rem;
+  scroll-margin-top: 1rem;
+}
+
+.public-auth-shell__main:focus {
+  outline: none;
+}
+
+.public-auth-card {
+  width: min(100%, 32rem);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--shell-radius-large);
+  background: var(--shell-surface);
+  box-shadow: 0 12px 32px rgb(24 48 43 / 8%);
+}
+
+.public-auth-card > :first-child {
+  margin-top: 0;
+}
+
+.public-auth-card > :last-child {
+  margin-bottom: 0;
+}
+
+.public-auth-card h1,
+.public-auth-card h2 {
+  color: var(--shell-text);
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+
+.public-auth-card h1 {
+  margin: 0 0 .75rem;
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+}
+
+.public-auth-card h2 {
+  margin: 1.75rem 0 .75rem;
+  font-size: 1.2rem;
+}
+
+.public-auth-card p {
+  color: var(--shell-muted);
+}
+
+.public-auth-card form {
+  display: grid;
+  gap: .75rem;
+  margin-top: 1.5rem;
+}
+
+.public-auth-card form > label:not(.confirmation) {
+  margin-bottom: -.4rem;
+  color: var(--shell-text);
+  font-size: .8125rem;
+  font-weight: 700;
+}
+
+.public-auth-card input:not([type="checkbox"]),
+.public-auth-card select,
+.public-auth-card textarea {
+  width: 100%;
+  min-height: 2.875rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--shell-border);
+  border-radius: var(--shell-radius);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+}
+
+.public-auth-card textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.public-auth-card .confirmation {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  align-items: start;
+  gap: .65rem;
+  color: var(--shell-text);
+}
+
+.public-auth-card input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: .1rem 0 0;
+  accent-color: var(--shell-accent);
+}
+
+.public-auth-card button,
+.public-auth-card a[role="button"] {
+  min-height: 2.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .65rem 1rem;
+  border: 1px solid var(--shell-accent);
+  border-radius: var(--shell-radius);
+  background: var(--shell-accent);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.public-auth-card button:hover,
+.public-auth-card a[role="button"]:hover {
+  border-color: var(--shell-accent-strong);
+  background: var(--shell-accent-strong);
+}
+
+.public-auth-card button:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.public-auth-card .note,
+.public-auth-card .error,
+.public-auth-card .success {
+  padding: .75rem;
+  border-left: .25rem solid currentColor;
+  background: var(--shell-muted-surface);
+}
+
+.public-auth-card .error {
+  color: var(--danger);
+}
+
+.public-auth-card .success {
+  color: var(--success);
+}
+
+.public-auth-card .meta {
+  font-size: .8125rem;
+}
+
+.public-auth-shell__footer {
+  min-height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .75rem 1rem;
+  border-top: 1px solid var(--shell-border);
+  color: var(--shell-muted);
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.public-auth-shell :where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--focus-state);
+  outline-offset: 2px;
+}
+
+.public-auth-shell__locale select:hover,
+.public-auth-card input:not([type="checkbox"]):hover,
+.public-auth-card select:hover,
+.public-auth-card textarea:hover {
+  border-color: #9fb7af;
+}
+
+@media (max-width: 34rem) {
+  .public-auth-shell__header {
+    min-height: 4rem;
+    padding-inline: .75rem;
+  }
+
+  .public-auth-shell__identity {
+    gap: .5rem;
+  }
+
+  .public-auth-shell__locale {
+    gap: .35rem;
+  }
+
+  .public-auth-shell__main {
+    place-items: start center;
+    padding: 1rem .75rem;
+  }
+
+  .public-auth-card {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 24rem) {
+  .public-auth-shell__locale > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

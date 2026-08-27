@@ -1,29 +1,27 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>Sign in · OpenCare</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-  <script src="{{ url_for('static', path='/actor_auth.js') }}" defer></script>
-</head>
-<body>
-  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a id="registration-link" href="/register" hidden>Create account</a><a id="bootstrap-link" href="/bootstrap" hidden>Installation setup</a><a href="/invite">Have an invitation?</a></nav></header>
-  <main>
-    <section>
-      <p>Private workspace</p>
-      <h1>Sign in</h1>
-      <p>Use your local username and password. Your account starts with your own health workspace.</p>
-      <p id="actor-auth-status" role="status" aria-live="polite"></p>
-      <form id="actor-login-form">
-        <input id="login-next" type="hidden" value="{{ next_path }}">
-        <label for="login-username">Username</label><input id="login-username" required maxlength="128" autocomplete="username">
-        <label for="login-password">Password</label><input id="login-password" type="password" required maxlength="1024" autocomplete="current-password">
-        <button type="submit">Sign in</button>
-      </form>
-      <p id="actor-auth-complete" hidden><a href="/workspace">Open Workspace</a></p>
-    </section>
-  </main>
-</body>
-</html>
+{% extends "public_auth_shell.html" %}
+{% block title %}{{ t("page.login_title") }}{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/actor_auth.js') }}" defer></script>{% endblock %}
+{% block content %}
+<section class="auth-card" aria-labelledby="login-title">
+  <header class="auth-card__heading">
+    <p class="auth-kicker">{{ t("auth.private_workspace") }}</p>
+    <h1 id="login-title">{{ t("auth.welcome_back") }}</h1>
+    <p>{{ t("auth.sign_in_intro") }}</p>
+  </header>
+  <p id="actor-auth-status" class="auth-status" role="status" aria-live="polite"></p>
+  <form id="actor-login-form" class="auth-form">
+    <input id="login-next" type="hidden" value="{{ next_path }}">
+    <label for="login-username">{{ t("form.username") }}</label>
+    <input id="login-username" name="username" required maxlength="128" autocomplete="username">
+    <label for="login-password">{{ t("form.password") }}</label>
+    <input id="login-password" name="password" type="password" required maxlength="1024" autocomplete="current-password">
+    <button type="submit">{{ t("auth.sign_in") }}</button>
+  </form>
+  <nav class="auth-secondary-links" aria-label="{{ t("auth.other_options") }}">
+    <a id="registration-link" href="/register" hidden>{{ t("auth.create_account") }}</a>
+    <a href="/invite">{{ t("auth.have_invitation") }}</a>
+    <a id="bootstrap-link" href="/bootstrap" hidden>{{ t("auth.installation_setup") }}</a>
+  </nav>
+  <p id="actor-auth-complete" class="auth-complete" hidden><a href="/workspace">{{ t("auth.open_workspace") }}</a></p>
+</section>
+{% endblock %}

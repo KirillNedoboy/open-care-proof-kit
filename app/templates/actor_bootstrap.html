@@ -1,32 +1,42 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>Set up installation · OpenCare</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-  <script src="{{ url_for('static', path='/actor_auth.js') }}" defer></script>
-</head>
-<body>
-  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/login">Sign in</a><a href="/invite">Use invitation</a></nav></header>
-  <main>
-    <section>
-      <p>One-time setup</p>
-      <h1>Create the first installation administrator</h1>
-      <p>This account can administer the installation. It receives no Person access unless you explicitly list existing Person IDs and confirm full owner access.</p>
-      <p id="actor-auth-status" role="status" aria-live="polite"></p>
-      <form id="actor-bootstrap-form">
-        <label for="bootstrap-username">Username</label><input id="bootstrap-username" required maxlength="128" autocomplete="username">
-        <label for="bootstrap-display-name">Display name</label><input id="bootstrap-display-name" required maxlength="200" autocomplete="name">
-        <label for="bootstrap-password">Password</label><input id="bootstrap-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
-        {% if bootstrap_secret_required %}<label for="bootstrap-secret">Operator bootstrap secret</label><input id="bootstrap-secret" type="password" required minlength="32" maxlength="1024" autocomplete="off"><p>Required in production. It is checked once and never stored.</p>{% endif %}
-        <label for="bootstrap-person-ids">Existing Person IDs (optional, comma-separated)</label><textarea id="bootstrap-person-ids" autocomplete="off"></textarea>
-        <label class="confirmation"><input id="bootstrap-owner-confirmation" type="checkbox"> I understand that every listed Person will grant this Actor full owner access.</label>
-        <button type="submit">Create administrator</button>
-      </form>
-      <p id="actor-auth-complete" hidden><a href="/workspace">Open Workspace</a></p>
-    </section>
-  </main>
-</body>
-</html>
+{% extends "public_auth_shell.html" %}
+{% block title %}{{ t("page.bootstrap_title") }}{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/actor_auth.js') }}" defer></script>{% endblock %}
+{% block content %}
+<section class="auth-card" aria-labelledby="bootstrap-title">
+  <header class="auth-card__heading">
+    <p class="auth-kicker">{{ t("auth.one_time_setup") }}</p>
+    <h1 id="bootstrap-title">{{ t("auth.bootstrap_title") }}</h1>
+    <p>{{ t("auth.bootstrap_intro") }}</p>
+  </header>
+  <p id="actor-auth-status" class="auth-status" role="status" aria-live="polite">{{ t("auth.checking_setup") }}</p>
+  <form id="actor-bootstrap-form" class="auth-form" hidden>
+    <h2>{{ t("auth.administrator_account") }}</h2>
+    <p class="note">{{ t("auth.bootstrap_admin_copy") }}</p>
+    <label for="bootstrap-username">{{ t("form.username") }}</label>
+    <input id="bootstrap-username" name="username" required maxlength="128" autocomplete="username">
+    <label for="bootstrap-display-name">{{ t("form.display_name") }}</label>
+    <input id="bootstrap-display-name" name="display_name" required maxlength="200" autocomplete="name">
+    <label for="bootstrap-password">{{ t("form.password") }}</label>
+    <input id="bootstrap-password" name="password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+    {% if bootstrap_secret_required %}
+    <label for="bootstrap-secret">{{ t("form.bootstrap_secret") }}</label>
+    <input id="bootstrap-secret" name="bootstrap_secret" type="password" required minlength="32" maxlength="1024" autocomplete="off">
+    <p class="note">{{ t("auth.bootstrap_secret_production") }}</p>
+    {% endif %}
+    <details>
+      <summary>{{ t("auth.advanced") }}</summary>
+      <label for="bootstrap-person-ids">{{ t("form.existing_person_ids") }}</label>
+      <textarea id="bootstrap-person-ids" name="person_ids" autocomplete="off"></textarea>
+      <p class="note">{{ t("auth.existing_person_ids_help") }}</p>
+      <label class="confirmation"><input id="bootstrap-owner-confirmation" type="checkbox"> <span>{{ t("auth.owner_confirmation") }}</span></label>
+    </details>
+    <button type="submit">{{ t("auth.create_administrator") }}</button>
+  </form>
+  <p id="bootstrap-setup-complete" class="note" hidden>{{ t("auth.setup_complete") }} <a href="/login">{{ t("auth.sign_in_instead") }}</a></p>
+  <p id="actor-auth-complete" class="auth-complete" hidden><a href="/workspace">{{ t("auth.open_workspace") }}</a></p>
+  <nav class="auth-secondary-links" aria-label="{{ t("auth.other_options") }}">
+    <a href="/login">{{ t("auth.sign_in") }}</a>
+    <a href="/invite">{{ t("auth.use_invitation") }}</a>
+  </nav>
+</section>
+{% endblock %}

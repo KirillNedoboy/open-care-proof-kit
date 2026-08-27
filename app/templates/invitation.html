@@ -1,44 +1,45 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>Use invitation · OpenCare</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-  <script src="{{ url_for('static', path='/invitation.js') }}" defer></script>
-</head>
-<body>
-  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/login">Sign in</a><a href="/register">Create account</a></nav></header>
-  <main>
-    <section>
-      <p>Private invitation</p>
-      <h1>Enter an invitation code</h1>
-      <p>Invitation codes are for access shared by another person or family. They are not required for normal sign-in. The code is submitted in the request body and never added to this page’s address.</p>
-      <p id="invitation-status" role="status" aria-live="polite"></p>
-      <form id="invitation-preview-form">
-        <label for="invitation-code">Invitation code</label><input id="invitation-code" type="password" required maxlength="512" autocomplete="off">
-        <button type="submit">Review invitation</button>
-      </form>
-      <div id="invitation-preview" hidden>
-        <h2>Invitation details</h2>
-        <p id="invitation-role"></p><p id="invitation-scopes" class="meta"></p><p id="owner-invitation-warning" class="error" hidden>This invitation grants full owner control, including access management and export.</p>
-      </div>
-      <form id="invitation-register-form" hidden>
-        <h2>Create an account and accept</h2>
-        <label for="invite-username">Username</label><input id="invite-username" required maxlength="128" autocomplete="username">
-        <label for="invite-display-name">Display name</label><input id="invite-display-name" required maxlength="200" autocomplete="name">
-        <label for="invite-password">Password</label><input id="invite-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
-        <label class="confirmation"><input id="register-owner-confirmation" type="checkbox"> I confirm full owner access when this is an owner invitation.</label>
-        <button type="submit">Create account and accept</button>
-      </form>
-      <form id="invitation-accept-form" hidden>
-        <h2>Accept with the signed-in account</h2>
-        <label class="confirmation"><input id="accept-owner-confirmation" type="checkbox"> I confirm full owner access when this is an owner invitation.</label>
-        <button type="submit">Accept invitation</button>
-      </form>
-      <p id="invitation-complete" hidden><a href="/workspace">Open Workspace</a></p>
-    </section>
-  </main>
-</body>
-</html>
+{% extends "public_auth_shell.html" %}
+{% block title %}{{ t("page.invitation_title") }}{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/invitation.js') }}" defer></script>{% endblock %}
+{% block content %}
+<section class="auth-card" aria-labelledby="invitation-title">
+  <header class="auth-card__heading">
+    <p class="auth-kicker">{{ t("auth.private_invitation") }}</p>
+    <h1 id="invitation-title">{{ t("auth.invitation_title") }}</h1>
+    <p>{{ t("auth.invitation_intro") }}</p>
+  </header>
+  <p id="invitation-status" class="auth-status" role="status" aria-live="polite"></p>
+  <form id="invitation-preview-form" class="auth-form">
+    <label for="invitation-code">{{ t("form.invitation_code") }}</label>
+    <input id="invitation-code" name="invitation_code" type="password" required maxlength="512" autocomplete="off">
+    <button type="submit">{{ t("auth.review_invitation") }}</button>
+  </form>
+  <div id="invitation-preview" class="invitation-preview" hidden>
+    <h2>{{ t("auth.invitation_details") }}</h2>
+    <p id="invitation-role"></p>
+    <p id="invitation-scopes" class="meta"></p>
+    <p id="owner-invitation-warning" class="error" hidden>{{ t("auth.owner_warning") }}</p>
+  </div>
+  <form id="invitation-register-form" class="auth-form" hidden>
+    <h2>{{ t("auth.create_account_accept") }}</h2>
+    <label for="invite-username">{{ t("form.username") }}</label>
+    <input id="invite-username" name="username" required maxlength="128" autocomplete="username">
+    <label for="invite-display-name">{{ t("form.display_name") }}</label>
+    <input id="invite-display-name" name="display_name" required maxlength="200" autocomplete="name">
+    <label for="invite-password">{{ t("form.password") }}</label>
+    <input id="invite-password" name="password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+    <label class="confirmation"><input id="register-owner-confirmation" type="checkbox"> <span>{{ t("auth.owner_confirmation") }}</span></label>
+    <button type="submit">{{ t("auth.create_account_accept") }}</button>
+  </form>
+  <form id="invitation-accept-form" class="auth-form" hidden>
+    <h2>{{ t("auth.accept_signed_in") }}</h2>
+    <label class="confirmation"><input id="accept-owner-confirmation" type="checkbox"> <span>{{ t("auth.owner_confirmation") }}</span></label>
+    <button type="submit">{{ t("auth.accept_invitation") }}</button>
+  </form>
+  <p id="invitation-complete" class="auth-complete" hidden><a href="/workspace">{{ t("auth.open_workspace") }}</a></p>
+  <nav class="auth-secondary-links" aria-label="{{ t("auth.other_options") }}">
+    <a href="/login">{{ t("auth.sign_in") }}</a>
+    <a href="/register">{{ t("auth.create_account") }}</a>
+  </nav>
+</section>
+{% endblock %}

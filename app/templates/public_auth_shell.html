@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="{{ locale|default('en', true)|e }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f3f6f4">
+  <meta name="referrer" content="no-referrer">
+  <title>{% block title %}{{ t('app.name') }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/product_shell.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/public_auth.css') }}">
+  {% block page_styles %}{% endblock %}
+  <script id="public-auth-translations" type="application/json">{{ translations|default({}, true)|tojson }}</script>
+  <script src="{{ url_for('static', path='/public_auth.js') }}" defer></script>
+  {% block page_scripts %}{% endblock %}
+</head>
+<body class="public-auth-shell {% block page_class %}{% endblock %}" data-supported-locales="en ru" {% block body_attributes %}{% endblock %}>
+  <a class="public-auth-shell__skip-link" href="#public-auth-main">{{ t('shell.skip_to_content') }}</a>
+
+  <header class="public-auth-shell__header">
+    <a class="public-auth-shell__identity" href="/login" aria-label="{{ t('app.name') }}">
+      <span class="public-auth-shell__identity-mark" aria-hidden="true" translate="no">O</span>
+      <span class="public-auth-shell__identity-name" translate="no">OpenCare</span>
+    </a>
+
+    <label class="public-auth-shell__locale" for="public-auth-locale">
+      <span>{{ t('shell.language') }}</span>
+      <select id="public-auth-locale" name="locale" autocomplete="off">
+        <option value="en"{% if locale == 'en' %} selected{% endif %}>{{ t('locale.en') }}</option>
+        <option value="ru"{% if locale == 'ru' %} selected{% endif %}>{{ t('locale.ru') }}</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="public-auth-shell__main" id="public-auth-main" tabindex="-1">
+    <section class="public-auth-card">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+
+  <footer class="public-auth-shell__footer">
+    <span translate="no">OpenCare</span>
+  </footer>
+</body>
+</html>

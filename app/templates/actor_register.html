@@ -1,31 +1,31 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>Create account · OpenCare</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
-  <script src="{{ url_for('static', path='/account_registration.js') }}" defer></script>
-</head>
-<body>
-  <header><a href="/login">OpenCare</a><nav aria-label="Account"><a href="/login">Sign in</a><a href="/invite">Have an invitation?</a></nav></header>
-  <main>
-    <section>
-      <p>Local account</p>
-      <h1>Create account</h1>
-      <p id="registration-status" data-status-endpoint="/api/family-access/v1/registration-status" role="status" aria-live="polite">Checking account registration…</p>
-      <p id="registration-disabled" class="note" hidden>New account registration is not enabled for this installation. Sign in or use an invitation from someone sharing access with you.</p>
-      <p id="registration-uninitialized" class="note" hidden>This installation must be set up by its operator before accounts can be created.</p>
-      <form id="actor-register-form" hidden>
-        <label for="register-username">Username</label><input id="register-username" required maxlength="128" autocomplete="username">
-        <label for="register-display-name">Display name</label><input id="register-display-name" required maxlength="200" autocomplete="name">
-        <label for="register-password">Password</label><input id="register-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
-        <label for="register-password-confirm">Confirm password</label><input id="register-password-confirm" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
-        <button type="submit">Create account</button>
-      </form>
-      <p id="registration-complete" hidden><a href="/workspace">Open Workspace</a></p>
-    </section>
-  </main>
-</body>
-</html>
+{% extends "public_auth_shell.html" %}
+{% block title %}{{ t("page.register_title") }}{% endblock %}
+{% block page_scripts %}<script src="{{ url_for('static', path='/account_registration.js') }}" defer></script>{% endblock %}
+{% block content %}
+<section class="auth-card" aria-labelledby="register-title">
+  <header class="auth-card__heading">
+    <p class="auth-kicker">{{ t("auth.local_account") }}</p>
+    <h1 id="register-title">{{ t("auth.create_account_title") }}</h1>
+    <p>{{ t("auth.registration_intro") }}</p>
+  </header>
+  <p id="registration-status" class="auth-status" data-status-endpoint="/api/family-access/v1/registration-status" role="status" aria-live="polite">{{ t("auth.registration_status_checking") }}</p>
+  <p id="registration-disabled" class="note" hidden>{{ t("auth.registration_disabled") }}</p>
+  <p id="registration-uninitialized" class="note" hidden>{{ t("auth.registration_uninitialized") }}</p>
+  <form id="actor-register-form" class="auth-form" hidden>
+    <label for="register-display-name">{{ t("form.display_name") }}</label>
+    <input id="register-display-name" name="display_name" required maxlength="200" autocomplete="name">
+    <label for="register-username">{{ t("form.username") }}</label>
+    <input id="register-username" name="username" required maxlength="128" autocomplete="username">
+    <label for="register-password">{{ t("form.password") }}</label>
+    <input id="register-password" name="password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+    <label for="register-password-confirm">{{ t("form.confirm_password") }}</label>
+    <input id="register-password-confirm" name="password_confirmation" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+    <button type="submit">{{ t("auth.create_account_submit") }}</button>
+  </form>
+  <p id="registration-complete" class="auth-complete" hidden><a href="/workspace">{{ t("auth.open_workspace") }}</a></p>
+  <nav class="auth-secondary-links" aria-label="{{ t("auth.other_options") }}">
+    <a href="/login">{{ t("auth.sign_in") }}</a>
+    <a href="/invite">{{ t("auth.have_invitation") }}</a>
+  </nav>
+</section>
+{% endblock %}
