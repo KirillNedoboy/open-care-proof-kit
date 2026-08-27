@@ -3,9 +3,12 @@
   const byId = (id) => document.getElementById(id);
   const status = byId("actor-auth-status");
   const complete = byId("actor-auth-complete");
+  const translate = (key) => window.OpenCareI18n?.t(key, key) || key;
   const showStatus = (message, kind = "") => {
+    if (!status) return;
     status.textContent = message;
-    status.className = kind;
+    status.className = `auth-status ${kind}`.trim();
+    status.hidden = false;
   };
   const submit = async (path, payload) => {
     const response = await fetch(path, {
@@ -14,7 +17,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error("The account request could not be completed.");
+    if (!response.ok) throw new Error(translate("status.account_request_failed"));
     return response;
   };
 
@@ -40,7 +43,7 @@
       event.preventDefault();
       const button = event.submitter;
       button.disabled = true;
-      showStatus("Signing in…");
+      showStatus(translate("status.signing_in"));
       try {
         await submit("/api/family-access/v1/login", {
           username: byId("login-username").value,
@@ -61,12 +64,18 @@
     fetch("/api/family-access/v1/bootstrap-status", { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((payload) => {
-        if (!payload.bootstrap_available) {
-          bootstrapForm.hidden = true;
-          showStatus("This installation has already been set up. Sign in instead.", "error");
+        bootstrapForm.hidden = !payload.bootstrap_available;
+        if (payload.bootstrap_available) {
+          status.hidden = true;
+        } else {
+          byId("bootstrap-setup-complete").hidden = false;
+          showStatus(translate("auth.setup_complete"));
         }
       })
-      .catch(() => showStatus("Setup status is unavailable.", "error"));
+      .catch(() => {
+        bootstrapForm.hidden = true;
+        showStatus(translate("status.bootstrap_status_unavailable"), "error");
+      });
     bootstrapForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const button = event.submitter;
@@ -75,7 +84,7 @@
         .map((value) => value.trim())
         .filter(Boolean);
       button.disabled = true;
-      showStatus("Creating the first administrator…");
+      showStatus(translate("status.creating_administrator"));
       try {
         await submit("/api/family-access/v1/bootstrap", {
           username: byId("bootstrap-username").value,
@@ -90,7 +99,7 @@
         byId("bootstrap-person-ids").value = "";
         bootstrapForm.hidden = true;
         complete.hidden = false;
-        showStatus("Installation administrator created.", "success");
+        showStatus(translate("status.administrator_created"), "success");
       } catch (error) {
         showStatus(error.message, "error");
       } finally {

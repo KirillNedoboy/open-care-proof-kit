@@ -6,6 +6,7 @@
   const preview = byId("invitation-preview");
   const registerForm = byId("invitation-register-form");
   const acceptForm = byId("invitation-accept-form");
+  const translate = (key) => window.OpenCareI18n?.t(key, key) || key;
   let signedIn = false;
   let invitationRole = null;
 
@@ -15,7 +16,8 @@
     ?.split("=").slice(1).join("=") || "";
   const showStatus = (message, kind = "") => {
     status.textContent = message;
-    status.className = kind;
+    status.className = `auth-status ${kind}`.trim();
+    status.hidden = false;
   };
   const request = async (path, payload, authenticated = false) => {
     const headers = { "Content-Type": "application/json" };
@@ -26,7 +28,7 @@
       headers,
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error("This invitation cannot be used.");
+    if (!response.ok) throw new Error(translate("status.invitation_cannot_be_used"));
     return response.status === 204 ? null : response.json();
   };
   const ownerConfirmation = (id) => invitationRole === "owner" && byId(id).checked;
@@ -36,7 +38,7 @@
     acceptForm.hidden = true;
     byId("invitation-preview-form").hidden = true;
     byId("invitation-complete").hidden = false;
-    showStatus("Invitation accepted.", "success");
+    showStatus(translate("auth.invitation_accepted"), "success");
   };
 
   const sessionCheck = fetch("/api/family-access/v1/me", { credentials: "same-origin" })
@@ -47,7 +49,7 @@
     event.preventDefault();
     const button = event.submitter;
     button.disabled = true;
-    showStatus("Checking invitation…");
+    showStatus(translate("status.checking_invitation"));
     try {
       await sessionCheck;
       const payload = await request(
@@ -56,14 +58,14 @@
       );
       invitationRole = payload.role;
       byId("invitation-role").textContent = payload.role === "owner"
-        ? "Owner invitation — full control"
-        : "Caregiver invitation";
-      byId("invitation-scopes").textContent = `Permissions: ${payload.scopes.join(", ")}`;
+        ? translate("auth.owner_invitation")
+        : translate("auth.caregiver_invitation");
+      byId("invitation-scopes").textContent = `${translate("auth.permissions")}: ${payload.scopes.join(", ")}`;
       byId("owner-invitation-warning").hidden = payload.role !== "owner";
       preview.hidden = false;
       registerForm.hidden = signedIn;
       acceptForm.hidden = !signedIn;
-      showStatus("Review the access before accepting.");
+      showStatus(translate("status.review_access"));
     } catch (error) {
       invitationRole = null;
       preview.hidden = true;

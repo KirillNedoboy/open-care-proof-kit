@@ -5,9 +5,11 @@
   const form = byId("actor-register-form");
   const disabled = byId("registration-disabled");
   const uninitialized = byId("registration-uninitialized");
+  const translate = (key) => window.OpenCareI18n?.t(key, key) || key;
   const showStatus = (message, kind = "") => {
     status.textContent = message;
-    status.className = kind;
+    status.className = `auth-status ${kind}`.trim();
+    status.hidden = false;
   };
 
   fetch("/api/family-access/v1/registration-status", { credentials: "same-origin" })
@@ -18,6 +20,7 @@
         status.hidden = true;
         return;
       }
+      form.hidden = true;
       if (payload.registration_enabled) {
         uninitialized.hidden = false;
         status.hidden = true;
@@ -26,7 +29,7 @@
         status.hidden = true;
       }
     })
-    .catch(() => showStatus("Account registration status is unavailable.", "error"));
+    .catch(() => showStatus(translate("status.registration_status_unavailable"), "error"));
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -34,11 +37,11 @@
     const password = byId("register-password");
     const confirmation = byId("register-password-confirm");
     if (password.value !== confirmation.value) {
-      showStatus("Passwords do not match.", "error");
+      showStatus(translate("status.password_mismatch"), "error");
       return;
     }
     button.disabled = true;
-    showStatus("Creating account…");
+    showStatus(translate("status.creating_account"));
     try {
       const response = await fetch("/api/family-access/v1/register", {
         method: "POST",
@@ -50,7 +53,7 @@
           password: password.value,
         }),
       });
-      if (!response.ok) throw new Error("Account could not be created.");
+      if (!response.ok) throw new Error(translate("status.account_could_not_created"));
       password.value = "";
       confirmation.value = "";
       window.location.assign("/workspace");

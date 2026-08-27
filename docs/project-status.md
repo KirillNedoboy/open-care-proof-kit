@@ -66,8 +66,23 @@ SameSite cookie and affects UI copy only. It does not change canonical health
 data, identifiers, machine reason codes, audit codes, API contracts, or
 authorization behavior.
 
-Full page-by-page localization, auth-page styling, chat shell convergence,
-and broader product-page redesign remain deferred to later R5 passes.
+Full page-by-page localization, chat shell convergence, and broader product-page
+redesign remain deferred to later R5 passes.
+
+## R5.2 auth and onboarding UX (this branch)
+
+R5.2 provides a separate public/auth shell for sign-in, controlled
+self-registration, one-time installation-owner bootstrap, and invitation entry.
+The normal path is local username/password sign-in. Self-registration appears
+only when `OPENCARE_PUBLIC_REGISTRATION=true` and the installation is already
+initialized. Invitations remain a secondary family-sharing mechanism, while
+bootstrap remains a one-time installation-owner operation.
+
+Auth surfaces support English (`en`) and Russian (`ru`) through the centralized
+UI catalog and dedicated locale preference cookie. UI localization does not
+alter credentials, sessions, authorization, invitation tokens, Person data,
+scope names, or API contracts. Full product-page localization and later R5.3
+work remain deferred.
 
 ## HTTP privacy contract
 
