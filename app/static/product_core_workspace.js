@@ -598,11 +598,36 @@
       byId(`${factType}-history-count`).textContent = `(${historical.length})`;
     });
   }
+  function localizeWorkspaceChrome() {
+    const sections = [
+      ["review-title", "workspace.section_review", "workspace.review_summary"],
+      ["documents-title", "nav.documents", "workspace.documents_summary"],
+      ["records-title", "workspace.section_records", "workspace.records_summary"],
+      ["timeline-title", "workspace.section_timeline", "workspace.timeline_summary"],
+      ["visits-title", "workspace.section_visits", "workspace.visits_summary"],
+      ["export-title", "workspace.section_export", "workspace.export_summary"],
+    ];
+    sections.forEach(([id, titleKey, summaryKey]) => {
+      const title = byId(id);
+      if (!title) return;
+      title.textContent = t(titleKey);
+      const summary = title.closest(".section-heading")?.querySelector("p");
+      if (summary) summary.textContent = t(summaryKey);
+    });
+    [
+      ["records-medication", "workspace.medications"],
+      ["records-condition", "workspace.conditions"],
+      ["records-lab", "workspace.labs"],
+    ].forEach(([id, key]) => {
+      const title = byId(id)?.querySelector(".family-heading h3");
+      if (title) title.textContent = t(key);
+    });
+  }
+
 
   function render() {
     const inbox = byId("review-inbox"), timeline = byId("timeline-list");
-    [inbox, timeline].forEach(clear);
-    renderOverview(); renderFactSections(); renderDocuments(); syncFactTypeFilters();
+    localizeWorkspaceChrome(); renderOverview(); renderFactSections(); renderDocuments(); syncFactTypeFilters();
     const all = visibleCandidates(), inboxFact = byId("inbox-fact-filter").value, inboxStatus = byId("inbox-status-filter").value, search = byId("review-search").value.trim().toLocaleLowerCase();
     const inboxItems = all.filter((item) => (inboxFact === "all" || item.fact_type === inboxFact) && (inboxStatus === "all" || item.status === inboxStatus) && (!search || [item.display_name, item.test_name, item.note, item.result_text].some((value) => String(value || "").toLocaleLowerCase().includes(search))));
     if (!inboxItems.length) inbox.append(make("p", inboxStatus === "pending" ? t("workspace.pending_empty") : "No entries match this view.", "meta"));

@@ -101,6 +101,20 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "status.request_failed": "The request could not be completed. Try again.",
         "workspace.latest_record": "Latest confirmed record",
         "workspace.selected_visit": "Selected Visit",
+        "workspace.review_summary": "Source-backed candidates available for this Person.",
+        "workspace.documents_summary": "Source documents available for this Person.",
+        "workspace.records_summary": "Current confirmed records and their history.",
+        "workspace.timeline_summary": "Record lifecycle events for this Person.",
+        "workspace.visits_summary": (
+            "Plan questions and prepare a source-backed Visit Brief."
+        ),
+        "workspace.export_summary": (
+            "Download a portable copy of this Person and reachable sources."
+        ),
+        "workspace.medications": "Medications",
+        "workspace.conditions": "Recorded conditions",
+        "workspace.labs": "Labs",
+        "workspace.visits": "Visits",
         "optional": "optional",
         "page.genetics_title": "OpenCare Genetics Workspace",
         "page.vault_title": "Private Person vault · OpenCare",
@@ -340,6 +354,22 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "status.request_failed": "Не удалось выполнить запрос. Повторите попытку.",
         "workspace.latest_record": "Последняя подтверждённая запись",
         "workspace.selected_visit": "Выбранный визит",
+        "workspace.review_summary": (
+            "Исходные записи на проверку, доступные для этого пользователя."
+        ),
+        "workspace.documents_summary": "Исходные документы, доступные для этого пользователя.",
+        "workspace.records_summary": "Текущие подтверждённые записи и их история.",
+        "workspace.timeline_summary": "События жизненного цикла записей этого пользователя.",
+        "workspace.visits_summary": (
+            "Составляйте вопросы и готовьте сводку визита с указанием источников."
+        ),
+        "workspace.export_summary": (
+            "Скачать копию этого пользователя и доступных исходных материалов."
+        ),
+        "workspace.medications": "Лекарства",
+        "workspace.conditions": "Записанные состояния",
+        "workspace.labs": "Анализы",
+        "workspace.visits": "Визиты",
         "page.genetics_title": "Рабочая область генетики OpenCare",
         "page.vault_title": "Личное хранилище пользователя · OpenCare",
         "page.family_title": "Семья и доступ · OpenCare",

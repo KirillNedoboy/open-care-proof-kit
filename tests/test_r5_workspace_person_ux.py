@@ -90,3 +90,4 @@ def test_invalid_person_selection_fails_closed_without_changing_authority(
         "state.capabilities.document_read && state.capabilities.document_write && "
         "state.capabilities.source_write"
     ) in script
+    assert "localizeWorkspaceChrome" in script
