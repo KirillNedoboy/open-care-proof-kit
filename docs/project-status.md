@@ -66,8 +66,8 @@ SameSite cookie and affects UI copy only. It does not change canonical health
 data, identifiers, machine reason codes, audit codes, API contracts, or
 authorization behavior.
 
-Full page-by-page localization, chat shell convergence, and broader product-page
-redesign remain deferred to later R5 passes.
+Chat shell convergence and broader product-page redesign remain deferred to later
+R5 passes.
 
 ## R5.2 auth and onboarding UX (this branch)
 
@@ -81,8 +81,26 @@ bootstrap remains a one-time installation-owner operation.
 Auth surfaces support English (`en`) and Russian (`ru`) through the centralized
 UI catalog and dedicated locale preference cookie. UI localization does not
 alter credentials, sessions, authorization, invitation tokens, Person data,
-scope names, or API contracts. Full product-page localization and later R5.3
-work remain deferred.
+scope names, or API contracts. Full product-page localization is intentionally
+incremental; R5.4 work remains deferred.
+
+## R5.3 Workspace & Person UX
+
+R5.3 makes `/workspace` the main authenticated product overview. It keeps the
+active Person visible, uses the existing authorized Person list and
+session-backed active-Person switch, and presents capability-gated counts for
+real Product Core records, documents, medications, pending review items, and
+timeline activity. Zero states remain explicit; no health data is inferred.
+
+The live workspace does not seed or load synthetic reviewer/demo data. Person
+switching remains a UI convenience over the existing Actor session and
+assignment checks; it does not grant access or change authorization semantics.
+Workspace overview and Person-selection copy is localized for English (`en`) and
+Russian (`ru`). There is no new activity subsystem or analytics read model.
+
+R5.4 remains deferred for broader authenticated-page localization, chat-shell
+convergence, and further product-shell refinement. Genetics contracts and
+Genetics Workspace behavior are unchanged by R5.3.
 
 ## HTTP privacy contract
 
