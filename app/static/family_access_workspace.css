@@ -357,8 +357,18 @@
     align-items: stretch;
   }
 
+  .family-access-page .family-access-card {
+    flex-wrap: nowrap;
+  }
+
   .family-access-page .family-access-card__identity {
     flex-basis: auto;
+  }
+
+  .family-access-page .family-scope-summary,
+  .family-access-page .family-card-actions {
+    flex: 0 1 auto;
+    width: 100%;
   }
 
   .family-access-page .family-access-card__status {
