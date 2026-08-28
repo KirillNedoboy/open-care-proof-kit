@@ -262,6 +262,177 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
             "Required in production. It is checked once and never stored."
         ),
         "auth.checking_setup": "Checking setup availability…",
+        "family.heading": "Family & Access",
+        "family.intro": (
+            "Share access to one Person at a time, review who can see their "
+            "information, and manage your local account."
+        ),
+        "family.boundary": (
+            "Family relationships describe context. Only an active Person "
+            "assignment grants access."
+        ),
+        "family.active_person": "Access for Person",
+        "family.access_applies_to": "Access shown here applies to {person}.",
+        "family.no_active_person": "No Person selected",
+        "family.choose_person": "Choose an authorized Person to review family access.",
+        "family.no_accessible_people": "No accessible People",
+        "family.people_heading": "People with access",
+        "family.people_help": (
+            "Active access assignments for the selected Person. Genetics access "
+            "is separate."
+        ),
+        "family.no_additional_access": (
+            "No one else currently has active Family Access for this Person."
+        ),
+        "family.read_only_heading": "Family sharing is read-only",
+        "family.read_only_help": (
+            "You can access this Person, but your account cannot view or change "
+            "family sharing."
+        ),
+        "family.you": "You",
+        "family.shared_account": "Account with access",
+        "family.role_owner": "Owner",
+        "family.role_caregiver": "Caregiver",
+        "family.status_active": "Active",
+        "family.status_revoked": "Revoked",
+        "family.status_disabled": "Disabled",
+        "family.invite_heading": "Invite someone",
+        "family.share_access_to": "Share access to {person}",
+        "family.invite_help": (
+            "Create a one-time invitation code and send it directly to the "
+            "person you trust. It is not ordinary login or public registration."
+        ),
+        "family.invitation_empty": "No invitation code is displayed.",
+        "family.invitation_issued": "Copy this one-time code now",
+        "family.invitation_warning": (
+            "The code will not be shown again after you clear it, switch Person, "
+            "or leave this page."
+        ),
+        "family.owner_confirmation": (
+            "I understand that owner access grants all current Family Access "
+            "scopes for this Person. Genetics access remains separate."
+        ),
+        "family.account_heading": "Your account",
+        "family.account_help": "Account security actions are separate from Person sharing.",
+        "family.current_password": "Current password",
+        "family.new_password": "New password",
+        "family.password_help": "Changing your password signs out every session.",
+        "family.change_password": "Change password",
+        "family.advanced_heading": "Advanced",
+        "family.advanced_help": (
+            "Technical identifiers, exact scopes, access history, installation "
+            "accounts, and Family relationship records."
+        ),
+        "family.family_context_help": (
+            "Family records describe relationships only. They never grant "
+            "Person access."
+        ),
+        "family.scope_group.health": "Health data",
+        "family.scope_group.sources_documents": "Sources & documents",
+        "family.scope_group.family": "Family administration",
+        "family.scope_group.export": "Exports",
+        "family.scope_group.chat": "OpenCare chat",
+        "family.switch_person": "Switch Person",
+        "family.clear_person": "Clear Person",
+        "family.loading_access": "Loading Family Access…",
+        "family.access_ready": "Family Access loaded.",
+        "family.action_not_allowed": "Your account is not permitted to perform that action.",
+        "family.record_not_available": "That item is not available.",
+        "family.conflict": "That action conflicts with the current access state.",
+        "family.role_label": "Role",
+        "family.access_selection": "Access selection",
+        "family.caregiver_permissions": "Caregiver permissions",
+        "family.revise_access": "Revise access",
+        "family.save_permissions": "Save permissions",
+        "family.revoke_access": "Revoke access",
+        "family.revoke_confirm": (
+            "Revoke access for {name}? The final active owner cannot be removed."
+        ),
+        "family.access_granted": "Access granted.",
+        "family.access_revised": "Access updated.",
+        "family.access_revoked": "Access revoked.",
+        "family.expires_at": "Expires at",
+        "family.create_invitation": "Create invitation",
+        "family.invitation_created": "Invitation created. Copy the code now.",
+        "family.clear_code": "Clear code",
+        "family.code_cleared": "Invitation code cleared from this page.",
+        "family.password_change_failed": (
+            "The password could not be changed. Check the current password and "
+            "try again."
+        ),
+        "family.password_changed": "Password changed. Sign in again.",
+        "family.signed_out": "Signed out.",
+        "family.technical_context": "Technical context",
+        "family.actor_id": "Actor ID",
+        "family.person_id": "Person ID",
+        "family.assignment_id": "Assignment ID",
+        "family.consent_id": "Consent event ID",
+        "family.audit_id": "Audit event ID",
+        "family.family_id": "Family ID",
+        "family.membership_id": "Membership ID",
+        "family.relationship_id": "Relationship ID",
+        "family.created_at": "Created at",
+        "family.raw_scopes": "Exact scopes",
+        "family.consent_history": "Consent history",
+        "family.access_audit": "Access audit",
+        "family.no_consent_history": "No visible consent history.",
+        "family.no_access_audit": "No visible access audit events.",
+        "family.installation_accounts": "Installation accounts",
+        "family.installation_accounts_help": (
+            "Visible only to an installation administrator. Administrator status "
+            "does not grant Person access."
+        ),
+        "family.deactivate_actor": "Deactivate account",
+        "family.deactivate_confirm": "Deactivate {name} and revoke all of their Person access?",
+        "family.direct_grant_heading": "Grant access to an existing Actor",
+        "family.recipient_actor_id": "Recipient Actor ID",
+        "family.grant_access": "Grant access",
+        "family.families_heading": "Family records & relationships",
+        "family.family_name": "Family name",
+        "family.create_family": "Create Family",
+        "family.select_family": "Select Family",
+        "family.no_family_selected": "No Family selected.",
+        "family.no_family_members": "No visible Family members.",
+        "family.add_family_member": "Add Person to Family",
+        "family.related_person": "Related Person",
+        "family.relationship": "Relationship",
+        "family.add_relationship": "Add relationship",
+        "family.end_membership": "End membership",
+        "family.end_relationship": "End relationship",
+        "family.relationship_parent": "Parent",
+        "family.relationship_child": "Child",
+        "family.relationship_spouse": "Spouse",
+        "family.relationship_partner": "Partner",
+        "family.relationship_sibling": "Sibling",
+        "family.relationship_guardian": "Guardian",
+        "family.relationship_dependent": "Dependent",
+        "family.relationship_other": "Other",
+        "family.scope.person_read": "View Person profile",
+        "family.scope.person_update": "Edit Person profile",
+        "family.scope.source_read": "View sources",
+        "family.scope.source_write": "Add sources",
+        "family.scope.document_read": "View documents",
+        "family.scope.document_write": "Manage documents",
+        "family.scope.candidate_read": "View review items",
+        "family.scope.candidate_review": "Review candidate records",
+        "family.scope.medication_read": "View medications",
+        "family.scope.medication_write": "Manage medications",
+        "family.scope.condition_read": "View recorded conditions",
+        "family.scope.condition_write": "Manage recorded conditions",
+        "family.scope.lab_read": "View lab records",
+        "family.scope.lab_write": "Manage lab records",
+        "family.scope.timeline_read": "View timeline",
+        "family.scope.visit_read": "View visits",
+        "family.scope.visit_write": "Manage visits",
+        "family.scope.brief_read": "View Visit Briefs",
+        "family.scope.brief_write": "Manage Visit Briefs",
+        "family.scope.brief_export": "Export Visit Briefs",
+        "family.scope.vault_export": "Export Person data",
+        "family.scope.relationship_read": "View family relationships",
+        "family.scope.relationship_manage": "Manage family relationships",
+        "family.scope.access_read": "View Family Access",
+        "family.scope.access_manage": "Manage Family Access",
+        "family.scope.chat_use": "Use OpenCare chat",
     },
     "ru": {
         "app.name": "OpenCare",
@@ -518,6 +689,188 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
             "Требуется в production. Проверяется один раз и не сохраняется."
         ),
         "auth.checking_setup": "Проверяем доступность настройки…",
+        "family.heading": "Семья и доступ",
+        "family.intro": (
+            "Предоставляйте доступ к одному пользователю за раз, проверяйте, кто "
+            "видит его данные, и управляйте локальным аккаунтом."
+        ),
+        "family.boundary": (
+            "Семейные связи описывают контекст. Доступ предоставляет только "
+            "активное назначение к пользователю."
+        ),
+        "family.active_person": "Доступ к пользователю",
+        "family.access_applies_to": "Показанный здесь доступ относится к пользователю {person}.",
+        "family.no_active_person": "Пользователь не выбран",
+        "family.choose_person": (
+            "Выберите доступного пользователя, чтобы проверить семейный доступ."
+        ),
+        "family.no_accessible_people": "Нет доступных пользователей",
+        "family.people_heading": "Пользователи с доступом",
+        "family.people_help": (
+            "Активные назначения доступа для выбранного пользователя. Доступ к "
+            "генетике предоставляется отдельно."
+        ),
+        "family.no_additional_access": (
+            "Сейчас ни у кого другого нет активного семейного доступа к этому "
+            "пользователю."
+        ),
+        "family.read_only_heading": "Семейный доступ доступен только для чтения",
+        "family.read_only_help": (
+            "У вас есть доступ к этому пользователю, но ваш аккаунт не может "
+            "просматривать или изменять семейный доступ."
+        ),
+        "family.you": "Вы",
+        "family.shared_account": "Аккаунт с доступом",
+        "family.role_owner": "Владелец",
+        "family.role_caregiver": "Помощник",
+        "family.status_active": "Активен",
+        "family.status_revoked": "Отозван",
+        "family.status_disabled": "Отключён",
+        "family.invite_heading": "Пригласить пользователя",
+        "family.share_access_to": "Предоставить доступ к пользователю {person}",
+        "family.invite_help": (
+            "Создайте одноразовый код приглашения и передайте его напрямую "
+            "доверенному человеку. Это не обычный вход и не открытая регистрация."
+        ),
+        "family.invitation_empty": "Код приглашения не отображается.",
+        "family.invitation_issued": "Скопируйте одноразовый код сейчас",
+        "family.invitation_warning": (
+            "Код больше не будет показан после очистки, смены пользователя или "
+            "выхода со страницы."
+        ),
+        "family.owner_confirmation": (
+            "Я понимаю, что доступ владельца предоставляет все текущие права "
+            "семейного доступа для этого пользователя. Доступ к генетике "
+            "остаётся отдельным."
+        ),
+        "family.account_heading": "Ваш аккаунт",
+        "family.account_help": (
+            "Действия безопасности аккаунта отделены от предоставления доступа "
+            "к пользователю."
+        ),
+        "family.current_password": "Текущий пароль",
+        "family.new_password": "Новый пароль",
+        "family.password_help": "Смена пароля завершит все сеансы.",
+        "family.change_password": "Сменить пароль",
+        "family.advanced_heading": "Расширенные настройки",
+        "family.advanced_help": (
+            "Технические идентификаторы, точные права, история доступа, аккаунты "
+            "установки и записи семейных связей."
+        ),
+        "family.family_context_help": (
+            "Семейные записи описывают только связи. Они никогда не предоставляют "
+            "доступ к пользователю."
+        ),
+        "family.scope_group.health": "Данные о здоровье",
+        "family.scope_group.sources_documents": "Источники и документы",
+        "family.scope_group.family": "Управление семейным доступом",
+        "family.scope_group.export": "Экспорт",
+        "family.scope_group.chat": "Чат OpenCare",
+        "family.switch_person": "Сменить пользователя",
+        "family.clear_person": "Очистить выбор пользователя",
+        "family.loading_access": "Загружаем семейный доступ…",
+        "family.access_ready": "Семейный доступ загружен.",
+        "family.action_not_allowed": "Вашему аккаунту недоступно это действие.",
+        "family.record_not_available": "Этот объект недоступен.",
+        "family.conflict": "Это действие противоречит текущему состоянию доступа.",
+        "family.role_label": "Роль",
+        "family.access_selection": "Настройки доступа",
+        "family.caregiver_permissions": "Права помощника",
+        "family.revise_access": "Изменить доступ",
+        "family.save_permissions": "Сохранить права",
+        "family.revoke_access": "Отозвать доступ",
+        "family.revoke_confirm": (
+            "Отозвать доступ у {name}? Последнего активного владельца удалить "
+            "нельзя."
+        ),
+        "family.access_granted": "Доступ предоставлен.",
+        "family.access_revised": "Доступ обновлён.",
+        "family.access_revoked": "Доступ отозван.",
+        "family.expires_at": "Срок действия",
+        "family.create_invitation": "Создать приглашение",
+        "family.invitation_created": "Приглашение создано. Скопируйте код сейчас.",
+        "family.clear_code": "Очистить код",
+        "family.code_cleared": "Код приглашения удалён с этой страницы.",
+        "family.password_change_failed": (
+            "Не удалось сменить пароль. Проверьте текущий пароль и повторите "
+            "попытку."
+        ),
+        "family.password_changed": "Пароль изменён. Войдите снова.",
+        "family.signed_out": "Выполнен выход.",
+        "family.technical_context": "Технические сведения",
+        "family.actor_id": "Идентификатор аккаунта",
+        "family.person_id": "Идентификатор пользователя",
+        "family.assignment_id": "Идентификатор назначения",
+        "family.consent_id": "Идентификатор события согласия",
+        "family.audit_id": "Идентификатор события аудита",
+        "family.family_id": "Идентификатор семьи",
+        "family.membership_id": "Идентификатор участия",
+        "family.relationship_id": "Идентификатор связи",
+        "family.created_at": "Создано",
+        "family.raw_scopes": "Точные права",
+        "family.consent_history": "История согласий",
+        "family.access_audit": "Аудит доступа",
+        "family.no_consent_history": "Нет доступной истории согласий.",
+        "family.no_access_audit": "Нет доступных событий аудита доступа.",
+        "family.installation_accounts": "Аккаунты установки",
+        "family.installation_accounts_help": (
+            "Видно только администратору установки. Статус администратора не "
+            "предоставляет доступ к пользователю."
+        ),
+        "family.deactivate_actor": "Деактивировать аккаунт",
+        "family.deactivate_confirm": (
+            "Деактивировать аккаунт {name} и отозвать весь его доступ к "
+            "пользователям?"
+        ),
+        "family.direct_grant_heading": "Предоставить доступ существующему аккаунту",
+        "family.recipient_actor_id": "Идентификатор аккаунта получателя",
+        "family.grant_access": "Предоставить доступ",
+        "family.families_heading": "Семейные записи и связи",
+        "family.family_name": "Название семьи",
+        "family.create_family": "Создать семью",
+        "family.select_family": "Выберите семью",
+        "family.no_family_selected": "Семья не выбрана.",
+        "family.no_family_members": "Нет доступных участников семьи.",
+        "family.add_family_member": "Добавить пользователя в семью",
+        "family.related_person": "Связанный пользователь",
+        "family.relationship": "Родственная связь",
+        "family.add_relationship": "Добавить связь",
+        "family.end_membership": "Завершить участие",
+        "family.end_relationship": "Завершить связь",
+        "family.relationship_parent": "Родитель",
+        "family.relationship_child": "Ребёнок",
+        "family.relationship_spouse": "Супруг или супруга",
+        "family.relationship_partner": "Партнёр",
+        "family.relationship_sibling": "Брат или сестра",
+        "family.relationship_guardian": "Опекун",
+        "family.relationship_dependent": "Иждивенец",
+        "family.relationship_other": "Другое",
+        "family.scope.person_read": "Просмотр профиля пользователя",
+        "family.scope.person_update": "Изменение профиля пользователя",
+        "family.scope.source_read": "Просмотр источников",
+        "family.scope.source_write": "Добавление источников",
+        "family.scope.document_read": "Просмотр документов",
+        "family.scope.document_write": "Управление документами",
+        "family.scope.candidate_read": "Просмотр записей на проверку",
+        "family.scope.candidate_review": "Проверка предложенных записей",
+        "family.scope.medication_read": "Просмотр лекарств",
+        "family.scope.medication_write": "Управление лекарствами",
+        "family.scope.condition_read": "Просмотр записанных состояний",
+        "family.scope.condition_write": "Управление записанными состояниями",
+        "family.scope.lab_read": "Просмотр анализов",
+        "family.scope.lab_write": "Управление анализами",
+        "family.scope.timeline_read": "Просмотр хронологии",
+        "family.scope.visit_read": "Просмотр визитов",
+        "family.scope.visit_write": "Управление визитами",
+        "family.scope.brief_read": "Просмотр сводок визитов",
+        "family.scope.brief_write": "Управление сводками визитов",
+        "family.scope.brief_export": "Экспорт сводок визитов",
+        "family.scope.vault_export": "Экспорт данных пользователя",
+        "family.scope.relationship_read": "Просмотр семейных связей",
+        "family.scope.relationship_manage": "Управление семейными связями",
+        "family.scope.access_read": "Просмотр семейного доступа",
+        "family.scope.access_manage": "Управление семейным доступом",
+        "family.scope.chat_use": "Использование чата OpenCare",
     },
 }
 

@@ -1,53 +1,183 @@
 {% extends "product_shell.html" %}
 {% block title %}{{ t("page.family_title") }}{% endblock %}
-{% block page_styles %}<link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">{% endblock %}
-{% block page_scripts %}<script src="{{ url_for('static', path='/family_access_workspace.js') }}" defer></script>{% endblock %}
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/family_access_workspace.css') }}">
+{% endblock %}
+{% block page_scripts %}
+<script src="{{ url_for('static', path='/workspace_state.js') }}" defer></script>
+<script src="{{ url_for('static', path='/family_access_workspace.js') }}" defer></script>
+{% endblock %}
 {% block page_class %}family-access-page{% endblock %}
 {% block content %}
-    <section id="account-settings">
-      <p>Private access management</p><h1>Family and permissions</h1>
-      <p>Family relationships describe context. Only an active owner or caregiver assignment grants Person access.</p>
-      <p id="current-actor" class="meta"></p><button id="actor-logout" type="button">Sign out</button>
-      <p id="family-access-status" role="status" aria-live="polite"></p>
-      <form id="change-password-form"><h2>Change password</h2><label for="current-password">Current password</label><input id="current-password" type="password" required autocomplete="current-password"><label for="new-password">New password</label><input id="new-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password"><button type="submit">Change password and sign out</button></form>
-      <div id="actor-list" hidden><h2>Installation actors</h2><p class="note">Shown only to an installation administrator. Administrator status does not grant Person access.</p><div id="actor-records"></div></div>
-    </section>
-    <section>
-      <h2>Person access</h2>
-      <label for="access-person-selector">Person</label><select id="access-person-selector" disabled><option value="">No Person selected</option></select>
-      <p class="note">Hidden People and installation totals are not shown.</p>
-      <div id="assignment-list" aria-live="polite"><p>No Person selected.</p></div>
-      <form id="grant-access-form" hidden>
-        <h3>Grant access to an existing Actor</h3>
-        <label for="grant-actor-id">Actor ID</label><input id="grant-actor-id" required maxlength="128" autocomplete="off">
-        <label for="grant-role">Role</label><select id="grant-role"><option value="caregiver">Caregiver</option><option value="owner">Owner — full control</option></select>
-        <fieldset id="grant-caregiver-scopes"><legend>Optional caregiver permissions</legend>
-          <label><input type="checkbox" value="source.write"> Add sources</label><label><input type="checkbox" value="candidate.review"> Review candidates</label><label><input type="checkbox" value="medication.write"> Change medication records</label><label><input type="checkbox" value="visit.write"> Edit visits</label><label><input type="checkbox" value="brief.write"> Edit briefs</label><label><input type="checkbox" value="brief.export"> Export briefs</label><label><input type="checkbox" value="vault.export"> Export the vault</label>
+  <header class="family-access-intro" aria-labelledby="family-access-title">
+    <p class="eyebrow">{{ t("nav.family_access") }}</p>
+    <h1 id="family-access-title">{{ t("family.heading") }}</h1>
+    <p>{{ t("family.intro") }}</p>
+    <p class="meta">{{ t("family.boundary") }}</p>
+  </header>
+
+  <p id="family-access-status" class="family-access-status" role="status" aria-live="polite"></p>
+
+  <section id="family-person-context" aria-labelledby="family-person-context-heading">
+    <div class="family-section-heading">
+      <div>
+        <h2 id="family-person-context-heading">{{ t("family.active_person") }}</h2>
+        <p id="selected-access-person-detail" class="meta">{{ t("family.choose_person") }}</p>
+      </div>
+      <button id="clear-family-person" class="button-secondary" type="button" hidden>{{ t("family.clear_person") }}</button>
+    </div>
+    <label for="access-person-selector">{{ t("family.switch_person") }}</label>
+    <select id="access-person-selector" disabled>
+      <option value="">{{ t("person.no_selection") }}</option>
+    </select>
+    <p id="selected-access-person" class="family-selected-person">{{ t("family.no_active_person") }}</p>
+  </section>
+
+  <section id="family-no-person" aria-labelledby="family-no-person-heading">
+    <h2 id="family-no-person-heading">{{ t("family.no_active_person") }}</h2>
+    <p id="family-no-person-help">{{ t("family.choose_person") }}</p>
+  </section>
+
+  <div id="family-person-workspace" hidden>
+    <section id="people-with-access" aria-labelledby="people-with-access-heading">
+      <div class="family-section-heading">
+        <div>
+          <h2 id="people-with-access-heading">{{ t("family.people_heading") }}</h2>
+          <p>{{ t("family.people_help") }}</p>
+        </div>
+      </div>
+      <div id="family-access-read-only" hidden>
+        <h3>{{ t("family.read_only_heading") }}</h3>
+        <p>{{ t("family.read_only_help") }}</p>
+      </div>
+      <div id="assignment-list"></div>
+      <p id="no-additional-access" hidden>{{ t("family.no_additional_access") }}</p>
+      <form id="revise-access-form" class="family-inline-form" hidden>
+        <h3>{{ t("family.revise_access") }}</h3>
+        <p id="revise-access-label" tabindex="-1"></p>
+        <fieldset id="revise-caregiver-scopes">
+          <legend>{{ t("family.caregiver_permissions") }}</legend>
+          <div class="family-scope-options"></div>
         </fieldset>
-        <label class="confirmation"><input id="grant-owner-confirmation" type="checkbox"> I confirm this owner grant gives full control. Partial owner permissions are not supported.</label>
-        <button type="submit">Grant access</button>
+        <div class="family-form-actions">
+          <button type="submit">{{ t("family.save_permissions") }}</button>
+          <button id="cancel-access-revision" class="button-secondary" type="button">{{ t("action.cancel") }}</button>
+        </div>
       </form>
-      <form id="revise-access-form" hidden><h3>Revise caregiver permissions</h3><p id="revise-access-label"></p><fieldset id="revise-caregiver-scopes"><legend>Optional caregiver permissions</legend><label><input type="checkbox" value="source.write"> Add sources</label><label><input type="checkbox" value="candidate.review"> Review candidates</label><label><input type="checkbox" value="medication.write"> Change medication records</label><label><input type="checkbox" value="visit.write"> Edit visits</label><label><input type="checkbox" value="brief.write"> Edit briefs</label><label><input type="checkbox" value="brief.export"> Export briefs</label><label><input type="checkbox" value="vault.export"> Export the vault</label></fieldset><button type="submit">Save revised permissions</button><button id="cancel-access-revision" type="button">Cancel</button></form>
+    </section>
+
+    <section id="invite-someone" aria-labelledby="invite-someone-heading">
+      <h2 id="invite-someone-heading">{{ t("family.invite_heading") }}</h2>
+      <h3 id="share-access-to-person"></h3>
+      <p>{{ t("family.invite_help") }}</p>
       <form id="create-invitation-form" hidden>
-        <h3>Create invitation</h3>
-        <label for="invitation-role-select">Role</label><select id="invitation-role-select"><option value="caregiver">Caregiver</option><option value="owner">Owner — full control</option></select>
-        <label for="invitation-expiry">Expires at</label><input id="invitation-expiry" type="datetime-local" required>
-        <fieldset id="invitation-caregiver-scopes"><legend>Optional caregiver permissions</legend>
-          <label><input type="checkbox" value="source.write"> Add sources</label><label><input type="checkbox" value="candidate.review"> Review candidates</label><label><input type="checkbox" value="medication.write"> Change medication records</label><label><input type="checkbox" value="visit.write"> Edit visits</label><label><input type="checkbox" value="brief.write"> Edit briefs</label><label><input type="checkbox" value="brief.export"> Export briefs</label><label><input type="checkbox" value="vault.export"> Export the vault</label>
+        <label for="invitation-role-select">{{ t("family.role_label") }}</label>
+        <select id="invitation-role-select">
+          <option value="caregiver">{{ t("family.role_caregiver") }}</option>
+          <option value="owner">{{ t("family.role_owner") }}</option>
+        </select>
+        <label for="invitation-expiry">{{ t("family.expires_at") }}</label>
+        <input id="invitation-expiry" type="datetime-local" required>
+        <fieldset id="invitation-caregiver-scopes">
+          <legend>{{ t("family.caregiver_permissions") }}</legend>
+          <div class="family-scope-options"></div>
         </fieldset>
-        <label class="confirmation"><input id="confirm-full-owner-access" type="checkbox"> I confirm an owner invitation grants full control. Partial owner permissions are not supported.</label>
-        <button type="submit">Create invitation</button>
+        <label class="confirmation"><input id="confirm-full-owner-access" type="checkbox"> {{ t("family.owner_confirmation") }}</label>
+        <button type="submit">{{ t("family.create_invitation") }}</button>
       </form>
-      <div id="issued-invitation" hidden><h3>Copy this code now</h3><p class="error">It will not be shown again.</p><pre id="issued-invitation-code"></pre><button id="clear-invitation-code" type="button">Clear code</button></div>
-      <details><summary>Consent history</summary><div id="consent-list"></div></details>
-      <details><summary>Access audit</summary><div id="access-audit-list"></div></details>
+      <p id="invitation-empty">{{ t("family.invitation_empty") }}</p>
+      <div id="issued-invitation" tabindex="-1" hidden>
+        <h3>{{ t("family.invitation_issued") }}</h3>
+        <p class="error">{{ t("family.invitation_warning") }}</p>
+        <pre id="issued-invitation-code"></pre>
+        <button id="clear-invitation-code" class="button-secondary" type="button">{{ t("family.clear_code") }}</button>
+      </div>
     </section>
-    <section>
-      <h2>Families and relationships</h2>
-      <form id="create-family-form"><label for="family-display-name">Family name</label><input id="family-display-name" required maxlength="200"><button type="submit">Create Family</button></form>
-      <label for="family-selector">Family</label><select id="family-selector" disabled><option value="">No Family selected</option></select>
-      <div id="family-details"><p>No Family selected.</p></div>
-      <form id="add-family-member-form" hidden><h3>Add Person to Family</h3><label for="family-member-person">Person</label><select id="family-member-person"></select><button type="submit">Add Person</button></form>
-      <form id="create-relationship-form" hidden><h3>Add relationship</h3><label for="relationship-person">Person</label><select id="relationship-person"></select><label for="relationship-related-person">Related Person</label><select id="relationship-related-person"></select><label for="relationship-type">Relationship</label><select id="relationship-type"><option>parent</option><option>child</option><option>spouse</option><option>partner</option><option>sibling</option><option>guardian</option><option>dependent</option><option>other</option></select><button type="submit">Add relationship</button></form>
+  </div>
+
+  <section id="account-settings" aria-labelledby="account-settings-heading">
+    <h2 id="account-settings-heading">{{ t("family.account_heading") }}</h2>
+    <p>{{ t("family.account_help") }}</p>
+    <dl id="current-actor" class="family-account-summary"></dl>
+    <form id="change-password-form">
+      <h3>{{ t("family.change_password") }}</h3>
+      <p class="meta">{{ t("family.password_help") }}</p>
+      <label for="current-password">{{ t("family.current_password") }}</label>
+      <input id="current-password" type="password" required minlength="1" maxlength="1024" autocomplete="current-password">
+      <label for="new-password">{{ t("family.new_password") }}</label>
+      <input id="new-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+      <button type="submit">{{ t("family.change_password") }}</button>
+    </form>
+    <button id="actor-logout" class="button-secondary" type="button">{{ t("action.sign_out") }}</button>
+  </section>
+
+  <details id="family-access-advanced">
+    <summary>{{ t("family.advanced_heading") }}</summary>
+    <p>{{ t("family.advanced_help") }}</p>
+
+    <section id="technical-context" aria-labelledby="technical-context-heading">
+      <h2 id="technical-context-heading">{{ t("family.technical_context") }}</h2>
+      <dl id="technical-context-list"></dl>
+      <div id="raw-assignment-list"></div>
+      <h3>{{ t("family.consent_history") }}</h3>
+      <div id="consent-list"></div>
+      <h3>{{ t("family.access_audit") }}</h3>
+      <div id="access-audit-list"></div>
     </section>
+
+    <section id="direct-grant" aria-labelledby="direct-grant-heading">
+      <h2 id="direct-grant-heading">{{ t("family.direct_grant_heading") }}</h2>
+      <form id="grant-access-form" hidden>
+        <label for="grant-actor-id">{{ t("family.recipient_actor_id") }}</label>
+        <input id="grant-actor-id" required maxlength="128" autocomplete="off">
+        <label for="grant-role">{{ t("family.role_label") }}</label>
+        <select id="grant-role">
+          <option value="caregiver">{{ t("family.role_caregiver") }}</option>
+          <option value="owner">{{ t("family.role_owner") }}</option>
+        </select>
+        <fieldset id="grant-caregiver-scopes">
+          <legend>{{ t("family.caregiver_permissions") }}</legend>
+          <div class="family-scope-options"></div>
+        </fieldset>
+        <label class="confirmation"><input id="grant-owner-confirmation" type="checkbox"> {{ t("family.owner_confirmation") }}</label>
+        <button type="submit">{{ t("family.grant_access") }}</button>
+      </form>
+    </section>
+
+    <section id="actor-list" aria-labelledby="actor-list-heading" hidden>
+      <h2 id="actor-list-heading">{{ t("family.installation_accounts") }}</h2>
+      <p>{{ t("family.installation_accounts_help") }}</p>
+      <div id="actor-records"></div>
+    </section>
+
+    <section id="family-records" aria-labelledby="family-records-heading">
+      <h2 id="family-records-heading">{{ t("family.families_heading") }}</h2>
+      <p>{{ t("family.family_context_help") }}</p>
+      <form id="create-family-form">
+        <label for="family-display-name">{{ t("family.family_name") }}</label>
+        <input id="family-display-name" required maxlength="200">
+        <button type="submit">{{ t("family.create_family") }}</button>
+      </form>
+      <label for="family-selector">{{ t("family.select_family") }}</label>
+      <select id="family-selector" disabled><option value="">{{ t("family.no_family_selected") }}</option></select>
+      <div id="family-details"><p>{{ t("family.no_family_selected") }}</p></div>
+      <form id="add-family-member-form" hidden>
+        <h3>{{ t("family.add_family_member") }}</h3>
+        <label for="family-member-person">{{ t("shell.person") }}</label>
+        <select id="family-member-person"></select>
+        <button type="submit">{{ t("family.add_family_member") }}</button>
+      </form>
+      <form id="create-relationship-form" hidden>
+        <h3>{{ t("family.add_relationship") }}</h3>
+        <label for="relationship-person">{{ t("shell.person") }}</label><select id="relationship-person"></select>
+        <label for="relationship-related-person">{{ t("family.related_person") }}</label><select id="relationship-related-person"></select>
+        <label for="relationship-type">{{ t("family.relationship") }}</label>
+        <select id="relationship-type">
+          <option value="parent">{{ t("family.relationship_parent") }}</option><option value="child">{{ t("family.relationship_child") }}</option><option value="spouse">{{ t("family.relationship_spouse") }}</option><option value="partner">{{ t("family.relationship_partner") }}</option><option value="sibling">{{ t("family.relationship_sibling") }}</option><option value="guardian">{{ t("family.relationship_guardian") }}</option><option value="dependent">{{ t("family.relationship_dependent") }}</option><option value="other">{{ t("family.relationship_other") }}</option>
+        </select>
+        <button type="submit">{{ t("family.add_relationship") }}</button>
+      </form>
+    </section>
+  </details>
 {% endblock %}
