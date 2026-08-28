@@ -4,19 +4,31 @@
   const api = "/api/product-core/v1";
   const state = { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, loadVersion: 0, controller: null };
   const byId = (id) => document.getElementById(id);
+  const translationPayload = byId("product-shell-translations");
+  let translations = {};
+  try {
+    const parsed = JSON.parse(translationPayload?.textContent || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) translations = parsed;
+  } catch (_) {}
+  const t = (key, fallback = key) => typeof translations[key] === "string" && translations[key] ? translations[key] : fallback;
+  const updateShellPerson = (person) => {
+    const target = byId("product-shell-person-status");
+    if (!target) return;
+    target.textContent = person ? `${t("workspace.viewing")} ${person.display_name}` : t("person.no_selection");
+  };
   const make = (tag, value = "", className = "") => { const node = document.createElement(tag); node.textContent = value; node.className = className; return node; };
   const div = (id) => { const node = document.createElement("div"); node.id = id; return node; };
   const clear = (node) => node.replaceChildren();
-  const status = (message, kind = "") => { const target = byId("workspace-status"); target.textContent = message; target.className = kind; };
+  const status = (message, kind = "") => { const target = byId("workspace-status"); target.textContent = message; target.className = kind ? `workspace-status ${kind}` : "workspace-status"; };
   const safeError = (response, body) => {
-    if (response.status === 401) return "Your session has expired. Sign in again.";
-    if (response.status === 403) return "This action is no longer available.";
-    if (response.status === 404) return "This profile or record is not available.";
-    if (response.status === 409) return "This record changed. Refresh to see the latest version.";
-    if (response.status === 422) return "Check the entered values and try again.";
-    if (body?.error?.code === "product_core_integrity_failure") return "Integrity: stored evidence could not be verified.";
-    if (body?.error?.code === "product_core_storage_unavailable") return "Local Product Core storage is unavailable. Try again shortly.";
-    return "The request could not be completed. Try again.";
+    if (response.status === 401) return t("status.session_expired", "Your session has expired. Sign in again.");
+    if (response.status === 403) return t("status.action_unavailable", "This action is no longer available.");
+    if (response.status === 404) return t("workspace.person_not_available", "This Person is not available.");
+    if (response.status === 409) return t("status.record_changed", "This record changed. Refresh to see the latest version.");
+    if (response.status === 422) return t("status.check_values", "Check the entered values and try again.");
+    if (body?.error?.code === "product_core_integrity_failure") return t("status.integrity_failure", "Integrity: stored evidence could not be verified.");
+    if (body?.error?.code === "product_core_storage_unavailable") return t("status.storage_unavailable", "Local Product Core storage is unavailable. Try again shortly.");
+    return t("status.request_failed", "The request could not be completed. Try again.");
   };
   class WorkspaceRequestError extends Error {
     constructor(response, body) {
@@ -212,7 +224,7 @@
     clear(selector);
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = people.length ? "Select a profile" : "No active profiles yet";
+    placeholder.textContent = people.length ? t("workspace.selector_placeholder") : t("workspace.selector_empty");
     selector.append(placeholder);
     people.forEach((person) => {
       const option = document.createElement("option");
@@ -225,30 +237,75 @@
     byId("load-workspace").disabled = !selector.value;
   }
 
+  function renderSelectionEmptyState(people) {
+    const empty = byId("workspace-empty");
+    const title = byId("workspace-empty-title");
+    const detail = byId("workspace-empty-detail");
+    if (!empty || !title || !detail) return;
+    if (!people.length) {
+      title.textContent = t("workspace.no_accessible_persons");
+      detail.textContent = t("workspace.no_accessible_persons_help");
+      empty.hidden = false;
+    } else if (!state.person) {
+      title.textContent = t("workspace.no_active_person");
+      detail.textContent = t("workspace.choose_person");
+      empty.hidden = false;
+    } else {
+      empty.hidden = true;
+    }
+  }
+
   async function refreshPeople(selectedPerson = state.person) {
     const response = await request("/people");
-    if (selectedPerson && !response.people.some((person) => person.person_id === selectedPerson.person_id)) state.person = null;
-    renderPeople(response.people);
-    if (!response.people.length) status("No accessible profiles yet. Create a profile to begin.");
-    else if (!state.person) status("Select an accessible profile to load its workspace.");
+    const people = Array.isArray(response.people) ? response.people : [];
+    if (selectedPerson && !people.some((person) => person.person_id === selectedPerson.person_id)) state.person = null;
+    renderPeople(people);
+    renderSelectionEmptyState(people);
+    renderPersonContext();
+    if (!people.length) {
+      enableWorkspace(false);
+      updateShellPerson(null);
+      status("");
+    } else if (!state.person) {
+      const activeId = byId("product-shell-person")?.dataset.activePersonId || "";
+      if (activeId && people.some((person) => person.person_id === activeId)) {
+        byId("person-selector").value = activeId;
+        byId("load-workspace").disabled = false;
+        void loadWorkspace();
+      } else {
+        status("");
+      }
+    }
   }
+
   function renderPersonContext() {
     const target = byId("selected-person");
-    if (!state.person) { target.textContent = "No profile selected."; return; }
-    target.textContent = state.person.date_of_birth ? `Viewing ${state.person.display_name} · Date of birth: ${state.person.date_of_birth}` : `Viewing ${state.person.display_name}`;
+    const detail = byId("selected-person-detail");
+    byId("clear-workspace").disabled = !state.person;
+    if (!state.person) {
+      target.textContent = t("workspace.no_profile_selected");
+      detail.textContent = t("workspace.profile_choice_help");
+      updateShellPerson(null);
+      return;
+    }
+    target.textContent = state.person.display_name;
+    detail.textContent = state.person.date_of_birth
+      ? `${t("workspace.viewing")} ${state.person.display_name} · ${t("workspace.date_of_birth")}: ${state.person.date_of_birth}`
+      : `${t("workspace.viewing")} ${state.person.display_name}`;
+    updateShellPerson(state.person);
   }
 
   async function loadWorkspace() {
     const personId = byId("person-selector").value;
-    if (!personId) { status("Select a profile before loading the workspace.", "error"); return; }
+    if (!personId) { status(t("workspace.select_before_load"), "error"); return; }
     state.controller?.abort();
     const generation = ++state.loadVersion;
     state.controller = new AbortController();
-    Object.assign(state, { person: { person_id: personId, display_name: "Loading profile…" }, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
+    Object.assign(state, { person: { person_id: personId, display_name: t("workspace.loading_person") }, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
     enableWorkspace(false);
     renderPersonContext();
     const personContext = { personId, generation, signal: state.controller.signal };
-    status("Loading workspace…");
+    status(t("workspace.loading_workspace"));
     try {
       await setActivePerson(personId, personContext);
       const [person, capabilityResponse] = await Promise.all([
@@ -298,9 +355,14 @@
       const sources = await Promise.all([...sourceIds].map(async (sourceId) => [sourceId, await request(`/sources/${encodeURIComponent(sourceId)}`, {}, personContext)]));
       if (!OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) return;
       state.sources = new Map(sources);
-      renderPersonContext(); enableWorkspace(true); render(); status("Workspace loaded.", "success");
+      renderPersonContext(); renderSelectionEmptyState([state.person]); enableWorkspace(true); render(); status(t("workspace.workspace_loaded"), "success");
     } catch (error) {
-      if (error.name !== "AbortError" && OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) status(error.message, "error");
+      if (error.name !== "AbortError" && OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) {
+        Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
+        byId("person-selector").value = "";
+        renderPersonContext(); renderSelectionEmptyState([{}]); enableWorkspace(false); render();
+        status(error.message, "error");
+      }
     }
   }
 
@@ -311,7 +373,7 @@
       ...(personContext?.signal ? { signal: personContext.signal } : {}),
     });
     if (personContext && (!OpenCareWorkspaceState.shouldApplyResponse(personContext.generation, state.loadVersion) || personContext.personId !== state.person?.person_id)) throw new DOMException("Stale workspace response", "AbortError");
-    if (!response.ok) throw Error("That profile is not available.");
+    if (!response.ok) throw Error(t("workspace.person_not_available"));
   }
 
   function humanSourceLocator(locator) {
@@ -538,32 +600,67 @@
   }
 
   function render() {
-    const inbox = byId("review-inbox"), timeline = byId("timeline-list"), counts = byId("overview-counts"), latest = byId("overview-latest");
-    [inbox, timeline, counts, latest].forEach(clear);
-    renderFactSections(); renderDocuments(); syncFactTypeFilters();
-    ["medication", "condition", "lab"].filter((type) => state.capabilities[`${type}_read`]).forEach((type) => {
-      const card = make("article", "", "summary-card");
-      card.append(make("strong", type === "condition" ? "Recorded conditions" : `${type[0].toUpperCase()}${type.slice(1)}s`), make("p", `${({ medication: state.medications, condition: state.conditions, lab: state.labs })[type].filter((item) => item.is_active).length} current · ${visibleCandidates().filter((item) => item.fact_type === type && item.status === "pending").length} waiting for review`));
-      counts.append(card);
-    });
-    if (state.capabilities.visit_read) {
-      const visitCard = make("article", "", "summary-card");
-      visitCard.append(make("strong", "Visits"), make("p", `${state.visits.length} total`));
-      counts.append(visitCard);
-    }
-    const newest = OpenCareWorkspaceState.sortNewest([...state.medications, ...state.conditions, ...state.labs], "confirmed_at", "id")[0];
-    latest.append(make("p", newest ? `Latest confirmed record: ${newest.confirmed_at}` : "No confirmed records are available.", "meta"));
-    if (state.capabilities.visit_read && state.visit) latest.append(make("p", `Selected Visit: ${state.visit.title}`, "meta"));
+    const inbox = byId("review-inbox"), timeline = byId("timeline-list");
+    [inbox, timeline].forEach(clear);
+    renderOverview(); renderFactSections(); renderDocuments(); syncFactTypeFilters();
     const all = visibleCandidates(), inboxFact = byId("inbox-fact-filter").value, inboxStatus = byId("inbox-status-filter").value, search = byId("review-search").value.trim().toLocaleLowerCase();
     const inboxItems = all.filter((item) => (inboxFact === "all" || item.fact_type === inboxFact) && (inboxStatus === "all" || item.status === inboxStatus) && (!search || [item.display_name, item.test_name, item.note, item.result_text].some((value) => String(value || "").toLocaleLowerCase().includes(search))));
-    if (!inboxItems.length) inbox.append(make("p", inboxStatus === "pending" ? "No entries are waiting for review." : "No entries match this view.", "meta"));
+    if (!inboxItems.length) inbox.append(make("p", inboxStatus === "pending" ? t("workspace.pending_empty") : "No entries match this view.", "meta"));
     inboxItems.forEach((item) => inbox.append(factCandidateCard(item, item.status === "pending")));
     const timelineFilter = byId("timeline-filter").value, eventLabels = { medication_confirmed: "Medication record confirmed", condition_confirmed: "Condition record confirmed", lab_confirmed: "Lab record confirmed", medication_corrected: "Record superseded by reviewed correction", condition_corrected: "Record superseded by reviewed correction", lab_corrected: "Record superseded by reviewed correction" };
     const timelineItems = state.timeline.filter((item) => timelineFilter === "all" || item.fact_type === timelineFilter);
-    if (!timelineItems.length) timeline.append(make("p", "No Product Core timeline events match this view.", "meta"));
-    timelineItems.forEach((item) => { const card = make("article", `${item.title} — ${eventLabels[item.event_type] || item.event_type.replaceAll("_", " ")} · Recorded in OpenCare: ${item.event_at}`, "record"); if (item.onset_date) card.append(make("p", `Onset date (as recorded): ${item.onset_date}`)); if (item.observed_date) card.append(make("p", `Observed date (as reported): ${item.observed_date}`)); timeline.append(card); });
-    byId("timeline").hidden = !state.capabilities.timeline_read; byId("visits-brief").hidden = !state.capabilities.visit_read; byId("persisted-visit-brief").hidden = !(state.capabilities.visit_read && state.capabilities.brief_read); byId("export").hidden = !state.capabilities.vault_export; byId("edit-profile").hidden = !state.capabilities.person_update; byId("chat-navigation").hidden = !state.capabilities.chat_use;
+    if (!timelineItems.length) timeline.append(make("p", t("workspace.activity_empty"), "meta"));
+    timelineItems.forEach((item) => { const card = make("article", `${item.title} — ${eventLabels[item.event_type] || item.event_type.replaceAll("_", " ")} · ${t("workspace.recorded_in_opencare", "Recorded in OpenCare")}: ${item.event_at}`, "record"); if (item.onset_date) card.append(make("p", `Onset date (as recorded): ${item.onset_date}`)); if (item.observed_date) card.append(make("p", `Observed date (as reported): ${item.observed_date}`)); timeline.append(card); });
+    const chatNavigation = byId("chat-navigation"); if (chatNavigation) chatNavigation.hidden = !state.capabilities.chat_use;
+    byId("timeline").hidden = !state.capabilities.timeline_read; byId("visits-brief").hidden = !state.capabilities.visit_read; byId("persisted-visit-brief").hidden = !(state.capabilities.visit_read && state.capabilities.brief_read); byId("export").hidden = !state.capabilities.vault_export; byId("edit-profile").hidden = !state.capabilities.person_update;
     renderVisitPlanning(); renderPersistedBrief();
+  }
+
+  function renderOverview() {
+    const counts = byId("overview-counts"), latest = byId("overview-latest"), empty = byId("overview-empty"), actionLinks = byId("overview-action-links"), activity = byId("overview-activity-list");
+    [counts, latest, actionLinks, activity].forEach(clear);
+    const readableTypes = ["medication", "condition", "lab"].filter((type) => state.capabilities[`${type}_read`]);
+    const records = [...state.medications, ...state.conditions, ...state.labs].filter((item) => item.is_active);
+    const pending = visibleCandidates().filter((item) => item.status === "pending").length;
+    const metric = (label, value) => {
+      const card = make("article", "", "summary-item");
+      card.append(make("strong", String(value)), make("span", label));
+      counts.append(card);
+    };
+    if (readableTypes.length) metric(t("workspace.metric_records"), records.length);
+    if (state.capabilities.document_read) metric(t("workspace.metric_documents"), state.documents.length);
+    if (state.capabilities.medication_read) metric(t("workspace.metric_medications"), state.medications.filter((item) => item.is_active).length);
+    if (state.capabilities.timeline_read) metric(t("workspace.metric_activity"), state.timeline.length);
+    if (pending) metric(t("workspace.metric_pending"), pending);
+    const hasData = records.length > 0 || state.documents.length > 0 || state.timeline.length > 0 || pending > 0;
+    empty.hidden = hasData;
+    if (records.length) {
+      const newest = OpenCareWorkspaceState.sortNewest(records, "confirmed_at", "id")[0];
+      latest.append(make("p", `${t("workspace.latest_record")}: ${newest.confirmed_at}`, "meta"));
+    }
+    if (state.capabilities.visit_read && state.visit) latest.append(make("p", `${t("workspace.selected_visit")}: ${state.visit.title}`, "meta"));
+
+    const action = (href, label, id = "") => {
+      const link = make("a", label, "action-link");
+      link.href = href;
+      if (id) link.id = id;
+      actionLinks.append(link);
+    };
+    if (state.capabilities.document_read) action("#documents", t("workspace.add_document"));
+    if (readableTypes.length) action("#records", t("workspace.open_records"));
+    action("/genetics", t("workspace.open_genetics"));
+    if (state.capabilities.chat_use) action("/chat", t("workspace.ask_opencare"), "chat-navigation");
+    action("/family-access", t("workspace.family_access"));
+
+    if (!state.capabilities.timeline_read || !state.timeline.length) {
+      activity.append(make("p", t("workspace.no_recent_activity"), "meta"));
+    } else {
+      OpenCareWorkspaceState.sortNewest(state.timeline, "event_at", "id").slice(0, 3).forEach((item) => {
+        const entry = make("article", "", "activity-item");
+        entry.append(make("strong", item.title), make("p", item.event_at, "meta"));
+        activity.append(entry);
+      });
+    }
   }
 
   function renderVisitPlanning() {
@@ -728,7 +825,7 @@
     state.loadVersion += 1;
     try { await setActivePerson(null); } catch (error) { status(error.message, "error"); return; }
     Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, controller: null });
-    byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; byId("vault-export-warning").hidden = true; renderPersonContext(); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status("Profile selection cleared.");
+    byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; byId("vault-export-warning").hidden = true; renderPersonContext(); renderSelectionEmptyState([{}]); updateShellPerson(null); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status(t("workspace.selection_cleared"));
   }
 
   byId("person-selector").addEventListener("change", () => { byId("load-workspace").disabled = !byId("person-selector").value; void loadWorkspace(); });

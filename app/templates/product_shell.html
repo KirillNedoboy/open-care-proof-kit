@@ -46,7 +46,7 @@
       <a class="product-shell__mobile-identity" href="/workspace" translate="no">OpenCare</a>
       <div class="product-shell__person" id="product-shell-person" data-active-person-id="{{ active_person_id|default('', true)|e }}">
         <span class="product-shell__person-label">{{ t('shell.person') }}</span>
-        <span class="product-shell__person-status" aria-live="polite">{% if active_person_id %}{{ t('person.selected') }}{% else %}{{ t('person.no_selection') }}{% endif %}</span>
+        <span id="product-shell-person-status" class="product-shell__person-status" aria-live="polite">{% if active_person_id %}{{ t('person.selected') }}{% else %}{{ t('person.no_selection') }}{% endif %}</span>
       </div>
     </div>
 

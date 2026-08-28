@@ -12,8 +12,99 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
     "en": {
         "app.name": "OpenCare",
         "page.workspace_title": "OpenCare Health Workspace",
+        "workspace.heading": "Welcome to your workspace",
+        "workspace.intro": (
+            "See what is recorded for the Person you are viewing, then choose where to "
+            "continue."
+        ),
+        "workspace.safety": (
+            "OpenCare organizes source-backed records. It does not interpret results or "
+            "make medical recommendations."
+        ),
+        "workspace.active_person": "Viewing Person",
+        "workspace.no_active_person": "No Person selected",
+        "workspace.loading_person": "Loading selected Person…",
+        "workspace.choose_person": "Choose an accessible Person to begin.",
+        "workspace.switcher_label": "Switch Person",
+        "workspace.selector_loading": "Loading accessible People…",
+        "workspace.selector_placeholder": "Choose a Person",
+        "workspace.selector_empty": "No accessible People",
+        "workspace.no_accessible_persons": "No health profile is available yet.",
+        "workspace.no_accessible_persons_help": (
+            "Create a profile through the existing owner flow, or ask someone to share "
+            "access with you."
+        ),
+        "workspace.overview_title": "Overview",
+        "workspace.overview_summary": (
+            "A factual snapshot of the records available to this account for the active "
+            "Person."
+        ),
+        "workspace.metric_records": "Confirmed records",
+        "workspace.metric_documents": "Documents",
+        "workspace.metric_medications": "Current medications",
+        "workspace.metric_activity": "Recent activity",
+        "workspace.metric_pending": "Items awaiting review",
+        "workspace.no_health_data": "No health data has been added for this Person yet.",
+        "workspace.no_health_data_help": (
+            "Start with a source document or an entry for review. Nothing is inferred or "
+            "filled in automatically."
+        ),
+        "workspace.quick_actions": "Next actions",
+        "workspace.add_document": "Add a document",
+        "workspace.open_records": "Open records",
+        "workspace.open_genetics": "Open Genetics",
+        "workspace.ask_opencare": "Ask OpenCare",
+        "workspace.family_access": "Manage family access",
+        "workspace.recent_activity": "Recent activity",
+        "workspace.no_recent_activity": "No recent activity is available for this Person.",
+        "workspace.viewing": "Viewing",
+        "workspace.date_of_birth": "Date of birth",
+        "workspace.clear_selection": "Clear Person",
+        "workspace.create_profile": "Create another Person",
+        "workspace.create_profile_help": (
+            "Creating a Person assigns your signed-in account full owner access. Other "
+            "people do not receive access automatically."
+        ),
+        "workspace.edit_profile": "Edit selected Person",
+        "workspace.edit_profile_title": "Edit Person",
+        "workspace.save_profile": "Save Person",
+        "workspace.no_profile_selected": "No Person selected",
+        "workspace.profile_choice_help": "Choose an accessible Person to load their workspace.",
+        "workspace.loading_workspace": "Loading workspace…",
+        "workspace.workspace_loaded": "Workspace loaded.",
+        "workspace.selection_cleared": "Person selection cleared.",
+        "workspace.person_not_available": "That Person is not available.",
+        "workspace.select_before_load": "Choose a Person before loading the workspace.",
+        "workspace.select_profile": "Select a Person",
+        "workspace.section_person": "Person",
+        "workspace.section_review": "Review",
+        "workspace.section_records": "Records",
+        "workspace.section_timeline": "Timeline",
+        "workspace.section_visits": "Visits & Brief",
+        "workspace.section_export": "Export",
+        "workspace.records_empty": "No confirmed records are available.",
+        "workspace.activity_empty": "No recent activity is available.",
+        "workspace.pending_empty": "No entries are waiting for review.",
+        "workspace.person_count": "accessible People",
+        "workspace.records_count": "records",
+        "workspace.documents_count": "documents",
+        "workspace.activity_count": "events",
+        "workspace.pending_count": "waiting for review",
+        "status.session_expired": "Your session has expired. Sign in again.",
+        "status.action_unavailable": "This action is no longer available.",
+        "status.record_changed": "This record changed. Refresh to see the latest version.",
+        "status.check_values": "Check the entered values and try again.",
+        "status.integrity_failure": "Integrity: stored evidence could not be verified.",
+        "status.storage_unavailable": (
+            "Local Product Core storage is unavailable. Try again shortly."
+        ),
+        "status.request_failed": "The request could not be completed. Try again.",
+        "workspace.latest_record": "Latest confirmed record",
+        "workspace.selected_visit": "Selected Visit",
+        "optional": "optional",
         "page.genetics_title": "OpenCare Genetics Workspace",
         "page.vault_title": "Private Person vault · OpenCare",
+        "workspace.recorded_in_opencare": "Recorded in OpenCare",
         "page.family_title": "Family and access · OpenCare",
         "nav.overview": "Overview",
         "nav.health": "Health",
@@ -161,9 +252,99 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
     "ru": {
         "app.name": "OpenCare",
         "page.workspace_title": "Рабочая область здоровья OpenCare",
+        "workspace.heading": "Добро пожаловать в рабочую область",
+        "workspace.intro": "Посмотрите записи выбранного пользователя и выберите следующий шаг.",
+        "workspace.safety": (
+            "OpenCare организует записи с указанием источника. Система не интерпретирует "
+            "результаты и не даёт медицинских рекомендаций."
+        ),
+        "workspace.active_person": "Вы просматриваете пользователя",
+        "workspace.no_active_person": "Пользователь не выбран",
+        "workspace.loading_person": "Загружаем выбранного пользователя…",
+        "workspace.choose_person": "Выберите доступного пользователя, чтобы начать.",
+        "workspace.switcher_label": "Сменить пользователя",
+        "workspace.selector_loading": "Загружаем доступных пользователей…",
+        "workspace.selector_placeholder": "Выберите пользователя",
+        "workspace.selector_empty": "Нет доступных пользователей",
+        "workspace.no_accessible_persons": "Профиль здоровья пока недоступен.",
+        "workspace.no_accessible_persons_help": (
+            "Создайте профиль через существующий сценарий владельца или попросите кого-то "
+            "предоставить вам доступ."
+        ),
+        "workspace.overview_title": "Обзор",
+        "workspace.overview_summary": (
+            "Фактическая сводка записей, доступных этому аккаунту для выбранного "
+            "пользователя."
+        ),
+        "workspace.metric_records": "Подтверждённые записи",
+        "workspace.metric_documents": "Документы",
+        "workspace.metric_medications": "Текущие лекарства",
+        "workspace.metric_activity": "Недавняя активность",
+        "workspace.metric_pending": "Ожидают проверки",
+        "workspace.no_health_data": "Для этого пользователя пока нет данных о здоровье.",
+        "workspace.no_health_data_help": (
+            "Начните с исходного документа или записи на проверку. Система ничего не "
+            "додумывает и не заполняет автоматически."
+        ),
+        "workspace.quick_actions": "Следующие шаги",
+        "workspace.add_document": "Добавить документ",
+        "workspace.open_records": "Открыть записи",
+        "workspace.open_genetics": "Открыть генетику",
+        "workspace.ask_opencare": "Спросить OpenCare",
+        "workspace.family_access": "Управление семейным доступом",
+        "workspace.recent_activity": "Недавняя активность",
+        "workspace.no_recent_activity": "Для этого пользователя нет доступной недавней активности.",
+        "workspace.viewing": "Просмотр",
+        "workspace.date_of_birth": "Дата рождения",
+        "workspace.clear_selection": "Очистить выбор",
+        "workspace.create_profile": "Создать ещё один профиль",
+        "workspace.create_profile_help": (
+            "Создание профиля предоставляет вошедшему аккаунту полный доступ владельца. "
+            "Другие пользователи не получают доступ автоматически."
+        ),
+        "workspace.edit_profile": "Изменить выбранный профиль",
+        "workspace.edit_profile_title": "Изменить профиль",
+        "workspace.save_profile": "Сохранить профиль",
+        "workspace.no_profile_selected": "Профиль не выбран",
+        "workspace.profile_choice_help": (
+            "Выберите доступного пользователя, чтобы загрузить его рабочую область."
+        ),
+        "workspace.loading_workspace": "Загружаем рабочую область…",
+        "workspace.workspace_loaded": "Рабочая область загружена.",
+        "workspace.selection_cleared": "Выбор пользователя очищен.",
+        "workspace.person_not_available": "Этот пользователь недоступен.",
+        "workspace.select_before_load": "Выберите пользователя перед загрузкой рабочей области.",
+        "workspace.select_profile": "Выбрать пользователя",
+        "workspace.section_person": "Пользователь",
+        "workspace.section_review": "Проверка",
+        "workspace.section_records": "Записи",
+        "workspace.section_timeline": "Хронология",
+        "workspace.section_visits": "Визиты и сводка",
+        "workspace.section_export": "Экспорт",
+        "workspace.records_empty": "Подтверждённых записей нет.",
+        "workspace.activity_empty": "Недавней активности нет.",
+        "workspace.pending_empty": "Нет записей, ожидающих проверки.",
+        "workspace.person_count": "доступных пользователей",
+        "workspace.records_count": "записей",
+        "workspace.documents_count": "документов",
+        "workspace.activity_count": "событий",
+        "workspace.pending_count": "ожидают проверки",
+        "status.session_expired": "Срок действия сеанса истёк. Войдите снова.",
+        "status.action_unavailable": "Это действие больше недоступно.",
+        "status.record_changed": "Запись изменилась. Обновите страницу.",
+        "status.check_values": "Проверьте введённые значения и повторите попытку.",
+        "status.integrity_failure": "Целостность: сохранённые материалы не прошли проверку.",
+        "status.storage_unavailable": (
+            "Локальное хранилище Product Core недоступно. Повторите попытку позже."
+        ),
+        "status.request_failed": "Не удалось выполнить запрос. Повторите попытку.",
+        "workspace.latest_record": "Последняя подтверждённая запись",
+        "workspace.selected_visit": "Выбранный визит",
         "page.genetics_title": "Рабочая область генетики OpenCare",
         "page.vault_title": "Личное хранилище пользователя · OpenCare",
         "page.family_title": "Семья и доступ · OpenCare",
+        "optional": "необязательно",
+        "workspace.recorded_in_opencare": "Записано в OpenCare",
         "nav.overview": "Обзор",
         "nav.health": "Здоровье",
         "nav.workspace": "Рабочая область",
