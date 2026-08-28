@@ -86,3 +86,7 @@ def test_invalid_person_selection_fails_closed_without_changing_authority(
     )
     assert 'if (!response.ok) throw Error(t("workspace.person_not_available"));' in script
     assert 'const activeId = byId("product-shell-person")?.dataset.activePersonId || "";' in script
+    assert (
+        "state.capabilities.document_read && state.capabilities.document_write && "
+        "state.capabilities.source_write"
+    ) in script

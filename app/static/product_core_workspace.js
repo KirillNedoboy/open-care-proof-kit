@@ -646,7 +646,7 @@
       if (id) link.id = id;
       actionLinks.append(link);
     };
-    if (state.capabilities.document_read) action("#documents", t("workspace.add_document"));
+    if (state.capabilities.document_read && state.capabilities.document_write && state.capabilities.source_write) action("#documents", t("workspace.add_document"));
     if (readableTypes.length) action("#records", t("workspace.open_records"));
     action("/genetics", t("workspace.open_genetics"));
     if (state.capabilities.chat_use) action("/chat", t("workspace.ask_opencare"), "chat-navigation");
