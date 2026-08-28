@@ -98,9 +98,21 @@ assignment checks; it does not grant access or change authorization semantics.
 Workspace overview and Person-selection copy is localized for English (`en`) and
 Russian (`ru`). There is no new activity subsystem or analytics read model.
 
-R5.4 remains deferred for broader authenticated-page localization, chat-shell
-convergence, and further product-shell refinement. Genetics contracts and
-Genetics Workspace behavior are unchanged by R5.3.
+## R5.4 Family & Access UX
+
+R5.4 makes `/family-access` the human-facing Person-sharing and local-account
+surface. Invitation creation means explicit sharing to one selected Person;
+machine scopes and authority remain unchanged. Technical identifiers and exact
+scope values are moved into a closed Advanced presentation, while Person
+isolation remains assignment-bound.
+
+There is no invitation enumeration. R5.4 changes no backend route, schema, or
+authentication contract, and Genetics access remains separate from Family
+Access. No R5.5+ product step is selected. Broader authenticated-page
+localization, chat-shell convergence, and product-shell refinement remain
+deferred presentation work, not a new product phase.
+
+Genetics contracts and Genetics Workspace behavior are unchanged by R5.4.
 
 ## HTTP privacy contract
 
