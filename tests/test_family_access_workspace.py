@@ -56,7 +56,7 @@ def test_family_access_workspace_requires_session_and_renders_management_states(
     assert 'id="create-family-form"' in authenticated.text
     assert 'id="create-invitation-form"' in authenticated.text
     assert 'id="confirm-full-owner-access"' in authenticated.text
-    assert "full control" in authenticated.text.lower()
+    assert "all current family access scopes" in authenticated.text.lower()
     assert "No Person selected" in authenticated.text
 
     product_core_client.cookies.clear()
