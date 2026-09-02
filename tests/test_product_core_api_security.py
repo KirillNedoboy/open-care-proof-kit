@@ -51,6 +51,8 @@ def test_product_core_uses_actor_session_instead_of_private_password_gate(
     monkeypatch.setenv("OPENCARE_SECRET_KEY", "s" * 32)
     monkeypatch.setenv("OPENCARE_BOOTSTRAP_SECRET", "b" * 32)
     monkeypatch.setenv("OPENCARE_ACCESS_PASSWORD", "password")
+    session_path = tmp_path.with_name(f"{tmp_path.name}-sessions") / "sessions.sqlite3"
+    monkeypatch.setenv("OPENCARE_SESSION_DB_PATH", str(session_path))
     clear_settings_cache()
 
     try:

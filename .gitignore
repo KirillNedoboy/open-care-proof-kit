@@ -10,6 +10,9 @@ build/
 .env
 .env.*
 !.env.example
+# local runtime state
+data/opencare.sqlite3
+.mcp.json
 deploy/env.production
 deploy/Caddyfile
 data/private/
