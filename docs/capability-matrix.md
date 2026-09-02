@@ -43,7 +43,7 @@ release tags.
 | Constrained Python 3.12 | `IMPLEMENTED` | `constraints/python312.txt` pins the accepted Python 3.12 release/test environment. |
 | PGx | `IMPLEMENTED/PARTIAL` | Deterministic reviewed genetics finding × exact confirmed medication intersection; association display only, no dosage/start/stop action. |
 | Genetics source | `IMPLEMENTED` | Immutable local consumer-genotype Source, bounded TXT import, schema v9 dataset/observation/finding/research tables; VCF remains demo-only. |
-| Genetics Workspace | `IMPLEMENTED` | `/genetics` responsive tabs for overview, variants, PGx, associations, traits/systems, evidence, family comparison, and Research Studio. |
+| Genetics Workspace | `IMPLEMENTED` | `/genetics` live Person-scoped surface loading real authorized data; synthetic demo content removed; EN/RU localized; empty/access-denied states truthful. |
 | Research Mode | `IMPLEMENTED` | Offline deterministic Evidence/Explore contracts with structured epistemic labels, citations, counterevidence, and no canonical mutation path. |
 | Agent tools | `PARTIAL` | Existing trust tools remain unchanged; Research Mode uses a minimized genetics packet and metadata-only receipt boundary. |
 | Family permissions | `IMPLEMENTED` | Legacy family-access generations remain frozen; separate explicit `genetics.read/write/research/compare/export` grants are required and revocable. |

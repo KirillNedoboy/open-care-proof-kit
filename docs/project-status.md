@@ -108,11 +108,33 @@ isolation remains assignment-bound.
 
 There is no invitation enumeration. R5.4 changes no backend route, schema, or
 authentication contract, and Genetics access remains separate from Family
-Access. No R5.5+ product step is selected. Broader authenticated-page
+Access. No R5.6+ product step is selected. Broader authenticated-page
 localization, chat-shell convergence, and product-shell refinement remain
 deferred presentation work, not a new product phase.
 
 Genetics contracts and Genetics Workspace behavior are unchanged by R5.4.
+
+## R5.5 Genetics Product UX (this branch)
+
+R5.5 makes `/genetics` a live Person-scoped product surface within the
+unified R5 authenticated shell. The page loads real authorized genetics data
+from the Product Core API and shows truthful empty/access-denied states.
+All synthetic demo content is removed from the ordinary live UX.
+
+Key changes:
+- `/genetics` loads real data via `GET /api/product-core/v1/people/{id}/genetics`
+- Fresh Persons with no genetics dataset see a finished empty state
+- Genetics capabilities (`genetics_read/write/research/compare/export`) are
+  exposed in the workspace capabilities response
+- Full EN/RU localization of the Genetics workspace
+- Upload limit remains exactly 32,000,000 bytes
+- Product Core schema remains v9; no migration
+- G5 machine state remains exactly `READY_FOR_SECOND_CLIENT_SMOKE`
+
+Synthetic repository fixtures remain valid for tests, evals, and deterministic
+reviewer procedures. They are not injected into live runtime state.
+
+R5.6+ remains deferred. This is not a claim that all R5 is complete.
 
 ## HTTP privacy contract
 
