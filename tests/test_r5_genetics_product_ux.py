@@ -11,6 +11,8 @@ from __future__ import annotations
 # ruff: noqa: E501
 import base64
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -387,3 +389,9 @@ def test_genetics_machine_identifiers_not_translated(product_core_client: TestCl
     product_core_client.cookies.set("opencare_locale", "ru", path="/")
     russian = product_core_client.get("/genetics")
     assert "GRCh37/hg19" in russian.text
+
+
+def test_genetics_tabs_activate_on_click() -> None:
+    script = Path("app/static/genetics.js").read_text(encoding="utf-8")
+    assert 'tabList?.addEventListener("click"' in script
+    assert 'activateTab(clickedTab.dataset.tab)' in script

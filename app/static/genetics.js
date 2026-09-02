@@ -940,6 +940,10 @@
   // Init
   function init() {
     const tabList = document.querySelector('[role="tablist"]');
+    tabList?.addEventListener("click", (event) => {
+      const clickedTab = event.target.closest('[role="tab"][data-tab]');
+      if (clickedTab) activateTab(clickedTab.dataset.tab);
+    });
     tabList?.addEventListener("keydown", handleTabKeydown);
     byId("genetics-clear-person")?.addEventListener("click", async () => {
       try {
