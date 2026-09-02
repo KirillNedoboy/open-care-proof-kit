@@ -80,3 +80,36 @@ def test_shared_shell_does_not_create_new_backend_routes(
     response = product_core_client.get("/settings", follow_redirects=False)
     assert response.status_code == 404
     assert product_core_client.get("/family-access#account-settings").status_code == 200
+
+
+def test_authenticated_chat_renders_shared_shell_and_localized_content(
+    product_core_client: TestClient,
+) -> None:
+    selected = product_core_client.put(
+        "/api/family-access/v1/active-person", json={"person_id": "person-1"}
+    )
+    assert selected.status_code == 204
+    english = product_core_client.get("/chat")
+    assert english.status_code == 200
+    assert '<html lang="en">' in english.text
+    assert 'class="product-shell__sidebar"' in english.text
+    assert 'href="/chat" aria-current="page"' in english.text
+    assert 'class="chat-content"' in english.text
+    assert 'class="chat-sidebar"' not in english.text
+    assert "Ask about your recorded vault" in english.text
+
+    product_core_client.cookies.set("opencare_locale", "ru", path="/")
+    russian = product_core_client.get("/chat")
+    assert russian.status_code == 200
+    assert '<html lang="ru">' in russian.text
+    assert "Спросите о записанных данных" in russian.text
+    assert "Отправить" in russian.text
+
+
+def test_demo_chat_keeps_demo_endpoint_without_authenticated_shell(
+    product_core_client: TestClient,
+) -> None:
+    demo = product_core_client.get("/demo/chat")
+    assert demo.status_code == 200
+    assert 'data-chat-endpoint="/api/demo/chat"' in demo.text
+    assert 'class="product-shell__sidebar"' not in demo.text

@@ -66,8 +66,10 @@ SameSite cookie and affects UI copy only. It does not change canonical health
 data, identifiers, machine reason codes, audit codes, API contracts, or
 authorization behavior.
 
-Chat shell convergence and broader product-page redesign remain deferred to later
-R5 passes.
+R5.6.1 converges authenticated `/chat` into the shared product shell and adds
+complete EN/RU Chat UI localization. The existing prepare → consent → execute →
+receipt trust flow remains unchanged; demo chat remains a separate passwordless
+surface.
 
 ## R5.2 auth and onboarding UX (this branch)
 

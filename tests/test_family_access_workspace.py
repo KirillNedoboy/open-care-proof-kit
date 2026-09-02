@@ -121,15 +121,11 @@ def test_family_access_browser_code_keeps_invitation_secrets_out_of_urls() -> No
 
 
 def test_live_navigation_exposes_access_management_without_demo_crossover() -> None:
-    for template_name in (
-        "app/templates/product_shell.html",
-        "app/templates/chat.html",
-    ):
-        template = (ROOT / template_name).read_text(
-            encoding="utf-8"
-        )
-        assert 'href="/family-access"' in template
-        assert "/demo/health-vault" not in template
+    shell = (ROOT / "app/templates/product_shell.html").read_text(encoding="utf-8")
+    chat = (ROOT / "app/templates/chat.html").read_text(encoding="utf-8")
+    assert 'href="/family-access"' in shell
+    assert "/demo/health-vault" not in shell
+    assert "/demo/health-vault" not in chat
 
 
 def test_live_and_demo_chat_pages_use_separate_body_endpoints(

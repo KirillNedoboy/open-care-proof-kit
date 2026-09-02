@@ -177,6 +177,19 @@ def test_chat_browser_script_does_not_persist_conversation_state() -> None:
     assert "innerHTML" not in script
 
 
+def test_chat_browser_script_preserves_exact_trust_flow_and_reset_guards() -> None:
+    script = (Path("app") / "static" / "chat.js").read_text(encoding="utf-8")
+
+    assert 'request("/api/chat/prepare"' in script
+    assert "/consent`," in script
+    assert "/execute`," in script
+    assert "/receipt`," in script
+    assert "newChat.disabled" in script
+    assert "external" in script
+    assert "receipt_id" in script
+    assert 't("chat.consent_declined"' in script
+
+
 def test_private_chat_page_redirects_but_api_returns_json_401(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{ locale|default('en', true)|e }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t('chat.title') }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}">
+  <script defer src="{{ url_for('static', path='/chat.js') }}"></script>
+  <script id="product-shell-translations" type="application/json">{{ translations|default({}, true)|tojson }}</script>
+</head>
+<body class="chat-body chat-demo" data-chat-endpoint="{{ chat_endpoint }}">
+  <main class="chat-workspace">
+    <aside class="chat-sidebar" id="chat-sidebar" aria-label="{{ t('chat.active_vault') }}">
+      <div class="brand-row"><span class="brand-mark">O</span><strong>OpenCare</strong></div>
+      <button class="new-chat" type="button" id="new-chat">{{ t('chat.new_conversation') }}</button>
+      <section class="context-block"><span>{{ t('chat.active_vault') }}</span><strong>{{ vault_source_label }}</strong><small>{{ vault_source_name }}</small></section>
+      <section class="context-block"><span>{{ t('chat.family_context') }}</span><strong>{{ family_label }}</strong><small>{% for person in people %}{{ person.display_name }}{% if not loop.last %} · {% endif %}{% endfor %}</small></section>
+      <section class="context-block"><span>{{ t('chat.suggested_questions') }}</span><button class="prompt-button" type="button">{{ t('chat.prompt_doctor') }}</button><button class="prompt-button" type="button">{{ t('chat.prompt_changed') }}</button><button class="prompt-button" type="button">{{ t('chat.prompt_sources') }}</button></section>
+      <div class="sidebar-boundaries"><span>{{ t('chat.boundary_read_only') }}</span><span>{{ t('chat.boundary_notice') }}</span></div>
+    </aside>
+    <section class="chat-panel">
+      <header class="chat-header"><button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-expanded="false">{{ t('chat.active_vault') }}</button><div><h1>{{ t('chat.title') }}</h1><p>{{ family_label }} · {{ t('chat.subtitle') }}</p></div><span class="provider-status">{% if provider_status == 'Self-hosted model configured by operator' %}{{ t('chat.provider_self_hosted_status') }}{% elif provider_status == 'External model configured by operator' %}{{ t('chat.provider_external_status') }}{% else %}{{ t('chat.provider_local_status') }}{% endif %}</span></header>
+      <div class="message-stream" id="message-stream" aria-live="polite"><section class="empty-state" id="empty-state"><h2>{{ t('chat.empty_title') }}</h2><p>{{ t('chat.empty_intro') }}</p><p>{{ t('chat.empty_safety') }}</p></section></div>
+      <form class="composer" id="chat-form"><label class="sr-only" for="chat-question">{{ t('chat.ask_label') }}</label><textarea id="chat-question" maxlength="2000" placeholder="{{ t('chat.placeholder') }}" rows="1"></textarea><div class="composer-actions"><span id="chat-status" role="status"></span><button id="send-button" type="submit">{{ t('chat.send') }}</button></div></form>
+    </section>
+  </main>
+</body>
+</html>

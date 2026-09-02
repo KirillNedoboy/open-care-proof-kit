@@ -630,7 +630,7 @@ def demo_chat_page(request: Request) -> HTMLResponse:
     active_vault = load_active_vault(settings)
     return templates.TemplateResponse(
         request=request,
-        name="chat.html",
+        name="chat_demo.html",
         context={
             "vault_source_label": active_vault.source_label,
             "vault_source_name": active_vault.source_basename or "Synthetic demo vault",
