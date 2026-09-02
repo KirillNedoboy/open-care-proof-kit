@@ -150,3 +150,14 @@ def test_workspace_preserves_machine_values_and_navigation_contracts() -> None:
     assert all(route not in template for route in ("/health", "/documents", "/activity"))
     assert "state.loadVersion" in script
     assert "shouldApplyResponse" in script
+
+
+def test_workspace_rerender_clears_person_scoped_review_and_timeline_cards() -> None:
+    script = (ROOT / "app" / "static" / "product_core_workspace.js").read_text(
+        encoding="utf-8"
+    )
+    render_start = script.index('function render()')
+    render_body = script[render_start : script.index('function renderOverview()', render_start)]
+    assert 'clear(inbox); clear(timeline);' in render_body
+    assert "if (!EVENT_LABELS[item.event_type]) return item.title;" in script
+    assert "eventTitle(item)" in script

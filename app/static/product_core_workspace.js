@@ -21,6 +21,13 @@
   const factLabel = (value) => t(FACT_LABELS[value], value);
   const statusLabel = (value) => t(STATUS_LABELS[value], value);
   const eventLabel = (value) => t(EVENT_LABELS[value], value.replaceAll("_", " "));
+  const eventTitle = (item) => {
+    if (!EVENT_LABELS[item.event_type]) return item.title;
+    const rawTitle = String(item.title || "");
+    const separator = rawTitle.indexOf(": ");
+    const subject = separator >= 0 ? rawTitle.slice(separator + 2) : rawTitle;
+    return `${eventLabel(item.event_type)}${subject ? `: ${subject}` : ""}`;
+  };
   const originLabel = (value) => t(ORIGIN_LABELS[value], value.replaceAll("_", " "));
   const STATUS_COPY = {
     "Document uploaded.": "workspace.document_uploaded", "Typed candidate is waiting for review.": "workspace.typed_candidate_pending",
@@ -650,6 +657,7 @@
 
   function render() {
     const inbox = byId("review-inbox"), timeline = byId("timeline-list");
+    clear(inbox); clear(timeline);
     localizeWorkspaceChrome(); renderOverview(); renderFactSections(); renderDocuments(); syncFactTypeFilters();
     const all = visibleCandidates(), inboxFact = byId("inbox-fact-filter").value, inboxStatus = byId("inbox-status-filter").value, search = byId("review-search").value.trim().toLocaleLowerCase();
     const inboxItems = all.filter((item) => (inboxFact === "all" || item.fact_type === inboxFact) && (inboxStatus === "all" || item.status === inboxStatus) && (!search || [item.display_name, item.test_name, item.note, item.result_text].some((value) => String(value || "").toLocaleLowerCase().includes(search))));
@@ -658,7 +666,7 @@
     const timelineFilter = byId("timeline-filter").value;
     const timelineItems = state.timeline.filter((item) => timelineFilter === "all" || item.fact_type === timelineFilter);
     if (!timelineItems.length) timeline.append(make("p", t("workspace.activity_empty"), "meta"));
-    timelineItems.forEach((item) => { const card = make("article", `${item.title} — ${eventLabel(item.event_type)} · ${t("workspace.recorded_in_opencare", "Recorded in OpenCare")}: ${item.event_at}`, "record"); if (item.onset_date) card.append(make("p", `${t("workspace.onset_date", "Onset date (as recorded)")}: ${item.onset_date}`)); if (item.observed_date) card.append(make("p", `${t("workspace.observed_date", "Observed date (as reported)")}: ${item.observed_date}`)); timeline.append(card); });
+    timelineItems.forEach((item) => { const card = make("article", `${eventTitle(item)} · ${t("workspace.recorded_in_opencare", "Recorded in OpenCare")}: ${item.event_at}`, "record"); if (item.onset_date) card.append(make("p", `${t("workspace.onset_date", "Onset date (as recorded)")}: ${item.onset_date}`)); if (item.observed_date) card.append(make("p", `${t("workspace.observed_date", "Observed date (as reported)")}: ${item.observed_date}`)); timeline.append(card); });
     const chatNavigation = byId("chat-navigation"); if (chatNavigation) chatNavigation.hidden = !state.capabilities.chat_use;
     byId("timeline").hidden = !state.capabilities.timeline_read; byId("visits-brief").hidden = !state.capabilities.visit_read; byId("persisted-visit-brief").hidden = !(state.capabilities.visit_read && state.capabilities.brief_read); byId("export").hidden = !state.capabilities.vault_export; byId("edit-profile").hidden = !state.capabilities.person_update;
     renderVisitPlanning(); renderPersistedBrief();
@@ -705,7 +713,7 @@
     } else {
       OpenCareWorkspaceState.sortNewest(state.timeline, "event_at", "id").slice(0, 3).forEach((item) => {
         const entry = make("article", "", "activity-item");
-        entry.append(make("strong", item.title), make("p", item.event_at, "meta"));
+        entry.append(make("strong", eventTitle(item)), make("p", item.event_at, "meta"));
         activity.append(entry);
       });
     }
