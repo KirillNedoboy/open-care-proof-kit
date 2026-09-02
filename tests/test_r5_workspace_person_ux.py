@@ -4,6 +4,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from app.ui_localization import TRANSLATIONS
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -26,6 +28,41 @@ def test_workspace_home_has_localized_truthful_empty_states(
     assert "Добро пожаловать в рабочую область" in russian.text
     assert "Профиль здоровья пока недоступен." in russian.text
     assert "Welcome to your workspace" not in russian.text
+
+
+def test_workspace_sections_are_localized_in_both_catalogs(
+    product_core_client: TestClient,
+) -> None:
+    english = product_core_client.get("/workspace")
+    assert english.status_code == 200
+    for label in (
+        "Review",
+        "Documents",
+        "Records",
+        "Timeline",
+        "Visit Brief",
+        "Fact type",
+        "Status",
+        "Add for review",
+    ):
+        assert label in english.text
+
+    product_core_client.cookies.set("opencare_locale", "ru", path="/")
+    russian = product_core_client.get("/workspace")
+    assert russian.status_code == 200
+    for label in (
+        "Проверка",
+        "Документы",
+        "Записи",
+        "Активность",
+        "Краткая информация о визите",
+        "Тип факта",
+        "Статус",
+        "Добавить на проверку",
+    ):
+        assert label in russian.text
+    for label in ("Review", "Documents", "Records", "Timeline", "Fact type"):
+        assert label not in russian.text
 
 
 def test_workspace_reads_real_zero_state_through_authorized_paths(
@@ -91,3 +128,25 @@ def test_invalid_person_selection_fails_closed_without_changing_authority(
         "state.capabilities.source_write"
     ) in script
     assert "localizeWorkspaceChrome" in script
+
+
+def test_workspace_catalog_has_matching_en_ru_workspace_keys() -> None:
+    english = {key for key in TRANSLATIONS["en"] if key.startswith("workspace.")}
+    russian = {key for key in TRANSLATIONS["ru"] if key.startswith("workspace.")}
+    assert english <= russian
+
+
+def test_workspace_preserves_machine_values_and_navigation_contracts() -> None:
+    template = (ROOT / "app" / "templates" / "product_core_workspace.html").read_text(
+        encoding="utf-8"
+    )
+    script = (ROOT / "app" / "static" / "product_core_workspace.js").read_text(
+        encoding="utf-8"
+    )
+    for anchor in ("records", "documents", "timeline"):
+        assert f'href="#{anchor}"' in template
+    for value in ('"pending"', '"confirmed"', '"corrected"', '"rejected"', '"unsupported"'):
+        assert value in template or value in script
+    assert all(route not in template for route in ("/health", "/documents", "/activity"))
+    assert "state.loadVersion" in script
+    assert "shouldApplyResponse" in script
