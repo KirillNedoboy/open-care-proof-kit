@@ -117,6 +117,197 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "workspace.visits": "Visits",
         "optional": "optional",
         "page.genetics_title": "OpenCare Genetics Workspace",
+        "genetics.kicker": "Genetics Workspace",
+        "genetics.heading": "Evidence before interpretation",
+        "genetics.intro": (
+            "Review selectively indexed observations, their evidence, and research questions "
+            "without exposing the raw genome."
+        ),
+        "genetics.person_label": "Current genetics profile",
+        "genetics.person_selector_label": "Switch Person",
+        "genetics.no_person": "Select a Person to view genetics.",
+        "genetics.no_access": "Genetics access is not available for this Person.",
+        "genetics.empty_title": "No genetic data yet.",
+        "genetics.empty_help": "Import a supported consumer genotype file to begin.",
+        "genetics.import_cta": "Import genetic data",
+        "genetics.privacy_note": (
+            "The original source remains local to this OpenCare installation. Only "
+            "selected/indexed observations participate in Genetics features. Raw genome is "
+            "excluded from supported model/provider context."
+        ),
+        "genetics.sections_label": "Genetics sections",
+        "genetics.tab_overview": "Overview",
+        "genetics.tab_overview_sub": "Source and coverage",
+        "genetics.tab_variants": "Variants",
+        "genetics.tab_variants_sub": "Indexed observations",
+        "genetics.tab_pgx": "Pharmacogenomics",
+        "genetics.tab_pgx_sub": "Medication relevance",
+        "genetics.tab_health": "Health associations",
+        "genetics.tab_health_sub": "Reviewed findings",
+        "genetics.tab_traits": "Traits & systems",
+        "genetics.tab_traits_sub": "Exploratory pathways",
+        "genetics.tab_evidence": "Evidence",
+        "genetics.tab_evidence_sub": "Sources and limits",
+        "genetics.tab_family": "Family comparison",
+        "genetics.tab_family_sub": "Consent required",
+        "genetics.tab_research": "Research Studio",
+        "genetics.tab_research_sub": "Bounded exploration",
+        "genetics.overview_title": "Overview",
+        "genetics.overview_help": "A bounded view of one consumer-genotype dataset.",
+        "genetics.overview_dataset": "Dataset record",
+        "genetics.overview_coverage": "Selective coverage",
+        "genetics.overview_findings": "Findings summary",
+        "genetics.overview_evidence": "Evidence distribution",
+        "genetics.import_title": "Import genetic data",
+        "genetics.import_help": (
+            "Local consumer genotype TXT only. The original bytes are immutable and never sent to "
+            "a provider."
+        ),
+        "genetics.import_file_label": "Genotype file",
+        "genetics.import_build_label": "Genome build",
+        "genetics.build_unknown": "Unknown",
+        "genetics.import_confirmation": (
+            "I understand genetic data is uniquely identifying and can reveal information about "
+            "relatives."
+        ),
+        "genetics.import_submit": "Import locally",
+        "genetics.import_success": (
+            "Imported locally. The source is immutable; indexed coverage is ready to review."
+        ),
+        "genetics.import_coverage_note": (
+            "Consumer genotype coverage is incomplete. Missing loci are not treated as reference "
+            "genotype."
+        ),
+        "genetics.upload_limit": "Maximum upload size: 32,000,000 bytes.",
+        "genetics.import_error_too_large": "File too large. Maximum size is 32,000,000 bytes.",
+        "genetics.import_error_confirmation": "Confirmation is required before import.",
+        "genetics.import_error_build": "Unsupported genome build.",
+        "genetics.import_error_invalid": "The file could not be read as a valid genotype file.",
+        "genetics.import_error_generic": "The local import failed.",
+        "genetics.variants_title": "Variants",
+        "genetics.variants_help": "Only loci selected by installed evidence packs are shown.",
+        "genetics.variants_empty": (
+            "No selectively indexed observations match this view. An absent chip locus is "
+            "untested, not a reference genotype."
+        ),
+        "genetics.coverage_present": "Present",
+        "genetics.coverage_no_call": "No-call",
+        "genetics.coverage_not_present": "Not present",
+        "genetics.coverage_note_title": "Not present does not mean reference.",
+        "genetics.coverage_note_body": (
+            "A consumer chip may not test a target locus. Untested, no-call, and confirmed "
+            "reference are different states."
+        ),
+        "genetics.pgx_title": "Pharmacogenomics",
+        "genetics.pgx_help": "Medication relevance, not prescribing advice.",
+        "genetics.pgx_boundary": "Association only",
+        "genetics.pgx_boundary_note": (
+            "This surface does not recommend a medication, dose, start, or stop."
+        ),
+        "genetics.pgx_empty": "No pharmacogenomic intersections are available for this Person.",
+        "genetics.health_title": "Health associations",
+        "genetics.health_help": (
+            "Reviewed genetics findings remain separate from diagnosed conditions."
+        ),
+        "genetics.health_empty": "No reviewed health associations are available.",
+        "genetics.traits_title": "Traits & systems",
+        "genetics.traits_help": "Possible pathway relevance with evidence always in view.",
+        "genetics.traits_empty": "No trait observations are available.",
+        "genetics.evidence_title": "Evidence",
+        "genetics.evidence_help": "Source quality, version, review state, and limitations.",
+        "genetics.evidence_empty": "No evidence entries are available.",
+        "genetics.family_title": "Family comparison",
+        "genetics.family_help": (
+            "Deterministic coverage comparison with separate permission for each Person."
+        ),
+        "genetics.family_warning": (
+            "Genetics access is never inherited from family access. Both profiles must grant "
+            "genetics comparison. Hidden profiles and datasets are never revealed."
+        ),
+        "genetics.family_limit": (
+            "These statistics describe compatible indexed observations only. They do not prove "
+            "biological or legal kinship."
+        ),
+        "genetics.family_person_b_label": "Second profile",
+        "genetics.family_compare_submit": "Compare coverage",
+        "genetics.family_no_access": (
+            "The selected profile does not have genetics comparison access."
+        ),
+        "genetics.research_title": "Research Studio",
+        "genetics.research_help": (
+            "Build a bounded question from selected evidence and health records."
+        ),
+        "genetics.research_evidence_mode": "Evidence",
+        "genetics.research_evidence_mode_help": "Use supplied evidence only",
+        "genetics.research_explore_mode": "Explore",
+        "genetics.research_explore_mode_help": "Label hypotheses and background",
+        "genetics.research_mode_label": "Research mode",
+        "genetics.research_mode_help": "Choose how far synthesis may go.",
+        "genetics.research_question_label": "Question",
+        "genetics.research_disclosure_confirm": (
+            "I confirm this genetics-specific external disclosure for the selected context."
+        ),
+        "genetics.research_run": "Run bounded research",
+        "genetics.research_readiness_confirm": "Confirm external disclosure to continue.",
+        "genetics.research_readiness_confirmed": "Disclosure confirmed for this run only.",
+        "genetics.research_running": "Running bounded research…",
+        "genetics.status_pending": "Pending",
+        "genetics.status_reviewed": "Reviewed",
+        "genetics.status_dismissed": "Dismissed",
+        "genetics.status_unsupported": "Unsupported",
+        "genetics.status_conflicting": "Conflicting",
+        "genetics.loading": "Loading genetics…",
+        "genetics.load_error": "Genetics could not be loaded.",
+        "genetics.observation_label": "Indexed observation",
+        "genetics.category_pgx": "Pharmacogenomics",
+        "genetics.category_health": "Health association",
+        "genetics.category_trait": "Trait",
+        "genetics.provenance_label": "Provenance",
+        "genetics.raw_source_note": "Selected observation only. Raw source rows are not rendered.",
+        "genetics.filter_search": "Search rsID or gene",
+        "genetics.filter_coverage": "Coverage",
+        "genetics.filter_category": "Category",
+        "genetics.filter_all": "All",
+        "genetics.family_person_a_label": "First profile",
+        "genetics.family_compared_with": "compared with",
+        "genetics.family_choose_person_b": "Choose a second profile to compare.",
+        "genetics.context_selected": "Selected context",
+        "genetics.research_provider_label": "External provider",
+        "genetics.research_provider_name": "Deterministic local research",
+        "genetics.research_context_none": (
+            "Select reviewed findings or medication records to build the context."
+        ),
+        "genetics.research_context_summary": (
+            "Disclosed context: {findings} reviewed findings and {records} medication records. No "
+            "raw genotype or unrestricted vault content is included."
+        ),
+        "genetics.research_output_title": "Research output",
+        "genetics.research_supported": "Supported synthesis",
+        "genetics.research_plausible": "Plausible hypothesis",
+        "genetics.research_what_may_be_happening": "What may be happening",
+        "genetics.research_evidence_supporting": "Evidence supporting it",
+        "genetics.research_evidence_against": "Devil's advocate: evidence against it",
+        "genetics.research_alternative_explanations": "Alternative explanations",
+        "genetics.research_missing_information": "Missing information",
+        "genetics.research_questions": "Questions worth investigating",
+        "genetics.research_claims": "Bounded claims",
+        "genetics.research_session": "Research session",
+        "genetics.context_count": "{count} selected items",
+        "genetics.findings_reviewed": "Reviewed findings",
+        "genetics.evidence_entries": "Evidence entries",
+        "genetics.loci_indexed": "Indexed loci",
+        "genetics.dataset_imported": "Imported",
+        "genetics.dataset_parser": "Parser",
+        "genetics.dataset_raw": "Raw source",
+        "genetics.dataset_immutable": "Immutable, local only",
+        "genetics.variants_count": "{count} shown",
+        "genetics.compare_shared": "Shared covered loci",
+        "genetics.compare_matching": "Matching observations",
+        "genetics.compare_differing": "Differing observations",
+        "genetics.compare_incompatible": (
+            "Comparison unavailable: incompatible build or unresolved orientation."
+        ),
+        "genetics.family_no_access_help": "Grant genetics comparison for both profiles to compare.",
         "page.vault_title": "Private Person vault · OpenCare",
         "workspace.recorded_in_opencare": "Recorded in OpenCare",
         "page.family_title": "Family and access · OpenCare",
@@ -542,6 +733,218 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "workspace.labs": "Анализы",
         "workspace.visits": "Визиты",
         "page.genetics_title": "Рабочая область генетики OpenCare",
+        "genetics.kicker": "Рабочая область генетики",
+        "genetics.heading": "Доказательства прежде интерпретации",
+        "genetics.intro": (
+            "Просматривайте выборочно индексированные наблюдения, их доказательства и "
+            "исследовательские вопросы без раскрытия сырого генома."
+        ),
+        "genetics.person_label": "Текущий генетический профиль",
+        "genetics.person_selector_label": "Сменить пользователя",
+        "genetics.no_person": "Выберите пользователя для просмотра генетики.",
+        "genetics.no_access": "Доступ к генетике для этого пользователя недоступен.",
+        "genetics.empty_title": "Генетических данных пока нет.",
+        "genetics.empty_help": (
+            "Импортируйте поддерживаемый файл генотипа потребителя, чтобы начать."
+        ),
+        "genetics.import_cta": "Импортировать генетические данные",
+        "genetics.privacy_note": (
+            "Исходный файл остаётся локальным для этой установки OpenCare. В функциях генетики "
+            "участвуют только выбранные/индексированные наблюдения. Сырой геном исключён из "
+            "поддерживаемого контекста моделей/провайдеров."
+        ),
+        "genetics.sections_label": "Разделы генетики",
+        "genetics.tab_overview": "Обзор",
+        "genetics.tab_overview_sub": "Источник и покрытие",
+        "genetics.tab_variants": "Варианты",
+        "genetics.tab_variants_sub": "Индексированные наблюдения",
+        "genetics.tab_pgx": "Фармакогенетика",
+        "genetics.tab_pgx_sub": "Релевантность медикаментов",
+        "genetics.tab_health": "Ассоциации со здоровьем",
+        "genetics.tab_health_sub": "Рассмотренные находки",
+        "genetics.tab_traits": "Признаки и системы",
+        "genetics.tab_traits_sub": "Исследовательские пути",
+        "genetics.tab_evidence": "Доказательства",
+        "genetics.tab_evidence_sub": "Источники и ограничения",
+        "genetics.tab_family": "Семейное сравнение",
+        "genetics.tab_family_sub": "Требуется согласие",
+        "genetics.tab_research": "Исследовательская студия",
+        "genetics.tab_research_sub": "Ограниченное исследование",
+        "genetics.overview_title": "Обзор",
+        "genetics.overview_help": (
+            "Ограниченный просмотр одного набора данных генотипа потребителя."
+        ),
+        "genetics.overview_dataset": "Запись набора данных",
+        "genetics.overview_coverage": "Выборочное покрытие",
+        "genetics.overview_findings": "Сводка находок",
+        "genetics.overview_evidence": "Распределение доказательств",
+        "genetics.import_title": "Импорт генетических данных",
+        "genetics.import_help": (
+            "Только локальный TXT генотипа потребителя. Исходные байты неизменяемы и никогда не "
+            "отправляются провайдеру."
+        ),
+        "genetics.import_file_label": "Файл генотипа",
+        "genetics.import_build_label": "Сборка генома",
+        "genetics.build_unknown": "Неизвестно",
+        "genetics.import_confirmation": (
+            "Я понимаю, что генетические данные уникально идентифицируют и могут раскрыть "
+            "информацию о родственниках."
+        ),
+        "genetics.import_submit": "Импортировать локально",
+        "genetics.import_success": (
+            "Импортировано локально. Источник неизменяем; индексированное покрытие готово к "
+            "просмотру."
+        ),
+        "genetics.import_coverage_note": (
+            "Покрытие генотипа потребителя неполное. Отсутствующие локусы не считаются "
+            "референсным генотипом."
+        ),
+        "genetics.upload_limit": "Максимальный размер загрузки: 32 000 000 байт.",
+        "genetics.import_error_too_large": (
+            "Файл слишком большой. Максимальный размер — 32 000 000 байт."
+        ),
+        "genetics.import_error_confirmation": "Перед импортом требуется подтверждение.",
+        "genetics.import_error_build": "Неподдерживаемая сборка генома.",
+        "genetics.import_error_invalid": "Файл не удалось прочитать как корректный файл генотипа.",
+        "genetics.import_error_generic": "Локальный импорт не удался.",
+        "genetics.variants_title": "Варианты",
+        "genetics.variants_help": (
+            "Показаны только локусы, выбранные установленными наборами доказательств."
+        ),
+        "genetics.variants_empty": (
+            "Нет индексированных наблюдений, соответствующих этому представлению. Отсутствующий "
+            "локус чипа — не тестированный, а не референсный генотип."
+        ),
+        "genetics.coverage_present": "Присутствует",
+        "genetics.coverage_no_call": "Нет вызова",
+        "genetics.coverage_not_present": "Отсутствует",
+        "genetics.coverage_note_title": "«Отсутствует» не означает референс.",
+        "genetics.coverage_note_body": (
+            "Чип потребителя может не тестировать целевой локус. Нетестированный, без вызова и "
+            "подтверждённый референс — разные состояния."
+        ),
+        "genetics.pgx_title": "Фармакогенетика",
+        "genetics.pgx_help": "Релевантность для медикаментов, а не рекомендации по назначению.",
+        "genetics.pgx_boundary": "Только ассоциация",
+        "genetics.pgx_boundary_note": (
+            "Этот раздел не рекомендует медикамент, дозу, начало или прекращение приёма."
+        ),
+        "genetics.pgx_empty": "Фармакогенетические пересечения для этого пользователя недоступны.",
+        "genetics.health_title": "Ассоциации со здоровьем",
+        "genetics.health_help": (
+            "Рассмотренные генетические находки остаются отдельными от диагностированных "
+            "состояний."
+        ),
+        "genetics.health_empty": "Рассмотренные ассоциации со здоровьем недоступны.",
+        "genetics.traits_title": "Признаки и системы",
+        "genetics.traits_help": "Возможная релевантность путей с доказательствами всегда на виду.",
+        "genetics.traits_empty": "Наблюдения признаков недоступны.",
+        "genetics.evidence_title": "Доказательства",
+        "genetics.evidence_help": (
+            "Качество источника, версия, состояние рассмотрения и ограничения."
+        ),
+        "genetics.evidence_empty": "Записи доказательств недоступны.",
+        "genetics.family_title": "Семейное сравнение",
+        "genetics.family_help": (
+            "Детерминированное сравнение покрытия с отдельным разрешением для каждого "
+            "пользователя."
+        ),
+        "genetics.family_warning": (
+            "Доступ к генетике никогда не наследуется от семейного доступа. Оба профиля должны "
+            "предоставить разрешение на сравнение. Скрытые профили и наборы данных никогда не "
+            "раскрываются."
+        ),
+        "genetics.family_limit": (
+            "Эти статистики описывают только совместимые индексированные наблюдения. Они не "
+            "доказывают биологическое или юридическое родство."
+        ),
+        "genetics.family_person_b_label": "Второй профиль",
+        "genetics.family_compare_submit": "Сравнить покрытие",
+        "genetics.family_no_access": (
+            "Выбранный профиль не имеет доступа к генетическому сравнению."
+        ),
+        "genetics.research_title": "Исследовательская студия",
+        "genetics.research_help": (
+            "Сформулируйте ограниченный вопрос из выбранных доказательств и записей здоровья."
+        ),
+        "genetics.research_evidence_mode": "Доказательства",
+        "genetics.research_evidence_mode_help": (
+            "Использовать только предоставленные доказательства"
+        ),
+        "genetics.research_explore_mode": "Исследование",
+        "genetics.research_explore_mode_help": "Помечать гипотезы и фоновые знания",
+        "genetics.research_mode_label": "Режим исследования",
+        "genetics.research_mode_help": "Выберите, насколько далеко может зайти синтез.",
+        "genetics.research_question_label": "Вопрос",
+        "genetics.research_disclosure_confirm": (
+            "Я подтверждаю это генетическое внешнее раскрытие для выбранного контекста."
+        ),
+        "genetics.research_run": "Запустить ограниченное исследование",
+        "genetics.research_readiness_confirm": "Подтвердите внешнее раскрытие, чтобы продолжить.",
+        "genetics.research_readiness_confirmed": "Раскрытие подтверждено только для этого запуска.",
+        "genetics.research_running": "Выполняется ограниченное исследование…",
+        "genetics.status_pending": "Ожидает",
+        "genetics.status_reviewed": "Рассмотрено",
+        "genetics.status_dismissed": "Отклонено",
+        "genetics.status_unsupported": "Не подтверждено",
+        "genetics.status_conflicting": "Противоречиво",
+        "genetics.loading": "Загрузка генетики…",
+        "genetics.load_error": "Не удалось загрузить генетику.",
+        "genetics.observation_label": "Индексированное наблюдение",
+        "genetics.category_pgx": "Фармакогенетика",
+        "genetics.category_health": "Ассоциация со здоровьем",
+        "genetics.category_trait": "Признак",
+        "genetics.provenance_label": "Провенанс",
+        "genetics.raw_source_note": (
+            "Только выбранное наблюдение. Строки сырого источника не отображаются."
+        ),
+        "genetics.filter_search": "Поиск по rsID или гену",
+        "genetics.filter_coverage": "Покрытие",
+        "genetics.filter_category": "Категория",
+        "genetics.filter_all": "Все",
+        "genetics.family_person_a_label": "Первый профиль",
+        "genetics.family_compared_with": "сравнивается с",
+        "genetics.family_choose_person_b": "Выберите второй профиль для сравнения.",
+        "genetics.context_selected": "Выбранный контекст",
+        "genetics.research_provider_label": "Внешний провайдер",
+        "genetics.research_provider_name": "Детерминированное локальное исследование",
+        "genetics.research_context_none": (
+            "Выберите рассмотренные находки или записи о медикаментах, чтобы сформировать "
+            "контекст."
+        ),
+        "genetics.research_context_summary": (
+            "Раскрываемый контекст: находок — {findings}, записей о медикаментах — {records}. "
+            "Сырой геном и неограниченное содержимое хранилища не включаются."
+        ),
+        "genetics.research_output_title": "Результат исследования",
+        "genetics.research_supported": "Подтверждённый синтез",
+        "genetics.research_plausible": "Правдоподобная гипотеза",
+        "genetics.research_what_may_be_happening": "Что может происходить",
+        "genetics.research_evidence_supporting": "Доказательства в поддержку",
+        "genetics.research_evidence_against": "Адвокат дьявола: доказательства против",
+        "genetics.research_alternative_explanations": "Альтернативные объяснения",
+        "genetics.research_missing_information": "Недостающая информация",
+        "genetics.research_questions": "Вопросы, которые стоит изучить",
+        "genetics.research_claims": "Ограниченные утверждения",
+        "genetics.research_session": "Сессия исследования",
+        "genetics.context_count": "Выбрано элементов: {count}",
+        "genetics.findings_reviewed": "Рассмотренные находки",
+        "genetics.evidence_entries": "Записи доказательств",
+        "genetics.loci_indexed": "Индексированные локусы",
+        "genetics.dataset_imported": "Импортировано",
+        "genetics.dataset_parser": "Парсер",
+        "genetics.dataset_raw": "Сырой источник",
+        "genetics.dataset_immutable": "Неизменяемый, только локально",
+        "genetics.variants_count": "Показано: {count}",
+        "genetics.compare_shared": "Общие покрытые локусы",
+        "genetics.compare_matching": "Совпадающие наблюдения",
+        "genetics.compare_differing": "Различающиеся наблюдения",
+        "genetics.compare_incompatible": (
+            "Сравнение недоступно: несовместимая сборка или нерешённая ориентация."
+        ),
+        "genetics.family_no_access_help": (
+            "Предоставьте сравнение генетики обоим профилям, чтобы сравнить."
+        ),
         "page.vault_title": "Личное хранилище пользователя · OpenCare",
         "page.family_title": "Семья и доступ · OpenCare",
         "optional": "необязательно",
