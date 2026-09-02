@@ -14,8 +14,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "page.workspace_title": "OpenCare Health Workspace",
         "workspace.heading": "Welcome to your workspace",
         "workspace.intro": (
-            "See what is recorded for the Person you are viewing, then choose where to "
-            "continue."
+            "See what is recorded for the Person you are viewing, then choose where to continue."
         ),
         "workspace.safety": (
             "OpenCare organizes source-backed records. It does not interpret results or "
@@ -36,8 +35,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "workspace.overview_title": "Overview",
         "workspace.overview_summary": (
-            "A factual snapshot of the records available to this account for the active "
-            "Person."
+            "A factual snapshot of the records available to this account for the active Person."
         ),
         "workspace.metric_records": "Confirmed records",
         "workspace.metric_documents": "Documents",
@@ -105,9 +103,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "workspace.documents_summary": "Source documents available for this Person.",
         "workspace.records_summary": "Current confirmed records and their history.",
         "workspace.timeline_summary": "Record lifecycle events for this Person.",
-        "workspace.visits_summary": (
-            "Plan questions and prepare a source-backed Visit Brief."
-        ),
+        "workspace.visits_summary": ("Plan questions and prepare a source-backed Visit Brief."),
         "workspace.export_summary": (
             "Download a portable copy of this Person and reachable sources."
         ),
@@ -115,6 +111,210 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "workspace.conditions": "Recorded conditions",
         "workspace.labs": "Labs",
         "workspace.visits": "Visits",
+        "workspace.fact_type": "Fact type",
+        "workspace.all_fact_types": "All fact types",
+        "workspace.status": "Status",
+        "workspace.all_statuses": "All statuses",
+        "workspace.waiting_review": "Waiting for review",
+        "workspace.confirmed": "Confirmed",
+        "workspace.corrected": "Corrected",
+        "workspace.rejected": "Rejected",
+        "workspace.unsupported": "Unsupported by source",
+        "workspace.search_loaded_candidates": "Search loaded candidates",
+        "workspace.no_documents": "No documents have been added for this profile.",
+        "workspace.document_upload_label": "Add a PDF or plain-text document",
+        "workspace.document_upload_help": (
+            "Files are stored as source evidence. Uploads are bounded and never rendered as "
+            "rich content."
+        ),
+        "workspace.upload_document": "Upload document",
+        "workspace.page_text": "Page text",
+        "workspace.page": "Page",
+        "workspace.choose_page": "Choose a page to inspect.",
+        "workspace.select_span": "Select text to attach a precise source span.",
+        "workspace.add_typed_candidate": "Add typed candidate for review",
+        "workspace.typed_candidate_help": (
+            "Enter a Medication, Condition, or Lab exactly as recorded. Nothing is "
+            "auto-extracted or prefilled."
+        ),
+        "workspace.name_or_test_name": "Name / test name",
+        "workspace.details_as_reported": "Details as reported",
+        "workspace.add_for_review": "Add for review",
+        "workspace.add_medication": "Add medication",
+        "workspace.add_condition": "Add recorded condition",
+        "workspace.add_lab": "Add lab record",
+        "workspace.review_pending_help": (
+            "New entries wait for review before becoming confirmed records."
+        ),
+        "workspace.condition_safety": (
+            "Condition wording is stored as source text and is not an OpenCare diagnosis."
+        ),
+        "workspace.lab_safety": "Values are shown as reported, without interpretation.",
+        "workspace.medication_name": "Medication display name",
+        "workspace.schedule_optional": "Schedule (optional, as recorded)",
+        "workspace.note_optional": "Note (optional)",
+        "workspace.recorded_condition_name": "Recorded condition name",
+        "workspace.status_optional_source": "Status (optional, source text)",
+        "workspace.onset_optional": "Onset date (as recorded, optional)",
+        "workspace.test_name": "Test name",
+        "workspace.result_as_reported": "Result (as reported)",
+        "workspace.unit_as_reported": "Unit (as reported, optional)",
+        "workspace.reference_range_as_reported": "Reference range (as reported, optional)",
+        "workspace.observed_date_as_reported": "Observed date (as reported, optional)",
+        "workspace.flag_as_reported": "Flag (as reported, optional)",
+        "workspace.historical_superseded": "Historical and superseded records",
+        "workspace.no_current_records": "No current confirmed records.",
+        "workspace.no_historical_records": "No historical or superseded records.",
+        "workspace.no_pending_fact": "No entries are waiting for review.",
+        "workspace.no_confirmed_fact": "No records have been confirmed.",
+        "workspace.no_historical": "No historical records.",
+        "workspace.recorded_status": "Recorded status",
+        "workspace.recorded_onset": "Recorded onset",
+        "workspace.result_reported": "Result as reported",
+        "workspace.unit_reported": "Unit as reported",
+        "workspace.reference_range_reported": "Reference range as reported",
+        "workspace.observed": "Observed",
+        "workspace.flag_reported": "Flag as reported",
+        "workspace.confirmed_at": "Confirmed",
+        "workspace.superseded": "Superseded",
+        "workspace.recorded_in_opencare": "Recorded in OpenCare",
+        "workspace.record_lifecycle_help": (
+            "Record lifecycle events. Scheduled visits remain separate below."
+        ),
+        "workspace.all": "All",
+        "workspace.create_visit": "Create visit",
+        "workspace.visit_title": "Visit title",
+        "workspace.specialist_optional": "Specialist (optional)",
+        "workspace.scheduled_visit_optional": "Scheduled visit (optional)",
+        "workspace.no_visits": "No visits have been created for this profile.",
+        "workspace.select_visit": "Select visit",
+        "workspace.selected_visit_button": "Selected visit",
+        "workspace.questions_for": "Questions for",
+        "workspace.no_questions": "No questions have been added for this visit.",
+        "workspace.question": "Question",
+        "workspace.move_question_up": "Move question up",
+        "workspace.move_question_down": "Move question down",
+        "workspace.remove": "Remove",
+        "workspace.edit": "Edit",
+        "workspace.visit_brief": "Visit Brief",
+        "workspace.brief_help": "Evidence and questions are snapshotted into immutable revisions.",
+        "workspace.initialize_brief": "Initialize Visit Brief",
+        "workspace.select_visit_brief": "Select a Visit to prepare its Brief.",
+        "workspace.initialize_persistent_brief": "Initialize a persistent Brief for this Visit.",
+        "workspace.no_persistent_brief": "No persistent Brief is available for this Visit.",
+        "workspace.select_confirmed_evidence": "Select confirmed evidence",
+        "workspace.validate_evidence": "Validate evidence",
+        "workspace.generate_revision": "Generate revision",
+        "workspace.preparation_notes": "Preparation notes",
+        "workspace.save_notes_revision": "Save notes as revision",
+        "workspace.unsaved_warning": (
+            "Unsaved preparation notes will be discarded if you switch Person or Visit."
+        ),
+        "workspace.revision_history": "Revision history",
+        "workspace.no_revisions": "No revisions have been created.",
+        "workspace.view_revision": "View revision",
+        "workspace.restore_revision": "Restore revision",
+        "workspace.revision_unavailable": "Revision unavailable",
+        "workspace.current": "Current",
+        "workspace.evidence_changed": "Evidence changed since this revision",
+        "workspace.selected_record_changed": "Selected record or source changed",
+        "workspace.no_eligible_evidence": "No eligible confirmed evidence.",
+        "workspace.evidence_record": "Evidence record",
+        "workspace.revision": "Revision",
+        "workspace.copy_markdown": "Copy Markdown",
+        "workspace.download_markdown": "Download Markdown",
+        "workspace.export_vault": "Export vault",
+        "workspace.export_warning_title": "Export sensitive vault data?",
+        "workspace.export_warning_help": (
+            "This download may contain health information and source evidence. Store it only "
+            "where you control access."
+        ),
+        "workspace.download_vault": "Download vault",
+        "workspace.cancel": "Cancel",
+        "workspace.reset": "Reset",
+        "workspace.save_visit": "Save visit",
+        "workspace.add_question": "Add question",
+        "workspace.edit_question": "Edit question",
+        "workspace.question_text": "Question text",
+        "workspace.save_question": "Save question",
+        "workspace.correct_record": "Create correction",
+        "workspace.reject_candidate": "Reject candidate",
+        "workspace.mark_unsupported": "Mark unsupported by source",
+        "workspace.confirm_record": "Confirm record",
+        "workspace.reject_confirm": "Reject this candidate?",
+        "workspace.candidate_marked_unsupported": "Candidate marked unsupported by source.",
+        "workspace.record_confirmed": "Record confirmed.",
+        "workspace.candidate_rejected": "Candidate rejected.",
+        "workspace.fact": "Fact",
+        "workspace.created": "Created",
+        "workspace.onset_date": "Onset date (as recorded)",
+        "workspace.observed_date": "Observed date (as reported)",
+        "workspace.revision_viewing": "Viewing revision",
+        "workspace.revision_origin": "origin",
+        "workspace.no_eligible_confirmed_evidence": "No eligible confirmed evidence.",
+        "workspace.no_entries_match": "No entries match this view.",
+        "workspace.medication_confirmed": "Medication record confirmed",
+        "workspace.condition_confirmed": "Condition record confirmed",
+        "workspace.lab_confirmed": "Lab record confirmed",
+        "workspace.record_superseded": "Record superseded by reviewed correction",
+        "workspace.no_specialist": "No specialist",
+        "workspace.no_scheduled_date": "No scheduled date",
+        "workspace.medication_pending": "Medication entry is waiting for review.",
+        "workspace.whole_source": "Whole source",
+        "workspace.manual_medication_name": "Medication name in a manual entry",
+        "workspace.manual_condition_name": "Recorded condition name in a manual entry",
+        "workspace.manual_lab_name": "Lab test name in a manual entry",
+        "workspace.manual_field": "Recorded field in a manual entry",
+        "workspace.document_page": "Document page",
+        "workspace.codepoints": "codepoints",
+        "workspace.source_text_characters": "Source text characters",
+        "workspace.specific_source_location": "Specific location recorded in the source",
+        "workspace.origin_generated": "Generated",
+        "workspace.origin_user_edit": "User edit",
+        "workspace.origin_restored": "Restored",
+        "workspace.source_provenance": "Source & provenance",
+        "workspace.source_id": "Source ID",
+        "workspace.registered": "Registered",
+        "workspace.size": "Size",
+        "workspace.media_type": "Media type",
+        "workspace.integrity_verified": "Integrity verified",
+        "workspace.integrity_not_verified": "Integrity not verified",
+        "workspace.source_metadata_unavailable": "Source metadata unavailable.",
+        "workspace.source_location": "Source location",
+        "workspace.correction_lineage": "Correction lineage",
+        "workspace.manual_entry": "Manual entry",
+        "workspace.source": "Source",
+        "workspace.document": "Document",
+        "workspace.text": "Text",
+        "workspace.bytes": "bytes",
+        "workspace.correction_superseded": (
+            "Correction lineage: superseded by a newer confirmed record."
+        ),
+        "workspace.document_uploaded": "Document uploaded.",
+        "workspace.typed_candidate_pending": "Typed candidate is waiting for review.",
+        "workspace.condition_pending": "Condition entry is waiting for review.",
+        "workspace.lab_pending": "Lab entry is waiting for review.",
+        "workspace.question_order_updated": "Question order updated.",
+        "workspace.question_removed": "Question removed.",
+        "workspace.save_correction": "Save correction",
+        "workspace.correct_medication": "Correct medication entry",
+        "workspace.correct_condition": "Correct condition entry",
+        "workspace.correct_lab": "Correct lab entry",
+        "workspace.correction_pending": "Correction is waiting for review.",
+        "workspace.profile_updated": "Profile updated.",
+        "workspace.visit_created": "Visit created.",
+        "workspace.visit_updated": "Visit updated.",
+        "workspace.question_added": "Question added.",
+        "workspace.question_updated": "Question updated.",
+        "workspace.brief_initialized": "Visit Brief initialized.",
+        "workspace.evidence_valid": "Selected evidence is valid.",
+        "workspace.brief_revision_generated": "Visit Brief revision generated.",
+        "workspace.notes_saved": "Preparation notes saved as a new revision.",
+        "workspace.brief_restored": "Current Brief revision restored.",
+        "workspace.markdown_copied": "Markdown copied.",
+        "workspace.copy_unavailable": "Copy is unavailable in this browser.",
+        "workspace.markdown_downloaded": "Markdown download prepared.",
+        "workspace.vault_downloaded": "Vault download prepared.",
         "optional": "optional",
         "page.genetics_title": "OpenCare Genetics Workspace",
         "genetics.kicker": "Genetics Workspace",
@@ -309,7 +509,6 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "genetics.family_no_access_help": "Grant genetics comparison for both profiles to compare.",
         "page.vault_title": "Private Person vault · OpenCare",
-        "workspace.recorded_in_opencare": "Recorded in OpenCare",
         "page.family_title": "Family and access · OpenCare",
         "nav.overview": "Overview",
         "nav.health": "Health",
@@ -517,8 +716,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
             "information, and manage your local account."
         ),
         "family.boundary": (
-            "Family relationships describe context. Only an active Person "
-            "assignment grants access."
+            "Family relationships describe context. Only an active Person assignment grants access."
         ),
         "family.active_person": "Access for Person",
         "family.access_applies_to": "Access shown here applies to {person}.",
@@ -527,16 +725,14 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.no_accessible_people": "No accessible People",
         "family.people_heading": "People with access",
         "family.people_help": (
-            "Active access assignments for the selected Person. Genetics access "
-            "is separate."
+            "Active access assignments for the selected Person. Genetics access is separate."
         ),
         "family.no_additional_access": (
             "No one else currently has active Family Access for this Person."
         ),
         "family.read_only_heading": "Family sharing is read-only",
         "family.read_only_help": (
-            "You can access this Person, but your account cannot view or change "
-            "family sharing."
+            "You can access this Person, but your account cannot view or change family sharing."
         ),
         "family.you": "You",
         "family.shared_account": "Account with access",
@@ -573,8 +769,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
             "accounts, and Family relationship records."
         ),
         "family.family_context_help": (
-            "Family records describe relationships only. They never grant "
-            "Person access."
+            "Family records describe relationships only. They never grant Person access."
         ),
         "family.scope_group.health": "Health data",
         "family.scope_group.sources_documents": "Sources & documents",
@@ -606,8 +801,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.clear_code": "Clear code",
         "family.code_cleared": "Invitation code cleared from this page.",
         "family.password_change_failed": (
-            "The password could not be changed. Check the current password and "
-            "try again."
+            "The password could not be changed. Check the current password and try again."
         ),
         "family.password_changed": "Password changed. Sign in again.",
         "family.signed_out": "Signed out.",
@@ -707,8 +901,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "workspace.overview_title": "Обзор",
         "workspace.overview_summary": (
-            "Фактическая сводка записей, доступных этому аккаунту для выбранного "
-            "пользователя."
+            "Фактическая сводка записей, доступных этому аккаунту для выбранного пользователя."
         ),
         "workspace.metric_records": "Подтверждённые записи",
         "workspace.metric_documents": "Документы",
@@ -752,8 +945,8 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "workspace.section_person": "Пользователь",
         "workspace.section_review": "Проверка",
         "workspace.section_records": "Записи",
-        "workspace.section_timeline": "Хронология",
-        "workspace.section_visits": "Визиты и сводка",
+        "workspace.section_timeline": "Активность",
+        "workspace.section_visits": "Визиты и краткая информация",
         "workspace.section_export": "Экспорт",
         "workspace.records_empty": "Подтверждённых записей нет.",
         "workspace.activity_empty": "Недавней активности нет.",
@@ -890,8 +1083,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "genetics.pgx_empty": "Фармакогенетические пересечения для этого пользователя недоступны.",
         "genetics.health_title": "Ассоциации со здоровьем",
         "genetics.health_help": (
-            "Рассмотренные генетические находки остаются отдельными от диагностированных "
-            "состояний."
+            "Рассмотренные генетические находки остаются отдельными от диагностированных состояний."
         ),
         "genetics.health_empty": "Рассмотренные ассоциации со здоровьем недоступны.",
         "genetics.traits_title": "Признаки и системы",
@@ -904,8 +1096,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "genetics.evidence_empty": "Записи доказательств недоступны.",
         "genetics.family_title": "Семейное сравнение",
         "genetics.family_help": (
-            "Детерминированное сравнение покрытия с отдельным разрешением для каждого "
-            "пользователя."
+            "Детерминированное сравнение покрытия с отдельным разрешением для каждого пользователя."
         ),
         "genetics.family_warning": (
             "Доступ к генетике никогда не наследуется от семейного доступа. Оба профиля должны "
@@ -967,8 +1158,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "genetics.research_provider_label": "Внешний провайдер",
         "genetics.research_provider_name": "Детерминированное локальное исследование",
         "genetics.research_context_none": (
-            "Выберите рассмотренные находки или записи о медикаментах, чтобы сформировать "
-            "контекст."
+            "Выберите рассмотренные находки или записи о медикаментах, чтобы сформировать контекст."
         ),
         "genetics.research_context_summary": (
             "Раскрываемый контекст: находок — {findings}, записей о медикаментах — {records}. "
@@ -1234,8 +1424,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
             "генетике предоставляется отдельно."
         ),
         "family.no_additional_access": (
-            "Сейчас ни у кого другого нет активного семейного доступа к этому "
-            "пользователю."
+            "Сейчас ни у кого другого нет активного семейного доступа к этому пользователю."
         ),
         "family.read_only_heading": "Семейный доступ доступен только для чтения",
         "family.read_only_help": (
@@ -1258,8 +1447,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.invitation_empty": "Код приглашения не отображается.",
         "family.invitation_issued": "Скопируйте одноразовый код сейчас",
         "family.invitation_warning": (
-            "Код больше не будет показан после очистки, смены пользователя или "
-            "выхода со страницы."
+            "Код больше не будет показан после очистки, смены пользователя или выхода со страницы."
         ),
         "family.owner_confirmation": (
             "Я понимаю, что доступ владельца предоставляет все текущие права "
@@ -1268,8 +1456,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "family.account_heading": "Ваш аккаунт",
         "family.account_help": (
-            "Действия безопасности аккаунта отделены от предоставления доступа "
-            "к пользователю."
+            "Действия безопасности аккаунта отделены от предоставления доступа к пользователю."
         ),
         "family.current_password": "Текущий пароль",
         "family.new_password": "Новый пароль",
@@ -1303,8 +1490,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.save_permissions": "Сохранить права",
         "family.revoke_access": "Отозвать доступ",
         "family.revoke_confirm": (
-            "Отозвать доступ у {name}? Последнего активного владельца удалить "
-            "нельзя."
+            "Отозвать доступ у {name}? Последнего активного владельца удалить нельзя."
         ),
         "family.access_granted": "Доступ предоставлен.",
         "family.access_revised": "Доступ обновлён.",
@@ -1315,8 +1501,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.clear_code": "Очистить код",
         "family.code_cleared": "Код приглашения удалён с этой страницы.",
         "family.password_change_failed": (
-            "Не удалось сменить пароль. Проверьте текущий пароль и повторите "
-            "попытку."
+            "Не удалось сменить пароль. Проверьте текущий пароль и повторите попытку."
         ),
         "family.password_changed": "Пароль изменён. Войдите снова.",
         "family.signed_out": "Выполнен выход.",
@@ -1342,8 +1527,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "family.deactivate_actor": "Деактивировать аккаунт",
         "family.deactivate_confirm": (
-            "Деактивировать аккаунт {name} и отозвать весь его доступ к "
-            "пользователям?"
+            "Деактивировать аккаунт {name} и отозвать весь его доступ к пользователям?"
         ),
         "family.direct_grant_heading": "Предоставить доступ существующему аккаунту",
         "family.recipient_actor_id": "Идентификатор аккаунта получателя",
@@ -1396,6 +1580,226 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.scope.chat_use": "Использование чата OpenCare",
     },
 }
+
+# Workspace controls added after the initial product-shell catalog. Keeping
+# these entries in the same centralized catalog preserves the existing locale
+# fallback behavior while covering dynamically rendered workspace chrome.
+TRANSLATIONS["ru"].update(
+    {
+        "workspace.fact_type": "Тип факта",
+        "workspace.all_fact_types": "Все типы фактов",
+        "workspace.status": "Статус",
+        "workspace.all_statuses": "Все статусы",
+        "workspace.waiting_review": "Ожидает проверки",
+        "workspace.confirmed": "Подтверждено",
+        "workspace.corrected": "Исправлено",
+        "workspace.rejected": "Отклонено",
+        "workspace.unsupported": "Не подтверждено источником",
+        "workspace.search_loaded_candidates": "Поиск среди загруженных записей",
+        "workspace.no_documents": "Для этого профиля пока нет документов.",
+        "workspace.document_upload_label": "Добавить PDF или текстовый документ",
+        "workspace.document_upload_help": (
+            "Файлы хранятся как исходные материалы. Загрузка ограничена; содержимое не "
+            "отображается как форматированный HTML."
+        ),
+        "workspace.upload_document": "Загрузить документ",
+        "workspace.page_text": "Текст страницы",
+        "workspace.page": "Страница",
+        "workspace.choose_page": "Выберите страницу для просмотра.",
+        "workspace.select_span": "Выберите текст, чтобы прикрепить точный фрагмент источника.",
+        "workspace.add_typed_candidate": "Добавить запись на проверку",
+        "workspace.typed_candidate_help": (
+            "Введите лекарство, состояние или анализ точно так, как указано в источнике. "
+            "Автоматического извлечения нет."
+        ),
+        "workspace.name_or_test_name": "Название / название анализа",
+        "workspace.details_as_reported": "Подробности как указано",
+        "workspace.add_for_review": "Добавить на проверку",
+        "workspace.add_medication": "Добавить лекарство",
+        "workspace.add_condition": "Добавить записанное состояние",
+        "workspace.add_lab": "Добавить анализ",
+        "workspace.review_pending_help": "Новые записи проходят проверку до подтверждения.",
+        "workspace.condition_safety": (
+            "Формулировка состояния хранится как текст источника и не является диагнозом "
+            "OpenCare."
+        ),
+        "workspace.lab_safety": "Значения показаны как указано, без интерпретации.",
+        "workspace.medication_name": "Отображаемое название лекарства",
+        "workspace.schedule_optional": "Расписание (необязательно, как указано)",
+        "workspace.note_optional": "Примечание (необязательно)",
+        "workspace.recorded_condition_name": "Название записанного состояния",
+        "workspace.status_optional_source": "Статус (необязательно, текст источника)",
+        "workspace.onset_optional": "Дата начала (как указано, необязательно)",
+        "workspace.test_name": "Название анализа",
+        "workspace.result_as_reported": "Результат (как указано)",
+        "workspace.unit_as_reported": "Единица (как указано, необязательно)",
+        "workspace.reference_range_as_reported": (
+            "Референсный диапазон (как указано, необязательно)"
+        ),
+        "workspace.observed_date_as_reported": "Дата наблюдения (как указано, необязательно)",
+        "workspace.flag_as_reported": "Флаг (как указано, необязательно)",
+        "workspace.historical_superseded": "Исторические и заменённые записи",
+        "workspace.no_current_records": "Текущих подтверждённых записей нет.",
+        "workspace.no_historical_records": "Исторических и заменённых записей нет.",
+        "workspace.no_pending_fact": "Записей на проверку нет.",
+        "workspace.no_confirmed_fact": "Подтверждённых записей нет.",
+        "workspace.no_historical": "Исторических записей нет.",
+        "workspace.recorded_status": "Записанный статус",
+        "workspace.recorded_onset": "Записанное начало",
+        "workspace.result_reported": "Результат как указано",
+        "workspace.unit_reported": "Единица как указано",
+        "workspace.reference_range_reported": "Референсный диапазон как указано",
+        "workspace.observed": "Наблюдалось",
+        "workspace.flag_reported": "Флаг как указано",
+        "workspace.confirmed_at": "Подтверждено",
+        "workspace.superseded": "Заменено",
+        "workspace.recorded_in_opencare": "Записано в OpenCare",
+        "workspace.record_lifecycle_help": (
+            "События жизненного цикла записей. Запланированные визиты показаны отдельно "
+            "ниже."
+        ),
+        "workspace.all": "Все",
+        "workspace.create_visit": "Создать визит",
+        "workspace.visit_title": "Название визита",
+        "workspace.specialist_optional": "Специалист (необязательно)",
+        "workspace.scheduled_visit_optional": "Запланированный визит (необязательно)",
+        "workspace.no_visits": "Для этого профиля визиты ещё не создавались.",
+        "workspace.select_visit": "Выбрать визит",
+        "workspace.selected_visit_button": "Выбранный визит",
+        "workspace.questions_for": "Вопросы для",
+        "workspace.no_questions": "Для этого визита вопросы ещё не добавлены.",
+        "workspace.question": "Вопрос",
+        "workspace.move_question_up": "Переместить вопрос вверх",
+        "workspace.move_question_down": "Переместить вопрос вниз",
+        "workspace.remove": "Удалить",
+        "workspace.edit": "Изменить",
+        "workspace.visit_brief": "Краткая информация о визите",
+        "workspace.brief_help": "Доказательства и вопросы сохраняются в неизменяемых ревизиях.",
+        "workspace.initialize_brief": "Создать краткую информацию о визите",
+        "workspace.select_visit_brief": "Выберите визит для подготовки краткой информации.",
+        "workspace.initialize_persistent_brief": (
+            "Создать постоянную краткую информацию для этого визита."
+        ),
+        "workspace.no_persistent_brief": (
+            "Для этого визита постоянная краткая информация недоступна."
+        ),
+        "workspace.select_confirmed_evidence": "Выберите подтверждённые материалы",
+        "workspace.validate_evidence": "Проверить материалы",
+        "workspace.generate_revision": "Создать ревизию",
+        "workspace.preparation_notes": "Подготовительные заметки",
+        "workspace.save_notes_revision": "Сохранить заметки как ревизию",
+        "workspace.unsaved_warning": (
+            "Несохранённые заметки будут удалены при смене пользователя или визита."
+        ),
+        "workspace.revision_history": "История ревизий",
+        "workspace.no_revisions": "Ревизий ещё нет.",
+        "workspace.view_revision": "Просмотреть ревизию",
+        "workspace.restore_revision": "Восстановить ревизию",
+        "workspace.revision_unavailable": "Ревизия недоступна",
+        "workspace.current": "Текущая",
+        "workspace.evidence_changed": "Материалы изменились после этой ревизии",
+        "workspace.selected_record_changed": "Выбранная запись или источник изменились",
+        "workspace.no_eligible_evidence": "Подходящих подтверждённых материалов нет.",
+        "workspace.evidence_record": "Запись-материал",
+        "workspace.revision": "Ревизия",
+        "workspace.copy_markdown": "Копировать Markdown",
+        "workspace.download_markdown": "Скачать Markdown",
+        "workspace.export_vault": "Экспорт хранилища",
+        "workspace.export_warning_title": "Экспортировать чувствительные данные хранилища?",
+        "workspace.export_warning_help": (
+            "Загрузка может содержать сведения о здоровье и исходные материалы. Храните её "
+            "только там, где контролируете доступ."
+        ),
+        "workspace.download_vault": "Скачать хранилище",
+        "workspace.cancel": "Отмена",
+        "workspace.reset": "Сбросить",
+        "workspace.save_visit": "Сохранить визит",
+        "workspace.add_question": "Добавить вопрос",
+        "workspace.edit_question": "Изменить вопрос",
+        "workspace.question_text": "Текст вопроса",
+        "workspace.save_question": "Сохранить вопрос",
+        "workspace.correct_record": "Создать исправление",
+        "workspace.reject_candidate": "Отклонить запись",
+        "workspace.mark_unsupported": "Отметить как не подтверждённую источником",
+        "workspace.confirm_record": "Подтвердить запись",
+        "workspace.reject_confirm": "Отклонить эту запись?",
+        "workspace.candidate_marked_unsupported": (
+            "Запись отмечена как не подтверждённая источником."
+        ),
+        "workspace.record_confirmed": "Запись подтверждена.",
+        "workspace.candidate_rejected": "Запись отклонена.",
+        "workspace.fact": "Факт",
+        "workspace.created": "Создано",
+        "workspace.onset_date": "Дата начала (как указано)",
+        "workspace.observed_date": "Дата наблюдения (как указано)",
+        "workspace.revision_viewing": "Просмотр ревизии",
+        "workspace.revision_origin": "источник",
+        "workspace.no_eligible_confirmed_evidence": "Подходящих подтверждённых материалов нет.",
+        "workspace.no_entries_match": "Записей, соответствующих этому виду, нет.",
+        "workspace.medication_confirmed": "Запись о лекарстве подтверждена",
+        "workspace.condition_confirmed": "Запись о состоянии подтверждена",
+        "workspace.lab_confirmed": "Запись об анализе подтверждена",
+        "workspace.record_superseded": "Запись заменена после проверки",
+        "workspace.no_specialist": "Специалист не указан",
+        "workspace.no_scheduled_date": "Дата не назначена",
+        "workspace.medication_pending": "Лекарство добавлено и ожидает проверки.",
+        "workspace.whole_source": "Весь источник",
+        "workspace.manual_medication_name": "Название лекарства в ручной записи",
+        "workspace.manual_condition_name": "Название записанного состояния в ручной записи",
+        "workspace.manual_lab_name": "Название анализа в ручной записи",
+        "workspace.manual_field": "Поле ручной записи",
+        "workspace.document_page": "Страница документа",
+        "workspace.codepoints": "кодовые позиции",
+        "workspace.source_text_characters": "Символы исходного текста",
+        "workspace.specific_source_location": "Точное место, указанное в источнике",
+        "workspace.origin_generated": "Создано",
+        "workspace.origin_user_edit": "Изменено пользователем",
+        "workspace.origin_restored": "Восстановлено",
+        "workspace.source_provenance": "Источник и происхождение",
+        "workspace.source_id": "ID источника",
+        "workspace.registered": "Зарегистрировано",
+        "workspace.size": "Размер",
+        "workspace.media_type": "Тип медиа",
+        "workspace.integrity_verified": "Целостность подтверждена",
+        "workspace.integrity_not_verified": "Целостность не подтверждена",
+        "workspace.source_metadata_unavailable": "Метаданные источника недоступны.",
+        "workspace.source_location": "Расположение источника",
+        "workspace.correction_lineage": "Связь исправления",
+        "workspace.manual_entry": "Ручная запись",
+        "workspace.source": "Источник",
+        "workspace.document": "Документ",
+        "workspace.text": "Текст",
+        "workspace.bytes": "байт",
+        "workspace.correction_superseded": (
+            "Связь исправления: запись заменена новой подтверждённой записью."
+        ),
+        "workspace.document_uploaded": "Документ загружен.",
+        "workspace.typed_candidate_pending": "Запись добавлена и ожидает проверки.",
+        "workspace.condition_pending": "Состояние добавлено и ожидает проверки.",
+        "workspace.lab_pending": "Анализ добавлен и ожидает проверки.",
+        "workspace.question_order_updated": "Порядок вопросов обновлён.",
+        "workspace.question_removed": "Вопрос удалён.",
+        "workspace.save_correction": "Сохранить исправление",
+        "workspace.correct_medication": "Исправить запись о лекарстве",
+        "workspace.correct_condition": "Исправить запись о состоянии",
+        "workspace.correct_lab": "Исправить запись об анализе",
+        "workspace.correction_pending": "Исправление добавлено на проверку.",
+        "workspace.profile_updated": "Профиль обновлён.",
+        "workspace.visit_created": "Визит создан.",
+        "workspace.visit_updated": "Визит обновлён.",
+        "workspace.question_added": "Вопрос добавлен.",
+        "workspace.question_updated": "Вопрос обновлён.",
+        "workspace.brief_initialized": "Краткая информация о визите создана.",
+        "workspace.evidence_valid": "Выбранные материалы корректны.",
+        "workspace.brief_revision_generated": "Ревизия краткой информации создана.",
+        "workspace.notes_saved": "Подготовительные заметки сохранены как новая ревизия.",
+        "workspace.brief_restored": "Текущая ревизия восстановлена.",
+        "workspace.markdown_copied": "Markdown скопирован.",
+        "workspace.copy_unavailable": "Копирование недоступно в этом браузере.",
+        "workspace.markdown_downloaded": "Загрузка Markdown подготовлена.",
+        "workspace.vault_downloaded": "Загрузка хранилища подготовлена.",
+    }
+)
 
 
 def _normalize_locale(locale: str | None) -> Locale:
