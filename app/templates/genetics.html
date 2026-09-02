@@ -2,224 +2,190 @@
 {% block title %}{{ t("page.genetics_title") }}{% endblock %}
 {% block page_styles %}<link rel="stylesheet" href="{{ url_for('static', path='/genetics.css') }}">{% endblock %}
 {% block page_scripts %}<script src="{{ url_for('static', path='/genetics.js') }}" defer></script>{% endblock %}
-{% block body_attributes %}data-genetics-mode="demo" data-person-id="{{ active_person_id or '' }}"{% endblock %}
+{% block body_attributes %}data-person-id="{{ active_person_id or '' }}"{% endblock %}
 {% block page_class %}genetics-page{% endblock %}
 {% block content %}
     <header class="workspace-heading">
       <div>
-        <p class="section-kicker">Genetics Workspace</p>
-        <h1>Evidence before interpretation</h1>
-        <p>Review selectively indexed observations, their evidence, and research questions without exposing the raw genome.</p>
+        <p class="section-kicker">{{ t("genetics.kicker") }}</p>
+        <h1>{{ t("genetics.heading") }}</h1>
+        <p>{{ t("genetics.intro") }}</p>
       </div>
-      <div class="workspace-person" aria-label="Current genetics profile">
-        <span>Profile</span>
-        <strong>Synthetic Person A</strong>
-        <small>Local demo data</small>
-      </div>
+      <section class="genetics-person-context" id="genetics-person-context" aria-label="{{ t('genetics.person_label') }}">
+        <div class="genetics-person-identity">
+          <span class="context-label">{{ t("genetics.person_label") }}</span>
+          <strong id="genetics-person-name">{{ t("workspace.no_profile_selected") }}</strong>
+        </div>
+        <div class="person-switcher">
+          <label for="genetics-person-selector">{{ t("genetics.person_selector_label") }}</label>
+          <select id="genetics-person-selector" autocomplete="off"></select>
+          <button class="button-secondary" type="button" id="genetics-clear-person">{{ t("workspace.clear_selection") }}</button>
+        </div>
+      </section>
     </header>
 
     <section class="boundary-banner" aria-labelledby="boundary-title">
-      <div class="boundary-mark" aria-hidden="true">LOCAL</div>
+      <div class="boundary-mark" aria-hidden="true">LIVE</div>
       <div>
-        <h2 id="boundary-title">Immutable source, private by default</h2>
-        <p>The original genotype source remains local and unchanged. Only selected loci are indexed. Genetics can identify a person and reveal information about biological relatives.</p>
+        <h2 id="boundary-title">{{ t("genetics.empty_help") }}</h2>
+        <p>{{ t("genetics.privacy_note") }}</p>
       </div>
       <details>
-        <summary>Privacy boundaries</summary>
+        <summary>{{ t("genetics.provenance_label") }}</summary>
         <ul>
-          <li>Raw genome rows are never rendered in this workspace.</li>
-          <li>Family access does not include genetics unless each Person grants it explicitly.</li>
-          <li>Research receives only the selected findings and records shown in its context preview.</li>
+          <li>{{ t("genetics.raw_source_note") }}</li>
+          <li>{{ t("genetics.family_warning") }}</li>
+          <li>{{ t("genetics.research_readiness_confirm") }}</li>
         </ul>
       </details>
     </section>
 
-    <div class="workspace-shell">
-      <nav class="workspace-tabs" aria-label="Genetics sections">
+    <section id="genetics-no-person" class="workspace-empty" hidden>
+      <div class="empty-state__mark" aria-hidden="true">?</div>
+      <div>
+        <h2>{{ t("genetics.no_person") }}</h2>
+        <p>{{ t("workspace.choose_person") }}</p>
+      </div>
+    </section>
+
+    <section id="genetics-no-access" class="workspace-empty" hidden>
+      <div class="empty-state__mark" aria-hidden="true">!</div>
+      <div>
+        <h2>{{ t("genetics.no_access") }}</h2>
+        <p>{{ t("genetics.family_warning") }}</p>
+      </div>
+    </section>
+
+    <section id="genetics-empty" class="workspace-empty" hidden>
+      <div class="empty-state__mark" aria-hidden="true">+</div>
+      <div>
+        <h2>{{ t("genetics.empty_title") }}</h2>
+        <p>{{ t("genetics.empty_help") }}</p>
+        <button class="button-secondary" type="button" id="genetics-import-cta" hidden>{{ t("genetics.import_cta") }}</button>
+        <p class="genetics-privacy-note">{{ t("genetics.privacy_note") }}</p>
+      </div>
+    </section>
+
+    <section id="genetics-load-error" class="workspace-empty" hidden>
+      <div class="empty-state__mark" aria-hidden="true">!</div>
+      <div>
+        <h2>{{ t("genetics.load_error") }}</h2>
+        <p>{{ t("status.request_failed") }}</p>
+      </div>
+    </section>
+
+    <div class="workspace-shell" id="genetics-workspace-shell" hidden>
+      <nav class="workspace-tabs" aria-label="{{ t('genetics.sections_label') }}">
         <div class="tab-list" role="tablist" aria-orientation="vertical">
-          <button id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview" tabindex="0" data-tab="overview"><span>Overview</span><small>Source and coverage</small></button>
-          <button id="tab-variants" role="tab" aria-selected="false" aria-controls="panel-variants" tabindex="-1" data-tab="variants"><span>Variants</span><small>Indexed observations</small></button>
-          <button id="tab-pgx" role="tab" aria-selected="false" aria-controls="panel-pgx" tabindex="-1" data-tab="pgx"><span>Pharmacogenomics</span><small>Medication relevance</small></button>
-          <button id="tab-health" role="tab" aria-selected="false" aria-controls="panel-health" tabindex="-1" data-tab="health"><span>Health associations</span><small>Reviewed findings</small></button>
-          <button id="tab-traits" role="tab" aria-selected="false" aria-controls="panel-traits" tabindex="-1" data-tab="traits"><span>Traits &amp; systems</span><small>Exploratory pathways</small></button>
-          <button id="tab-evidence" role="tab" aria-selected="false" aria-controls="panel-evidence" tabindex="-1" data-tab="evidence"><span>Evidence</span><small>Sources and limits</small></button>
-          <button id="tab-family" role="tab" aria-selected="false" aria-controls="panel-family" tabindex="-1" data-tab="family"><span>Family comparison</span><small>Consent required</small></button>
-          <button id="tab-research" role="tab" aria-selected="false" aria-controls="panel-research" tabindex="-1" data-tab="research"><span>Research Studio</span><small>Bounded exploration</small></button>
+          <button id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview" tabindex="0" data-tab="overview"><span>{{ t("genetics.tab_overview") }}</span><small>{{ t("genetics.tab_overview_sub") }}</small></button>
+          <button id="tab-variants" role="tab" aria-selected="false" aria-controls="panel-variants" tabindex="-1" data-tab="variants"><span>{{ t("genetics.tab_variants") }}</span><small>{{ t("genetics.tab_variants_sub") }}</small></button>
+          <button id="tab-pgx" role="tab" aria-selected="false" aria-controls="panel-pgx" tabindex="-1" data-tab="pgx"><span>{{ t("genetics.tab_pgx") }}</span><small>{{ t("genetics.tab_pgx_sub") }}</small></button>
+          <button id="tab-health" role="tab" aria-selected="false" aria-controls="panel-health" tabindex="-1" data-tab="health"><span>{{ t("genetics.tab_health") }}</span><small>{{ t("genetics.tab_health_sub") }}</small></button>
+          <button id="tab-traits" role="tab" aria-selected="false" aria-controls="panel-traits" tabindex="-1" data-tab="traits"><span>{{ t("genetics.tab_traits") }}</span><small>{{ t("genetics.tab_traits_sub") }}</small></button>
+          <button id="tab-evidence" role="tab" aria-selected="false" aria-controls="panel-evidence" tabindex="-1" data-tab="evidence"><span>{{ t("genetics.tab_evidence") }}</span><small>{{ t("genetics.tab_evidence_sub") }}</small></button>
+          <button id="tab-family" role="tab" aria-selected="false" aria-controls="panel-family" tabindex="-1" data-tab="family"><span>{{ t("genetics.tab_family") }}</span><small>{{ t("genetics.tab_family_sub") }}</small></button>
+          <button id="tab-research" role="tab" aria-selected="false" aria-controls="panel-research" tabindex="-1" data-tab="research"><span>{{ t("genetics.tab_research") }}</span><small>{{ t("genetics.tab_research_sub") }}</small></button>
         </div>
       </nav>
 
       <div class="workspace-content">
-        <div class="demo-toolbar" aria-label="Demo state controls">
-          <p><strong>Synthetic preview</strong> No real genetic or health data is present.</p>
-          <label for="demo-state">Surface state
-            <select id="demo-state">
-              <option value="ready">Ready</option>
-              <option value="loading">Loading</option>
-              <option value="empty">Empty</option>
-              <option value="error">Error</option>
-            </select>
-          </label>
-        </div>
-        <p id="workspace-status" class="sr-only" role="status" aria-live="polite"></p>
+        <p id="genetics-status" class="sr-only" role="status" aria-live="polite"></p>
 
         <section id="panel-overview" class="tab-panel" role="tabpanel" aria-labelledby="tab-overview" tabindex="0" data-panel="overview">
           <div class="panel-heading">
-            <div><h2>Overview</h2><p>A bounded view of one synthetic consumer-genotype dataset.</p></div>
-            <span class="source-seal">Source hash verified</span>
+            <div><h2>{{ t("genetics.overview_title") }}</h2><p>{{ t("genetics.overview_help") }}</p></div>
+            <span class="source-seal" id="overview-source-seal" hidden></span>
           </div>
-          <form id="genetics-import-form" class="import-panel">
-            <div><h3>Import genetic data</h3><p>Local consumer genotype TXT only. The original bytes are immutable and never sent to a provider.</p></div>
-            <label for="genetics-file">Genotype file<input id="genetics-file" type="file" accept=".txt,text/plain" required></label>
-            <label for="genetics-build">Genome build<select id="genetics-build"><option value="unknown">Unknown</option><option value="GRCh37/hg19">GRCh37 / hg19</option><option value="GRCh38/hg38">GRCh38 / hg38</option></select></label>
-            <label class="confirmation-check"><input id="genetics-import-confirmation" type="checkbox" required> I understand genetic data is uniquely identifying and can reveal information about relatives.</label>
-            <button type="submit">Import locally</button><p id="genetics-import-status" role="status" aria-live="polite"></p>
+          <form id="genetics-import-form" class="import-panel" hidden>
+            <div>
+              <h3>{{ t("genetics.import_title") }}</h3>
+              <p>{{ t("genetics.import_help") }}</p>
+              <p class="genetics-upload-limit">{{ t("genetics.upload_limit") }} {{ t("genetics.import_coverage_note") }}</p>
+            </div>
+            <label for="genetics-file">{{ t("genetics.import_file_label") }}<input id="genetics-file" type="file" accept=".txt,text/plain" required></label>
+            <label for="genetics-build">{{ t("genetics.import_build_label") }}<select id="genetics-build">
+              <option value="unknown">{{ t("genetics.build_unknown") }}</option>
+              <option value="GRCh37/hg19">GRCh37 / hg19</option>
+              <option value="GRCh38/hg38">GRCh38 / hg38</option>
+            </select></label>
+            <label class="confirmation-check"><input id="genetics-import-confirmation" type="checkbox" required> {{ t("genetics.import_confirmation") }}</label>
+            <button type="submit" id="genetics-import-submit">{{ t("genetics.import_submit") }}</button>
+            <p id="genetics-import-status" role="status" aria-live="polite"></p>
           </form>
-          <div class="state-host" data-state-host="overview">
-            <div class="overview-ledger">
-              <div class="dataset-facts">
-                <h3>Dataset record</h3>
-                <dl>
-                  <div><dt>Source format</dt><dd>Consumer genotype TXT</dd></div>
-                  <div><dt>Genome build</dt><dd>GRCh37 / hg19</dd></div>
-                  <div><dt>Imported</dt><dd>August 18, 2026</dd></div>
-                  <div><dt>Parser</dt><dd>OpenCare bounded parser 1.0</dd></div>
-                  <div><dt>Raw source</dt><dd>Immutable, local only</dd></div>
-                </dl>
-              </div>
-              <div class="coverage-figure" aria-labelledby="coverage-title">
-                <h3 id="coverage-title">Selective coverage</h3>
-                <div class="coverage-donut" role="img" aria-label="12 target loci: 8 present, 1 no-call, 3 not present"><span><strong>12</strong>targets</span></div>
-                <ul class="coverage-key">
-                  <li><i class="key-present"></i><span>Present</span><strong>8</strong></li>
-                  <li><i class="key-no-call"></i><span>No-call</span><strong>1</strong></li>
-                  <li><i class="key-absent"></i><span>Not present</span><strong>3</strong></li>
-                </ul>
-              </div>
-            </div>
-            <div class="coverage-notice" role="note">
-              <strong>Not present does not mean reference.</strong>
-              <p>A consumer chip may not test a target locus. Untested, no-call, and confirmed reference are different states.</p>
-            </div>
-            <div class="finding-summary">
-              <article><span>Reviewed findings</span><strong>5</strong><small>Human-reviewed genetics records</small></article>
-              <article><span>Evidence entries</span><strong>9</strong><small>From synthetic evidence pack v1</small></article>
-              <article><span>Indexed loci</span><strong>12</strong><small>Raw rows remain out of view</small></article>
-            </div>
-            <div class="evidence-strip" aria-label="Evidence distribution">
-              <span class="evidence-badge evidence-clinical">Clinical 1</span>
-              <span class="evidence-badge evidence-high">High 2</span>
-              <span class="evidence-badge evidence-moderate">Moderate 3</span>
-              <span class="evidence-badge evidence-low">Low 2</span>
-              <span class="evidence-badge evidence-conflicting">Conflicting 1</span>
-            </div>
-          </div>
+          <div class="state-host" data-state-host="overview"></div>
         </section>
 
         <section id="panel-variants" class="tab-panel" role="tabpanel" aria-labelledby="tab-variants" tabindex="0" data-panel="variants" hidden>
-          <div class="panel-heading"><div><h2>Variants</h2><p>Only loci selected by installed evidence packs are shown.</p></div><span class="count-label">5 shown</span></div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.variants_title") }}</h2><p>{{ t("genetics.variants_help") }}</p></div><span class="count-label" id="variant-count" hidden></span></div>
           <form class="filter-bar" id="variant-filters" role="search">
-            <label for="variant-search">Search rsID or gene<input id="variant-search" type="search" placeholder="Try CYP2C19" autocomplete="off"></label>
-            <label for="coverage-filter">Coverage<select id="coverage-filter"><option value="all">All coverage</option><option value="present">Present</option><option value="no-call">No-call</option><option value="not-present">Not present</option></select></label>
-            <label for="category-filter">Category<select id="category-filter"><option value="all">All categories</option><option value="pgx">Pharmacogenomics</option><option value="health">Health association</option><option value="trait">Trait</option></select></label>
+            <label for="variant-search">{{ t("genetics.filter_search") }}<input id="variant-search" type="search" autocomplete="off"></label>
+            <label for="coverage-filter">{{ t("genetics.filter_coverage") }}<select id="coverage-filter"><option value="all">{{ t("genetics.filter_all") }}</option></select></label>
+            <label for="category-filter">{{ t("genetics.filter_category") }}<select id="category-filter"><option value="all">{{ t("genetics.filter_all") }}</option></select></label>
           </form>
-          <div class="coverage-notice compact"><strong>Coverage language matters.</strong><p>“Not present” means the source did not report the target. It is never displayed as a reference genotype.</p></div>
-          <div class="state-host observation-list" data-state-host="variants" id="variant-list"></div>
+          <div class="state-host observation-list" data-state-host="variants"></div>
         </section>
 
         <section id="panel-pgx" class="tab-panel" role="tabpanel" aria-labelledby="tab-pgx" tabindex="0" data-panel="pgx" hidden>
-          <div class="panel-heading"><div><h2>Pharmacogenomics</h2><p>Medication relevance, not prescribing advice.</p></div><span class="evidence-badge evidence-clinical">Clinical evidence</span></div>
-          <div class="pgx-boundary" role="note"><strong>Association only</strong><span>This surface does not recommend a medication, dose, start, or stop.</span></div>
-          <div class="state-host" data-state-host="pgx">
-            <article class="pgx-path">
-              <div class="path-node"><span>Gene</span><strong>CYP2C19</strong><small>Indexed observation</small></div>
-              <div class="path-arrow" aria-hidden="true">→</div>
-              <div class="path-node"><span>Evidence phenotype</span><strong>Synthetic metabolizer association</strong><small>Example only</small></div>
-              <div class="path-arrow" aria-hidden="true">→</div>
-              <div class="path-node"><span>Medication intersection</span><strong>Demo Medication A</strong><small>Confirmed record match</small></div>
-              <div class="path-result"><span class="evidence-badge evidence-clinical">Clinical</span><p>A relevant pharmacogenomic association exists. Discuss the source guideline and limitations with a qualified clinician.</p></div>
-              <details><summary>Evidence and limitations</summary><div class="provenance-detail"><p><strong>Source:</strong> Synthetic PGx Guideline, demo edition 2026</p><p><strong>Limit:</strong> This fixture is not a clinical result and cannot guide treatment.</p></div></details>
-            </article>
-          </div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.pgx_title") }}</h2><p>{{ t("genetics.pgx_help") }}</p></div></div>
+          <div class="pgx-boundary" role="note"><strong>{{ t("genetics.pgx_boundary") }}</strong><span>{{ t("genetics.pgx_boundary_note") }}</span></div>
+          <div class="state-host" data-state-host="pgx"></div>
         </section>
 
         <section id="panel-health" class="tab-panel" role="tabpanel" aria-labelledby="tab-health" tabindex="0" data-panel="health" hidden>
-          <div class="panel-heading"><div><h2>Health associations</h2><p>Reviewed genetics findings remain separate from diagnosed conditions.</p></div></div>
-          <div class="state-host association-groups" data-state-host="health">
-            <section class="association-group"><header><h3>Cardiovascular system</h3><span>1 reviewed</span></header><article class="finding-row"><div><span class="evidence-badge evidence-moderate">Moderate</span><h4>Synthetic lipid-response association</h4><p>An observed genotype matches a cited association in the demo evidence pack.</p></div><span class="review-state">Reviewed</span></article></section>
-            <section class="association-group"><header><h3>Metabolism</h3><span>1 conflicting</span></header><article class="finding-row"><div><span class="evidence-badge evidence-conflicting">Conflicting</span><h4>Synthetic glucose-pathway association</h4><p>Sources disagree on direction or practical relevance.</p></div><span class="review-state">Conflicting</span></article></section>
-          </div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.health_title") }}</h2><p>{{ t("genetics.health_help") }}</p></div></div>
+          <div class="state-host association-groups" data-state-host="health"></div>
         </section>
 
         <section id="panel-traits" class="tab-panel" role="tabpanel" aria-labelledby="tab-traits" tabindex="0" data-panel="traits" hidden>
-          <div class="panel-heading"><div><h2>Traits &amp; systems</h2><p>Possible pathway relevance with evidence always in view.</p></div></div>
-          <div class="traits-intro"><strong>No deterministic personality claims.</strong><span>These cards organize exploratory associations, not identity, destiny, or diagnosis.</span></div>
-          <div class="state-host pathway-grid" data-state-host="traits">
-            <article class="pathway-card pathway-neuro"><div class="pathway-map" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div><span class="evidence-badge evidence-low">Low</span><h3>Neurotransmitter pathway</h3><p>A synthetic observation may be relevant to a research pathway. Effects are likely small and context dependent.</p><details><summary>What would change confidence?</summary><p>Replication in larger studies, resolved orientation, and relevant phenotype information.</p></details></div></article>
-            <article class="pathway-card pathway-sleep"><div class="pathway-map" aria-hidden="true"><i></i><i></i><i></i></div><div><span class="evidence-badge evidence-exploratory">Exploratory</span><h3>Sleep timing system</h3><p>A hypothesis card for organizing questions. It is not a prediction of sleep behavior.</p><details><summary>Alternative explanations</summary><p>Routine, light exposure, medication, stress, and measurement quality may matter more.</p></details></div></article>
-          </div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.traits_title") }}</h2><p>{{ t("genetics.traits_help") }}</p></div></div>
+          <div class="state-host pathway-grid" data-state-host="traits"></div>
         </section>
 
         <section id="panel-evidence" class="tab-panel" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0" data-panel="evidence" hidden>
-          <div class="panel-heading"><div><h2>Evidence</h2><p>Source quality, version, review state, and limitations.</p></div><button class="button-secondary" type="button" data-action="toggle-evidence-help">How levels work</button></div>
-          <div id="evidence-help" class="evidence-help" hidden><strong>Evidence level describes support quality, not probability.</strong><p>A “High” badge does not mean a high chance of a health outcome. Review state and source limitations remain separate.</p></div>
-          <div class="state-host evidence-ledger" data-state-host="evidence">
-            <article><div><span class="evidence-badge evidence-clinical">Clinical</span><h3>Synthetic PGx guideline entry</h3><p>Pack p3-demo-genetics · version 1.0 · dated 2026-08-01</p></div><dl><div><dt>Review</dt><dd>Reviewed</dd></div><div><dt>Orientation</dt><dd>Resolved</dd></div><div><dt>Source</dt><dd>Demo guideline reference</dd></div></dl><details><summary>Limitations and provenance</summary><p>This is a synthetic reviewer fixture. It links to one normalized observation, parser version, immutable source identifier, and source hash.</p></details></article>
-            <article><div><span class="evidence-badge evidence-conflicting">Conflicting</span><h3>Synthetic metabolism association</h3><p>Pack p3-demo-genetics · version 1.0 · dated 2026-08-01</p></div><dl><div><dt>Review</dt><dd>Conflicting</dd></div><div><dt>Orientation</dt><dd>Resolved</dd></div><div><dt>Source</dt><dd>Two demo references</dd></div></dl><details><summary>Why conflicting?</summary><p>The synthetic sources disagree on effect direction. No unified claim is made.</p></details></article>
-          </div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.evidence_title") }}</h2><p>{{ t("genetics.evidence_help") }}</p></div><button class="button-secondary" type="button" data-action="toggle-evidence-help" aria-expanded="false">{{ t("genetics.evidence_help") }}</button></div>
+          <div id="evidence-help" class="evidence-help" hidden><strong>{{ t("genetics.coverage_note_title") }}</strong><p>{{ t("genetics.coverage_note_body") }}</p></div>
+          <div class="state-host evidence-ledger" data-state-host="evidence"></div>
         </section>
 
         <section id="panel-family" class="tab-panel" role="tabpanel" aria-labelledby="tab-family" tabindex="0" data-panel="family" hidden>
-          <div class="panel-heading"><div><h2>Family comparison</h2><p>Deterministic coverage comparison with separate permission for each Person.</p></div></div>
-          <div class="family-warning" role="alert"><strong>Genetics access is never inherited from family access.</strong><span>Both profiles must grant genetics comparison. Hidden profiles and datasets are never revealed.</span></div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.family_title") }}</h2><p>{{ t("genetics.family_help") }}</p></div></div>
+          <div class="family-warning" role="note"><strong>{{ t("genetics.family_warning") }}</strong><span>{{ t("genetics.family_limit") }}</span></div>
           <form id="family-comparison-form" class="family-selectors">
-            <label for="family-person-a">First profile<select id="family-person-a"><option value="synthetic-a">Synthetic Person A</option></select></label>
-            <span aria-hidden="true">compared with</span>
-            <label for="family-person-b">Second profile<select id="family-person-b"><option value="">Choose an authorized profile</option><option value="synthetic-b">Synthetic Person B</option></select></label>
-            <button type="submit">Compare coverage</button>
+            <label for="family-person-a">{{ t("genetics.family_person_a_label") }}<select id="family-person-a" disabled></select></label>
+            <span aria-hidden="true">{{ t("genetics.family_compared_with") }}</span>
+            <label for="family-person-b">{{ t("genetics.family_person_b_label") }}<select id="family-person-b"></select></label>
+            <button type="submit">{{ t("genetics.family_compare_submit") }}</button>
           </form>
           <div class="state-host" data-state-host="family">
-            <div id="family-gate" class="permission-gate"><h3>No second profile selected</h3><p>Select a separately authorized synthetic profile to compare compatible indexed loci.</p></div>
-            <div id="family-results" hidden>
-              <div class="comparison-summary"><article><strong>4</strong><span>Shared covered loci</span></article><article><strong>2</strong><span>Differing observations</span></article><article><strong>1</strong><span>No-call or missing</span></article></div>
-              <p class="comparison-limit"><strong>Limit:</strong> These statistics describe compatible indexed observations only. They do not prove biological or legal kinship.</p>
-            </div>
+            <div id="family-gate" class="permission-gate"><h3>{{ t("genetics.family_choose_person_b") }}</h3></div>
+            <div id="family-results" hidden></div>
           </div>
         </section>
 
         <section id="panel-research" class="tab-panel" role="tabpanel" aria-labelledby="tab-research" tabindex="0" data-panel="research" hidden>
-          <div class="panel-heading"><div><h2>Research Studio</h2><p>Build a bounded question from selected evidence and health records.</p></div><span class="context-count" id="context-count">3 selected items</span></div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.research_title") }}</h2><p>{{ t("genetics.research_help") }}</p></div><span class="context-count" id="context-count" hidden></span></div>
           <div class="state-host" data-state-host="research">
-          <div class="research-mode" role="radiogroup" aria-labelledby="mode-label">
-            <div><strong id="mode-label">Research mode</strong><p>Choose how far synthesis may go.</p></div>
-            <label><input type="radio" name="research-mode" value="evidence" checked><span><strong>Evidence</strong><small>Use supplied evidence only</small></span></label>
-            <label><input type="radio" name="research-mode" value="explore"><span><strong>Explore</strong><small>Label hypotheses and background</small></span></label>
-          </div>
-          <div class="research-layout">
-            <form id="research-form" class="research-builder">
-              <fieldset><legend>Selected context</legend><label><input type="checkbox" name="context" value="finding-pgx" checked> Reviewed PGx finding</label><label><input type="checkbox" name="context" value="finding-health" checked> Reviewed health association</label><label><input type="checkbox" name="context" value="medication-demo" checked> Confirmed Demo Medication A</label></fieldset>
-              <label for="research-question">Question<textarea id="research-question" rows="4" required>What evidence supports or challenges a possible link between the selected pathway and the reviewed findings?</textarea></label>
-              <div class="disclosure-box">
-                <div><span class="provider-label">External provider</span><strong>Synthetic Research Provider</strong></div>
-                <p>Only 2 findings and 1 medication record will be disclosed. No raw genotype file or unrestricted vault content is included.</p>
-                <label class="confirmation-check"><input id="disclosure-confirmation" type="checkbox"> I confirm this genetics-specific external disclosure for the selected context.</label>
-              </div>
-              <div class="form-actions"><button id="run-research" type="submit" disabled>Run bounded research</button><span id="research-readiness">Confirm external disclosure to continue.</span></div>
-            </form>
-
-            <div class="research-output" aria-labelledby="hypothesis-title">
-              <div class="hypothesis-heading"><div><span class="epistemic-status">Plausible</span><h3 id="hypothesis-title">Synthetic pathway hypothesis</h3></div><span class="evidence-badge evidence-moderate">Moderate</span></div>
-              <p class="hypothesis-summary">The selected evidence could fit a pathway-level relationship, but it does not establish a health outcome or clinical action.</p>
-              <div class="hypothesis-flow" aria-label="Hypothesis evidence map">
-                <span>Observed genotype</span><i aria-hidden="true"></i><span>Cited association</span><i aria-hidden="true"></i><span>Bounded hypothesis</span>
-              </div>
-              <section><h4>What may be happening</h4><p>A synthetic genotype and reviewed association may point to a shared mechanism worth discussing, not a diagnosis.</p></section>
-              <section><h4>Evidence supporting it</h4><ul><li>One reviewed internal finding with a cited demo source.</li><li>One compatible selected medication record.</li></ul></section>
-              <section class="devils-advocate"><h4>Devil’s advocate: evidence against it</h4><ul><li>The cited association does not establish individual effect.</li><li>Consumer-chip coverage is incomplete.</li></ul></section>
-              <section class="devils-advocate"><h4>Alternative explanations</h4><p>Environment, medication effects, measurement noise, or an unrelated pathway could explain the same pattern.</p></section>
-              <section><h4>Missing information</h4><p>Validated phenotype data, compatible replication evidence, and clinician context.</p></section>
-              <section><h4>Questions worth investigating</h4><p id="visit-question">Could we review whether this synthetic genetics association has any relevance to my current medication record?</p><button class="button-secondary" type="button" data-action="add-to-visit">Add question to Visit</button><p id="visit-handoff-status" role="status" aria-live="polite"></p></section>
+            <div class="research-mode" role="radiogroup" aria-labelledby="mode-label">
+              <div><strong id="mode-label">{{ t("genetics.research_mode_label") }}</strong><p>{{ t("genetics.research_mode_help") }}</p></div>
+              <label><input type="radio" name="research-mode" value="evidence" checked><span><strong>{{ t("genetics.research_evidence_mode") }}</strong><small>{{ t("genetics.research_evidence_mode_help") }}</small></span></label>
+              <label><input type="radio" name="research-mode" value="explore"><span><strong>{{ t("genetics.research_explore_mode") }}</strong><small>{{ t("genetics.research_explore_mode_help") }}</small></span></label>
             </div>
-          </div>
+            <div class="research-layout">
+              <form id="research-form" class="research-builder">
+                <fieldset><legend>{{ t("genetics.context_selected") }}</legend><div id="research-context-options"></div></fieldset>
+                <label for="research-question">{{ t("genetics.research_question_label") }}<textarea id="research-question" rows="4" required></textarea></label>
+                <div class="disclosure-box">
+                  <div><span class="provider-label">{{ t("genetics.research_provider_label") }}</span><strong id="research-provider-name"></strong></div>
+                  <p id="research-context-summary" role="note"></p>
+                  <label class="confirmation-check"><input id="disclosure-confirmation" type="checkbox"> {{ t("genetics.research_disclosure_confirm") }}</label>
+                </div>
+                <div class="form-actions"><button id="run-research" type="submit" disabled>{{ t("genetics.research_run") }}</button><span id="research-readiness">{{ t("genetics.research_readiness_confirm") }}</span></div>
+              </form>
+              <div class="research-output" id="research-output" aria-labelledby="research-output-title" hidden>
+                <div class="hypothesis-heading"><div><span class="epistemic-status" id="research-confidence"></span><h3 id="research-output-title"></h3></div></div>
+                <div id="research-output-body"></div>
+              </div>
+            </div>
           </div>
         </section>
       </div>

@@ -56,8 +56,14 @@ h4 { margin: 0; font-size: 1rem; }
 .workspace-heading > div:first-child { max-width: 720px; }
 .workspace-heading p { margin: 0; color: var(--muted); }
 .section-kicker { color: var(--accent-dark) !important; font-size: .82rem; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
-.workspace-person { min-width: 220px; display: grid; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-.workspace-person span, .workspace-person small { color: var(--muted); font-size: .82rem; }
+.genetics-person-context { min-width: 280px; display: grid; gap: .65rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.genetics-person-identity { display: grid; gap: .15rem; color: var(--muted); }
+.genetics-person-identity strong { color: var(--ink); font-size: 1rem; overflow-wrap: anywhere; }
+.context-label { margin: 0; color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.person-switcher { display: grid; grid-template-columns: 1fr auto; gap: .35rem .6rem; align-items: end; }
+.person-switcher label { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: .8rem; font-weight: 700; }
+.genetics-privacy-note, .genetics-upload-limit { color: var(--muted); font-size: .82rem; }
+.genetics-privacy-note { max-width: 64ch; margin: .8rem 0 0; }
 
 .boundary-banner { display: grid; grid-template-columns: auto minmax(260px, 1fr) minmax(220px, .55fr); align-items: center; gap: 1rem 1.25rem; margin-bottom: 1.2rem; padding: 1rem 1.15rem; color: #fff; background: var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); }
 .boundary-banner h2 { color: #fff; font-size: 1.08rem; }
@@ -77,9 +83,6 @@ h4 { margin: 0; font-size: 1rem; }
 .tab-list button small { color: var(--muted); font-size: .76rem; }
 
 .workspace-content { min-width: 0; }
-.demo-toolbar { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; padding: .55rem .8rem; color: var(--muted); background: var(--surface-alt); border: 1px dashed var(--line-strong); border-radius: var(--radius); }
-.demo-toolbar p { margin: 0; font-size: .85rem; }
-.demo-toolbar label { display: flex; align-items: center; gap: .5rem; color: var(--ink); font-size: .82rem; font-weight: 700; }
 select, input, textarea { width: 100%; min-height: 44px; padding: .6rem .7rem; color: var(--ink); background: #fff; border: 1px solid var(--line-strong); border-radius: var(--control-radius); }
 .import-panel { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(160px, .7fr) minmax(160px, .7fr); gap: .85rem; align-items: end; margin-bottom: 1rem; padding: 1rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius); }
 .import-panel > div { align-self: start; }
@@ -89,7 +92,6 @@ select, input, textarea { width: 100%; min-height: 44px; padding: .6rem .7rem; c
 .import-panel .confirmation-check input { width: 1.1rem; min-height: 1.1rem; }
 .import-panel button { min-height: 44px; padding: .6rem 1rem; color: #fff; background: var(--accent-dark); border: 0; border-radius: var(--control-radius); font-weight: 800; cursor: pointer; }
 .import-panel #genetics-import-status { grid-column: 1 / -1; }
-.demo-toolbar select { width: auto; min-height: 38px; padding-block: .35rem; }
 textarea { resize: vertical; }
 
 .tab-panel { min-height: 640px; padding: 1.3rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
@@ -241,6 +243,13 @@ button[type="submit"]:hover:not(:disabled) { background: var(--accent-dark); bor
 .research-output section ul { padding-left: 1.2rem; }
 .devils-advocate { margin-inline: -.35rem; padding-inline: .35rem !important; background: #fff8e8; }
 #visit-handoff-status { min-height: 1.3rem; color: var(--accent-dark); font-size: .85rem; font-weight: 700; }
+.research-context-note { margin: .3rem 0; color: var(--muted); font-size: .88rem; }
+
+.workspace-empty { display: flex; align-items: flex-start; gap: 1rem; margin-top: 1rem; padding: clamp(1.25rem, 3vw, 2rem); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.workspace-empty h2, .workspace-empty h3 { margin: 0; }
+.workspace-empty p { max-width: 58ch; margin: .45rem 0 0; color: var(--muted); }
+.workspace-empty .button-secondary { margin-top: .8rem; }
+.empty-state__mark { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--accent-dark); font-size: 1.7rem; line-height: 1; }
 
 .state-card { display: grid; justify-items: start; gap: .45rem; min-height: 250px; align-content: center; padding: 1.5rem; background: var(--surface-alt); border-radius: var(--radius); }
 .state-card h3, .state-card p { margin: 0; }
@@ -270,11 +279,12 @@ button[type="submit"]:hover:not(:disabled) { background: var(--accent-dark); bor
   main { padding-top: 1rem; }
   h1 { font-size: 1.95rem; }
   .workspace-heading { display: grid; grid-template-columns: 1fr; }
-  .workspace-person { min-width: 0; width: 100%; }
+  .genetics-person-context { min-width: 0; width: 100%; }
+  .person-switcher { grid-template-columns: 1fr; }
+  .person-switcher label { grid-column: auto; }
   .boundary-banner { grid-template-columns: 1fr; }
   .boundary-mark { width: fit-content; }
   .boundary-banner details, .boundary-banner ul { grid-column: 1; }
-  .demo-toolbar { align-items: flex-start; flex-direction: column; }
   .panel-heading { flex-direction: column; }
   .overview-ledger, .coverage-notice, .filter-bar, .finding-summary, .pathway-grid, .evidence-ledger > article, .family-selectors, .comparison-summary, .research-mode, .import-panel { grid-template-columns: 1fr; }
   .coverage-figure { grid-template-columns: 106px 1fr; }
