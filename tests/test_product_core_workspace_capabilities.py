@@ -47,10 +47,24 @@ CAPABILITY_KEYS = frozenset(
         "brief_export",
         "vault_export",
         "chat_use",
+        "genetics_read",
+        "genetics_write",
+        "genetics_research",
+        "genetics_compare",
+        "genetics_export",
     }
 )
 
-ALL_TRUE = dict.fromkeys(sorted(CAPABILITY_KEYS), True)
+GENETICS_CAPABILITY_KEYS = frozenset(
+    {"genetics_read", "genetics_write", "genetics_research", "genetics_compare", "genetics_export"}
+)
+
+# Ordinary ownership grants every core capability. Genetics scopes are separate
+# P3 grants: even the owner sees False until a genetics grant is recorded.
+ALL_TRUE = {
+    **dict.fromkeys(sorted(CAPABILITY_KEYS - GENETICS_CAPABILITY_KEYS), True),
+    **dict.fromkeys(sorted(GENETICS_CAPABILITY_KEYS), False),
+}
 
 CAREGIVER_READ_ONLY = {
     "person_update": False,
@@ -72,6 +86,11 @@ CAREGIVER_READ_ONLY = {
     "brief_export": False,
     "vault_export": False,
     "chat_use": True,
+    "genetics_read": False,
+    "genetics_write": False,
+    "genetics_research": False,
+    "genetics_compare": False,
+    "genetics_export": False,
 }
 
 V1_CAREGIVER_READ_ONLY = {
@@ -94,6 +113,11 @@ V1_CAREGIVER_READ_ONLY = {
     "brief_export": False,
     "vault_export": False,
     "chat_use": True,
+    "genetics_read": False,
+    "genetics_write": False,
+    "genetics_research": False,
+    "genetics_compare": False,
+    "genetics_export": False,
 }
 
 
@@ -373,10 +397,10 @@ def test_hidden_person_returns_standard_error_envelope(
     }
 
 
-def test_response_shape_is_closed_with_exactly_nineteen_keys(
+def test_response_shape_is_closed_with_exactly_twenty_four_keys(
     access_harness: AccessHarness,
 ) -> None:
     access_harness.login("alice")
     capabilities = _capabilities(access_harness, "alice-person")
-    assert len(capabilities) == 19
+    assert len(capabilities) == 24
     assert all(isinstance(value, bool) for value in capabilities.values())

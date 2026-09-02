@@ -1197,6 +1197,7 @@ def get_person(
 )
 def get_workspace_capabilities(
     person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
     access: AccessDependency,
 ) -> WorkspaceCapabilitiesResponse:
     """Return the current Actor's capability map on a Person (read-only).
@@ -1228,6 +1229,21 @@ def get_workspace_capabilities(
             brief_export="brief.export" in scopes,
             vault_export="vault.export" in scopes,
             chat_use="chat.use" in scopes,
+            genetics_read=runtime.genetics.has_scope(
+                actor_id=access.actor_id, person_id=person_id, scope="genetics.read"
+            ),
+            genetics_write=runtime.genetics.has_scope(
+                actor_id=access.actor_id, person_id=person_id, scope="genetics.write"
+            ),
+            genetics_research=runtime.genetics.has_scope(
+                actor_id=access.actor_id, person_id=person_id, scope="genetics.research"
+            ),
+            genetics_compare=runtime.genetics.has_scope(
+                actor_id=access.actor_id, person_id=person_id, scope="genetics.compare"
+            ),
+            genetics_export=runtime.genetics.has_scope(
+                actor_id=access.actor_id, person_id=person_id, scope="genetics.export"
+            ),
         ),
     )
 

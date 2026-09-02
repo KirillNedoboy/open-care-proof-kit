@@ -460,6 +460,11 @@ class WorkspaceCapabilities(APIModel):
     brief_export: bool
     vault_export: bool
     chat_use: bool
+    genetics_read: bool
+    genetics_write: bool
+    genetics_research: bool
+    genetics_compare: bool
+    genetics_export: bool
 
 
 class WorkspaceCapabilitiesResponse(APIModel):
