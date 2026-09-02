@@ -362,6 +362,9 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "chat.local_only": "Local only",
         "chat.none": "none",
         "chat.not_specified": "not specified",
+        "chat.retention_provider_policy": (
+            "provider policy; OpenCare does not retain provider payloads"
+        ),
         "chat.consent_declined": "No provider call was made because disclosure was not approved.",
         "chat.consent_not_granted": "Consent was not granted.",
         "chat.no_provider_output": "No provider output was displayed.",
@@ -1057,6 +1060,9 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "chat.local_only": "Только локально",
         "chat.none": "нет",
         "chat.not_specified": "не указано",
+        "chat.retention_provider_policy": (
+            "политика провайдера; OpenCare не хранит данные запроса провайдеру"
+        ),
         "chat.consent_declined": "Вызов провайдера не выполнен: раскрытие не было одобрено.",
         "chat.consent_not_granted": "Согласие не предоставлено.",
         "chat.no_provider_output": "Ответ провайдера не показан.",

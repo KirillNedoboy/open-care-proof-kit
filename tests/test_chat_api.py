@@ -188,6 +188,8 @@ def test_chat_browser_script_preserves_exact_trust_flow_and_reset_guards() -> No
     assert "external" in script
     assert "receipt_id" in script
     assert 't("chat.consent_declined"' in script
+    assert 'chat.retention_provider_policy' in script
+    assert 'typeof answer.answer === "object"' in script
 
 
 def test_private_chat_page_redirects_but_api_returns_json_401(
