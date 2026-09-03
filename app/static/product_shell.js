@@ -28,6 +28,36 @@
   };
 
   const mobileNavigation = window.matchMedia("(max-width: 52rem)");
+  const navigationLinks = Array.from(shell.querySelectorAll("[data-nav-key]"));
+
+  const resolvePrimaryNavigation = () => {
+    const { pathname, hash } = window.location;
+    if (pathname === "/workspace") {
+      return {
+        "#overview": "overview",
+        "#records": "health",
+        "#documents": "documents",
+        "#timeline": "activity",
+      }[hash] || "overview";
+    }
+    if (pathname === "/chat") return "chat";
+    if (pathname === "/genetics") return "genetics";
+    if (pathname === "/family-access") return hash === "#account-settings" ? "settings" : "family";
+    return null;
+  };
+
+  const syncPrimaryNavigation = () => {
+    const activeKey = resolvePrimaryNavigation();
+    if (!activeKey) return;
+    navigationLinks.forEach((link) => {
+      link.classList.remove("is-active");
+      link.removeAttribute("aria-current");
+    });
+    const activeLink = navigationLinks.find((link) => link.dataset.navKey === activeKey);
+    if (!activeLink) return;
+    activeLink.classList.add("is-active");
+    activeLink.setAttribute("aria-current", "page");
+  };
 
   const setNavigationOpen = (open) => {
     const isOpen = Boolean(open);
@@ -42,6 +72,9 @@
 
   shell.classList.add("product-shell--enhanced");
   setNavigationOpen(!mobileNavigation.matches);
+  syncPrimaryNavigation();
+
+  window.addEventListener("hashchange", syncPrimaryNavigation);
 
   menuButton.addEventListener("click", () => {
     setNavigationOpen(shell.dataset.navigationOpen !== "true");

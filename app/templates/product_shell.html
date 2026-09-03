@@ -21,18 +21,18 @@
     </a>
 
     <nav class="product-shell__nav" aria-label="{{ t('shell.primary_navigation') }}">
-      <a class="product-shell__nav-link{% if active_nav == 'overview' %} is-active{% endif %}" href="/workspace#overview"{% if active_nav == 'overview' %} aria-current="page"{% endif %}>{{ t('nav.overview') }}</a>
-      <a class="product-shell__nav-link{% if active_nav == 'health' %} is-active{% endif %}" href="/workspace#records"{% if active_nav == 'health' %} aria-current="page"{% endif %}>{{ t('nav.health') }}</a>
-      <a class="product-shell__nav-link{% if active_nav == 'documents' %} is-active{% endif %}" href="/workspace#documents"{% if active_nav == 'documents' %} aria-current="page"{% endif %}>{{ t('nav.documents') }}</a>
-      <a class="product-shell__nav-link{% if active_nav == 'activity' %} is-active{% endif %}" href="/workspace#timeline"{% if active_nav == 'activity' %} aria-current="page"{% endif %}>{{ t('nav.activity') }}</a>
-      <a class="product-shell__nav-link{% if active_nav == 'chat' %} is-active{% endif %}" href="/chat"{% if active_nav == 'chat' %} aria-current="page"{% endif %}>{{ t('nav.chat') }}</a>
-      <a class="product-shell__nav-link{% if active_nav == 'genetics' %} is-active{% endif %}" href="/genetics"{% if active_nav == 'genetics' %} aria-current="page"{% endif %}>{{ t('nav.genetics') }}</a>
-      <a class="product-shell__nav-link{% if active_nav == 'family' %} is-active{% endif %}" href="/family-access"{% if active_nav == 'family' %} aria-current="page"{% endif %}>{{ t('nav.family_access') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'overview' %} is-active{% endif %}" data-nav-key="overview" href="/workspace#overview"{% if active_nav == 'overview' %} aria-current="page"{% endif %}>{{ t('nav.overview') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'health' %} is-active{% endif %}" data-nav-key="health" href="/workspace#records"{% if active_nav == 'health' %} aria-current="page"{% endif %}>{{ t('nav.health') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'documents' %} is-active{% endif %}" data-nav-key="documents" href="/workspace#documents"{% if active_nav == 'documents' %} aria-current="page"{% endif %}>{{ t('nav.documents') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'activity' %} is-active{% endif %}" data-nav-key="activity" href="/workspace#timeline"{% if active_nav == 'activity' %} aria-current="page"{% endif %}>{{ t('nav.activity') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'chat' %} is-active{% endif %}" data-nav-key="chat" href="/chat"{% if active_nav == 'chat' %} aria-current="page"{% endif %}>{{ t('nav.chat') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'genetics' %} is-active{% endif %}" data-nav-key="genetics" href="/genetics"{% if active_nav == 'genetics' %} aria-current="page"{% endif %}>{{ t('nav.genetics') }}</a>
+      <a class="product-shell__nav-link{% if active_nav == 'family' %} is-active{% endif %}" data-nav-key="family" href="/family-access"{% if active_nav == 'family' %} aria-current="page"{% endif %}>{{ t('nav.family_access') }}</a>
     </nav>
 
     <div class="product-shell__account" aria-label="{{ t('shell.account') }}">
       <span class="product-shell__account-label">{{ t('shell.account') }}</span>
-      <a class="product-shell__account-link{% if active_nav == 'settings' %} is-active{% endif %}" href="/family-access#account-settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}>{{ t('nav.settings') }}</a>
+      <a class="product-shell__account-link{% if active_nav == 'settings' %} is-active{% endif %}" data-nav-key="settings" href="/family-access#account-settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}>{{ t('nav.settings') }}</a>
     </div>
   </aside>
 

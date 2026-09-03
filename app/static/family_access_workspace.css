@@ -3,6 +3,18 @@
   overflow-wrap: anywhere;
 }
 
+.family-access-page .family-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .family-access-page .family-access-intro {
   margin: 0 0 1rem;
   padding: clamp(1.25rem, 3vw, 2.25rem);

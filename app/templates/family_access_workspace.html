@@ -101,6 +101,7 @@
     <p>{{ t("family.account_help") }}</p>
     <dl id="current-actor" class="family-account-summary"></dl>
     <form id="change-password-form">
+      <input class="family-visually-hidden" type="text" name="username" autocomplete="username" tabindex="-1">
       <h3>{{ t("family.change_password") }}</h3>
       <p class="meta">{{ t("family.password_help") }}</p>
       <label for="current-password">{{ t("family.current_password") }}</label>
