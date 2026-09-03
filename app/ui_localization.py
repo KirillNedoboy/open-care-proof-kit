@@ -760,6 +760,27 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "family.account_heading": "Your account",
         "family.account_help": "Account security actions are separate from Person sharing.",
+        "provider.heading": "AI provider",
+        "provider.name_label": "Provider",
+        "provider.name_deterministic": "Deterministic test provider",
+        "provider.name_ollama": "Ollama",
+        "provider.name_openai": "OpenAI",
+        "provider.model_label": "Configured model",
+        "provider.model_not_applicable": "Not applicable",
+        "provider.execution_label": "Execution type",
+        "provider.execution_deterministic": "Local deterministic",
+        "provider.execution_local": "Local model",
+        "provider.execution_external": "External provider",
+        "provider.configuration_label": "Configuration",
+        "provider.operator_managed": "Managed by the OpenCare installation operator",
+        "provider.unavailable": "Unavailable",
+        "provider.external_boundary": (
+            "Selected authorized data may leave this OpenCare installation when you "
+            "approve a disclosure."
+        ),
+        "provider.local_ollama_boundary": (
+            "Model execution occurs on the configured local installation endpoint."
+        ),
         "family.current_password": "Current password",
         "family.new_password": "New password",
         "family.password_help": "Changing your password signs out every session.",
@@ -1459,6 +1480,27 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "family.account_heading": "Ваш аккаунт",
         "family.account_help": (
             "Действия безопасности аккаунта отделены от предоставления доступа к пользователю."
+        ),
+        "provider.heading": "Провайдер ИИ",
+        "provider.name_label": "Провайдер",
+        "provider.name_deterministic": "Детерминированный тестовый провайдер",
+        "provider.name_ollama": "Ollama",
+        "provider.name_openai": "OpenAI",
+        "provider.model_label": "Настроенная модель",
+        "provider.model_not_applicable": "Не применяется",
+        "provider.execution_label": "Тип выполнения",
+        "provider.execution_deterministic": "Локальная детерминированная обработка",
+        "provider.execution_local": "Локальная модель",
+        "provider.execution_external": "Внешний провайдер",
+        "provider.configuration_label": "Конфигурация",
+        "provider.operator_managed": "Настроено оператором установки OpenCare",
+        "provider.unavailable": "Недоступно",
+        "provider.external_boundary": (
+            "Выбранные разрешённые данные могут покинуть эту установку OpenCare "
+            "после одобрения раскрытия."
+        ),
+        "provider.local_ollama_boundary": (
+            "Выполнение модели происходит на настроенной локальной конечной точке установки."
         ),
         "family.current_password": "Текущий пароль",
         "family.new_password": "Новый пароль",

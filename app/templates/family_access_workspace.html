@@ -99,6 +99,40 @@
   <section id="account-settings" aria-labelledby="account-settings-heading">
     <h2 id="account-settings-heading">{{ t("family.account_heading") }}</h2>
     <p>{{ t("family.account_help") }}</p>
+    <section id="ai-provider" aria-labelledby="ai-provider-heading">
+      <h3 id="ai-provider-heading">{{ t("provider.heading") }}</h3>
+      <dl class="family-account-summary">
+        <dt>{{ t("provider.name_label") }}</dt>
+        <dd>
+          {% if provider_status.provider_kind == "deterministic" %}
+            {{ t("provider.name_deterministic") }}
+          {% elif provider_status.provider_kind == "self_hosted_http" %}
+            {{ t("provider.name_ollama") }}
+          {% else %}
+            {{ t("provider.name_openai") }}
+          {% endif %}
+        </dd>
+        <dt>{{ t("provider.model_label") }}</dt>
+        <dd translate="no">{{ provider_status.model_id or t("provider.model_not_applicable") }}</dd>
+        <dt>{{ t("provider.execution_label") }}</dt>
+        <dd>
+          {% if provider_status.provider_kind == "deterministic" %}
+            {{ t("provider.execution_deterministic") }}
+          {% elif provider_status.external %}
+            {{ t("provider.execution_external") }}
+          {% else %}
+            {{ t("provider.execution_local") }}
+          {% endif %}
+        </dd>
+        <dt>{{ t("provider.configuration_label") }}</dt>
+        <dd>{{ t("provider.operator_managed") if provider_status.configured else t("provider.unavailable") }}</dd>
+      </dl>
+      {% if provider_status.external %}
+        <p class="meta">{{ t("provider.external_boundary") }}</p>
+      {% elif provider_status.provider_kind == "self_hosted_http" %}
+        <p class="meta">{{ t("provider.local_ollama_boundary") }}</p>
+      {% endif %}
+    </section>
     <dl id="current-actor" class="family-account-summary"></dl>
     <form id="change-password-form">
       <input class="family-visually-hidden" type="text" name="username" autocomplete="username" tabindex="-1">

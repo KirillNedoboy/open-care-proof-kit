@@ -5,6 +5,7 @@ import logging
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 from typing import Any, cast
@@ -85,12 +86,33 @@ def _build_agent_provider(settings: Settings) -> AgentProvider:
     return DeterministicProvider()
 
 
-def _provider_status_label(settings: Settings) -> str:
-    if settings.agent_mode == "ollama":
-        return "Self-hosted model configured by operator"
-    if settings.agent_mode == "openai_responses":
-        return "External model configured by operator"
-    return "Local deterministic demo"
+@dataclass(frozen=True)
+class ProviderStatus:
+    """Secret-free provider metadata for authenticated page rendering."""
+
+    provider_id: str
+    provider_kind: str
+    provider_mode: str
+    model_id: str | None
+    external: bool
+    configured: bool
+
+
+def _provider_status(provider: AgentProvider) -> ProviderStatus:
+    descriptor = provider.descriptor
+    return ProviderStatus(
+        provider_id=descriptor.provider_id,
+        provider_kind=descriptor.provider_kind,
+        provider_mode=descriptor.provider_mode,
+        model_id=descriptor.model_id,
+        external=descriptor.external,
+        configured=True,
+    )
+
+
+def _request_provider_status(request: Request) -> ProviderStatus:
+    provider = getattr(request.app.state, "agent_provider", None)
+    return _provider_status(provider if provider is not None else DeterministicProvider())
 
 
 logger = logging.getLogger(__name__)
@@ -189,6 +211,7 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
         raise
     application.state.product_core_runtime = runtime
     application.state.family_access_runtime = family_runtime
+    application.state.agent_provider = provider
     application.state.g2_runtime = g2_runtime
     try:
         yield
@@ -197,6 +220,8 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             del application.state.product_core_runtime
         if hasattr(application.state, "family_access_runtime"):
             del application.state.family_access_runtime
+        if hasattr(application.state, "agent_provider"):
+            del application.state.agent_provider
         if hasattr(application.state, "g2_runtime"):
             del application.state.g2_runtime
 
@@ -413,7 +438,11 @@ def family_access_page(request: Request) -> Response:
     return _actor_page(
         request,
         "family_access_workspace.html",
-        {"active_nav": "family", "active_person_id": access.active_person_id},
+        {
+            "active_nav": "family",
+            "active_person_id": access.active_person_id,
+            "provider_status": _request_provider_status(request),
+        },
     )
 
 
@@ -461,7 +490,6 @@ def chat_page(request: Request) -> Response:
         person = access.runtime.people.get(person_id)
     except (ProductCoreNotFoundError, ScopeForbiddenError) as exc:
         return _live_access_error(exc)
-    settings = get_settings()
     return _actor_page(
         request,
         "chat.html",
@@ -472,7 +500,7 @@ def chat_page(request: Request) -> Response:
             "vault_source_name": person.display_name,
             "family_label": person.display_name,
             "people": [person],
-            "provider_status": _provider_status_label(settings),
+            "provider_status": _request_provider_status(request),
             "chat_endpoint": "/api/chat",
             "live_workspace": True,
         },
@@ -636,7 +664,7 @@ def demo_chat_page(request: Request) -> HTMLResponse:
             "vault_source_name": active_vault.source_basename or "Synthetic demo vault",
             "family_label": active_vault.read_model.family.display_name,
             "people": active_vault.read_model.people,
-            "provider_status": _provider_status_label(settings),
+            "provider_status": _request_provider_status(request),
             "chat_endpoint": "/api/demo/chat",
             "live_workspace": False,
         },
