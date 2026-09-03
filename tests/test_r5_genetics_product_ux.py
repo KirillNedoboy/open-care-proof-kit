@@ -59,6 +59,14 @@ def _import_genotype(
     assert response.status_code == 200, response.text
 
 
+def test_genetics_live_badge_uses_en_ru_localization_catalog() -> None:
+    template = (Path("app") / "templates" / "genetics.html").read_text(encoding="utf-8")
+    assert 't("genetics.live_badge")' in template
+    assert ">LIVE<" not in template
+    assert translate("en", "genetics.live_badge") == "Live"
+    assert translate("ru", "genetics.live_badge") == "Активно"
+
+
 def _confirm_medication(client: TestClient, display_name: str) -> None:
     source = client.post(
         "/api/product-core/v1/sources/manual-medication",

@@ -329,6 +329,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "genetics.no_access": "Genetics access is not available for this Person.",
         "genetics.empty_title": "No genetic data yet.",
         "genetics.empty_help": "Import a supported consumer genotype file to begin.",
+        "genetics.live_badge": "Live",
         "genetics.import_cta": "Import genetic data",
         "genetics.privacy_note": (
             "The original source remains local to this OpenCare installation. Only "
@@ -998,6 +999,7 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         "genetics.empty_help": (
             "Импортируйте поддерживаемый файл генотипа потребителя, чтобы начать."
         ),
+        "genetics.live_badge": "Активно",
         "genetics.import_cta": "Импортировать генетические данные",
         "genetics.privacy_note": (
             "Исходный файл остаётся локальным для этой установки OpenCare. В функциях генетики "
