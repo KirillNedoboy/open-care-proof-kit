@@ -149,8 +149,19 @@ R5.6.3 keeps Settings at `/family-access#account-settings`, converges shell
 anchor navigation and truthful active state, and closes the authenticated EN/RU
 UI pass across desktop and mobile acceptance.
 
-R5 Unified UI + RU/EN = COMPLETE. R6 real LLM provider productization is NEXT
-and was not started by this task.
+R5 Unified UI + RU/EN = COMPLETE.
+
+R6.1 provider configuration and trust visibility is implemented. Provider
+configuration remains operator-controlled: deterministic is retained for
+tests/CI/demo, Ollama is the preferred local/self-hosted real-model path,
+loopback Ollama is local, non-loopback Ollama is external, and OpenAI Responses
+remains an optional external provider. Authenticated Settings is read-only;
+credentials are neither persisted nor displayed, and external execution remains
+consent/disclosure controlled. No live Ollama model smoke or live OpenAI smoke
+was performed in R6.1. OpenRouter remains PLANNED / NOT IMPLEMENTED. R6 is not
+complete yet.
+
+NEXT: R6.2 — Local Ollama Live Smoke.
 
 ## HTTP privacy contract
 

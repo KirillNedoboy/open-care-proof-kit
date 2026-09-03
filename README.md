@@ -271,7 +271,7 @@ memory and are not persisted.
 
 The default is `OPENCARE_AGENT_MODE=demo`. It supports questions about clinician preparation, changes in the recorded timeline, source-backed information, and missing information. It does not diagnose, recommend treatment, select medication, calculate or modify a dose, or interpret genetics. Recorded medication or dosage context may be shown only when it is already source-backed in the vault.
 
-Set `OPENCARE_AGENT_MODE=openai_responses` only with `OPENCARE_AGENT_ALLOW_EXTERNAL_LLM=true`, `OPENCARE_LLM_RESPONSES_URL`, `OPENCARE_LLM_API_KEY`, and `OPENCARE_LLM_MODEL`. `OPENCARE_LLM_RESPONSES_URL` is the complete HTTP(S) endpoint, such as `https://api.example.com/v1/responses`; it must not include credentials, a query string, or a fragment. Production operators should use HTTPS. In this mode, compact vault context leaves the OpenCare server for the operator-configured external endpoint. The UI does not reveal the endpoint, key, or model details.
+Set `OPENCARE_AGENT_MODE=openai_responses` only with `OPENCARE_AGENT_ALLOW_EXTERNAL_LLM=true`, `OPENCARE_LLM_RESPONSES_URL`, `OPENCARE_LLM_API_KEY`, and `OPENCARE_LLM_MODEL`. `OPENCARE_LLM_RESPONSES_URL` is the complete HTTP(S) endpoint, such as `https://api.example.com/v1/responses`; it must not include credentials, a query string, or a fragment. Production operators should use HTTPS. In this mode, compact vault context leaves the OpenCare server for the operator-configured external endpoint. Authenticated Settings and Chat show only safe provider/model metadata; endpoint URLs and keys remain hidden.
 
 Responses are buffered, policy-checked, source-validated, and fail closed when validation fails. This reduces unsupported output, but it cannot guarantee medical correctness or clinical safety.
 
@@ -284,6 +284,11 @@ opt-in, deterministic by default, uses only loopback disclosure by default
 (`external=false`), and runs no model at startup unless an operator enables it.
 Non-loopback endpoints require the G2 disclosure-preview and exact per-call
 consent. This is not clinical validation of any model's output.
+
+Provider configuration is operator-controlled and read-only in the browser. The
+deterministic provider remains the default baseline, loopback Ollama is local,
+and non-loopback Ollama is external. OpenRouter is planned as a separate future
+adapter and is not selectable in this pass.
 
 ### Health/Family Vault reviewer path
 
