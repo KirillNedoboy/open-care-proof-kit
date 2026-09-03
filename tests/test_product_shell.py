@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 
@@ -113,3 +115,56 @@ def test_demo_chat_keeps_demo_endpoint_without_authenticated_shell(
     assert demo.status_code == 200
     assert 'data-chat-endpoint="/api/demo/chat"' in demo.text
     assert 'class="product-shell__sidebar"' not in demo.text
+
+
+def test_primary_navigation_exposes_stable_keys_and_existing_destinations() -> None:
+    shell = (Path("app") / "templates" / "product_shell.html").read_text(encoding="utf-8")
+    expected = {
+        "overview": "/workspace#overview",
+        "health": "/workspace#records",
+        "documents": "/workspace#documents",
+        "activity": "/workspace#timeline",
+        "chat": "/chat",
+        "genetics": "/genetics",
+        "family": "/family-access",
+        "settings": "/family-access#account-settings",
+    }
+    for key, href in expected.items():
+        assert f'data-nav-key="{key}"' in shell
+        assert f'href="{href}"' in shell
+
+
+def test_product_shell_hash_navigation_is_exclusive_and_non_persistent() -> None:
+    script = (Path("app") / "static" / "product_shell.js").read_text(encoding="utf-8")
+    for fragment in (
+        '"/workspace"',
+        '"#overview"',
+        '"#records"',
+        '"#documents"',
+        '"#timeline"',
+        '"/family-access"',
+        '"#account-settings"',
+        '"hashchange"',
+        '"aria-current"',
+        '"is-active"',
+    ):
+        assert fragment in script
+    assert "localStorage" not in script
+    assert "sessionStorage" not in script
+
+
+def test_account_password_form_has_hidden_username_autocomplete_field() -> None:
+    template = (Path("app") / "templates" / "family_access_workspace.html").read_text(
+        encoding="utf-8"
+    )
+    styles = (Path("app") / "static" / "family_access_workspace.css").read_text(
+        encoding="utf-8"
+    )
+    form_start = template.index('<form id="change-password-form">')
+    form_end = template.index("</form>", form_start)
+    form = template[form_start:form_end]
+    assert 'autocomplete="username"' in form
+    assert 'type="text"' in form
+    assert 'class="family-visually-hidden"' in form
+    assert "width: 1px !important" in styles
+    assert "height: 1px !important" in styles

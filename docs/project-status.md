@@ -55,7 +55,7 @@ ecosystem evidence pending.
 - Email verification, password recovery, CAPTCHA, internet-scale abuse controls,
   billing, moderation, and organizational SaaS tenancy are not implemented.
 
-## R5.1 UI foundation (this branch)
+## R5.1 UI foundation
 
 R5.1 adds a reusable authenticated product shell and shared visual tokens for
 the existing Workspace, Genetics, Vault, and Family Access pages. The shell
@@ -71,7 +71,7 @@ complete EN/RU Chat UI localization. The existing prepare → consent → execut
 receipt trust flow remains unchanged; demo chat remains a separate passwordless
 surface.
 
-## R5.2 auth and onboarding UX (this branch)
+## R5.2 auth and onboarding UX
 
 R5.2 provides a separate public/auth shell for sign-in, controlled
 self-registration, one-time installation-owner bootstrap, and invitation entry.
@@ -110,13 +110,12 @@ isolation remains assignment-bound.
 
 There is no invitation enumeration. R5.4 changes no backend route, schema, or
 authentication contract, and Genetics access remains separate from Family
-Access. No R5.6+ product step is selected. Broader authenticated-page
-localization, chat-shell convergence, and product-shell refinement remain
-deferred presentation work, not a new product phase.
+Access. R5.6 presentation work is now complete without changing those
+contracts.
 
 Genetics contracts and Genetics Workspace behavior are unchanged by R5.4.
 
-## R5.5 Genetics Product UX (this branch)
+## R5.5 Genetics Product UX
 
 R5.5 makes `/genetics` a live Person-scoped product surface within the
 unified R5 authenticated shell. The page loads real authorized genetics data
@@ -136,7 +135,22 @@ Key changes:
 Synthetic repository fixtures remain valid for tests, evals, and deterministic
 reviewer procedures. They are not injected into live runtime state.
 
-R5.6+ remains deferred. This is not a claim that all R5 is complete.
+## R5.6 Unified authenticated UI
+
+R5.6.1 converges authenticated Chat into the shared product shell with complete
+EN/RU localization; the prepare → consent → execute → receipt trust flow is
+unchanged.
+
+R5.6.2 localizes the existing Workspace Review, Documents, Records, Timeline,
+Visits, and Export surfaces without creating new Health, Documents, or Activity
+backend subsystems or routes. Person-scoped behavior remains assignment-bound.
+
+R5.6.3 keeps Settings at `/family-access#account-settings`, converges shell
+anchor navigation and truthful active state, and closes the authenticated EN/RU
+UI pass across desktop and mobile acceptance.
+
+R5 Unified UI + RU/EN = COMPLETE. R6 real LLM provider productization is NEXT
+and was not started by this task.
 
 ## HTTP privacy contract
 
