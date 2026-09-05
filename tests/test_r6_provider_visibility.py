@@ -12,6 +12,7 @@ from app.agent.providers.openai_responses import (
     OpenAIResponsesProvider,
     OpenAIResponsesProviderConfig,
 )
+from app.agent.providers.openrouter import OpenRouterProvider, OpenRouterProviderConfig
 from app.main import _provider_status
 from app.ui_localization import get_translations
 
@@ -33,6 +34,15 @@ def _openai() -> OpenAIResponsesProvider:
             endpoint_url="https://provider.example/v1/responses",
             api_key="R6_TEST_SECRET_DO_NOT_RENDER",
             model="synthetic-r6-openai-model",
+        )
+    )
+
+
+def _openrouter() -> OpenRouterProvider:
+    return OpenRouterProvider(
+        OpenRouterProviderConfig(
+            api_key="R6_OPENROUTER_SECRET_DO_NOT_RENDER",
+            model="synthetic/provider-model",
         )
     )
 
@@ -74,6 +84,17 @@ def test_provider_status_uses_openai_descriptor_without_credentials() -> None:
     assert status.model_id == "synthetic-r6-openai-model"
     assert status.external is True
     assert "R6_TEST_SECRET_DO_NOT_RENDER" not in repr(status)
+
+
+def test_provider_status_uses_openrouter_descriptor_without_credentials() -> None:
+    status = _provider_status(_openrouter())
+
+    assert status.provider_id == "opencare.openrouter"
+    assert status.provider_kind == "external_http"
+    assert status.provider_mode == "external_provider"
+    assert status.model_id == "synthetic/provider-model"
+    assert status.external is True
+    assert "R6_OPENROUTER_SECRET_DO_NOT_RENDER" not in repr(status)
 
 
 def test_provider_status_serialization_has_no_endpoint_or_secret_fields() -> None:
@@ -136,6 +157,7 @@ def test_localization_contains_matching_provider_keys() -> None:
         "provider.name_deterministic",
         "provider.name_ollama",
         "provider.name_openai",
+        "provider.name_openrouter",
         "provider.execution_deterministic",
         "provider.execution_local",
         "provider.execution_external",

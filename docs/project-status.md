@@ -157,11 +157,19 @@ tests/CI/demo, Ollama is the preferred local/self-hosted real-model path,
 loopback Ollama is local, non-loopback Ollama is external, and OpenAI Responses
 remains an optional external provider. Authenticated Settings is read-only;
 credentials are neither persisted nor displayed, and external execution remains
-consent/disclosure controlled. No live Ollama model smoke or live OpenAI smoke
-was performed in R6.1. OpenRouter remains PLANNED / NOT IMPLEMENTED. R6 is not
-complete yet.
+consent/disclosure controlled.
 
-NEXT: R6.2 — Local Ollama Live Smoke.
+R6.2 Local Ollama Live Smoke = DEFERRED / UNVERIFIED. The local runtime/model
+was unavailable (`OLLAMA_RUNTIME_MISSING`) and no download was performed.
+
+R6.3 OpenRouter adapter and compatibility contract = IMPLEMENTED. The dedicated
+external adapter is validated offline against mocked documented Chat
+Completions, strict structured-output, exact-model, bounded-network, and
+generic consent/receipt behavior. No live OpenRouter request was performed;
+OpenAI live smoke remains unverified. R6 is not complete yet.
+
+NEXT: R6.4 — External Provider Live Smoke / R6 closure candidate, only with
+explicit operator credentials and cost authorization.
 
 ## HTTP privacy contract
 

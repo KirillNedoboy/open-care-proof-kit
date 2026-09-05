@@ -168,6 +168,44 @@ def test_load_settings_accepts_only_complete_safe_external_responses_url() -> No
     assert settings.llm_responses_url == "https://example.test/v1/responses"
 
 
+def test_load_settings_accepts_complete_openrouter_configuration() -> None:
+    settings = load_settings(
+        {
+            "OPENCARE_AGENT_MODE": "openrouter",
+            "OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true",
+            "OPENCARE_OPENROUTER_API_KEY": "R6_OPENROUTER_SECRET_DO_NOT_RENDER",
+            "OPENCARE_OPENROUTER_MODEL": "synthetic/provider-model",
+        }
+    )
+
+    assert settings.agent_mode == "openrouter"
+    assert settings.openrouter_model == "synthetic/provider-model"
+    assert settings.openrouter_api_key == "R6_OPENROUTER_SECRET_DO_NOT_RENDER"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "false"},
+        {
+            "OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true",
+            "OPENCARE_OPENROUTER_MODEL": "synthetic/model",
+        },
+        {"OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true", "OPENCARE_OPENROUTER_API_KEY": "secret"},
+        {
+            "OPENCARE_AGENT_ALLOW_EXTERNAL_LLM": "true",
+            "OPENCARE_OPENROUTER_API_KEY": "secret",
+            "OPENCARE_OPENROUTER_MODEL": "openrouter/auto",
+        },
+    ],
+)
+def test_load_settings_rejects_incomplete_or_automatic_openrouter_configuration(
+    overrides: dict[str, str],
+) -> None:
+    with pytest.raises(ConfigError):
+        load_settings({"OPENCARE_AGENT_MODE": "openrouter", **overrides})
+
+
 def test_load_settings_rejects_incomplete_external_provider_configuration() -> None:
     with pytest.raises(ConfigError, match="OPENCARE_LLM"):
         load_settings(

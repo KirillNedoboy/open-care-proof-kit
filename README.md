@@ -287,8 +287,17 @@ consent. This is not clinical validation of any model's output.
 
 Provider configuration is operator-controlled and read-only in the browser. The
 deterministic provider remains the default baseline, loopback Ollama is local,
-and non-loopback Ollama is external. OpenRouter is planned as a separate future
-adapter and is not selectable in this pass.
+and non-loopback Ollama is external. OpenRouter is available as an external
+provider via `OPENCARE_AGENT_MODE=openrouter`,
+`OPENCARE_AGENT_ALLOW_EXTERNAL_LLM=true`,
+`OPENCARE_OPENROUTER_API_KEY`, and `OPENCARE_OPENROUTER_MODEL`. Use an explicit
+canonical OpenRouter model slug; the adapter sends one model only, requires
+structured-output support, and keeps the existing disclosure and consent gate.
+R6.2 Local Ollama live smoke remains deferred/unverified because no local
+runtime/model was available and no download was performed. OpenRouter offline
+compatibility is validated with mocked documented protocol behavior; no live
+OpenRouter request was performed. OpenAI live smoke remains unverified, R6 is
+not complete, and R6.4 is the next external-provider live-smoke candidate.
 
 ### Health/Family Vault reviewer path
 
