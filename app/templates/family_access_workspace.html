@@ -108,6 +108,8 @@
             {{ t("provider.name_deterministic") }}
           {% elif provider_status.provider_kind == "self_hosted_http" %}
             {{ t("provider.name_ollama") }}
+          {% elif provider_status.provider_id == "opencare.openrouter" %}
+            {{ t("provider.name_openrouter") }}
           {% else %}
             {{ t("provider.name_openai") }}
           {% endif %}

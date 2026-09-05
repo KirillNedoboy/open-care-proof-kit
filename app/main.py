@@ -33,6 +33,7 @@ from app.agent.providers.contract import AgentProvider
 from app.agent.providers.deterministic import DeterministicProvider
 from app.agent.providers.ollama import OllamaProvider, OllamaProviderConfig
 from app.agent.providers.openai_responses import OpenAIResponsesProvider
+from app.agent.providers.openrouter import OpenRouterProvider
 from app.agent.service import GuardedChatService
 from app.agent.trust_adapter import OpenCareAuthorizationAdapter
 from app.agent_trust.builders import BuildRefused
@@ -83,6 +84,8 @@ def _build_agent_provider(settings: Settings) -> AgentProvider:
         )
     if settings.agent_mode == "openai_responses":
         return OpenAIResponsesProvider.from_settings(settings)
+    if settings.agent_mode == "openrouter":
+        return OpenRouterProvider.from_settings(settings)
     return DeterministicProvider()
 
 

@@ -34,6 +34,8 @@ class Settings:
     llm_responses_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+    openrouter_api_key: str | None = None
+    openrouter_model: str | None = None
     ollama_endpoint: str | None = "http://127.0.0.1:11434"
     ollama_model: str | None = None
     ollama_timeout_seconds: float = 15.0
@@ -96,9 +98,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         var_name="OPENCARE_PUBLIC_REGISTRATION",
     )
     agent_mode = values.get("OPENCARE_AGENT_MODE", "demo").strip().lower()
-    if agent_mode not in {"demo", "openai_responses", "ollama"}:
+    if agent_mode not in {"demo", "openai_responses", "ollama", "openrouter"}:
         raise ConfigError(
-            "OPENCARE_AGENT_MODE must be demo, openai_responses or ollama."
+            "OPENCARE_AGENT_MODE must be demo, openai_responses, ollama or openrouter."
         )
     agent_allow_external_llm = _parse_bool(
         values.get("OPENCARE_AGENT_ALLOW_EXTERNAL_LLM", "false"),
@@ -172,6 +174,8 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         llm_responses_url=responses_url,
         llm_api_key=_read_optional_secret(values, "OPENCARE_LLM_API_KEY"),
         llm_model=_read_optional_secret(values, "OPENCARE_LLM_MODEL"),
+        openrouter_api_key=_read_optional_secret(values, "OPENCARE_OPENROUTER_API_KEY"),
+        openrouter_model=_read_optional_secret(values, "OPENCARE_OPENROUTER_MODEL"),
         ollama_endpoint=ollama_endpoint,
         ollama_model=_read_optional_secret(values, "OPENCARE_OLLAMA_MODEL"),
         ollama_timeout_seconds=ollama_timeout_seconds,
@@ -202,6 +206,16 @@ def _validate_settings(settings: Settings) -> None:
             raise ConfigError("OPENCARE_OLLAMA_ENDPOINT must be a complete safe HTTP(S) URL.")
         if settings.ollama_model is None or not settings.ollama_model.strip():
             raise ConfigError("OPENCARE_OLLAMA_MODEL is required for ollama mode.")
+    if settings.agent_mode == "openrouter":
+        if not settings.agent_allow_external_llm:
+            raise ConfigError("OPENCARE_AGENT_ALLOW_EXTERNAL_LLM must be true for external mode.")
+        if settings.openrouter_api_key is None or settings.openrouter_model is None:
+            raise ConfigError(
+                "OPENCARE_OPENROUTER_API_KEY and OPENCARE_OPENROUTER_MODEL are "
+                "required for openrouter mode."
+            )
+        if settings.openrouter_model == "openrouter/auto":
+            raise ConfigError("OPENCARE_OPENROUTER_MODEL must be an explicit model slug.")
     if settings.vault_source == "local_file":
         if settings.vault_file is None:
             raise ConfigError(
