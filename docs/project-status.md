@@ -151,7 +151,7 @@ UI pass across desktop and mobile acceptance.
 
 R5 Unified UI + RU/EN = COMPLETE.
 
-R6.1 provider configuration and trust visibility is implemented. Provider
+R6.1 provider configuration and trust visibility = DONE / published. Provider
 configuration remains operator-controlled: deterministic is retained for
 tests/CI/demo, Ollama is the preferred local/self-hosted real-model path,
 loopback Ollama is local, non-loopback Ollama is external, and OpenAI Responses
@@ -159,17 +159,37 @@ remains an optional external provider. Authenticated Settings is read-only;
 credentials are neither persisted nor displayed, and external execution remains
 consent/disclosure controlled.
 
-R6.2 Local Ollama Live Smoke = DEFERRED / UNVERIFIED. The local runtime/model
-was unavailable (`OLLAMA_RUNTIME_MISSING`) and no download was performed.
+R6.2 Local Ollama Live Smoke = DEFERRED / UNVERIFIED
+(`OLLAMA_RUNTIME_MISSING`). The user declined installation of a local runtime or
+model download.
 
-R6.3 OpenRouter adapter and compatibility contract = IMPLEMENTED. The dedicated
-external adapter is validated offline against mocked documented Chat
-Completions, strict structured-output, exact-model, bounded-network, and
-generic consent/receipt behavior. No live OpenRouter request was performed;
-OpenAI live smoke remains unverified. R6 is not complete yet.
+R6.3 OpenRouter adapter and offline compatibility contract = DONE / published.
+The dedicated external adapter is validated against documented Chat
+Completions, strict structured-output, exact-model, bounded-network, and generic
+consent/receipt behavior.
 
-NEXT: R6.4 — External Provider Live Smoke / R6 closure candidate, only with
-explicit operator credentials and cost authorization.
+R6.4 performed a bounded OpenRouter live external model matrix on 2026-09-06:
+
+| Model | Tier | Live result | Structured output | Identity | Receipt |
+|---|---|---|---|---|---|
+| `z-ai/glm-5.2:free` | FREE | `FREE_MODEL_TEMPORARILY_UNAVAILABLE` (response timeout) | Not returned | Not returned | Not produced |
+| `nvidia/nemotron-3-super-120b-a12b:free` | FREE | `FREE_MODEL_STRUCTURED_OUTPUT_FAILED` | Rejected by the OpenCare schema | Exact | Truthful refused receipt |
+| `deepseek/deepseek-v4-flash-0731` | LOW-COST PAID | PASS | PASS | Exact | Truthful completed receipt |
+
+The DeepSeek run proved the complete Person-scoped authorized evidence -> Trust
+Envelope -> external disclosure -> explicit per-call consent -> OpenRouter ->
+strict structured validation -> rendered answer -> generic receipt path. The
+run used one synthetic confirmed medication and its derived timeline event,
+sent no raw genome, and kept `external=true`. Three real inference requests were
+made, including one paid request; OpenRouter reported USD 0.00012204 for the
+paid smoke. No provider/trust defect or credential leak was detected.
+
+R6 Real LLM Provider Productization = COMPLETE. OpenRouter live external
+trust-flow = VERIFIED. Free-model compatibility remains NOT VERIFIED; the two
+bounded candidate failures are recorded above. Ollama live smoke remains
+DEFERRED / UNVERIFIED, and OpenAI Responses live smoke remains UNVERIFIED.
+
+NEXT: R7 — Docker Distribution. R7 is not started.
 
 ## HTTP privacy contract
 
