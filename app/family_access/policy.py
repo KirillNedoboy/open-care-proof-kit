@@ -8,9 +8,10 @@ from typing import Literal
 #: generation under which an assignment was granted is inferred from its
 #: stored scopes (see ``infer_generation``), so old consent events are never
 #: rewritten and never silently gain new capabilities.
-POLICY_VERSION = "family-access-v3"
+POLICY_VERSION = "family-access-v4"
 V1_POLICY_VERSION = "family-access-v1"
 V2_POLICY_VERSION = "family-access-v2"
+V3_POLICY_VERSION = "family-access-v3"
 
 # --------------------------------------------------------------------------- #
 # family-access-v1: frozen verbatim from the pre-P1 scope model.
@@ -89,10 +90,25 @@ OWNER_SCOPES_V3 = OWNER_SCOPES_V2 | V3_ONLY_SCOPES
 CAREGIVER_BASE_SCOPES_V3 = CAREGIVER_BASE_SCOPES_V2 | {"document.read"}
 CAREGIVER_OPTIONAL_SCOPES_V3 = CAREGIVER_OPTIONAL_SCOPES_V2 | {"document.write"}
 
+# --------------------------------------------------------------------------- #
+# family-access-v4: explicit authority for the procedure/recommendation/
+# follow-up record families. v1/v2/v3 sets above are frozen; assignments
+# granted under them never silently gain the v4 scopes.
+# --------------------------------------------------------------------------- #
+NEW_RECORD_READ_SCOPES = frozenset({"procedure.read", "recommendation.read", "follow_up.read"})
+NEW_RECORD_WRITE_SCOPES = frozenset(
+    {"procedure.write", "recommendation.write", "follow_up.write"}
+)
+V4_ONLY_SCOPES = NEW_RECORD_READ_SCOPES | NEW_RECORD_WRITE_SCOPES
+
+OWNER_SCOPES_V4 = OWNER_SCOPES_V3 | NEW_RECORD_READ_SCOPES | NEW_RECORD_WRITE_SCOPES
+CAREGIVER_BASE_SCOPES_V4 = CAREGIVER_BASE_SCOPES_V3 | NEW_RECORD_READ_SCOPES
+CAREGIVER_OPTIONAL_SCOPES_V4 = CAREGIVER_OPTIONAL_SCOPES_V3 | NEW_RECORD_WRITE_SCOPES
+
 # Current-generation aliases: new grants and display surfaces use these.
-OWNER_SCOPES = OWNER_SCOPES_V3
-CAREGIVER_BASE_SCOPES = CAREGIVER_BASE_SCOPES_V3
-CAREGIVER_OPTIONAL_SCOPES = CAREGIVER_OPTIONAL_SCOPES_V3
+OWNER_SCOPES = OWNER_SCOPES_V4
+CAREGIVER_BASE_SCOPES = CAREGIVER_BASE_SCOPES_V4
+CAREGIVER_OPTIONAL_SCOPES = CAREGIVER_OPTIONAL_SCOPES_V4
 
 _GENERATION_SETS: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     V1_POLICY_VERSION: (
@@ -105,10 +121,15 @@ _GENERATION_SETS: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]
         CAREGIVER_BASE_SCOPES_V2,
         CAREGIVER_OPTIONAL_SCOPES_V2,
     ),
-    POLICY_VERSION: (
+    V3_POLICY_VERSION: (
         OWNER_SCOPES_V3,
         CAREGIVER_BASE_SCOPES_V3,
         CAREGIVER_OPTIONAL_SCOPES_V3,
+    ),
+    POLICY_VERSION: (
+        OWNER_SCOPES_V4,
+        CAREGIVER_BASE_SCOPES_V4,
+        CAREGIVER_OPTIONAL_SCOPES_V4,
     ),
 }
 
@@ -120,8 +141,10 @@ def infer_generation(scopes: object) -> str:
     if not all(isinstance(scope, str) for scope in scopes):
         return V1_POLICY_VERSION
     normalized = frozenset(scopes)
-    if normalized & V3_ONLY_SCOPES:
+    if normalized & V4_ONLY_SCOPES:
         return POLICY_VERSION
+    if normalized & V3_ONLY_SCOPES:
+        return V3_POLICY_VERSION
     if normalized & V2_ONLY_SCOPES:
         return V2_POLICY_VERSION
     return V1_POLICY_VERSION

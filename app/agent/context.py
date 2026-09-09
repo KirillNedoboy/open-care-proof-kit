@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from typing import Any
 
 from app.agent.models import AgentContext, ContextItem, ContextSource
@@ -5,7 +6,10 @@ from app.health_vault.runtime_loader import ActiveVault
 from app.product_core.errors import PersonNotFoundError
 from app.product_core.models import (
     ConditionCandidateDetail,
+    FollowUpCandidateDetail,
     LabCandidateDetail,
+    ProcedureCandidateDetail,
+    RecommendationCandidateDetail,
     isoformat_utc,
 )
 from app.product_core.runtime import ProductCoreRuntime
@@ -50,7 +54,10 @@ def build_agent_context(active_vault: ActiveVault) -> AgentContext:
 
 
 def build_product_core_agent_context(
-    runtime: ProductCoreRuntime, person_id: str
+    runtime: ProductCoreRuntime,
+    person_id: str,
+    *,
+    read_scopes: Collection[str] = frozenset(),
 ) -> AgentContext:
     """Build one Person's deterministic chat context without reading source payloads."""
     with runtime.database.uow() as uow:
@@ -78,6 +85,36 @@ def build_product_core_agent_context(
                 person_id, include_inactive=False, fact_type="lab"
             ),
             key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+        )
+        procedures = (
+            sorted(
+                uow.canonical_records.list_for_person(
+                    person_id, include_inactive=False, fact_type="procedure"
+                ),
+                key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+            )
+            if "procedure.read" in read_scopes
+            else []
+        )
+        recommendations = (
+            sorted(
+                uow.canonical_records.list_for_person(
+                    person_id, include_inactive=False, fact_type="recommendation"
+                ),
+                key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+            )
+            if "recommendation.read" in read_scopes
+            else []
+        )
+        follow_ups = (
+            sorted(
+                uow.canonical_records.list_for_person(
+                    person_id, include_inactive=False, fact_type="follow_up"
+                ),
+                key=lambda record: (isoformat_utc(record.confirmed_at), record.id),
+            )
+            if "follow_up.read" in read_scopes
+            else []
         )
         timeline = sorted(
             uow.timeline_events.list_for_person(person_id),
@@ -151,6 +188,68 @@ def build_product_core_agent_context(
                             if detail.source_flag_text
                             else None
                         ),
+                    )
+                    if value
+                ),
+                source_ids=[record.source_id],
+                provenance_status="source_backed",
+            )
+        )
+    for record in procedures:
+        detail = record.detail
+        assert isinstance(detail, ProcedureCandidateDetail)
+        items.append(
+            ContextItem(
+                id=record.id,
+                kind="procedure",
+                text=" | ".join(
+                    value
+                    for value in (
+                        "Recorded procedure",
+                        detail.display_name,
+                        detail.status_text,
+                        detail.date_text,
+                    )
+                    if value
+                ),
+                source_ids=[record.source_id],
+                provenance_status="source_backed",
+            )
+        )
+    for record in recommendations:
+        detail = record.detail
+        assert isinstance(detail, RecommendationCandidateDetail)
+        items.append(
+            ContextItem(
+                id=record.id,
+                kind="recommendation",
+                text=" | ".join(
+                    value
+                    for value in (
+                        "Recorded recommendation",
+                        detail.instruction_text,
+                        detail.context_text,
+                    )
+                    if value
+                ),
+                source_ids=[record.source_id],
+                provenance_status="source_backed",
+            )
+        )
+    for record in follow_ups:
+        detail = record.detail
+        assert isinstance(detail, FollowUpCandidateDetail)
+        items.append(
+            ContextItem(
+                id=record.id,
+                kind="follow_up",
+                text=" | ".join(
+                    value
+                    for value in (
+                        "Recorded follow-up instruction",
+                        detail.action_text,
+                        detail.timing_text,
+                        detail.destination_text,
                     )
                     if value
                 ),

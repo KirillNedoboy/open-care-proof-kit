@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
@@ -26,6 +26,8 @@ from app.agent_trust.models import (
     SafetyDecision,
     TrustEnvelope,
 )
+from app.family_access.policy import valid_role_scopes
+from app.family_access.repository import deserialize_scopes
 from app.family_access.service import FamilyAccessService
 from app.product_core.runtime import ProductCoreRuntime
 
@@ -36,7 +38,9 @@ LIVE_CHAT_REQUESTED_ACTION = (
     "Explain selected recorded evidence without changing canonical records."
 )
 LIVE_CHAT_CONSENT_BASIS = "live-chat-disclosure-v1"
-LIVE_CHAT_KINDS = frozenset({"medication", "condition", "lab", "timeline"})
+LIVE_CHAT_KINDS = frozenset(
+    {"medication", "condition", "lab", "timeline", "procedure", "recommendation", "follow_up"}
+)
 
 
 def project_live_chat_evidence(
@@ -86,12 +90,45 @@ def project_live_chat_evidence(
     return [item for item, _ in projected], tuple(value for _, value in projected)
 
 
+def live_chat_read_scopes(
+    family_service: FamilyAccessService,
+    actor_id: str,
+    person_id: str,
+) -> frozenset[str]:
+    """Return the actor's active assignment scopes for evidence projection.
+
+    Mirrors ``ProductCoreAccess._active_assignment_state``: an inactive actor,
+    person, or assignment, or an invalid stored scope set, yields no scopes,
+    so projection stays at the pre-D2.2 (legacy kinds only) baseline. This is
+    presentation metadata for context building, never an authorization source.
+    """
+    with family_service.database.uow() as uow:
+        assert uow.connection is not None
+        row = uow.connection.execute(
+            """
+            SELECT paa.role, paa.scopes_json
+            FROM person_access_assignments AS paa
+            JOIN actors AS a ON a.actor_id = paa.actor_id AND a.status = 'active'
+            JOIN people AS p ON p.person_id = paa.person_id AND p.is_active = 1
+            WHERE paa.actor_id = ? AND paa.person_id = ? AND paa.is_active = 1
+            """,
+            (actor_id, person_id),
+        ).fetchone()
+    if row is None:
+        return frozenset()
+    scopes = deserialize_scopes(row["scopes_json"])
+    if not isinstance(scopes, frozenset) or not valid_role_scopes(str(row["role"]), scopes):
+        return frozenset()
+    return scopes
+
+
 def current_live_chat_evidence(
     runtime: ProductCoreRuntime,
     person_id: str,
     observed_at: datetime,
+    read_scopes: Collection[str] = frozenset(),
 ) -> tuple[list[EvidenceItem], tuple[dict[str, Any], ...]]:
-    context = build_product_core_agent_context(runtime, person_id)
+    context = build_product_core_agent_context(runtime, person_id, read_scopes=read_scopes)
     return project_live_chat_evidence(context, person_id, observed_at)
 
 
@@ -99,8 +136,11 @@ def resolve_live_chat_evidence(
     runtime: ProductCoreRuntime,
     envelope: TrustEnvelope,
     observed_at: datetime,
+    read_scopes: Collection[str] = frozenset(),
 ) -> tuple[dict[str, Any], ...]:
-    evidence, values = current_live_chat_evidence(runtime, envelope.person_id, observed_at)
+    evidence, values = current_live_chat_evidence(
+        runtime, envelope.person_id, observed_at, read_scopes=read_scopes
+    )
     by_id = {item.evidence_id: item for item in evidence}
     value_by_id = {str(value["evidence_id"]): value for value in values}
     resolved: list[dict[str, Any]] = []
@@ -133,6 +173,7 @@ class LiveChatAuthority(TrustAuthority):
         self.question = question
         self.clock = clock
         self.adapter = OpenCareAuthorizationAdapter(family_service)
+        self.read_scopes: frozenset[str] = frozenset()
 
     def build_envelope(
         self,
@@ -141,7 +182,10 @@ class LiveChatAuthority(TrustAuthority):
         credential_id: str,
         person_id: str,
     ) -> TrustEnvelope:
-        evidence, _ = current_live_chat_evidence(self.product_runtime, person_id, self.clock())
+        self.read_scopes = live_chat_read_scopes(self.family_service, actor_id, person_id)
+        evidence, _ = current_live_chat_evidence(
+            self.product_runtime, person_id, self.clock(), read_scopes=self.read_scopes
+        )
         descriptor = self.provider.descriptor
         provider_descriptor = ProviderDescriptorContract(
             provider_id=descriptor.provider_id,
@@ -194,7 +238,6 @@ class LiveChatAuthority(TrustAuthority):
 
     def select_evidence(
         self,
-        *,
         evidence_ids: Sequence[str],
         person_id: str,
         required_scopes: frozenset[str],
@@ -202,7 +245,9 @@ class LiveChatAuthority(TrustAuthority):
     ) -> list[EvidenceItem]:
         if "source.read" not in required_scopes:
             raise BuildRefused(["evidence_scope_invalid"])
-        evidence, _ = current_live_chat_evidence(self.product_runtime, person_id, observed_at)
+        evidence, _ = current_live_chat_evidence(
+            self.product_runtime, person_id, observed_at, read_scopes=self.read_scopes
+        )
         by_id = {item.evidence_id: item for item in evidence}
         selected: list[EvidenceItem] = []
         for evidence_id in evidence_ids:

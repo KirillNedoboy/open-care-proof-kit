@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 SourceType = Literal["manual_entry", "plain_text", "document", "genetics"]
-FactType = Literal["medication", "condition", "lab"]
+FactType = Literal["medication", "condition", "lab", "procedure", "recommendation", "follow_up"]
 CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected", "unsupported"]
 DocumentFactRunStatus = Literal[
     "prepared",
@@ -119,9 +119,9 @@ class DocumentFactExtractionRun(BaseModel):
     execution_id: str = Field(min_length=1)
     input_text_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
-    contract_version: Literal["opencare-document-facts/1"]
+    contract_version: Literal["opencare-document-facts/1", "opencare-document-facts/2"]
     status: DocumentFactRunStatus
-    allowed_fact_types: list[FactType] = Field(min_length=1, max_length=3)
+    allowed_fact_types: list[FactType] = Field(min_length=1, max_length=6)
     provider_id: str | None = None
     provider_kind: str | None = None
     provider_descriptor_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
@@ -309,7 +309,117 @@ class LabCandidateDetail(BaseModel):
         return self
 
 
-CandidateDetail = MedicationCandidateDetail | ConditionCandidateDetail | LabCandidateDetail
+class ProcedureCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str = Field(min_length=1, max_length=200)
+    status_text: str | None = Field(default=None, max_length=500)
+    date_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("display_name")
+    @classmethod
+    def trim_display_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("display_name must not be empty")
+        return cleaned
+
+
+class RecommendationCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instruction_text: str = Field(min_length=1, max_length=2000)
+    context_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("instruction_text")
+    @classmethod
+    def trim_instruction_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("instruction_text must not be empty")
+        return cleaned
+
+
+class FollowUpCandidateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action_text: str = Field(min_length=1, max_length=500)
+    timing_text: str | None = Field(default=None, max_length=500)
+    destination_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("action_text")
+    @classmethod
+    def trim_action_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("action_text must not be empty")
+        return cleaned
+
+
+class ProcedureCandidateDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str = Field(min_length=1, max_length=200)
+    normalized_name: str = Field(min_length=1)
+    status_text: str | None = Field(default=None, max_length=500)
+    date_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_name(self) -> ProcedureCandidateDetail:
+        if not self.display_name.strip():
+            raise ValueError("display_name must not be empty")
+        if self.normalized_name != normalize_fact_name(self.display_name):
+            raise ValueError("normalized_name must match display_name")
+        return self
+
+
+class RecommendationCandidateDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    instruction_text: str = Field(min_length=1, max_length=2000)
+    normalized_instruction: str = Field(min_length=1)
+    context_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_instruction(self) -> RecommendationCandidateDetail:
+        if not self.instruction_text.strip():
+            raise ValueError("instruction_text must not be empty")
+        if self.normalized_instruction != normalize_fact_name(self.instruction_text):
+            raise ValueError("normalized_instruction must match instruction_text")
+        return self
+
+
+class FollowUpCandidateDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action_text: str = Field(min_length=1, max_length=500)
+    normalized_action: str = Field(min_length=1)
+    timing_text: str | None = Field(default=None, max_length=500)
+    destination_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_action(self) -> FollowUpCandidateDetail:
+        if not self.action_text.strip():
+            raise ValueError("action_text must not be empty")
+        if self.normalized_action != normalize_fact_name(self.action_text):
+            raise ValueError("normalized_action must match action_text")
+        return self
+
+
+CandidateDetail = (
+    MedicationCandidateDetail
+    | ConditionCandidateDetail
+    | LabCandidateDetail
+    | ProcedureCandidateDetail
+    | RecommendationCandidateDetail
+    | FollowUpCandidateDetail
+)
 
 
 class CandidateFact(BaseModel):
@@ -461,6 +571,12 @@ def _detail_matches_fact_type(fact_type: str, detail: object) -> bool:
         return isinstance(detail, ConditionCandidateDetail)
     if fact_type == "lab":
         return isinstance(detail, LabCandidateDetail)
+    if fact_type == "procedure":
+        return isinstance(detail, ProcedureCandidateDetail)
+    if fact_type == "recommendation":
+        return isinstance(detail, RecommendationCandidateDetail)
+    if fact_type == "follow_up":
+        return isinstance(detail, FollowUpCandidateDetail)
     return False
 
 

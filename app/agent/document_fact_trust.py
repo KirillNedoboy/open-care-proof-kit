@@ -38,7 +38,8 @@ from app.agent_trust.models import (
 from app.family_access.service import FamilyAccessService
 from app.product_core.document_fact_extraction import (
     CONTRACT_VERSION,
-    DocumentFactAnswer,
+    DOCUMENT_FACT_TYPES,
+    DocumentFactAnswerV2,
     _validate_document_fact_answer,
 )
 from app.product_core.models import DocumentExtractionPage, DocumentExtractionSnapshot, Source
@@ -48,7 +49,7 @@ DOCUMENT_FACT_PURPOSE = "document_fact_extraction"
 DOCUMENT_FACT_ACTION = "document.extract_facts"
 DOCUMENT_FACT_CONSENT_BASIS = "document-fact-extraction-v1"
 DOCUMENT_FACT_REQUEST_PREFIX = "opencare-document-facts-request:"
-FACT_TYPES = frozenset({"medication", "condition", "lab"})
+FACT_TYPES = DOCUMENT_FACT_TYPES
 
 
 def encode_document_fact_question(
@@ -139,13 +140,14 @@ def document_fact_request_fingerprint(
     input_text_hash: str,
     provider_descriptor_hash: str,
     allowed_fact_types: Sequence[str],
+    contract_version: str = CONTRACT_VERSION,
 ) -> str:
     value = [
         person_id,
         source_id,
         extraction_id,
         input_text_hash,
-        CONTRACT_VERSION,
+        contract_version,
         provider_descriptor_hash,
         sorted(set(allowed_fact_types)),
     ]
@@ -395,7 +397,10 @@ class DocumentFactTrustAdapter:
         if not allowed_fact_types:
             raise BuildRefused(["fact_type_not_allowed"])
         return ProviderExecutionRequest(
-            question="Extract only explicit medication, condition, and lab facts from these pages.",
+            question=(
+                "Extract only explicit medication, condition, lab, procedure, "
+                "recommendation, and follow-up facts from these pages."
+            ),
             purpose_id=projection.purpose_id,
             action_id=projection.action_id,
             requested_action=(
@@ -404,11 +409,19 @@ class DocumentFactTrustAdapter:
             evidence=tuple(records),
             allowed_tools=tuple(projection.allowed_tools),
             allowed_fields=allowed_fact_types,
-            output_contract=DocumentFactAnswer.model_json_schema(),
+            output_contract=DocumentFactAnswerV2.model_json_schema(),
             system_instructions=(
-                "Copy only the supplied document. Do not infer, diagnose, interpret labs, "
-                "or recommend treatment. Every fact requires one exact verbatim quote; "
-                "omit uncertainty."
+                "Extract only statements directly supported by the supplied document text. "
+                "Never diagnose. Never recommend treatment yourself. Never infer procedures, "
+                "follow-ups, or clinical intent. Preserve source wording. Classify each "
+                "semantic fact once using priority rules: medication instructions stay "
+                "medication; a merely suggested procedure is a recommendation; an explicitly "
+                "performed, occurring, or scheduled named procedure is a procedure; an "
+                "explicit future recheck, repeat, or return with timing intent is a "
+                "follow_up; other explicit advice or instructions are recommendations. "
+                "Every fact requires its exact page and one verbatim evidence quote. Omit "
+                "uncertain facts. Do not correct medical terminology. Do not derive dates. "
+                "Do not convert units. Do not interpret labs."
             ),
             disclosure_constraints=tuple(projection.disclosure_constraints),
             prohibited_operations=tuple(projection.prohibited_operations),
@@ -446,7 +459,7 @@ class DocumentFactTrustAdapter:
         allowed: list[str] = []
         with self.runtime.database.uow() as uow:
             assert uow.connection is not None
-            for fact_type in ("medication", "condition", "lab"):
+            for fact_type in sorted(FACT_TYPES):
                 decision, candidate = self.family_service._authorize_person_in_connection(
                     uow.connection, actor_id, person_id, f"{fact_type}.write"
                 )
@@ -504,6 +517,7 @@ class DocumentFactTrustAdapter:
             input_text_hash=run.input_text_hash,
             provider_descriptor_hash=run.provider_descriptor_hash or "",
             allowed_fact_types=run.allowed_fact_types,
+            contract_version=run.contract_version,
         )
         if expected_fingerprint != run.request_fingerprint:
             return False

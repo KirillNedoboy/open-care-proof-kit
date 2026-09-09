@@ -26,6 +26,7 @@ from app.agent.g2_runtime import G2Runtime
 from app.agent.live_chat import (
     LIVE_CHAT_ACTION,
     LiveChatAuthority,
+    live_chat_read_scopes,
     resolve_live_chat_evidence,
 )
 from app.agent.models import AgentQuestion
@@ -205,7 +206,12 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
                 "disclosure_constraints": list(projection.disclosure_constraints),
             },
             resolve_evidence=lambda envelope: resolve_live_chat_evidence(
-                runtime, envelope, runtime.clock()
+                runtime,
+                envelope,
+                runtime.clock(),
+                read_scopes=live_chat_read_scopes(
+                    family_runtime.service, envelope.actor_id, envelope.person_id
+                ),
             ),
             authorize_receipt=authorize_receipt,
             clock=runtime.clock,

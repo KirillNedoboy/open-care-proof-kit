@@ -17,11 +17,14 @@ from app.product_core.models import (
     DocumentExtractionSnapshot,
     DocumentFactExtractionItem,
     DocumentFactExtractionRun,
+    FollowUpCandidateDetail,
     LabCandidateDetail,
     MedicationCandidateDetail,
     PersistedVisitBrief,
     PersistedVisitBriefRevision,
     Person,
+    ProcedureCandidateDetail,
+    RecommendationCandidateDetail,
     Source,
     SourceType,
     TimelineEvent,
@@ -728,6 +731,15 @@ class SQLiteCandidateRepository:
         elif fact_type == "lab":
             table = "candidate_lab_details"
             mapper = _lab_detail_from_row
+        elif fact_type == "procedure":
+            table = "candidate_procedure_details"
+            mapper = _procedure_detail_from_row
+        elif fact_type == "recommendation":
+            table = "candidate_recommendation_details"
+            mapper = _recommendation_detail_from_row
+        elif fact_type == "follow_up":
+            table = "candidate_follow_up_details"
+            mapper = _follow_up_detail_from_row
         else:
             raise IntegrityStorageError(f"unsupported candidate fact type: {fact_type}")
         row = self.connection.execute(
@@ -791,6 +803,59 @@ class SQLiteCandidateRepository:
                     detail.reference_range_text,
                     None if detail.observed_date is None else detail.observed_date.isoformat(),
                     detail.source_flag_text,
+                    detail.note,
+                ),
+            )
+            return
+        if isinstance(detail, ProcedureCandidateDetail):
+            self.connection.execute(
+                """
+                INSERT INTO candidate_procedure_details (
+                    candidate_id, display_name, normalized_name, status_text,
+                    date_text, note
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.id,
+                    detail.display_name,
+                    detail.normalized_name,
+                    detail.status_text,
+                    detail.date_text,
+                    detail.note,
+                ),
+            )
+            return
+        if isinstance(detail, RecommendationCandidateDetail):
+            self.connection.execute(
+                """
+                INSERT INTO candidate_recommendation_details (
+                    candidate_id, instruction_text, normalized_instruction,
+                    context_text, note
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.id,
+                    detail.instruction_text,
+                    detail.normalized_instruction,
+                    detail.context_text,
+                    detail.note,
+                ),
+            )
+            return
+        if isinstance(detail, FollowUpCandidateDetail):
+            self.connection.execute(
+                """
+                INSERT INTO candidate_follow_up_details (
+                    candidate_id, action_text, normalized_action, timing_text,
+                    destination_text, note
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.id,
+                    detail.action_text,
+                    detail.normalized_action,
+                    detail.timing_text,
+                    detail.destination_text,
                     detail.note,
                 ),
             )
@@ -911,6 +976,15 @@ class SQLiteCanonicalRepository:
         elif fact_type == "lab":
             table = "canonical_lab_details"
             mapper = _lab_detail_from_row
+        elif fact_type == "procedure":
+            table = "canonical_procedure_details"
+            mapper = _procedure_detail_from_row
+        elif fact_type == "recommendation":
+            table = "canonical_recommendation_details"
+            mapper = _recommendation_detail_from_row
+        elif fact_type == "follow_up":
+            table = "canonical_follow_up_details"
+            mapper = _follow_up_detail_from_row
         else:
             raise IntegrityStorageError(f"unsupported canonical record fact type: {fact_type}")
         row = self.connection.execute(
@@ -974,6 +1048,59 @@ class SQLiteCanonicalRepository:
                     detail.reference_range_text,
                     None if detail.observed_date is None else detail.observed_date.isoformat(),
                     detail.source_flag_text,
+                    detail.note,
+                ),
+            )
+            return
+        if isinstance(detail, ProcedureCandidateDetail):
+            self.connection.execute(
+                """
+                INSERT INTO canonical_procedure_details (
+                    record_id, display_name, normalized_name, status_text,
+                    date_text, note
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.id,
+                    detail.display_name,
+                    detail.normalized_name,
+                    detail.status_text,
+                    detail.date_text,
+                    detail.note,
+                ),
+            )
+            return
+        if isinstance(detail, RecommendationCandidateDetail):
+            self.connection.execute(
+                """
+                INSERT INTO canonical_recommendation_details (
+                    record_id, instruction_text, normalized_instruction,
+                    context_text, note
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    record.id,
+                    detail.instruction_text,
+                    detail.normalized_instruction,
+                    detail.context_text,
+                    detail.note,
+                ),
+            )
+            return
+        if isinstance(detail, FollowUpCandidateDetail):
+            self.connection.execute(
+                """
+                INSERT INTO canonical_follow_up_details (
+                    record_id, action_text, normalized_action, timing_text,
+                    destination_text, note
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.id,
+                    detail.action_text,
+                    detail.normalized_action,
+                    detail.timing_text,
+                    detail.destination_text,
                     detail.note,
                 ),
             )
@@ -1643,6 +1770,35 @@ def _lab_detail_from_row(row: sqlite3.Row) -> LabCandidateDetail:
             None if row["observed_date"] is None else date.fromisoformat(row["observed_date"])
         ),
         source_flag_text=row["source_flag_text"],
+        note=row["note"],
+    )
+
+
+def _procedure_detail_from_row(row: sqlite3.Row) -> ProcedureCandidateDetail:
+    return ProcedureCandidateDetail(
+        display_name=row["display_name"],
+        normalized_name=row["normalized_name"],
+        status_text=row["status_text"],
+        date_text=row["date_text"],
+        note=row["note"],
+    )
+
+
+def _recommendation_detail_from_row(row: sqlite3.Row) -> RecommendationCandidateDetail:
+    return RecommendationCandidateDetail(
+        instruction_text=row["instruction_text"],
+        normalized_instruction=row["normalized_instruction"],
+        context_text=row["context_text"],
+        note=row["note"],
+    )
+
+
+def _follow_up_detail_from_row(row: sqlite3.Row) -> FollowUpCandidateDetail:
+    return FollowUpCandidateDetail(
+        action_text=row["action_text"],
+        normalized_action=row["normalized_action"],
+        timing_text=row["timing_text"],
+        destination_text=row["destination_text"],
         note=row["note"],
     )
 

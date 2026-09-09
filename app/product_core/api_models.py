@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.product_core.models import ensure_utc_datetime
 
 CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected", "unsupported"]
-FactType = Literal["medication", "condition", "lab"]
+FactType = Literal["medication", "condition", "lab", "procedure", "recommendation", "follow_up"]
 
 MAX_ID_LENGTH = 128
 MAX_DISPLAY_NAME_LENGTH = 200
@@ -329,6 +329,85 @@ class ConditionCorrectRequest(APIModel):
         return None if value is None else _validate_identifier(value)
 
 
+class ProcedureCorrectRequest(APIModel):
+    display_name: str = Field(min_length=1, max_length=MAX_DISPLAY_NAME_LENGTH)
+    status_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    date_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    source_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return _validate_display_name(value)
+
+    @field_validator("status_text", "date_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_identifier(value)
+
+
+class RecommendationCorrectRequest(APIModel):
+    instruction_text: str = Field(min_length=1, max_length=MAX_NOTE_LENGTH)
+    context_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    source_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("instruction_text")
+    @classmethod
+    def validate_instruction_text(cls, value: str) -> str:
+        _reject_control_characters(value, "instruction_text")
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("instruction_text must not be blank")
+        return cleaned
+
+    @field_validator("context_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_identifier(value)
+
+
+class FollowUpCorrectRequest(APIModel):
+    action_text: str = Field(min_length=1, max_length=MAX_SCHEDULE_LENGTH)
+    timing_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    destination_text: str | None = Field(default=None, max_length=MAX_SCHEDULE_LENGTH)
+    note: str | None = Field(default=None, max_length=MAX_NOTE_LENGTH)
+    source_id: str | None = Field(default=None, max_length=MAX_ID_LENGTH)
+    provenance_locator: dict[str, Any] | None = Field(default=None)
+
+    @field_validator("action_text")
+    @classmethod
+    def validate_action_text(cls, value: str) -> str:
+        _reject_control_characters(value, "action_text")
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("action_text must not be blank")
+        return cleaned
+
+    @field_validator("timing_text", "destination_text", "note")
+    @classmethod
+    def validate_text(cls, value: str | None) -> str | None:
+        return None if value is None else _reject_control_characters(value, "text")
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str | None) -> str | None:
+        return None if value is None else _validate_identifier(value)
+
+
 class VisitBriefGenerateRequest(APIModel):
     visit_title: str = Field(min_length=1, max_length=MAX_VISIT_TITLE_LENGTH)
     visit_purpose: str | None = Field(default=None, max_length=MAX_VISIT_TITLE_LENGTH)
@@ -452,6 +531,12 @@ class WorkspaceCapabilities(APIModel):
     condition_write: bool
     lab_read: bool
     lab_write: bool
+    procedure_read: bool
+    procedure_write: bool
+    recommendation_read: bool
+    recommendation_write: bool
+    follow_up_read: bool
+    follow_up_write: bool
     timeline_read: bool
     visit_read: bool
     visit_write: bool
@@ -541,7 +626,7 @@ class CandidateResponse(APIModel):
     id: str
     person_id: str
     source_id: str
-    fact_type: Literal["medication", "condition", "lab"]
+    fact_type: FactType
     status: CandidateStatus
     display_name: str | None = None
     schedule_text: str | None = None
@@ -550,6 +635,15 @@ class CandidateResponse(APIModel):
     reviewed_at: datetime | None = None
     predecessor_candidate_id: str | None = None
     provenance_locator: dict[str, Any] | None = None
+    # D2.2 typed detail passthrough; None for other families.
+    status_text: str | None = None
+    date_text: str | None = None
+    instruction_text: str | None = None
+    context_text: str | None = None
+    action_text: str | None = None
+    timing_text: str | None = None
+    destination_text: str | None = None
+
 
 
 class CandidateListResponse(APIModel):
@@ -647,7 +741,7 @@ class CanonicalMedicationResponse(APIModel):
     person_id: str
     candidate_id: str
     source_id: str
-    fact_type: Literal["medication", "condition", "lab"]
+    fact_type: FactType
     display_name: str | None = None
     schedule_text: str | None = None
     note: str | None = None
@@ -656,6 +750,14 @@ class CanonicalMedicationResponse(APIModel):
     superseded_by_record_id: str | None = None
     provenance_locator: dict[str, Any] | None = None
     predecessor_candidate_id: str | None = None
+    # D2.2 typed detail passthrough; None for other families.
+    status_text: str | None = None
+    date_text: str | None = None
+    instruction_text: str | None = None
+    context_text: str | None = None
+    action_text: str | None = None
+    timing_text: str | None = None
+    destination_text: str | None = None
 
 
 class CanonicalMedicationListResponse(APIModel):
@@ -667,10 +769,128 @@ class TimelineEventResponse(APIModel):
     person_id: str
     canonical_record_id: str
     source_id: str
-    fact_type: Literal["medication", "condition", "lab"]
+    fact_type: FactType
     event_type: str
     event_at: datetime
     title: str
+
+
+class ProcedureCandidateResponse(APIModel):
+    id: str
+    person_id: str
+    source_id: str
+    fact_type: Literal["procedure"] = "procedure"
+    status: CandidateStatus
+    display_name: str
+    status_text: str | None = None
+    date_text: str | None = None
+    note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+    predecessor_candidate_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+
+
+class ProcedureCandidateListResponse(APIModel):
+    candidates: list[ProcedureCandidateResponse]
+
+
+class ProcedureRecordResponse(APIModel):
+    id: str
+    person_id: str
+    candidate_id: str
+    source_id: str
+    display_name: str
+    status_text: str | None = None
+    date_text: str | None = None
+    note: str | None = None
+    confirmed_at: datetime
+    is_active: bool
+    superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+    predecessor_candidate_id: str | None = None
+
+
+class ProcedureRecordListResponse(APIModel):
+    procedures: list[ProcedureRecordResponse]
+
+
+class RecommendationCandidateResponse(APIModel):
+    id: str
+    person_id: str
+    source_id: str
+    fact_type: Literal["recommendation"] = "recommendation"
+    status: CandidateStatus
+    instruction_text: str
+    context_text: str | None = None
+    note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+    predecessor_candidate_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+
+
+class RecommendationCandidateListResponse(APIModel):
+    candidates: list[RecommendationCandidateResponse]
+
+
+class RecommendationRecordResponse(APIModel):
+    id: str
+    person_id: str
+    candidate_id: str
+    source_id: str
+    instruction_text: str
+    context_text: str | None = None
+    note: str | None = None
+    confirmed_at: datetime
+    is_active: bool
+    superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+    predecessor_candidate_id: str | None = None
+
+
+class RecommendationRecordListResponse(APIModel):
+    recommendations: list[RecommendationRecordResponse]
+
+
+class FollowUpCandidateResponse(APIModel):
+    id: str
+    person_id: str
+    source_id: str
+    fact_type: Literal["follow_up"] = "follow_up"
+    status: CandidateStatus
+    action_text: str
+    timing_text: str | None = None
+    destination_text: str | None = None
+    note: str | None = None
+    created_at: datetime
+    reviewed_at: datetime | None = None
+    predecessor_candidate_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+
+
+class FollowUpCandidateListResponse(APIModel):
+    candidates: list[FollowUpCandidateResponse]
+
+
+class FollowUpRecordResponse(APIModel):
+    id: str
+    person_id: str
+    candidate_id: str
+    source_id: str
+    action_text: str
+    timing_text: str | None = None
+    destination_text: str | None = None
+    note: str | None = None
+    confirmed_at: datetime
+    is_active: bool
+    superseded_by_record_id: str | None = None
+    provenance_locator: dict[str, Any] | None = None
+    predecessor_candidate_id: str | None = None
+
+
+class FollowUpRecordListResponse(APIModel):
+    follow_ups: list[FollowUpRecordResponse]
 
 
 class TimelineResponse(APIModel):

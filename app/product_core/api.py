@@ -36,6 +36,11 @@ from app.product_core.api_models import (
     DocumentResponse,
     EmptyActionRequest,
     ErrorResponse,
+    FollowUpCandidateListResponse,
+    FollowUpCandidateResponse,
+    FollowUpCorrectRequest,
+    FollowUpRecordListResponse,
+    FollowUpRecordResponse,
     GeneticsComparisonRequest,
     GeneticsConsentRequest,
     GeneticsExportRequest,
@@ -58,6 +63,16 @@ from app.product_core.api_models import (
     PersonResponse,
     PersonUpdateRequest,
     PlainTextSourceRequest,
+    ProcedureCandidateListResponse,
+    ProcedureCandidateResponse,
+    ProcedureCorrectRequest,
+    ProcedureRecordListResponse,
+    ProcedureRecordResponse,
+    RecommendationCandidateListResponse,
+    RecommendationCandidateResponse,
+    RecommendationCorrectRequest,
+    RecommendationRecordListResponse,
+    RecommendationRecordResponse,
     SourceMetadataResponse,
     SourceRegistrationResponse,
     SourceResponse,
@@ -123,7 +138,14 @@ from app.product_core.genetics import (
     GeneticsValidationError,
     decode_bounded_genetics_base64,
 )
-from app.product_core.models import ConditionCandidateInput, LabCandidateInput, VisitBriefRequest
+from app.product_core.models import (
+    ConditionCandidateInput,
+    FollowUpCandidateInput,
+    LabCandidateInput,
+    ProcedureCandidateInput,
+    RecommendationCandidateInput,
+    VisitBriefRequest,
+)
 from app.product_core.portable_vault_export import PORTABLE_VAULT_FORMAT_VERSION
 from app.product_core.runtime import ProductCoreRuntime
 from app.product_core.services import MAX_DOCUMENT_PAGES, MAX_DOCUMENT_UPLOAD_BYTES
@@ -777,39 +799,79 @@ def _person_response(person: Any) -> PersonResponse:
     )
 
 
-def _candidate_response(candidate: Any) -> CandidateResponse:
-    return CandidateResponse(
-        id=candidate.id,
-        person_id=candidate.person_id,
-        source_id=candidate.source_id,
-        fact_type=candidate.fact_type,
-        status=candidate.status,
-        display_name=candidate.display_name,
-        schedule_text=candidate.schedule_text,
-        note=candidate.note,
-        created_at=candidate.created_at,
-        reviewed_at=candidate.reviewed_at,
-        predecessor_candidate_id=candidate.predecessor_candidate_id,
-        provenance_locator=candidate.provenance_locator,
+def _detail_passthrough(detail: Any) -> dict[str, Any]:
+    """Typed detail fields for the D2.2 families on generic responses.
+
+    Medication/condition/lab keep their dedicated fields; the new families
+    overlay their typed keys (display_name/status_text/.../note) onto the
+    generic DTO via dict.update so existing response shapes never change.
+    """
+    from app.product_core.models import (
+        FollowUpCandidateDetail,
+        ProcedureCandidateDetail,
+        RecommendationCandidateDetail,
     )
+
+    if isinstance(detail, ProcedureCandidateDetail):
+        return {
+            "display_name": detail.display_name,
+            "status_text": detail.status_text,
+            "date_text": detail.date_text,
+            "note": detail.note,
+        }
+    if isinstance(detail, RecommendationCandidateDetail):
+        return {
+            "instruction_text": detail.instruction_text,
+            "context_text": detail.context_text,
+            "note": detail.note,
+        }
+    if isinstance(detail, FollowUpCandidateDetail):
+        return {
+            "action_text": detail.action_text,
+            "timing_text": detail.timing_text,
+            "destination_text": detail.destination_text,
+            "note": detail.note,
+        }
+    return {}
+
+
+def _candidate_response(candidate: Any) -> CandidateResponse:
+    fields: dict[str, Any] = {
+        "id": candidate.id,
+        "person_id": candidate.person_id,
+        "source_id": candidate.source_id,
+        "fact_type": candidate.fact_type,
+        "status": candidate.status,
+        "display_name": candidate.display_name,
+        "schedule_text": candidate.schedule_text,
+        "note": candidate.note,
+        "created_at": candidate.created_at,
+        "reviewed_at": candidate.reviewed_at,
+        "predecessor_candidate_id": candidate.predecessor_candidate_id,
+        "provenance_locator": candidate.provenance_locator,
+    }
+    fields.update(_detail_passthrough(candidate.detail))
+    return CandidateResponse(**fields)
 
 
 def _canonical_response(record: Any) -> CanonicalMedicationResponse:
-    return CanonicalMedicationResponse(
-        id=record.id,
-        person_id=record.person_id,
-        candidate_id=record.candidate_id,
-        source_id=record.source_id,
-        fact_type=record.fact_type,
-        display_name=record.display_name,
-        schedule_text=record.schedule_text,
-        note=record.note,
-        confirmed_at=record.confirmed_at,
-        is_active=record.is_active,
-        superseded_by_record_id=record.superseded_by_record_id,
-        provenance_locator=record.provenance_locator,
-        predecessor_candidate_id=record.predecessor_candidate_id,
-    )
+    fields: dict[str, Any] = {
+        "id": record.id,
+        "person_id": record.person_id,
+        "candidate_id": record.candidate_id,
+        "source_id": record.source_id,
+        "fact_type": record.fact_type,
+        "display_name": record.display_name,
+        "schedule_text": record.schedule_text,
+        "note": record.note,
+        "confirmed_at": record.confirmed_at,
+        "is_active": record.is_active,
+        "superseded_by_record_id": record.superseded_by_record_id,
+        "provenance_locator": record.provenance_locator,
+        "predecessor_candidate_id": record.predecessor_candidate_id,
+    }
+    fields.update(_detail_passthrough(record.detail))
+    return CanonicalMedicationResponse(**fields)
 
 
 def _condition_candidate_response(candidate: Any) -> ConditionCandidateResponse:
@@ -880,6 +942,115 @@ def _lab_record_response(record: Any) -> LabRecordResponse:
         observed_date=record.detail.observed_date,
         source_flag_text=record.detail.source_flag_text,
         note=record.note,
+        confirmed_at=record.confirmed_at,
+        is_active=record.is_active,
+        superseded_by_record_id=record.superseded_by_record_id,
+        provenance_locator=record.provenance_locator,
+        predecessor_candidate_id=record.predecessor_candidate_id,
+    )
+
+
+def _procedure_candidate_response(candidate: Any) -> ProcedureCandidateResponse:
+    detail = candidate.detail
+    return ProcedureCandidateResponse(
+        id=candidate.id,
+        person_id=candidate.person_id,
+        source_id=candidate.source_id,
+        status=candidate.status,
+        display_name=detail.display_name,
+        status_text=detail.status_text,
+        date_text=detail.date_text,
+        note=detail.note,
+        created_at=candidate.created_at,
+        reviewed_at=candidate.reviewed_at,
+        predecessor_candidate_id=candidate.predecessor_candidate_id,
+        provenance_locator=candidate.provenance_locator,
+    )
+
+
+def _procedure_record_response(record: Any) -> ProcedureRecordResponse:
+    detail = record.detail
+    return ProcedureRecordResponse(
+        id=record.id,
+        person_id=record.person_id,
+        candidate_id=record.candidate_id,
+        source_id=record.source_id,
+        display_name=detail.display_name,
+        status_text=detail.status_text,
+        date_text=detail.date_text,
+        note=detail.note,
+        confirmed_at=record.confirmed_at,
+        is_active=record.is_active,
+        superseded_by_record_id=record.superseded_by_record_id,
+        provenance_locator=record.provenance_locator,
+        predecessor_candidate_id=record.predecessor_candidate_id,
+    )
+
+
+def _recommendation_candidate_response(candidate: Any) -> RecommendationCandidateResponse:
+    detail = candidate.detail
+    return RecommendationCandidateResponse(
+        id=candidate.id,
+        person_id=candidate.person_id,
+        source_id=candidate.source_id,
+        status=candidate.status,
+        instruction_text=detail.instruction_text,
+        context_text=detail.context_text,
+        note=detail.note,
+        created_at=candidate.created_at,
+        reviewed_at=candidate.reviewed_at,
+        predecessor_candidate_id=candidate.predecessor_candidate_id,
+        provenance_locator=candidate.provenance_locator,
+    )
+
+
+def _recommendation_record_response(record: Any) -> RecommendationRecordResponse:
+    detail = record.detail
+    return RecommendationRecordResponse(
+        id=record.id,
+        person_id=record.person_id,
+        candidate_id=record.candidate_id,
+        source_id=record.source_id,
+        instruction_text=detail.instruction_text,
+        context_text=detail.context_text,
+        note=detail.note,
+        confirmed_at=record.confirmed_at,
+        is_active=record.is_active,
+        superseded_by_record_id=record.superseded_by_record_id,
+        provenance_locator=record.provenance_locator,
+        predecessor_candidate_id=record.predecessor_candidate_id,
+    )
+
+
+def _follow_up_candidate_response(candidate: Any) -> FollowUpCandidateResponse:
+    detail = candidate.detail
+    return FollowUpCandidateResponse(
+        id=candidate.id,
+        person_id=candidate.person_id,
+        source_id=candidate.source_id,
+        status=candidate.status,
+        action_text=detail.action_text,
+        timing_text=detail.timing_text,
+        destination_text=detail.destination_text,
+        note=detail.note,
+        created_at=candidate.created_at,
+        reviewed_at=candidate.reviewed_at,
+        predecessor_candidate_id=candidate.predecessor_candidate_id,
+        provenance_locator=candidate.provenance_locator,
+    )
+
+
+def _follow_up_record_response(record: Any) -> FollowUpRecordResponse:
+    detail = record.detail
+    return FollowUpRecordResponse(
+        id=record.id,
+        person_id=record.person_id,
+        candidate_id=record.candidate_id,
+        source_id=record.source_id,
+        action_text=detail.action_text,
+        timing_text=detail.timing_text,
+        destination_text=detail.destination_text,
+        note=detail.note,
         confirmed_at=record.confirmed_at,
         is_active=record.is_active,
         superseded_by_record_id=record.superseded_by_record_id,
@@ -1222,6 +1393,12 @@ def get_workspace_capabilities(
             condition_write="condition.write" in scopes,
             lab_read="lab.read" in scopes,
             lab_write="lab.write" in scopes,
+            procedure_read="procedure.read" in scopes,
+            procedure_write="procedure.write" in scopes,
+            recommendation_read="recommendation.read" in scopes,
+            recommendation_write="recommendation.write" in scopes,
+            follow_up_read="follow_up.read" in scopes,
+            follow_up_write="follow_up.write" in scopes,
             timeline_read="timeline.read" in scopes,
             visit_read="visit.read" in scopes,
             visit_write="visit.write" in scopes,
@@ -1497,7 +1674,14 @@ def _d2_allowed_types(access: ProductCoreAccess, person_id: str) -> list[str]:
     allowed: list[str] = []
     with access.runtime.database.uow() as uow:
         assert uow.connection is not None
-        for fact_type in ("medication", "condition", "lab"):
+        for fact_type in (
+            "medication",
+            "condition",
+            "lab",
+            "procedure",
+            "recommendation",
+            "follow_up",
+        ):
             if access._assignment_allows(uow.connection, person_id, (f"{fact_type}.write",)):
                 allowed.append(fact_type)
     return sorted(allowed)
@@ -2203,6 +2387,227 @@ def correct_lab_candidate(
         ),
     )
     return _lab_candidate_response(replacement)
+
+
+@router.post(
+    "/candidates/{candidate_id}/correct:procedure",
+    response_model=ProcedureCandidateResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_correct_procedure_candidate",
+)
+def correct_procedure_candidate(
+    candidate_id: ProductCoreIdentifier,
+    payload: ProcedureCorrectRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> ProcedureCandidateResponse:
+    replacement = runtime.lifecycle.correct_fact_candidate(
+        candidate_id,
+        detail_input=ProcedureCandidateInput(
+            display_name=payload.display_name,
+            status_text=payload.status_text,
+            date_text=payload.date_text,
+            note=payload.note,
+        ),
+        source_id=payload.source_id,
+        provenance_locator=payload.provenance_locator,
+        authorize=access.authorize_candidate_review_mutation(
+            candidate_id,
+            action="candidate.correct",
+            replacement_source_id=payload.source_id,
+        ),
+    )
+    return _procedure_candidate_response(replacement)
+
+
+@router.post(
+    "/candidates/{candidate_id}/correct:recommendation",
+    response_model=RecommendationCandidateResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_correct_recommendation_candidate",
+)
+def correct_recommendation_candidate(
+    candidate_id: ProductCoreIdentifier,
+    payload: RecommendationCorrectRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> RecommendationCandidateResponse:
+    replacement = runtime.lifecycle.correct_fact_candidate(
+        candidate_id,
+        detail_input=RecommendationCandidateInput(
+            instruction_text=payload.instruction_text,
+            context_text=payload.context_text,
+            note=payload.note,
+        ),
+        source_id=payload.source_id,
+        provenance_locator=payload.provenance_locator,
+        authorize=access.authorize_candidate_review_mutation(
+            candidate_id,
+            action="candidate.correct",
+            replacement_source_id=payload.source_id,
+        ),
+    )
+    return _recommendation_candidate_response(replacement)
+
+
+@router.post(
+    "/candidates/{candidate_id}/correct:follow-up",
+    response_model=FollowUpCandidateResponse,
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+    status_code=201,
+    operation_id="product_core_correct_follow_up_candidate",
+)
+def correct_follow_up_candidate(
+    candidate_id: ProductCoreIdentifier,
+    payload: FollowUpCorrectRequest,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> FollowUpCandidateResponse:
+    replacement = runtime.lifecycle.correct_fact_candidate(
+        candidate_id,
+        detail_input=FollowUpCandidateInput(
+            action_text=payload.action_text,
+            timing_text=payload.timing_text,
+            destination_text=payload.destination_text,
+            note=payload.note,
+        ),
+        source_id=payload.source_id,
+        provenance_locator=payload.provenance_locator,
+        authorize=access.authorize_candidate_review_mutation(
+            candidate_id,
+            action="candidate.correct",
+            replacement_source_id=payload.source_id,
+        ),
+    )
+    return _follow_up_candidate_response(replacement)
+
+
+@router.get(
+    "/people/{person_id}/procedure-candidates",
+    response_model=ProcedureCandidateListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_procedure_candidates",
+)
+def list_procedure_candidates(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    status: Annotated[CandidateStatus | None, Query()] = None,
+) -> ProcedureCandidateListResponse:
+    access.require_person(person_id, "procedure.read")
+    candidates = runtime.lifecycle.list_fact_candidates(
+        person_id, status, fact_type="procedure"
+    )
+    return ProcedureCandidateListResponse(
+        candidates=[_procedure_candidate_response(item) for item in candidates]
+    )
+
+
+@router.get(
+    "/people/{person_id}/procedures",
+    response_model=ProcedureRecordListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_procedures",
+)
+def list_procedures(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    include_inactive: Annotated[bool, Query()] = False,
+) -> ProcedureRecordListResponse:
+    access.require_person(person_id, "procedure.read")
+    records = runtime.lifecycle.list_fact_canonical(
+        person_id, include_inactive=include_inactive, fact_type="procedure"
+    )
+    return ProcedureRecordListResponse(
+        procedures=[_procedure_record_response(record) for record in records]
+    )
+
+
+@router.get(
+    "/people/{person_id}/recommendation-candidates",
+    response_model=RecommendationCandidateListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_recommendation_candidates",
+)
+def list_recommendation_candidates(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    status: Annotated[CandidateStatus | None, Query()] = None,
+) -> RecommendationCandidateListResponse:
+    access.require_person(person_id, "recommendation.read")
+    candidates = runtime.lifecycle.list_fact_candidates(
+        person_id, status, fact_type="recommendation"
+    )
+    return RecommendationCandidateListResponse(
+        candidates=[_recommendation_candidate_response(item) for item in candidates]
+    )
+
+
+@router.get(
+    "/people/{person_id}/recommendations",
+    response_model=RecommendationRecordListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_recommendations",
+)
+def list_recommendations(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    include_inactive: Annotated[bool, Query()] = False,
+) -> RecommendationRecordListResponse:
+    access.require_person(person_id, "recommendation.read")
+    records = runtime.lifecycle.list_fact_canonical(
+        person_id, include_inactive=include_inactive, fact_type="recommendation"
+    )
+    return RecommendationRecordListResponse(
+        recommendations=[_recommendation_record_response(record) for record in records]
+    )
+
+
+@router.get(
+    "/people/{person_id}/follow-up-candidates",
+    response_model=FollowUpCandidateListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_follow_up_candidates",
+)
+def list_follow_up_candidates(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    status: Annotated[CandidateStatus | None, Query()] = None,
+) -> FollowUpCandidateListResponse:
+    access.require_person(person_id, "follow_up.read")
+    candidates = runtime.lifecycle.list_fact_candidates(
+        person_id, status, fact_type="follow_up"
+    )
+    return FollowUpCandidateListResponse(
+        candidates=[_follow_up_candidate_response(item) for item in candidates]
+    )
+
+
+@router.get(
+    "/people/{person_id}/follow-ups",
+    response_model=FollowUpRecordListResponse,
+    responses={422: {"model": ErrorResponse}},
+    operation_id="product_core_list_follow_ups",
+)
+def list_follow_ups(
+    person_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+    include_inactive: Annotated[bool, Query()] = False,
+) -> FollowUpRecordListResponse:
+    access.require_person(person_id, "follow_up.read")
+    records = runtime.lifecycle.list_fact_canonical(
+        person_id, include_inactive=include_inactive, fact_type="follow_up"
+    )
+    return FollowUpRecordListResponse(
+        follow_ups=[_follow_up_record_response(record) for record in records]
+    )
 
 
 @router.get(

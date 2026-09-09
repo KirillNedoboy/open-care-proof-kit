@@ -167,7 +167,8 @@ class AssignmentCreateRequest(APIModel):
 class AssignmentReviseRequest(APIModel):
     optional_scopes: set[str] = Field(default_factory=set, max_length=20)
     policy_generation: (
-        Literal["family-access-v1", "family-access-v2", "family-access-v3"] | None
+        Literal["family-access-v1", "family-access-v2", "family-access-v3", "family-access-v4"]
+        | None
     ) = None
 
     @field_validator("optional_scopes")

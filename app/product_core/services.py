@@ -43,11 +43,17 @@ from app.product_core.models import (
     DocumentExtractionPage,
     DocumentExtractionSnapshot,
     FactType,
+    FollowUpCandidateDetail,
+    FollowUpCandidateInput,
     LabCandidateDetail,
     LabCandidateInput,
     MedicationCandidateDetail,
     MedicationCandidateInput,
     Person,
+    ProcedureCandidateDetail,
+    ProcedureCandidateInput,
+    RecommendationCandidateDetail,
+    RecommendationCandidateInput,
     Source,
     SourceType,
     TimelineEvent,
@@ -1021,8 +1027,7 @@ class FactLifecycleService:
                 fact_type=candidate.fact_type,
                 event_type=f"{candidate.fact_type}_confirmed",
                 event_at=confirmed_at,
-                title=f"{_fact_label(candidate.fact_type)} confirmed: "
-                f"{_fact_name(candidate.detail)}",
+                title=_confirmation_title(candidate.fact_type, candidate.detail),
             )
             uow.timeline_events.insert(event)
             if superseded is not None:
@@ -1213,6 +1218,37 @@ class FactLifecycleService:
                 source_flag_text=detail_input.source_flag_text,
                 note=detail_input.note,
             )
+        if fact_type == "procedure":
+            if not isinstance(detail_input, ProcedureCandidateInput):
+                raise ValueError("procedure detail input is required")
+            return ProcedureCandidateDetail(
+                display_name=detail_input.display_name,
+                normalized_name=normalize_medication_name(detail_input.display_name),
+                status_text=detail_input.status_text,
+                date_text=detail_input.date_text,
+                note=detail_input.note,
+            )
+        if fact_type == "recommendation":
+            if not isinstance(detail_input, RecommendationCandidateInput):
+                raise ValueError("recommendation detail input is required")
+            return RecommendationCandidateDetail(
+                instruction_text=detail_input.instruction_text,
+                normalized_instruction=normalize_medication_name(
+                    detail_input.instruction_text
+                ),
+                context_text=detail_input.context_text,
+                note=detail_input.note,
+            )
+        if fact_type == "follow_up":
+            if not isinstance(detail_input, FollowUpCandidateInput):
+                raise ValueError("follow_up detail input is required")
+            return FollowUpCandidateDetail(
+                action_text=detail_input.action_text,
+                normalized_action=normalize_medication_name(detail_input.action_text),
+                timing_text=detail_input.timing_text,
+                destination_text=detail_input.destination_text,
+                note=detail_input.note,
+            )
         raise ValueError(f"unsupported fact type: {fact_type}")
 
     def _resolve_provenance_locator(
@@ -1319,7 +1355,7 @@ class FactLifecycleService:
         except (ValueError, UnicodeDecodeError):
             raise ProvenanceValidationError("manual source payload is not valid JSON") from None
         if isinstance(parsed, dict) and parsed.get("schema_version") == 2:
-            name_field = "test_name" if fact_type == "lab" else "display_name"
+            name_field = _MANUAL_NAME_FIELDS.get(fact_type, "display_name")
             return f"data.{fact_type}.{name_field}"
         return "medication"
 
@@ -1595,7 +1631,14 @@ class MedicationLifecycleService(FactLifecycleService):
 
 
 def _fact_label(fact_type: str) -> str:
-    return {"medication": "Medication", "condition": "Condition", "lab": "Lab"}[fact_type]
+    return {
+        "medication": "Medication",
+        "condition": "Condition",
+        "lab": "Lab",
+        "procedure": "Procedure",
+        "recommendation": "Recommendation",
+        "follow_up": "Follow-up",
+    }[fact_type]
 
 
 def _fact_name(detail: CandidateDetail) -> str:
@@ -1605,4 +1648,40 @@ def _fact_name(detail: CandidateDetail) -> str:
         return detail.display_name
     if isinstance(detail, LabCandidateDetail):
         return detail.test_name
+    if isinstance(detail, ProcedureCandidateDetail):
+        return detail.display_name
+    if isinstance(detail, RecommendationCandidateDetail):
+        return detail.instruction_text
+    if isinstance(detail, FollowUpCandidateDetail):
+        return detail.action_text
     raise ValueError("unsupported candidate detail")
+
+
+_RECORDED_TITLE_TYPES = frozenset({"procedure", "recommendation", "follow_up"})
+
+# schema_version 2 manual payloads key each fact family's name field under
+# data.<fact_type>; recommendation/follow_up use their own text fields.
+_MANUAL_NAME_FIELDS = {
+    "lab": "test_name",
+    "recommendation": "instruction_text",
+    "follow_up": "action_text",
+}
+
+
+def _confirmation_title(fact_type: str, detail: CandidateDetail) -> str:
+    """Timeline title for a confirmation event.
+
+    The original three families keep the historical "<Label> confirmed: <name>"
+    wording; the D2.2 families use the neutral "recorded" phrasing (spec §28).
+    """
+    label = _fact_label(fact_type)
+    if fact_type in _RECORDED_TITLE_TYPES:
+        return f"{label} recorded: {_short_text(_fact_name(detail))}"
+    return f"{label} confirmed: {_fact_name(detail)}"
+
+
+def _short_text(value: str, limit: int = 80) -> str:
+    collapsed = " ".join(value.split())
+    if len(collapsed) <= limit:
+        return collapsed
+    return f"{collapsed[: limit - 1].rstrip()}…"

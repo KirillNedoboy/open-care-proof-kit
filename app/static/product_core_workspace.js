@@ -2,7 +2,7 @@
   "use strict";
 
   const api = "/api/product-core/v1";
-  const state = { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, loadVersion: 0, controller: null };
+  const state = { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], procedures: [], recommendations: [], followUps: [], conditionCandidates: [], labCandidates: [], procedureCandidates: [], recommendationCandidates: [], followUpCandidates: [], conditionEnabled: false, labEnabled: false, procedureEnabled: false, recommendationEnabled: false, followUpEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, loadVersion: 0, controller: null };
   const byId = (id) => document.getElementById(id);
   const translationPayload = byId("product-shell-translations");
   let translations = {};
@@ -11,13 +11,14 @@
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) translations = parsed;
   } catch (_) {}
   const t = (key, fallback = key) => typeof translations[key] === "string" && translations[key] ? translations[key] : fallback;
-  const FACT_LABELS = { medication: "workspace.medications", condition: "workspace.conditions", lab: "workspace.labs" };
+  const FACT_ORDER = ["medication", "condition", "lab", "procedure", "recommendation", "follow_up"];
+  const FACT_LABELS = { medication: "workspace.medications", condition: "workspace.conditions", lab: "workspace.labs", procedure: "workspace.procedures", recommendation: "workspace.recommendations", follow_up: "workspace.follow_up" };
   const STATUS_LABELS = { pending: "workspace.waiting_review", confirmed: "workspace.confirmed", corrected: "workspace.corrected", rejected: "workspace.rejected", unsupported: "workspace.unsupported" };
-  const EVENT_LABELS = { medication_confirmed: "workspace.medication_confirmed", condition_confirmed: "workspace.condition_confirmed", lab_confirmed: "workspace.lab_confirmed", medication_corrected: "workspace.record_superseded", condition_corrected: "workspace.record_superseded", lab_corrected: "workspace.record_superseded" };
+  const EVENT_LABELS = { medication_confirmed: "workspace.medication_confirmed", condition_confirmed: "workspace.condition_confirmed", lab_confirmed: "workspace.lab_confirmed", procedure_confirmed: "workspace.procedure_confirmed", recommendation_confirmed: "workspace.recommendation_confirmed", follow_up_confirmed: "workspace.follow_up_confirmed", medication_corrected: "workspace.record_superseded", condition_corrected: "workspace.record_superseded", lab_corrected: "workspace.record_superseded", procedure_corrected: "workspace.record_superseded", recommendation_corrected: "workspace.record_superseded", follow_up_corrected: "workspace.record_superseded" };
   const ORIGIN_LABELS = { generated: "workspace.origin_generated", user_edit: "workspace.origin_user_edit", restored: "workspace.origin_restored" };
   // Keep the canonical English labels in source for the existing security
   // contract; rendered text always comes from the locale catalog below.
-  const WORKSPACE_LABEL_CONTRACT = "Medication record confirmed | Condition record confirmed | Lab record confirmed | Record superseded by reviewed correction | Recorded in OpenCare | Onset date (as recorded) | Observed date (as reported) | Current | Evidence changed since this revision | Selected record or source changed | Revision unavailable | Source & provenance | Source ID: | Document · | Registered: | SHA-256: | Size: | Media type: | Integrity verified | Source location: | Correction lineage: | Integrity: stored evidence could not be verified.";
+  const WORKSPACE_LABEL_CONTRACT = "Medication record confirmed | Condition record confirmed | Lab record confirmed | Procedure record confirmed | Recommendation record confirmed | Follow-up record confirmed | Record superseded by reviewed correction | Recorded in OpenCare | Onset date (as recorded) | Observed date (as reported) | Current | Evidence changed since this revision | Selected record or source changed | Revision unavailable | Source & provenance | Source ID: | Document · | Registered: | SHA-256: | Size: | Media type: | Integrity verified | Source location: | Correction lineage: | Integrity: stored evidence could not be verified.";
   const factLabel = (value) => t(FACT_LABELS[value], value);
   const statusLabel = (value) => t(STATUS_LABELS[value], value);
   const eventLabel = (value) => t(EVENT_LABELS[value], value.replaceAll("_", " "));
@@ -164,7 +165,7 @@
     const section = byId("documents"), list = byId("document-list"); section.hidden = !state.capabilities.document_read; clear(list);
     byId("document-upload-panel").hidden = !(state.capabilities.document_write && state.capabilities.source_write);
     byId("documents-empty").hidden = state.documents.length > 0;
-    state.documents.forEach((doc) => { const card = make("article", "", "record"), button = make("button", doc.original_filename || t("workspace.page_text", "Open document")); button.type = "button"; button.addEventListener("click", () => { state.selectedDocument = doc; state.selectedPage = null; state.selectedSpan = null; renderDocumentViewer(); void loadDocumentPage(doc, 1, button); }); const run = doc.fact_extraction, statusText = run?.status === "completed" ? `${t("workspace.ai_extracted", "AI extracted")}: ${run.valid_facts || 0}` : run?.status === "partial" ? t("workspace.ai_partial", "Partial AI extraction") : run?.status === "unavailable" ? t("workspace.ai_unavailable", "AI analysis unavailable") : t("workspace.ai_not_analyzed", "Not analyzed"); card.append(make("strong", doc.original_filename || t("workspace.page_text", "Untitled document")), make("p", `${doc.document_kind === "pdf" ? "PDF" : "Text"} · ${doc.extraction.page_count} · ${statusText}`, "meta"), button); list.append(card); });
+    state.documents.forEach((doc) => { const card = make("article", "", "record"), button = make("button", doc.original_filename || t("workspace.page_text", "Open document")); button.type = "button"; button.addEventListener("click", () => { state.selectedDocument = doc; state.selectedPage = null; state.selectedSpan = null; renderDocumentViewer(); void loadDocumentPage(doc, 1, button); }); const run = doc.fact_extraction, statusText = run?.status === "completed" ? `${t("workspace.ai_extracted", "AI extracted")}: ${run.valid_facts || 0}` : run?.status === "partial" ? t("workspace.ai_partial", "Partial AI extraction") : run?.status === "unavailable" ? t("workspace.ai_unavailable", "AI analysis unavailable") : t("workspace.ai_not_analyzed", "Not analyzed"); const staleRun = run?.contract_version === "opencare-document-facts/1" && (run.status === "completed" || run.status === "partial"); card.append(make("strong", doc.original_filename || t("workspace.page_text", "Untitled document")), make("p", `${doc.document_kind === "pdf" ? "PDF" : "Text"} · ${doc.extraction.page_count} · ${statusText}`, "meta"), button); if (staleRun) { card.append(make("p", t("workspace.previous_version_notice", "Analyzed with previous extraction version"), "meta")); if (state.capabilities.document_write && state.capabilities.source_write) { const more = make("button", t("workspace.analyze_more_categories", "Analyze additional categories")); more.type = "button"; more.addEventListener("click", () => { void analyzeDocumentFromCard(doc, more); }); card.append(more); } } list.append(card); });
     renderDocumentViewer();
   }
   async function loadDocuments(personIdContext) {
@@ -200,17 +201,30 @@
       const body = await file.arrayBuffer();
       const filename = OpenCareWorkspaceState.sanitizeDocumentFilename(file.name);
       const uploaded = await personRequest(`/people/${encodeURIComponent(state.person.person_id)}/documents`, { method: "POST", body, headers: { "Content-Type": file.type === "application/pdf" ? "application/pdf" : "text/plain", "X-OpenCare-Filename": filename } });
-      const sourceId = uploaded.document.source_id;
-      const base = `/people/${encodeURIComponent(state.person.person_id)}/documents/${encodeURIComponent(sourceId)}/fact-extractions`;
-      const prepared = await personRequest(`${base}/prepare`, { method: "POST", body: "{}" });
-      if (prepared.status === "consent_required") {
-        const approved = window.confirm(documentDisclosureMessage(prepared));
-        await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/consent`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "decline" }) });
-        if (!approved) { event.target.reset(); await loadWorkspace(); status(t("workspace.document_analysis_declined", "Document stored; analysis was declined."), "success"); return; }
-      }
-      if (!["unavailable", "declined"].includes(prepared.status)) await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/execute`, { method: "POST", body: "{}" });
+      const analyzed = await analyzeDocument(uploaded.document.source_id);
+      if (!analyzed) { event.target.reset(); await loadWorkspace(); status(t("workspace.document_analysis_declined", "Document stored; analysis was declined."), "success"); return; }
       event.target.reset(); await loadWorkspace(); status(t("workspace.document_uploaded", "Document uploaded."), "success");
     } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { submit.disabled = false; }
+  }
+  async function analyzeDocumentFromCard(doc, button) {
+    if (!state.person || !state.capabilities.document_write || !state.capabilities.source_write) return;
+    button.disabled = true;
+    try {
+      const analyzed = await analyzeDocument(doc.source_id);
+      await loadWorkspace();
+      if (!analyzed) status(t("workspace.document_analysis_declined", "Document stored; analysis was declined."), "success");
+    } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); button.disabled = false; }
+  }
+  async function analyzeDocument(sourceId) {
+    const base = `/people/${encodeURIComponent(state.person.person_id)}/documents/${encodeURIComponent(sourceId)}/fact-extractions`;
+    const prepared = await personRequest(`${base}/prepare`, { method: "POST", body: "{}" });
+    if (prepared.status === "consent_required") {
+      const approved = window.confirm(documentDisclosureMessage(prepared));
+      await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/consent`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "decline" }) });
+      if (!approved) return false;
+    }
+    if (!["unavailable", "declined"].includes(prepared.status)) await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/execute`, { method: "POST", body: "{}" });
+    return true;
   }
   async function submitDocumentCandidate(event) {
     event.preventDefault();
@@ -244,8 +258,14 @@
     if (!state.capabilities.medication_read) Object.assign(state, { candidates: [], medications: [] });
     if (!state.capabilities.condition_read) Object.assign(state, { conditionCandidates: [], conditions: [] });
     if (!state.capabilities.lab_read) Object.assign(state, { labCandidates: [], labs: [] });
+    if (!state.capabilities.procedure_read) Object.assign(state, { procedureCandidates: [], procedures: [] });
+    if (!state.capabilities.recommendation_read) Object.assign(state, { recommendationCandidates: [], recommendations: [] });
+    if (!state.capabilities.follow_up_read) Object.assign(state, { followUpCandidates: [], followUps: [] });
     state.conditionEnabled = Boolean(state.capabilities.condition_read);
     state.labEnabled = Boolean(state.capabilities.lab_read);
+    state.procedureEnabled = Boolean(state.capabilities.procedure_read);
+    state.recommendationEnabled = Boolean(state.capabilities.recommendation_read);
+    state.followUpEnabled = Boolean(state.capabilities.follow_up_read);
     if (!state.capabilities.timeline_read) state.timeline = [];
     if (!state.capabilities.visit_read) Object.assign(state, { visits: [], visit: null, questions: [], editingQuestion: null });
     if (!state.capabilities.brief_read) Object.assign(state, { persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false });
@@ -360,7 +380,7 @@
     state.controller?.abort();
     const generation = ++state.loadVersion;
     state.controller = new AbortController();
-    Object.assign(state, { person: { person_id: personId, display_name: t("workspace.loading_person") }, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
+    Object.assign(state, { person: { person_id: personId, display_name: t("workspace.loading_person") }, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], procedures: [], recommendations: [], followUps: [], conditionCandidates: [], labCandidates: [], procedureCandidates: [], recommendationCandidates: [], followUpCandidates: [], conditionEnabled: false, labEnabled: false, procedureEnabled: false, recommendationEnabled: false, followUpEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
     enableWorkspace(false);
     renderPersonContext();
     const personContext = { personId, generation, signal: state.controller.signal };
@@ -389,6 +409,18 @@
         add("labCandidates", `/people/${encodeURIComponent(personId)}/lab-candidates`);
         add("labs", `/people/${encodeURIComponent(personId)}/labs?include_inactive=true`);
       }
+      if (capabilities.procedure_read) {
+        add("procedureCandidates", `/people/${encodeURIComponent(personId)}/procedure-candidates`);
+        add("procedures", `/people/${encodeURIComponent(personId)}/procedures?include_inactive=true`);
+      }
+      if (capabilities.recommendation_read) {
+        add("recommendationCandidates", `/people/${encodeURIComponent(personId)}/recommendation-candidates`);
+        add("recommendations", `/people/${encodeURIComponent(personId)}/recommendations?include_inactive=true`);
+      }
+      if (capabilities.follow_up_read) {
+        add("followUpCandidates", `/people/${encodeURIComponent(personId)}/follow-up-candidates`);
+        add("followUps", `/people/${encodeURIComponent(personId)}/follow-ups?include_inactive=true`);
+      }
       if (capabilities.timeline_read) add("timeline", `/people/${encodeURIComponent(personId)}/timeline`);
       if (capabilities.visit_read) add("visits", `/people/${encodeURIComponent(personId)}/visits`);
       const loaded = Object.fromEntries(await Promise.all(loads));
@@ -403,21 +435,30 @@
         medications: (loaded.medications?.medications || []).filter((item) => item.person_id === personId),
         conditions: (loaded.conditions?.conditions || []).filter((item) => item.person_id === personId),
         labs: (loaded.labs?.labs || []).filter((item) => item.person_id === personId),
+        procedures: (loaded.procedures?.procedures || []).filter((item) => item.person_id === personId),
+        recommendations: (loaded.recommendations?.recommendations || []).filter((item) => item.person_id === personId),
+        followUps: (loaded.followUps?.follow_ups || []).filter((item) => item.person_id === personId),
         conditionCandidates: (loaded.conditionCandidates?.candidates || []).filter((item) => item.person_id === personId),
         labCandidates: (loaded.labCandidates?.candidates || []).filter((item) => item.person_id === personId),
+        procedureCandidates: (loaded.procedureCandidates?.candidates || []).filter((item) => item.person_id === personId),
+        recommendationCandidates: (loaded.recommendationCandidates?.candidates || []).filter((item) => item.person_id === personId),
+        followUpCandidates: (loaded.followUpCandidates?.candidates || []).filter((item) => item.person_id === personId),
         conditionEnabled: Boolean(capabilities.condition_read),
         labEnabled: Boolean(capabilities.lab_read),
+        procedureEnabled: Boolean(capabilities.procedure_read),
+        recommendationEnabled: Boolean(capabilities.recommendation_read),
+        followUpEnabled: Boolean(capabilities.follow_up_read),
         timeline: (loaded.timeline?.events || []).filter((item) => item.person_id === personId),
         visits: OpenCareWorkspaceState.sortVisits((loaded.visits?.visits || []).filter((item) => item.person_id === personId)),
       });
-      const sourceIds = new Set([...visibleCandidates(), ...state.medications, ...state.conditions, ...state.labs].map((item) => item.source_id).filter(Boolean));
+      const sourceIds = new Set([...visibleCandidates(), ...state.medications, ...state.conditions, ...state.labs, ...state.procedures, ...state.recommendations, ...state.followUps].map((item) => item.source_id).filter(Boolean));
       const sources = await Promise.all([...sourceIds].map(async (sourceId) => [sourceId, await request(`/sources/${encodeURIComponent(sourceId)}`, {}, personContext)]));
       if (!OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) return;
       state.sources = new Map(sources);
       renderPersonContext(); renderSelectionEmptyState([state.person]); enableWorkspace(true); render(); status(t("workspace.workspace_loaded"), "success");
     } catch (error) {
       if (error.name !== "AbortError" && OpenCareWorkspaceState.shouldApplyResponse(generation, state.loadVersion)) {
-        Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
+        Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], procedures: [], recommendations: [], followUps: [], conditionCandidates: [], labCandidates: [], procedureCandidates: [], recommendationCandidates: [], followUpCandidates: [], timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null });
         byId("person-selector").value = "";
         renderPersonContext(); renderSelectionEmptyState([{}]); enableWorkspace(false); render();
         status(error.message, "error");
@@ -484,13 +525,16 @@
 
   function factCandidateCard(candidate, actions) {
     const card = make("article", "", "record");
-    const name = candidate.fact_type === "lab" ? candidate.test_name : candidate.display_name;
+    const name = candidate.fact_type === "lab" ? candidate.test_name : candidate.display_name || candidate.instruction_text || candidate.action_text;
     card.append(make("strong", name));
     if (candidate.status === "pending" && candidate.provenance_locator?.kind === "document_text_span") card.append(make("p", `${t("workspace.from_document", "From document")} · ${t("workspace.ai_extracted", "AI extracted")} · ${t("workspace.not_confirmed", "Not confirmed")}`, "meta"));
     card.append(make("p", `${t("workspace.fact", "Fact")}: ${factLabel(candidate.fact_type)} · ${t("workspace.status", "Status")}: ${statusLabel(candidate.status)} · ${t("workspace.created", "Created")}: ${candidate.created_at}`, "meta"));
     if (candidate.fact_type === "medication" && candidate.schedule_text) card.append(make("p", candidate.schedule_text));
     if (candidate.fact_type === "condition") { if (candidate.status_text) card.append(make("p", `${t("workspace.recorded_status", "Recorded status")}: ${candidate.status_text}`)); if (candidate.onset_date) card.append(make("p", `${t("workspace.recorded_onset", "Recorded onset")}: ${candidate.onset_date}`)); }
     if (candidate.fact_type === "lab") { if (candidate.result_text) card.append(make("p", `${t("workspace.result_reported", "Result as reported")}: ${candidate.result_text}`)); if (candidate.unit_text) card.append(make("p", `${t("workspace.unit_reported", "Unit as reported")}: ${candidate.unit_text}`)); if (candidate.reference_range_text) card.append(make("p", `${t("workspace.reference_range_reported", "Reference range as reported")}: ${candidate.reference_range_text}`)); if (candidate.observed_date) card.append(make("p", `${t("workspace.observed", "Observed")}: ${candidate.observed_date}`)); if (candidate.source_flag_text) card.append(make("p", `${t("workspace.flag_reported", "Flag as reported")}: ${candidate.source_flag_text}`, "meta")); }
+    if (candidate.fact_type === "procedure") { if (candidate.status_text) card.append(make("p", `${t("workspace.recorded_status", "Recorded status")}: ${candidate.status_text}`)); if (candidate.date_text) card.append(make("p", `${t("workspace.recorded_date", "Recorded date")}: ${candidate.date_text}`)); }
+    if (candidate.fact_type === "recommendation") { if (candidate.context_text) card.append(make("p", `${t("workspace.context", "Context")}: ${candidate.context_text}`)); }
+    if (candidate.fact_type === "follow_up") { if (candidate.timing_text) card.append(make("p", `${t("workspace.timing", "Timing")}: ${candidate.timing_text}`)); if (candidate.destination_text) card.append(make("p", `${t("workspace.destination", "Destination")}: ${candidate.destination_text}`)); }
     if (candidate.note) card.append(make("p", candidate.note));
     card.append(provenanceDetails(candidate));
     if (actions) {
@@ -509,11 +553,14 @@
 
   function factRecordCard(record, factType, historical) {
     const card = make("article", "", "record");
-    const name = factType === "lab" ? record.test_name : record.display_name;
+    const name = factType === "lab" ? record.test_name : record.display_name || record.instruction_text || record.action_text;
     card.append(make("strong", name));
     card.append(make("p", `${t("workspace.confirmed_at", "Confirmed")}: ${record.confirmed_at}${historical ? ` · ${t("workspace.superseded", "Superseded")}` : ""}`, "meta"));
     if (factType === "condition") { if (record.status_text) card.append(make("p", `${t("workspace.recorded_status", "Recorded status")}: ${record.status_text}`)); if (record.onset_date) card.append(make("p", `${t("workspace.recorded_onset", "Recorded onset")}: ${record.onset_date}`)); }
     if (factType === "lab") { if (record.result_text) card.append(make("p", `${t("workspace.result_reported", "Result as reported")}: ${record.result_text}`)); if (record.unit_text) card.append(make("p", `${t("workspace.unit_reported", "Unit as reported")}: ${record.unit_text}`)); if (record.reference_range_text) card.append(make("p", `${t("workspace.reference_range_reported", "Reference range as reported")}: ${record.reference_range_text}`)); if (record.observed_date) card.append(make("p", `${t("workspace.observed", "Observed")}: ${record.observed_date}`)); if (record.source_flag_text) card.append(make("p", `${t("workspace.flag_reported", "Flag as reported")}: ${record.source_flag_text}`, "meta")); }
+    if (factType === "procedure") { if (record.status_text) card.append(make("p", `${t("workspace.recorded_status", "Recorded status")}: ${record.status_text}`)); if (record.date_text) card.append(make("p", `${t("workspace.recorded_date", "Recorded date")}: ${record.date_text}`)); }
+    if (factType === "recommendation") { if (record.context_text) card.append(make("p", `${t("workspace.context", "Context")}: ${record.context_text}`)); }
+    if (factType === "follow_up") { if (record.timing_text) card.append(make("p", `${t("workspace.timing", "Timing")}: ${record.timing_text}`)); if (record.destination_text) card.append(make("p", `${t("workspace.destination", "Destination")}: ${record.destination_text}`)); }
     if (record.note) card.append(make("p", record.note));
     card.append(provenanceDetails(record));
     return card;
@@ -523,13 +570,14 @@
     const list = state.candidates.slice();
     if (state.conditionEnabled) list.push(...state.conditionCandidates);
     if (state.labEnabled) list.push(...state.labCandidates);
+    if (state.procedureEnabled) list.push(...state.procedureCandidates);
+    if (state.recommendationEnabled) list.push(...state.recommendationCandidates);
+    if (state.followUpEnabled) list.push(...state.followUpCandidates);
     return list;
   }
 
   function syncFactTypeFilters() {
-    const facts = ["medication"];
-    if (state.conditionEnabled) facts.push("condition");
-    if (state.labEnabled) facts.push("lab");
+    const facts = FACT_ORDER.filter((fact) => state.capabilities[`${fact}_read`]);
     const select = byId("inbox-fact-filter");
     const current = select.value;
     clear(select);
@@ -615,40 +663,23 @@
     return section;
   }
 
-  function renderFactSectionLists(factType) {
-    const isCondition = factType === "condition";
-    const pendingTarget = byId(isCondition ? "condition-pending" : "lab-pending");
-    const activeTarget = byId(isCondition ? "canonical-conditions" : "canonical-labs");
-    const historyTarget = byId(isCondition ? "historical-conditions" : "historical-labs");
-    clear(pendingTarget); clear(activeTarget); clear(historyTarget);
-    const candidates = isCondition ? state.conditionCandidates : state.labCandidates;
-    const records = isCondition ? state.conditions : state.labs;
-    const pending = candidates.filter((item) => item.status === "pending");
-    if (!pending.length) pendingTarget.append(make("p", `${t("workspace.no_pending_fact", "No entries are waiting for review.")} (${factLabel(factType)})`, "meta"));
-    pending.forEach((item) => pendingTarget.append(factCandidateCard(item, true)));
-    const active = records.filter((item) => item.is_active);
-    const historical = records.filter((item) => !item.is_active);
-    if (!active.length) activeTarget.append(make("p", `${t("workspace.no_confirmed_fact", "No records have been confirmed.")} (${factLabel(factType)})`, "meta"));
-    active.forEach((item) => activeTarget.append(factRecordCard(item, factType, false)));
-    if (!historical.length) historyTarget.append(make("p", t("workspace.no_historical", "No historical records."), "meta"));
-    historical.forEach((item) => historyTarget.append(factRecordCard(item, factType, true)));
-  }
-
   function renderFactSections() {
-    const families = { medication: state.medications, condition: state.conditions, lab: state.labs };
+    const families = { medication: state.medications, condition: state.conditions, lab: state.labs, procedure: state.procedures, recommendation: state.recommendations, follow_up: state.followUps };
     Object.entries(families).forEach(([factType, records]) => {
       const readable = Boolean(state.capabilities[`${factType}_read`]);
-      const section = byId(`records-${factType}`);
+      const section = byId(`records-${factType.replaceAll("_", "-")}`);
       const addButton = section.querySelector("[data-toggle-form]");
       const activeTarget = byId(`${factType}-current`), historyTarget = byId(`${factType}-historical`);
       section.hidden = !readable;
       clear(activeTarget); clear(historyTarget);
       if (!readable) {
-        addButton.hidden = true;
-        byId(addButton.dataset.toggleForm).hidden = true;
+        if (addButton) {
+          addButton.hidden = true;
+          byId(addButton.dataset.toggleForm).hidden = true;
+        }
         return;
       }
-      addButton.hidden = !(state.capabilities[`${factType}_write`] && state.capabilities.source_write && state.capabilities.candidate_review);
+      if (addButton) addButton.hidden = !(state.capabilities[`${factType}_write`] && state.capabilities.source_write && state.capabilities.candidate_review);
       const active = records.filter((item) => item.is_active);
       const historical = records.filter((item) => !item.is_active);
       if (!active.length) activeTarget.append(make("p", t("workspace.no_current_records", "No current confirmed records."), "meta"));
@@ -678,6 +709,9 @@
       ["records-medication", "workspace.medications"],
       ["records-condition", "workspace.conditions"],
       ["records-lab", "workspace.labs"],
+      ["records-procedure", "workspace.procedures"],
+      ["records-recommendation", "workspace.recommendations"],
+      ["records-follow-up", "workspace.follow_up"],
     ].forEach(([id, key]) => {
       const title = byId(id)?.querySelector(".family-heading h3");
       if (title) title.textContent = t(key);
@@ -705,8 +739,8 @@
   function renderOverview() {
     const counts = byId("overview-counts"), latest = byId("overview-latest"), empty = byId("overview-empty"), actionLinks = byId("overview-action-links"), activity = byId("overview-activity-list");
     [counts, latest, actionLinks, activity].forEach(clear);
-    const readableTypes = ["medication", "condition", "lab"].filter((type) => state.capabilities[`${type}_read`]);
-    const records = [...state.medications, ...state.conditions, ...state.labs].filter((item) => item.is_active);
+    const readableTypes = FACT_ORDER.filter((type) => state.capabilities[`${type}_read`]);
+    const records = [...state.medications, ...state.conditions, ...state.labs, ...state.procedures, ...state.recommendations, ...state.followUps].filter((item) => item.is_active);
     const pending = visibleCandidates().filter((item) => item.status === "pending").length;
     const metric = (label, value) => {
       const card = make("article", "", "summary-item");
@@ -815,8 +849,8 @@
     byId("initialize-brief").hidden = !hasVisit || hasBrief || !canWrite; byId("initialize-brief").disabled = !hasVisit || !canWrite; byId("brief-workflow").hidden = !hasBrief;
     byId("brief-status").textContent = !hasVisit ? t("workspace.select_visit_brief", "Select a Visit to prepare its Brief.") : !hasBrief ? (canWrite ? t("workspace.initialize_persistent_brief", "Initialize a persistent Brief for this Visit.") : t("workspace.no_persistent_brief", "No persistent Brief is available for this Visit.")) : state.briefRevision ? `${t("workspace.revision_viewing", "Viewing revision")} ${state.briefRevision.revision_number}. ${stalenessLabel(state.briefRevision.staleness)}` : t("workspace.select_confirmed_evidence", "Select confirmed evidence");
     const content = state.briefRevision?.content || {};
-    const selectedIds = [...(content.medications || []), ...(content.conditions || []), ...(content.labs || []), ...(content.records || [])].map((record) => record.canonical_record_id || record.id).filter(Boolean);
-    renderEvidenceGroup("medication", "Medications", selectedIds); renderEvidenceGroup("condition", "Recorded conditions", selectedIds); renderEvidenceGroup("lab", "Labs", selectedIds);
+    const selectedIds = [...(content.medications || []), ...(content.conditions || []), ...(content.labs || []), ...(content.procedures || []), ...(content.recommendations || []), ...(content.follow_ups || []), ...(content.records || [])].map((record) => record.canonical_record_id || record.id).filter(Boolean);
+    renderEvidenceGroup("medication", "Medications", selectedIds); renderEvidenceGroup("condition", "Recorded conditions", selectedIds); renderEvidenceGroup("lab", "Labs", selectedIds); renderEvidenceGroup("procedure", "Procedures", selectedIds); renderEvidenceGroup("recommendation", "Recommendations", selectedIds); renderEvidenceGroup("follow_up", "Follow-up", selectedIds);
     byId("brief-evidence-selection").disabled = !hasBrief || !canWrite; byId("validate-brief-evidence").hidden = !canWrite; byId("generate-brief").hidden = !canWrite; byId("brief-preparation-notes").disabled = !state.briefRevision || !canWrite; byId("save-brief-notes").hidden = !canWrite; byId("save-brief-notes").disabled = !state.briefRevision || !state.briefDirty; byId("download-brief").hidden = !state.capabilities.brief_export; byId("brief-unsaved-warning").hidden = !state.briefDirty;
     if (state.briefRevision) { if (!state.briefDirty) byId("brief-preparation-notes").value = content.preparation_notes || ""; byId("brief-metadata").textContent = `${t("workspace.revision", "Revision")} ${state.briefRevision.revision_number} · ${originLabel(state.briefRevision.origin)} · ${stalenessLabel(state.briefRevision.staleness)}`; byId("brief-markdown").textContent = state.briefRevision.markdown; byId("brief-result").hidden = false; } else byId("brief-result").hidden = true;
     renderBriefRevisions();
@@ -881,8 +915,25 @@
       { key: "source_flag_text", label: "workspace.flag_as_reported", input: true, maxLength: 500 },
       { key: "note", label: "workspace.note_optional", input: false, maxLength: 2000 },
     ],
+    procedure: [
+      { key: "display_name", label: "workspace.procedure_name", input: true, maxLength: 200 },
+      { key: "status_text", label: "workspace.status_optional_source", input: true, maxLength: 500 },
+      { key: "date_text", label: "workspace.date_optional_source", input: true, maxLength: 500 },
+      { key: "note", label: "workspace.note_optional", input: false, maxLength: 2000 },
+    ],
+    recommendation: [
+      { key: "instruction_text", label: "workspace.instruction", input: false, maxLength: 2000 },
+      { key: "context_text", label: "workspace.context_optional", input: false, maxLength: 2000 },
+      { key: "note", label: "workspace.note_optional", input: false, maxLength: 2000 },
+    ],
+    follow_up: [
+      { key: "action_text", label: "workspace.action", input: false, maxLength: 2000 },
+      { key: "timing_text", label: "workspace.timing_optional", input: true, maxLength: 500 },
+      { key: "destination_text", label: "workspace.destination_optional", input: true, maxLength: 500 },
+      { key: "note", label: "workspace.note_optional", input: false, maxLength: 2000 },
+    ],
   };
-  const CORRECTION_ENDPOINTS = { medication: "correct", condition: "correct:condition", lab: "correct:lab" };
+  const CORRECTION_ENDPOINTS = { medication: "correct", condition: "correct:condition", lab: "correct:lab", procedure: "correct:procedure", recommendation: "correct:recommendation", follow_up: "correct:follow-up" };
 
   function openCorrection(candidate, trigger) {
     if (!(state.capabilities.candidate_review && state.capabilities[`${candidate.fact_type}_write`])) return;
@@ -896,7 +947,16 @@
     });
     const name = controls[0], error = make("p", "", "error"), save = make("button", t("workspace.save_correction", "Save correction")), cancel = make("button", t("workspace.cancel", "Cancel"));
     error.setAttribute("role", "alert"); save.type = "submit"; cancel.type = "button";
-    const title = candidate.fact_type === "medication" ? t("workspace.correct_medication", "Correct medication entry") : candidate.fact_type === "condition" ? t("workspace.correct_condition", "Correct condition entry") : t("workspace.correct_lab", "Correct lab entry");
+    const correctionTitles = {
+      medication: ["workspace.correct_medication", "Correct medication entry"],
+      condition: ["workspace.correct_condition", "Correct condition entry"],
+      lab: ["workspace.correct_lab", "Correct lab entry"],
+      procedure: ["workspace.correct_procedure", "Correct procedure entry"],
+      recommendation: ["workspace.correct_recommendation", "Correct recommendation entry"],
+      follow_up: ["workspace.correct_follow_up", "Correct follow-up entry"],
+    };
+    const titleKey = correctionTitles[candidate.fact_type] || correctionTitles.medication;
+    const title = t(titleKey[0], titleKey[1]);
     form.append(make("h3", title));
     specs.forEach((spec, index) => form.append(labelled(t(spec.label, spec.label), controls[index])));
     form.append(error, save, cancel);
@@ -910,7 +970,7 @@
     state.controller?.abort();
     state.loadVersion += 1;
     try { await setActivePerson(null); } catch (error) { status(error.message, "error"); return; }
-    Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], conditionCandidates: [], labCandidates: [], conditionEnabled: false, labEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, controller: null });
+    Object.assign(state, { person: null, capabilities: {}, candidates: [], medications: [], conditions: [], labs: [], procedures: [], recommendations: [], followUps: [], conditionCandidates: [], labCandidates: [], procedureCandidates: [], recommendationCandidates: [], followUpCandidates: [], conditionEnabled: false, labEnabled: false, procedureEnabled: false, recommendationEnabled: false, followUpEnabled: false, timeline: [], visits: [], visit: null, questions: [], editingQuestion: null, persistedBrief: null, briefRevision: null, briefEvidence: [], briefDirty: false, sources: new Map(), documents: [], selectedDocument: null, selectedPage: null, selectedSpan: null, documentDraft: null, vaultExportTrigger: null, controller: null });
     byId("person-selector").value = ""; byId("edit-profile-form").hidden = true; byId("edit-visit-form").hidden = true; byId("visit-question-form").hidden = true; byId("edit-visit-question-form").hidden = true; byId("vault-export-warning").hidden = true; renderPersonContext(); renderSelectionEmptyState([{}]); updateShellPerson(null); render(); enableWorkspace(false); byId("load-workspace").disabled = true; status(t("workspace.selection_cleared"));
   }
 

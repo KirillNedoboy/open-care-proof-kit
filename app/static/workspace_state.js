@@ -14,11 +14,14 @@
   }
 
   function evidenceFactType(item) {
-    if (["medication", "condition", "lab"].includes(item?.fact_type)) return item.fact_type;
+    if (["medication", "condition", "lab", "procedure", "recommendation", "follow_up"].includes(item?.fact_type)) return item.fact_type;
     const legacyRecordTypes = {
       confirmed_medication: "medication",
       confirmed_condition: "condition",
       confirmed_lab: "lab",
+      confirmed_procedure: "procedure",
+      confirmed_recommendation: "recommendation",
+      confirmed_follow_up: "follow_up",
     };
     return legacyRecordTypes[item?.record_type] || "";
   }

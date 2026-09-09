@@ -20,16 +20,25 @@ from app.product_core.models import (
     DocumentFactItemStatus,
     DocumentFactRunStatus,
     FactType,
+    FollowUpCandidateDetail,
     LabCandidateDetail,
     MedicationCandidateDetail,
+    ProcedureCandidateDetail,
+    RecommendationCandidateDetail,
+    normalize_fact_name,
     normalize_medication_name,
 )
 from app.product_core.runtime import ProductCoreRuntime
 
-CONTRACT_VERSION: Literal["opencare-document-facts/1"] = "opencare-document-facts/1"
+CONTRACT_VERSION_V1: Literal["opencare-document-facts/1"] = "opencare-document-facts/1"
+CONTRACT_VERSION_V2: Literal["opencare-document-facts/2"] = "opencare-document-facts/2"
+CONTRACT_VERSION = CONTRACT_VERSION_V2
 MAX_DOCUMENT_AI_TEXT_CHARS = 60_000
 MAX_DOCUMENT_AI_FACTS = 32
 MAX_DOCUMENT_AI_QUOTE_CHARS = 600
+DOCUMENT_FACT_TYPES = frozenset(
+    {"medication", "condition", "lab", "procedure", "recommendation", "follow_up"}
+)
 
 
 class MedicationSuggestion(BaseModel):
@@ -88,11 +97,51 @@ class LabSuggestion(BaseModel):
         raise ValueError("observed_date must be an ISO date")
 
 
+
+class ProcedureSuggestion(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    page_number: int = Field(ge=1, le=200)
+    evidence_quote: str = Field(min_length=1, max_length=MAX_DOCUMENT_AI_QUOTE_CHARS)
+    display_name: str = Field(min_length=1, max_length=200)
+    status_text: str | None = Field(default=None, max_length=500)
+    date_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class RecommendationSuggestion(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    page_number: int = Field(ge=1, le=200)
+    evidence_quote: str = Field(min_length=1, max_length=MAX_DOCUMENT_AI_QUOTE_CHARS)
+    instruction_text: str = Field(min_length=1, max_length=2000)
+    context_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class FollowUpSuggestion(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    page_number: int = Field(ge=1, le=200)
+    evidence_quote: str = Field(min_length=1, max_length=MAX_DOCUMENT_AI_QUOTE_CHARS)
+    action_text: str = Field(min_length=1, max_length=500)
+    timing_text: str | None = Field(default=None, max_length=500)
+    destination_text: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=2000)
+
+
 class DocumentFactAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     medications: list[MedicationSuggestion]
     conditions: list[ConditionSuggestion]
     labs: list[LabSuggestion]
+
+
+class DocumentFactAnswerV2(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    medications: list[MedicationSuggestion]
+    conditions: list[ConditionSuggestion]
+    labs: list[LabSuggestion]
+    procedures: list[ProcedureSuggestion]
+    recommendations: list[RecommendationSuggestion]
+    follow_ups: list[FollowUpSuggestion]
 
 
 def _fingerprint(value: object) -> str:
@@ -222,20 +271,41 @@ def _quote_locator(source: Any, extraction: Any, page: Any, quote: str) -> dict[
     }
 
 
-Suggestion = MedicationSuggestion | ConditionSuggestion | LabSuggestion
+Suggestion = (
+    MedicationSuggestion
+    | ConditionSuggestion
+    | LabSuggestion
+    | ProcedureSuggestion
+    | RecommendationSuggestion
+    | FollowUpSuggestion
+)
+
+_V1_ANSWER_KEYS = {"medications", "conditions", "labs"}
+_V2_ANSWER_KEYS = _V1_ANSWER_KEYS | {"procedures", "recommendations", "follow_ups"}
 
 
 def _suggestions(answer: Any) -> list[tuple[FactType, Suggestion]]:
     if not isinstance(answer, dict):
         raise ValueError("invalid_structured_output")
-    if set(answer) != {"medications", "conditions", "labs"}:
-        raise ValueError("invalid_structured_output")
-    parsed = DocumentFactAnswer.model_validate(answer)
-    return [
-        *[("medication", item) for item in parsed.medications],
-        *[("condition", item) for item in parsed.conditions],
-        *[("lab", item) for item in parsed.labs],
-    ]
+    keys = set(answer)
+    if keys == _V2_ANSWER_KEYS:
+        parsed = DocumentFactAnswerV2.model_validate(answer)
+        return [
+            *[("medication", item) for item in parsed.medications],
+            *[("condition", item) for item in parsed.conditions],
+            *[("lab", item) for item in parsed.labs],
+            *[("procedure", item) for item in parsed.procedures],
+            *[("recommendation", item) for item in parsed.recommendations],
+            *[("follow_up", item) for item in parsed.follow_ups],
+        ]
+    if keys == _V1_ANSWER_KEYS:
+        legacy = DocumentFactAnswer.model_validate(answer)
+        return [
+            *[("medication", item) for item in legacy.medications],
+            *[("condition", item) for item in legacy.conditions],
+            *[("lab", item) for item in legacy.labs],
+        ]
+    raise ValueError("invalid_structured_output")
 
 
 def _validate_document_fact_answer(
@@ -278,7 +348,7 @@ class DocumentFactExtractionService:
         if (
             not normalized_types
             or normalized_types != allowed_fact_types
-            or any(item not in {"medication", "condition", "lab"} for item in normalized_types)
+            or any(item not in DOCUMENT_FACT_TYPES for item in normalized_types)
         ):
             raise ValueError("fact_types_invalid")
         with self.runtime.database.uow() as uow:
@@ -746,6 +816,19 @@ class DocumentFactExtractionService:
                     )
                     continue
                 detail_values = _detail_payload(fact_type, suggestion)
+                identity_values = dict(detail_values)
+                if fact_type == "procedure":
+                    identity_values["normalized_name"] = normalize_fact_name(
+                        str(detail_values["display_name"])
+                    )
+                elif fact_type == "recommendation":
+                    identity_values["normalized_instruction"] = normalize_fact_name(
+                        str(detail_values["instruction_text"])
+                    )
+                elif fact_type == "follow_up":
+                    identity_values["normalized_action"] = normalize_fact_name(
+                        str(detail_values["action_text"])
+                    )
                 fingerprint = _fingerprint(
                     [
                         run.person_id,
@@ -753,7 +836,7 @@ class DocumentFactExtractionService:
                         run.extraction_id,
                         fact_type,
                         locator,
-                        detail_values,
+                        identity_values,
                     ]
                 )
                 if fingerprint in seen:
@@ -845,6 +928,29 @@ class DocumentFactExtractionService:
                 normalized_name=normalize_medication_name(str(values["display_name"])),
                 status_text=cast(str | None, values.get("status_text")),
                 onset_date=cast(date | None, values.get("onset_date")),
+                note=cast(str | None, values.get("note")),
+            )
+        if fact_type == "procedure":
+            return ProcedureCandidateDetail(
+                display_name=str(values["display_name"]),
+                normalized_name=normalize_fact_name(str(values["display_name"])),
+                status_text=cast(str | None, values.get("status_text")),
+                date_text=cast(str | None, values.get("date_text")),
+                note=cast(str | None, values.get("note")),
+            )
+        if fact_type == "recommendation":
+            return RecommendationCandidateDetail(
+                instruction_text=str(values["instruction_text"]),
+                normalized_instruction=normalize_fact_name(str(values["instruction_text"])),
+                context_text=cast(str | None, values.get("context_text")),
+                note=cast(str | None, values.get("note")),
+            )
+        if fact_type == "follow_up":
+            return FollowUpCandidateDetail(
+                action_text=str(values["action_text"]),
+                normalized_action=normalize_fact_name(str(values["action_text"])),
+                timing_text=cast(str | None, values.get("timing_text")),
+                destination_text=cast(str | None, values.get("destination_text")),
                 note=cast(str | None, values.get("note")),
             )
         return LabCandidateDetail(

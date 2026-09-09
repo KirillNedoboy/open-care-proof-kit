@@ -2011,6 +2011,579 @@ PRODUCT_MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=11,
+        statements=(
+            "PRAGMA defer_foreign_keys=ON",
+            """
+            CREATE TABLE candidate_facts_v11 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN (
+                        'medication', 'condition', 'lab',
+                        'procedure', 'recommendation', 'follow_up'
+                    )
+                ),
+                status TEXT NOT NULL CHECK (
+                    status IN ('pending', 'confirmed', 'corrected', 'rejected', 'unsupported')
+                ),
+                created_at TEXT NOT NULL,
+                reviewed_at TEXT,
+                predecessor_candidate_id TEXT REFERENCES candidate_facts_v11(id),
+                provenance_locator_json TEXT CHECK (
+                    provenance_locator_json IS NULL
+                    OR json_valid(provenance_locator_json)
+                ),
+                CHECK (
+                    predecessor_candidate_id IS NULL OR predecessor_candidate_id <> id
+                ),
+                CHECK (
+                    (status = 'pending' AND reviewed_at IS NULL)
+                    OR (status <> 'pending' AND reviewed_at IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE TABLE canonical_records_v11 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                candidate_id TEXT NOT NULL UNIQUE REFERENCES candidate_facts_v11(id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN (
+                        'medication', 'condition', 'lab',
+                        'procedure', 'recommendation', 'follow_up'
+                    )
+                ),
+                confirmed_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
+                superseded_by_record_id TEXT REFERENCES canonical_records_v11(id),
+                CHECK (
+                    superseded_by_record_id IS NULL OR superseded_by_record_id <> id
+                ),
+                CHECK (
+                    (is_active = 1 AND superseded_by_record_id IS NULL)
+                    OR (is_active = 0 AND superseded_by_record_id IS NOT NULL)
+                )
+            )
+            """,
+            """
+            CREATE TABLE timeline_events_v11 (
+                id TEXT PRIMARY KEY,
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                canonical_record_id TEXT NOT NULL REFERENCES canonical_records_v11(id),
+                source_id TEXT NOT NULL REFERENCES sources(id),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN (
+                        'medication', 'condition', 'lab',
+                        'procedure', 'recommendation', 'follow_up'
+                    )
+                ),
+                event_type TEXT NOT NULL CHECK (length(trim(event_type)) > 0),
+                event_at TEXT NOT NULL,
+                title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+                UNIQUE (canonical_record_id, event_type)
+            )
+            """,
+            """
+            CREATE TABLE candidate_procedure_details (
+                candidate_id TEXT PRIMARY KEY REFERENCES candidate_facts_v11(id),
+                display_name TEXT NOT NULL CHECK (
+                    length(trim(display_name)) > 0 AND length(display_name) <= 200
+                ),
+                normalized_name TEXT NOT NULL CHECK (length(trim(normalized_name)) > 0),
+                status_text TEXT CHECK (status_text IS NULL OR length(status_text) <= 500),
+                date_text TEXT CHECK (date_text IS NULL OR length(date_text) <= 500),
+                note TEXT CHECK (note IS NULL OR length(note) <= 2000)
+            )
+            """,
+            """
+            CREATE TABLE candidate_recommendation_details (
+                candidate_id TEXT PRIMARY KEY REFERENCES candidate_facts_v11(id),
+                instruction_text TEXT NOT NULL CHECK (
+                    length(trim(instruction_text)) > 0 AND length(instruction_text) <= 2000
+                ),
+                normalized_instruction TEXT NOT NULL CHECK (
+                    length(trim(normalized_instruction)) > 0
+                ),
+                context_text TEXT CHECK (context_text IS NULL OR length(context_text) <= 500),
+                note TEXT CHECK (note IS NULL OR length(note) <= 2000)
+            )
+            """,
+            """
+            CREATE TABLE candidate_follow_up_details (
+                candidate_id TEXT PRIMARY KEY REFERENCES candidate_facts_v11(id),
+                action_text TEXT NOT NULL CHECK (
+                    length(trim(action_text)) > 0 AND length(action_text) <= 500
+                ),
+                normalized_action TEXT NOT NULL CHECK (length(trim(normalized_action)) > 0),
+                timing_text TEXT CHECK (timing_text IS NULL OR length(timing_text) <= 500),
+                destination_text TEXT CHECK (
+                    destination_text IS NULL OR length(destination_text) <= 500
+                ),
+                note TEXT CHECK (note IS NULL OR length(note) <= 2000)
+            )
+            """,
+            """
+            CREATE TABLE canonical_procedure_details (
+                record_id TEXT PRIMARY KEY REFERENCES canonical_records_v11(id),
+                display_name TEXT NOT NULL CHECK (
+                    length(trim(display_name)) > 0 AND length(display_name) <= 200
+                ),
+                normalized_name TEXT NOT NULL CHECK (length(trim(normalized_name)) > 0),
+                status_text TEXT CHECK (status_text IS NULL OR length(status_text) <= 500),
+                date_text TEXT CHECK (date_text IS NULL OR length(date_text) <= 500),
+                note TEXT CHECK (note IS NULL OR length(note) <= 2000)
+            )
+            """,
+            """
+            CREATE TABLE canonical_recommendation_details (
+                record_id TEXT PRIMARY KEY REFERENCES canonical_records_v11(id),
+                instruction_text TEXT NOT NULL CHECK (
+                    length(trim(instruction_text)) > 0 AND length(instruction_text) <= 2000
+                ),
+                normalized_instruction TEXT NOT NULL CHECK (
+                    length(trim(normalized_instruction)) > 0
+                ),
+                context_text TEXT CHECK (context_text IS NULL OR length(context_text) <= 500),
+                note TEXT CHECK (note IS NULL OR length(note) <= 2000)
+            )
+            """,
+            """
+            CREATE TABLE canonical_follow_up_details (
+                record_id TEXT PRIMARY KEY REFERENCES canonical_records_v11(id),
+                action_text TEXT NOT NULL CHECK (
+                    length(trim(action_text)) > 0 AND length(action_text) <= 500
+                ),
+                normalized_action TEXT NOT NULL CHECK (length(trim(normalized_action)) > 0),
+                timing_text TEXT CHECK (timing_text IS NULL OR length(timing_text) <= 500),
+                destination_text TEXT CHECK (
+                    destination_text IS NULL OR length(destination_text) <= 500
+                ),
+                note TEXT CHECK (note IS NULL OR length(note) <= 2000)
+            )
+            """,
+            """
+            CREATE TABLE document_fact_extraction_runs_v11 (
+                run_id TEXT PRIMARY KEY CHECK (length(trim(run_id)) > 0),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                extraction_id TEXT NOT NULL,
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                execution_id TEXT NOT NULL UNIQUE CHECK (length(trim(execution_id)) > 0),
+                input_text_hash TEXT NOT NULL CHECK (
+                    length(input_text_hash) = 64
+                    AND input_text_hash = lower(input_text_hash)
+                    AND input_text_hash NOT GLOB '*[^0-9a-f]*'
+                ),
+                request_fingerprint TEXT NOT NULL CHECK (
+                    length(request_fingerprint) = 64
+                    AND request_fingerprint = lower(request_fingerprint)
+                    AND request_fingerprint NOT GLOB '*[^0-9a-f]*'
+                ),
+                contract_version TEXT NOT NULL CHECK (
+                    contract_version IN ('opencare-document-facts/1', 'opencare-document-facts/2')
+                ),
+                status TEXT NOT NULL CHECK (
+                    status IN (
+                        'prepared', 'consent_required', 'consented', 'executing',
+                        'completed', 'partial', 'failed', 'declined', 'unavailable'
+                    )
+                ),
+                allowed_fact_types_json TEXT NOT NULL CHECK (
+                    json_valid(allowed_fact_types_json)
+                ),
+                provider_id TEXT,
+                provider_kind TEXT,
+                provider_descriptor_hash TEXT CHECK (
+                    provider_descriptor_hash IS NULL
+                    OR length(provider_descriptor_hash) = 64
+                ),
+                model_id TEXT,
+                external INTEGER NOT NULL DEFAULT 0 CHECK (external IN (0, 1)),
+                envelope_id TEXT,
+                consent_id TEXT REFERENCES agent_disclosure_consents(consent_id),
+                receipt_id TEXT REFERENCES agent_execution_receipts(receipt_id),
+                reason_code TEXT,
+                total_facts INTEGER NOT NULL DEFAULT 0 CHECK (total_facts >= 0),
+                valid_facts INTEGER NOT NULL DEFAULT 0 CHECK (valid_facts >= 0),
+                invalid_facts INTEGER NOT NULL DEFAULT 0 CHECK (invalid_facts >= 0),
+                new_candidates INTEGER NOT NULL DEFAULT 0 CHECK (new_candidates >= 0),
+                reused_candidates INTEGER NOT NULL DEFAULT 0 CHECK (reused_candidates >= 0),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT,
+                UNIQUE (run_id, person_id, source_id, extraction_id),
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id),
+                FOREIGN KEY (extraction_id, source_id, person_id)
+                    REFERENCES document_extractions(extraction_id, source_id, person_id)
+            )
+            """,
+            """
+            CREATE TABLE document_fact_extraction_items_v11 (
+                item_id TEXT PRIMARY KEY CHECK (length(trim(item_id)) > 0),
+                run_id TEXT NOT NULL REFERENCES document_fact_extraction_runs_v11(run_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                extraction_id TEXT NOT NULL,
+                ordinal INTEGER NOT NULL CHECK (ordinal >= 0 AND ordinal < 32),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN (
+                        'medication', 'condition', 'lab',
+                        'procedure', 'recommendation', 'follow_up'
+                    )
+                ),
+                payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+                quote TEXT,
+                page_number INTEGER,
+                start_codepoint INTEGER,
+                end_codepoint INTEGER,
+                selected_text_sha256 TEXT CHECK (
+                    selected_text_sha256 IS NULL OR length(selected_text_sha256) = 64
+                ),
+                validation_status TEXT NOT NULL CHECK (
+                    validation_status IN ('valid', 'invalid', 'reused')
+                ),
+                invalid_reason TEXT,
+                candidate_id TEXT REFERENCES candidate_facts_v11(id),
+                candidate_fingerprint TEXT,
+                created_at TEXT NOT NULL,
+                UNIQUE (run_id, ordinal),
+                FOREIGN KEY (run_id, person_id, source_id, extraction_id)
+                    REFERENCES document_fact_extraction_runs_v11(
+                        run_id, person_id, source_id, extraction_id
+                    ),
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id),
+                FOREIGN KEY (extraction_id, source_id, person_id)
+                    REFERENCES document_extractions(extraction_id, source_id, person_id),
+                CHECK (
+                    (validation_status = 'invalid' AND invalid_reason IS NOT NULL)
+                    OR (validation_status <> 'invalid')
+                )
+            )
+            """,
+            """
+            CREATE TABLE document_fact_extracted_facts_v11 (
+                candidate_fingerprint TEXT PRIMARY KEY CHECK (
+                    length(candidate_fingerprint) = 64
+                    AND candidate_fingerprint = lower(candidate_fingerprint)
+                    AND candidate_fingerprint NOT GLOB '*[^0-9a-f]*'
+                ),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN (
+                        'medication', 'condition', 'lab',
+                        'procedure', 'recommendation', 'follow_up'
+                    )
+                ),
+                candidate_id TEXT NOT NULL UNIQUE REFERENCES candidate_facts_v11(id),
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id)
+            )
+            """,
+            """
+            INSERT INTO candidate_facts_v11 (
+                id, person_id, source_id, fact_type, status, created_at,
+                reviewed_at, predecessor_candidate_id, provenance_locator_json
+            )
+            SELECT id, person_id, source_id, fact_type, status, created_at,
+                   reviewed_at, predecessor_candidate_id, provenance_locator_json
+            FROM candidate_facts
+            """,
+            """
+            INSERT INTO canonical_records_v11 (
+                id, person_id, candidate_id, source_id, fact_type,
+                confirmed_at, is_active, superseded_by_record_id
+            )
+            SELECT id, person_id, candidate_id, source_id, fact_type,
+                   confirmed_at, is_active, superseded_by_record_id
+            FROM canonical_records
+            """,
+            """
+            INSERT INTO timeline_events_v11 (
+                id, person_id, canonical_record_id, source_id, fact_type,
+                event_type, event_at, title
+            )
+            SELECT id, person_id, canonical_record_id, source_id, fact_type,
+                   event_type, event_at, title
+            FROM timeline_events
+            """,
+            """
+            INSERT INTO document_fact_extraction_runs_v11 (
+                run_id, person_id, source_id, extraction_id, actor_id,
+                execution_id, input_text_hash, request_fingerprint,
+                contract_version, status, allowed_fact_types_json,
+                provider_id, provider_kind, provider_descriptor_hash, model_id,
+                external, envelope_id, consent_id, receipt_id, reason_code,
+                total_facts, valid_facts, invalid_facts, new_candidates,
+                reused_candidates, created_at, updated_at, completed_at
+            )
+            SELECT run_id, person_id, source_id, extraction_id, actor_id,
+                   execution_id, input_text_hash, request_fingerprint,
+                   contract_version, status, allowed_fact_types_json,
+                   provider_id, provider_kind, provider_descriptor_hash, model_id,
+                   external, envelope_id, consent_id, receipt_id, reason_code,
+                   total_facts, valid_facts, invalid_facts, new_candidates,
+                   reused_candidates, created_at, updated_at, completed_at
+            FROM document_fact_extraction_runs
+            """,
+            """
+            INSERT INTO document_fact_extraction_items_v11 (
+                item_id, run_id, person_id, source_id, extraction_id, ordinal,
+                fact_type, payload_json, quote, page_number, start_codepoint,
+                end_codepoint, selected_text_sha256, validation_status,
+                invalid_reason, candidate_id, candidate_fingerprint, created_at
+            )
+            SELECT item_id, run_id, person_id, source_id, extraction_id, ordinal,
+                   fact_type, payload_json, quote, page_number, start_codepoint,
+                   end_codepoint, selected_text_sha256, validation_status,
+                   invalid_reason, candidate_id, candidate_fingerprint, created_at
+            FROM document_fact_extraction_items
+            """,
+            """
+            INSERT INTO document_fact_extracted_facts_v11 (
+                candidate_fingerprint, person_id, source_id, fact_type,
+                candidate_id, created_at
+            )
+            SELECT candidate_fingerprint, person_id, source_id, fact_type,
+                   candidate_id, created_at
+            FROM document_fact_extracted_facts
+            """,
+            "DROP TABLE document_fact_extracted_facts",
+            "DROP TABLE document_fact_extraction_items",
+            "DROP TABLE document_fact_extraction_runs",
+            "DROP TABLE timeline_events",
+            "DROP TABLE canonical_records",
+            "DROP TABLE candidate_facts",
+            "ALTER TABLE candidate_facts_v11 RENAME TO candidate_facts",
+            "ALTER TABLE canonical_records_v11 RENAME TO canonical_records",
+            "ALTER TABLE timeline_events_v11 RENAME TO timeline_events",
+            "ALTER TABLE document_fact_extraction_runs_v11 RENAME TO document_fact_extraction_runs",
+            "ALTER TABLE document_fact_extraction_items_v11 RENAME TO document_fact_extraction_items",
+            "ALTER TABLE document_fact_extracted_facts_v11 RENAME TO document_fact_extracted_facts",
+            "CREATE INDEX candidate_facts_person_status_idx ON candidate_facts(person_id, status)",
+            (
+                "CREATE INDEX canonical_records_person_active_idx "
+                "ON canonical_records(person_id, is_active)"
+            ),
+            "CREATE INDEX canonical_records_candidate_idx ON canonical_records(candidate_id)",
+            (
+                "CREATE INDEX timeline_events_person_event_at_idx "
+                "ON timeline_events(person_id, event_at, id)"
+            ),
+            """
+            CREATE TRIGGER candidate_facts_predecessor_same_person_insert
+            BEFORE INSERT ON candidate_facts
+            WHEN NEW.predecessor_candidate_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM candidate_facts AS predecessor
+                WHERE predecessor.id = NEW.predecessor_candidate_id
+                  AND predecessor.person_id <> NEW.person_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'predecessor_candidate_person_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER candidate_facts_predecessor_same_person_update
+            BEFORE UPDATE OF person_id, predecessor_candidate_id ON candidate_facts
+            WHEN NEW.predecessor_candidate_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM candidate_facts AS predecessor
+                WHERE predecessor.id = NEW.predecessor_candidate_id
+                  AND predecessor.person_id <> NEW.person_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'predecessor_candidate_person_mismatch');
+            END
+            """,
+            (
+                "CREATE INDEX document_fact_runs_person_created_idx ON "
+                "document_fact_extraction_runs(person_id, created_at, run_id)"
+            ),
+            (
+                "CREATE INDEX document_fact_runs_source_status_idx ON "
+                "document_fact_extraction_runs(source_id, status, updated_at)"
+            ),
+            (
+                "CREATE INDEX document_fact_runs_execution_idx ON "
+                "document_fact_extraction_runs(execution_id)"
+            ),
+            (
+                "CREATE UNIQUE INDEX document_fact_active_request_idx ON "
+                "document_fact_extraction_runs(person_id, source_id, extraction_id, request_fingerprint) "
+                "WHERE status IN ('prepared', 'consent_required', 'consented', 'executing', 'completed')"
+            ),
+            (
+                "CREATE INDEX document_fact_items_run_status_idx ON "
+                "document_fact_extraction_items(run_id, validation_status, ordinal)"
+            ),
+            (
+                "CREATE INDEX document_fact_registry_person_source_idx ON "
+                "document_fact_extracted_facts(person_id, source_id, fact_type)"
+            ),
+            """
+            CREATE TRIGGER document_fact_run_identity_immutable
+            BEFORE UPDATE OF person_id, source_id, extraction_id, actor_id,
+                execution_id, input_text_hash, request_fingerprint, contract_version,
+                allowed_fact_types_json, provider_id, provider_kind,
+                provider_descriptor_hash, model_id, external, envelope_id
+                ON document_fact_extraction_runs
+            WHEN NEW.person_id <> OLD.person_id
+              OR NEW.source_id <> OLD.source_id
+              OR NEW.extraction_id <> OLD.extraction_id
+              OR NEW.actor_id <> OLD.actor_id
+              OR NEW.execution_id <> OLD.execution_id
+              OR NEW.input_text_hash <> OLD.input_text_hash
+              OR NEW.request_fingerprint <> OLD.request_fingerprint
+              OR NEW.contract_version <> OLD.contract_version
+              OR NEW.allowed_fact_types_json <> OLD.allowed_fact_types_json
+              OR COALESCE(NEW.provider_id, '') <> COALESCE(OLD.provider_id, '')
+              OR COALESCE(NEW.provider_kind, '') <> COALESCE(OLD.provider_kind, '')
+              OR COALESCE(NEW.provider_descriptor_hash, '') <> COALESCE(OLD.provider_descriptor_hash, '')
+              OR COALESCE(NEW.model_id, '') <> COALESCE(OLD.model_id, '')
+              OR NEW.external <> OLD.external
+              OR COALESCE(NEW.envelope_id, '') <> COALESCE(OLD.envelope_id, '')
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_run_identity_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_consent_binding_insert
+            BEFORE INSERT ON document_fact_extraction_runs
+            WHEN NEW.consent_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_disclosure_consents AS consent
+                WHERE consent.consent_id = NEW.consent_id
+                  AND consent.execution_id = NEW.execution_id
+                  AND consent.actor_id = NEW.actor_id
+                  AND consent.person_id = NEW.person_id
+                  AND consent.envelope_id = NEW.envelope_id
+                  AND consent.provider_id = NEW.provider_id
+                  AND consent.provider_descriptor_hash = NEW.provider_descriptor_hash
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_consent_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_consent_binding_update
+            BEFORE UPDATE OF consent_id ON document_fact_extraction_runs
+            WHEN NEW.consent_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_disclosure_consents AS consent
+                WHERE consent.consent_id = NEW.consent_id
+                  AND consent.execution_id = NEW.execution_id
+                  AND consent.actor_id = NEW.actor_id
+                  AND consent.person_id = NEW.person_id
+                  AND consent.envelope_id = NEW.envelope_id
+                  AND consent.provider_id = NEW.provider_id
+                  AND consent.provider_descriptor_hash = NEW.provider_descriptor_hash
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_consent_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_receipt_binding_insert
+            BEFORE INSERT ON document_fact_extraction_runs
+            WHEN NEW.receipt_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_execution_receipts AS receipt
+                WHERE receipt.receipt_id = NEW.receipt_id
+                  AND receipt.execution_id = NEW.execution_id
+                  AND receipt.actor_id = NEW.actor_id
+                  AND receipt.person_id = NEW.person_id
+                  AND receipt.envelope_id = NEW.envelope_id
+                  AND receipt.consent_id = NEW.consent_id
+                  AND receipt.provider_id = NEW.provider_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_receipt_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_receipt_binding_update
+            BEFORE UPDATE OF receipt_id ON document_fact_extraction_runs
+            WHEN NEW.receipt_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_execution_receipts AS receipt
+                WHERE receipt.receipt_id = NEW.receipt_id
+                  AND receipt.execution_id = NEW.execution_id
+                  AND receipt.actor_id = NEW.actor_id
+                  AND receipt.person_id = NEW.person_id
+                  AND receipt.envelope_id = NEW.envelope_id
+                  AND receipt.consent_id = NEW.consent_id
+                  AND receipt.provider_id = NEW.provider_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_receipt_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_binding_immutable
+            BEFORE UPDATE OF consent_id, receipt_id ON document_fact_extraction_runs
+            WHEN (OLD.consent_id IS NOT NULL AND COALESCE(NEW.consent_id, '') <> OLD.consent_id)
+              OR (OLD.receipt_id IS NOT NULL AND COALESCE(NEW.receipt_id, '') <> OLD.receipt_id)
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_run_binding_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_terminal_immutable
+            BEFORE UPDATE ON document_fact_extraction_runs
+            WHEN OLD.status IN ('completed', 'partial', 'failed', 'declined', 'unavailable')
+             AND (NEW.status <> OLD.status OR NEW.total_facts <> OLD.total_facts
+               OR NEW.valid_facts <> OLD.valid_facts OR NEW.invalid_facts <> OLD.invalid_facts
+               OR NEW.new_candidates <> OLD.new_candidates OR NEW.reused_candidates <> OLD.reused_candidates
+               OR COALESCE(NEW.reason_code, '') <> COALESCE(OLD.reason_code, '')
+               OR COALESCE(NEW.completed_at, '') <> COALESCE(OLD.completed_at, ''))
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_run_terminal_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_item_immutable_update
+            BEFORE UPDATE ON document_fact_extraction_items
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_item_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_item_immutable_delete
+            BEFORE DELETE ON document_fact_extraction_items
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_item_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_registry_immutable_update
+            BEFORE UPDATE ON document_fact_extracted_facts
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_registry_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_registry_immutable_delete
+            BEFORE DELETE ON document_fact_extracted_facts
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_registry_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_item_identity_immutable
+            BEFORE UPDATE OF run_id, person_id, source_id, extraction_id, ordinal,
+                fact_type, candidate_fingerprint ON document_fact_extraction_items
+            WHEN NEW.run_id <> OLD.run_id OR NEW.person_id <> OLD.person_id
+              OR NEW.source_id <> OLD.source_id OR NEW.extraction_id <> OLD.extraction_id
+              OR NEW.ordinal <> OLD.ordinal OR NEW.fact_type <> OLD.fact_type
+              OR COALESCE(NEW.candidate_fingerprint, '') <> COALESCE(OLD.candidate_fingerprint, '')
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_item_identity_immutable');
+            END
+            """,
+        ),
+    ),
 )
 
 
@@ -2063,7 +2636,7 @@ class MigrationRunner:
             raise
 
     def _apply_migration(self, connection: sqlite3.Connection, migration: Migration) -> None:
-        if migration.version in {8, 9}:
+        if migration.version in {8, 9, 11}:
             # SQLite cannot rebuild a referenced parent table while foreign-key
             # enforcement is active, even when all final references are valid.
             connection.execute("PRAGMA foreign_keys=OFF")
@@ -2090,10 +2663,10 @@ class MigrationRunner:
                 (migration.version, applied_at),
             )
             connection.commit()
-            if migration.version in {8, 9}:
+            if migration.version in {8, 9, 11}:
                 connection.execute("PRAGMA foreign_keys=ON")
         except BaseException:
             connection.rollback()
-            if migration.version in {8, 9}:
+            if migration.version in {8, 9, 11}:
                 connection.execute("PRAGMA foreign_keys=ON")
             raise

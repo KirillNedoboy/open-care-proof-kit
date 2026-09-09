@@ -17,11 +17,14 @@ from app.product_core.models import (
     ConditionCandidateDetail,
     DocumentExtractionPage,
     DocumentExtractionSnapshot,
+    FollowUpCandidateDetail,
     LabCandidateDetail,
     MedicationCandidateDetail,
     PersistedVisitBrief,
     PersistedVisitBriefRevision,
     Person,
+    ProcedureCandidateDetail,
+    RecommendationCandidateDetail,
     Source,
     TimelineEvent,
     Visit,
@@ -33,7 +36,7 @@ from app.product_core.persisted_visit_briefs import verify_persisted_visit_brief
 from app.product_core.services import ImmutableSourceStore
 from app.product_core.sqlite import SQLiteDatabase
 
-PORTABLE_VAULT_FORMAT_VERSION = 5
+PORTABLE_VAULT_FORMAT_VERSION = 6
 PRODUCT_CORE_SCHEMA_VERSION = PRODUCT_MIGRATIONS[-1].version
 
 
@@ -262,6 +265,36 @@ class PortableVaultExportService:
                 ],
                 "canonical_lab_details": [
                     _canonical_lab_detail_dto(item) for item in records if item.fact_type == "lab"
+                ],
+                "candidate_procedure_details": [
+                    _candidate_procedure_detail_dto(item)
+                    for item in candidates
+                    if item.fact_type == "procedure"
+                ],
+                "candidate_recommendation_details": [
+                    _candidate_recommendation_detail_dto(item)
+                    for item in candidates
+                    if item.fact_type == "recommendation"
+                ],
+                "candidate_follow_up_details": [
+                    _candidate_follow_up_detail_dto(item)
+                    for item in candidates
+                    if item.fact_type == "follow_up"
+                ],
+                "canonical_procedure_details": [
+                    _canonical_procedure_detail_dto(item)
+                    for item in records
+                    if item.fact_type == "procedure"
+                ],
+                "canonical_recommendation_details": [
+                    _canonical_recommendation_detail_dto(item)
+                    for item in records
+                    if item.fact_type == "recommendation"
+                ],
+                "canonical_follow_up_details": [
+                    _canonical_follow_up_detail_dto(item)
+                    for item in records
+                    if item.fact_type == "follow_up"
                 ],
                 "timeline_events": [_timeline_event_dto(item) for item in events],
                 "visits": [_visit_dto(item) for item in visits],
@@ -552,6 +585,82 @@ def _canonical_lab_detail_dto(record: CanonicalRecord) -> dict[str, object]:
             None if detail.observed_date is None else detail.observed_date.isoformat()
         ),
         "source_flag_text": detail.source_flag_text,
+        "note": detail.note,
+    }
+
+
+def _candidate_procedure_detail_dto(candidate: CandidateFact) -> dict[str, object]:
+    detail = candidate.detail
+    assert isinstance(detail, ProcedureCandidateDetail)
+    return {
+        "candidate_id": candidate.id,
+        "display_name": detail.display_name,
+        "normalized_name": detail.normalized_name,
+        "status_text": detail.status_text,
+        "date_text": detail.date_text,
+        "note": detail.note,
+    }
+
+
+def _candidate_recommendation_detail_dto(candidate: CandidateFact) -> dict[str, object]:
+    detail = candidate.detail
+    assert isinstance(detail, RecommendationCandidateDetail)
+    return {
+        "candidate_id": candidate.id,
+        "instruction_text": detail.instruction_text,
+        "normalized_instruction": detail.normalized_instruction,
+        "context_text": detail.context_text,
+        "note": detail.note,
+    }
+
+
+def _candidate_follow_up_detail_dto(candidate: CandidateFact) -> dict[str, object]:
+    detail = candidate.detail
+    assert isinstance(detail, FollowUpCandidateDetail)
+    return {
+        "candidate_id": candidate.id,
+        "action_text": detail.action_text,
+        "normalized_action": detail.normalized_action,
+        "timing_text": detail.timing_text,
+        "destination_text": detail.destination_text,
+        "note": detail.note,
+    }
+
+
+def _canonical_procedure_detail_dto(record: CanonicalRecord) -> dict[str, object]:
+    detail = record.detail
+    assert isinstance(detail, ProcedureCandidateDetail)
+    return {
+        "record_id": record.id,
+        "display_name": detail.display_name,
+        "normalized_name": detail.normalized_name,
+        "status_text": detail.status_text,
+        "date_text": detail.date_text,
+        "note": detail.note,
+    }
+
+
+def _canonical_recommendation_detail_dto(record: CanonicalRecord) -> dict[str, object]:
+    detail = record.detail
+    assert isinstance(detail, RecommendationCandidateDetail)
+    return {
+        "record_id": record.id,
+        "instruction_text": detail.instruction_text,
+        "normalized_instruction": detail.normalized_instruction,
+        "context_text": detail.context_text,
+        "note": detail.note,
+    }
+
+
+def _canonical_follow_up_detail_dto(record: CanonicalRecord) -> dict[str, object]:
+    detail = record.detail
+    assert isinstance(detail, FollowUpCandidateDetail)
+    return {
+        "record_id": record.id,
+        "action_text": detail.action_text,
+        "normalized_action": detail.normalized_action,
+        "timing_text": detail.timing_text,
+        "destination_text": detail.destination_text,
         "note": detail.note,
     }
 

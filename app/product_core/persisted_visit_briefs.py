@@ -49,6 +49,10 @@ RENDER_VERSION = 1
 #: schema; v2 adds the generic typed "records" envelope. Old immutable v1
 #: revisions are never rewritten and remain readable.
 SUPPORTED_CONTENT_SCHEMA_VERSIONS = frozenset({1, 2})
+# D2.2 procedure, recommendation, and follow-up evidence is deferred pending
+# a dedicated Brief schema expansion.
+BRIEF_V2_ELIGIBLE_FACT_TYPES = frozenset({"medication", "condition", "lab"})
+
 MAX_PREPARATION_NOTES_LENGTH = 2_000
 SourceReader = Callable[[Source], bytes]
 
@@ -141,6 +145,7 @@ class PersistedVisitBriefService:
             return [
                 self._evidence_preview(record, self._source_or_raise(uow, record.source_id))
                 for record in records
+                if record.fact_type in BRIEF_V2_ELIGIBLE_FACT_TYPES
             ]
 
     def validate_evidence_selection(
@@ -563,6 +568,8 @@ class PersistedVisitBriefService:
                 )
             if not record.is_active:
                 raise VisitBriefValidationError("selected canonical record is inactive")
+            if record.fact_type not in BRIEF_V2_ELIGIBLE_FACT_TYPES:
+                raise VisitBriefValidationError("selected canonical record is not eligible")
             source = self._source_or_raise(uow, record.source_id)
             if source.person_id != visit.person_id:
                 raise VisitBriefValidationError("selected source belongs to another person")

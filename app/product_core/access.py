@@ -514,6 +514,9 @@ class ProductCoreAccess:
             "medication": "medication.write",
             "condition": "condition.write",
             "lab": "lab.write",
+            "procedure": "procedure.write",
+            "recommendation": "recommendation.write",
+            "follow_up": "follow_up.write",
         }.get(fact_type)
         if write_scope is None:
             raise CandidateNotFoundError("Record was not found.")

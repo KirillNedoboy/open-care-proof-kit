@@ -31,6 +31,12 @@
     "condition.write": Object.freeze({ group: "family.scope_group.health", label: "family.scope.condition_write" }),
     "lab.read": Object.freeze({ group: "family.scope_group.health", label: "family.scope.lab_read" }),
     "lab.write": Object.freeze({ group: "family.scope_group.health", label: "family.scope.lab_write" }),
+    "procedure.read": Object.freeze({ group: "family.scope_group.health", label: "family.scope.procedure_read" }),
+    "procedure.write": Object.freeze({ group: "family.scope_group.health", label: "family.scope.procedure_write" }),
+    "recommendation.read": Object.freeze({ group: "family.scope_group.health", label: "family.scope.recommendation_read" }),
+    "recommendation.write": Object.freeze({ group: "family.scope_group.health", label: "family.scope.recommendation_write" }),
+    "follow_up.read": Object.freeze({ group: "family.scope_group.health", label: "family.scope.follow_up_read" }),
+    "follow_up.write": Object.freeze({ group: "family.scope_group.health", label: "family.scope.follow_up_write" }),
     "timeline.read": Object.freeze({ group: "family.scope_group.health", label: "family.scope.timeline_read" }),
     "visit.read": Object.freeze({ group: "family.scope_group.health", label: "family.scope.visit_read" }),
     "visit.write": Object.freeze({ group: "family.scope_group.health", label: "family.scope.visit_write" }),
@@ -48,9 +54,11 @@
     v1: Object.freeze(["source.write", "candidate.review", "medication.write", "visit.write", "brief.write", "brief.export", "vault.export"]),
     v2: Object.freeze(["source.write", "candidate.review", "medication.write", "visit.write", "brief.write", "brief.export", "vault.export", "condition.write", "lab.write"]),
     v3: Object.freeze(["source.write", "candidate.review", "medication.write", "visit.write", "brief.write", "brief.export", "vault.export", "condition.write", "lab.write", "document.write"]),
+    v4: Object.freeze(["source.write", "candidate.review", "medication.write", "visit.write", "brief.write", "brief.export", "vault.export", "condition.write", "lab.write", "document.write", "procedure.write", "recommendation.write", "follow_up.write"]),
   });
   const inferPolicyGeneration = (scopes) => {
     const values = new Set(Array.isArray(scopes) ? scopes : []);
+    if (["procedure.read", "procedure.write", "recommendation.read", "recommendation.write", "follow_up.read", "follow_up.write"].some((scope) => values.has(scope))) return "v4";
     if (values.has("document.read") || values.has("document.write")) return "v3";
     if (["condition.read", "condition.write", "lab.read", "lab.write"].some((scope) => values.has(scope))) return "v2";
     return "v1";
@@ -178,13 +186,12 @@
     byId(fieldsetId).querySelectorAll("input[type=checkbox]:checked:not(:disabled)"),
     (input) => input.value,
   );
-  const renderScopeOptions = (fieldsetId, generation = "v3", selected = []) => {
+  const renderScopeOptions = (fieldsetId, generation = "v4", selected = []) => {
     const fieldset = byId(fieldsetId);
     const container = fieldset.querySelector(".family-scope-options");
     clear(container);
     OPTIONAL_SCOPES_BY_GENERATION[generation].forEach((scope) => {
       const input = document.createElement("input");
-      input.type = "checkbox";
       input.value = scope;
       input.checked = selected.includes(scope);
       const label = make("label");
@@ -627,8 +634,8 @@
       state.families = familiesPayload.families || [];
       await refreshPeople(peoplePayload);
       renderFamilies();
-      renderScopeOptions("grant-caregiver-scopes", "v3");
-      renderScopeOptions("invitation-caregiver-scopes", "v3");
+      renderScopeOptions("grant-caregiver-scopes", "v4");
+      renderScopeOptions("invitation-caregiver-scopes", "v4");
       setRoleControls("grant", byId("grant-role").value);
       setRoleControls("invitation", byId("invitation-role-select").value);
       try {
@@ -682,7 +689,7 @@
         }),
       });
       form.reset();
-      renderScopeOptions("grant-caregiver-scopes", "v3");
+      renderScopeOptions("grant-caregiver-scopes", "v4");
       setRoleControls("grant", "caregiver");
       await loadPersonAccess();
       status(t("family.access_granted", "Access granted."), "success");
@@ -724,7 +731,7 @@
       byId("issued-invitation").hidden = false;
       byId("invitation-empty").hidden = true;
       form.reset();
-      renderScopeOptions("invitation-caregiver-scopes", "v3");
+      renderScopeOptions("invitation-caregiver-scopes", "v4");
       setRoleControls("invitation", "caregiver");
       status(t("family.invitation_created", "Invitation created. Copy the code now."), "success");
       byId("issued-invitation").focus();
