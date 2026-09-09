@@ -179,7 +179,12 @@ def test_strict_json_loads_rejects_non_canonical_input() -> None:
 
 def test_controlled_identifier_constants_are_stable() -> None:
     assert frozenset(
-        {"visit_preparation", "record_explanation", "clinician_briefing"}
+        {
+            "visit_preparation",
+            "record_explanation",
+            "clinician_briefing",
+            "document_fact_extraction",
+        }
     ) == PURPOSE_IDS
     assert frozenset({"context.read", "source.read", "brief.draft"}) == TOOL_IDS
     assert "answer_question" in ACTION_REQUIREMENTS

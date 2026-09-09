@@ -53,7 +53,7 @@ def test_empty_person_export_has_canonical_bundle_and_manifest_checksum(tmp_path
         assert archive.read("manifest.sha256").decode("ascii") == hashlib.sha256(
             manifest
         ).hexdigest()
-    assert vault["format_version"] == 4
+    assert vault["format_version"] == 5
     assert vault["person"]["person_id"] == "person-1"
     assert vault["sources"] == []
     assert "relative_path" not in manifest.decode("utf-8")

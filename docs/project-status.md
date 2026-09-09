@@ -22,7 +22,7 @@ ecosystem evidence pending.
 
 ## Implemented boundary
 
-- Product Core schema v9 owns Person-scoped Sources, medications, recorded
+- Product Core schema v10 owns Person-scoped Sources, medications, recorded
   conditions, labs, Visits, Visit Questions, Visit Briefs, document
   extractions, genetics datasets, findings, grants, research sessions, export,
   backup, and recovery.
@@ -35,6 +35,10 @@ ecosystem evidence pending.
 - D1 PDF/TXT document ingest is implemented and published on public `main`:
   immutable Source bytes, bounded embedded-text extraction, page/span
   provenance, document grants, review lifecycle, export v4, and recovery.
+- D2.1 automatic source-grounded medication/condition/lab extraction is complete
+  locally on schema v10; D2 as a whole remains incomplete. D2.2 procedures,
+  recommendations, and follow-up extraction is next. UI redesign follows D2;
+  R7 Docker Distribution remains paused until then.
 - P3 Genetics Research Studio is implemented and published on public `main`:
   bounded local consumer-genotype import, selective indexing, evidence-backed
   reviewed findings, PGx associations, family comparison, Genetics Workspace,
@@ -189,7 +193,8 @@ trust-flow = VERIFIED. Free-model compatibility remains NOT VERIFIED; the two
 bounded candidate failures are recorded above. Ollama live smoke remains
 DEFERRED / UNVERIFIED, and OpenAI Responses live smoke remains UNVERIFIED.
 
-NEXT: R7 — Docker Distribution. R7 is not started.
+NEXT: D2.2 — Procedures / Recommendations / Follow-up extraction.
+After D2: UI Redesign. R7 Docker Distribution remains paused.
 
 ## HTTP privacy contract
 

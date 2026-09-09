@@ -15,7 +15,7 @@ release tags.
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
 | Persistent editable vault | `PARTIAL` | Product Core medication/condition/lab and Visit lifecycle, active People, Family permissions, and actor-scoped JSON API are implemented; other fact families remain out of scope. |
 | Document upload | `IMPLEMENTED` | Authenticated Person-scoped PDF/TXT upload; exact raw bytes are immutable. |
-| Product Core schema | `IMPLEMENTED` | Current migration latest is v9; v1-v8 remain historical migrations. |
+| Product Core schema | `IMPLEMENTED` | Current migration latest is v10; v1-v9 remain historical migrations. |
 | Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, source integrity tests, and P3 genetics source hashes. |
 | Extraction | `IMPLEMENTED` | Bounded deterministic embedded-text extraction; OCR and model extraction remain out of scope. |
 | Review inbox | `IMPLEMENTED` | P2 workspace: unified medication + condition + lab candidate review at `/workspace`; broader fact families remain unsupported. |

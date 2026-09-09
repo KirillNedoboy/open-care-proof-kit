@@ -179,7 +179,10 @@ class DocumentFactExtractionService:
             )
             if existing is not None and existing.status == "completed":
                 return self.serialize_run(
-                    existing, uow.document_fact_extractions.list_items(existing.run_id)
+                    existing,
+                    uow.document_fact_extractions.list_items(existing.run_id),
+                    page_count=extraction.page_count,
+                    character_count=extraction.total_chars,
                 )
             if extraction.total_chars > MAX_DOCUMENT_AI_TEXT_CHARS:
                 now = _now(self.runtime)
@@ -203,7 +206,12 @@ class DocumentFactExtractionService:
                     updated_at=now,
                 )
                 uow.document_fact_extractions.insert_run(run)
-                return self.serialize_run(run, [])
+                return self.serialize_run(
+                    run,
+                    [],
+                    page_count=extraction.page_count,
+                    character_count=extraction.total_chars,
+                )
             now = _now(self.runtime)
             if descriptor.provider_id == "deterministic":
                 status: DocumentFactRunStatus = "unavailable"
@@ -231,7 +239,9 @@ class DocumentFactExtractionService:
                 updated_at=now,
             )
             uow.document_fact_extractions.insert_run(run)
-            return self.serialize_run(run, [])
+            return self.serialize_run(
+                run, [], page_count=extraction.page_count, character_count=extraction.total_chars
+            )
 
     def consent(
         self,
@@ -564,9 +574,17 @@ class DocumentFactExtractionService:
 
     @staticmethod
     def serialize_run(
-        run: DocumentFactExtractionRun, items: list[DocumentFactExtractionItem]
+        run: DocumentFactExtractionRun,
+        items: list[DocumentFactExtractionItem],
+        *,
+        page_count: int | None = None,
+        character_count: int | None = None,
     ) -> dict[str, Any]:
         return {
             **run.model_dump(mode="json"),
+            "page_count": page_count,
+            "character_count": character_count,
+            "retention": "provider_policy" if run.external else "request_only",
+            "requires_consent": run.external and run.status == "consent_required",
             "items": [item.model_dump(mode="json") for item in items],
         }

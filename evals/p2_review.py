@@ -19,7 +19,7 @@ capability / usability / security contract:
 - timeline readability mapping applied without mutating stored event codes;
 - Visit + Questions + a three-family Visit Brief (content schema v2) with v1
   revisions still readable;
-- export filename/version coherence (``PORTABLE_VAULT_FORMAT_VERSION == 4``,
+- export filename/version coherence (``PORTABLE_VAULT_FORMAT_VERSION == 5``,
   server ``Content-Disposition`` derives from the constant);
 - revocation fail-closed, and the six P2 security counters all zero.
 
@@ -894,9 +894,9 @@ def run_review() -> tuple[int, dict[str, str]]:
     # 11. Export filename/version coherence.
     # ------------------------------------------------------------------ #
     expected_vault_filename = f"opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"
-    checks.check(PORTABLE_VAULT_FORMAT_VERSION == 4, "portable vault format version is not 4")
+    checks.check(PORTABLE_VAULT_FORMAT_VERSION == 5, "portable vault format version is not 5")
     checks.check(
-        expected_vault_filename == "opencare-person-vault-v4.zip",
+        expected_vault_filename == "opencare-person-vault-v5.zip",
         "server vault filename does not derive from the format version",
     )
     api_spec = importlib.util.find_spec("app.product_core.api")
@@ -923,11 +923,11 @@ def run_review() -> tuple[int, dict[str, str]]:
 
     # ------------------------------------------------------------------ #
     checks.check(
-        product_migrations.PRODUCT_MIGRATIONS[-1].version == 9,
-        "product schema version is not the current v9",
+        product_migrations.PRODUCT_MIGRATIONS[-1].version == 10,
+        "product schema version is not the current v10",
     )
     checks.check(
-        PORTABLE_VAULT_FORMAT_VERSION == 4
+        PORTABLE_VAULT_FORMAT_VERSION == 5
         and CONTENT_SCHEMA_VERSION == 2
         and frozenset({1, 2}) == SUPPORTED_CONTENT_SCHEMA_VERSIONS,
         "P2 format constants drifted",

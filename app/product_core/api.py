@@ -1633,8 +1633,12 @@ def get_latest_document_fact_extraction(
             return {"status": "not_analyzed", "source_id": source_id, "items": []}
         run = uow.document_fact_extractions.get_run(str(row["run_id"]))
         assert run is not None
+        extraction = uow.document_extractions.get(run.extraction_id)
         return DocumentFactExtractionService.serialize_run(
-            run, uow.document_fact_extractions.list_items(run.run_id)
+            run,
+            uow.document_fact_extractions.list_items(run.run_id),
+            page_count=None if extraction is None else extraction.page_count,
+            character_count=None if extraction is None else extraction.total_chars,
         )
 
 

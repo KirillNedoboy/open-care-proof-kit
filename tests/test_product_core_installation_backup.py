@@ -62,7 +62,7 @@ def test_backup_and_offline_verify_create_a_complete_installation_artifact(
     )
     manifest = json.loads(manifest_bytes)
     assert manifest["format_version"] == 1
-    assert manifest["product_core_schema_version"] == 9
+    assert manifest["product_core_schema_version"] == 10
     assert manifest["created_at"] == "2026-07-30T12:00:00+00:00"
     assert manifest["sources"][0]["source_id"] == source.id
     assert (destination / "sources" / source.id / "payload.bin").is_file()
