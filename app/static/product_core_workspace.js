@@ -177,7 +177,7 @@
   function documentDisclosureMessage(prepared) {
     const disclosure = prepared?.preview || prepared || {};
     const categories = Array.isArray(disclosure.enabled_categories)
-      ? disclosure.enabled_categories.join(", ")
+      ? disclosure.enabled_categories.map((category) => factLabel(category)).join(", ")
       : "";
     return [
       t("workspace.document_external_disclosure", "Analyze this document with the external provider?"),
