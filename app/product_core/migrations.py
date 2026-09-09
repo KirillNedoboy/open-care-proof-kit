@@ -1719,6 +1719,12 @@ PRODUCT_MIGRATIONS = (
                 source_id TEXT NOT NULL,
                 extraction_id TEXT NOT NULL,
                 actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                execution_id TEXT NOT NULL UNIQUE CHECK (length(trim(execution_id)) > 0),
+                input_text_hash TEXT NOT NULL CHECK (
+                    length(input_text_hash) = 64
+                    AND input_text_hash = lower(input_text_hash)
+                    AND input_text_hash NOT GLOB '*[^0-9a-f]*'
+                ),
                 request_fingerprint TEXT NOT NULL CHECK (
                     length(request_fingerprint) = 64
                     AND request_fingerprint = lower(request_fingerprint)
@@ -1745,8 +1751,8 @@ PRODUCT_MIGRATIONS = (
                 model_id TEXT,
                 external INTEGER NOT NULL DEFAULT 0 CHECK (external IN (0, 1)),
                 envelope_id TEXT,
-                consent_id TEXT,
-                receipt_id TEXT,
+                consent_id TEXT REFERENCES agent_disclosure_consents(consent_id),
+                receipt_id TEXT REFERENCES agent_execution_receipts(receipt_id),
                 reason_code TEXT,
                 total_facts INTEGER NOT NULL DEFAULT 0 CHECK (total_facts >= 0),
                 valid_facts INTEGER NOT NULL DEFAULT 0 CHECK (valid_facts >= 0),
@@ -1831,6 +1837,10 @@ PRODUCT_MIGRATIONS = (
                 "document_fact_extraction_runs(source_id, status, updated_at)"
             ),
             (
+                "CREATE INDEX document_fact_runs_execution_idx ON "
+                "document_fact_extraction_runs(execution_id)"
+            ),
+            (
                 "CREATE UNIQUE INDEX document_fact_active_request_idx ON "
                 "document_fact_extraction_runs(person_id, source_id, extraction_id, request_fingerprint) "
                 "WHERE status IN ('prepared', 'consent_required', 'consented', 'executing', 'completed')"
@@ -1846,17 +1856,104 @@ PRODUCT_MIGRATIONS = (
             """
             CREATE TRIGGER document_fact_run_identity_immutable
             BEFORE UPDATE OF person_id, source_id, extraction_id, actor_id,
-                request_fingerprint, contract_version, provider_descriptor_hash
+                execution_id, input_text_hash, request_fingerprint, contract_version,
+                allowed_fact_types_json, provider_id, provider_kind,
+                provider_descriptor_hash, model_id, external, envelope_id
                 ON document_fact_extraction_runs
             WHEN NEW.person_id <> OLD.person_id
               OR NEW.source_id <> OLD.source_id
               OR NEW.extraction_id <> OLD.extraction_id
               OR NEW.actor_id <> OLD.actor_id
+              OR NEW.execution_id <> OLD.execution_id
+              OR NEW.input_text_hash <> OLD.input_text_hash
               OR NEW.request_fingerprint <> OLD.request_fingerprint
               OR NEW.contract_version <> OLD.contract_version
+              OR NEW.allowed_fact_types_json <> OLD.allowed_fact_types_json
+              OR COALESCE(NEW.provider_id, '') <> COALESCE(OLD.provider_id, '')
+              OR COALESCE(NEW.provider_kind, '') <> COALESCE(OLD.provider_kind, '')
               OR COALESCE(NEW.provider_descriptor_hash, '') <> COALESCE(OLD.provider_descriptor_hash, '')
+              OR COALESCE(NEW.model_id, '') <> COALESCE(OLD.model_id, '')
+              OR NEW.external <> OLD.external
+              OR COALESCE(NEW.envelope_id, '') <> COALESCE(OLD.envelope_id, '')
             BEGIN
                 SELECT RAISE(ABORT, 'document_fact_run_identity_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_consent_binding_insert
+            BEFORE INSERT ON document_fact_extraction_runs
+            WHEN NEW.consent_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_disclosure_consents AS consent
+                WHERE consent.consent_id = NEW.consent_id
+                  AND consent.execution_id = NEW.execution_id
+                  AND consent.actor_id = NEW.actor_id
+                  AND consent.person_id = NEW.person_id
+                  AND consent.envelope_id = NEW.envelope_id
+                  AND consent.provider_id = NEW.provider_id
+                  AND consent.provider_descriptor_hash = NEW.provider_descriptor_hash
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_consent_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_consent_binding_update
+            BEFORE UPDATE OF consent_id ON document_fact_extraction_runs
+            WHEN NEW.consent_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_disclosure_consents AS consent
+                WHERE consent.consent_id = NEW.consent_id
+                  AND consent.execution_id = NEW.execution_id
+                  AND consent.actor_id = NEW.actor_id
+                  AND consent.person_id = NEW.person_id
+                  AND consent.envelope_id = NEW.envelope_id
+                  AND consent.provider_id = NEW.provider_id
+                  AND consent.provider_descriptor_hash = NEW.provider_descriptor_hash
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_consent_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_receipt_binding_insert
+            BEFORE INSERT ON document_fact_extraction_runs
+            WHEN NEW.receipt_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_execution_receipts AS receipt
+                WHERE receipt.receipt_id = NEW.receipt_id
+                  AND receipt.execution_id = NEW.execution_id
+                  AND receipt.actor_id = NEW.actor_id
+                  AND receipt.person_id = NEW.person_id
+                  AND receipt.envelope_id = NEW.envelope_id
+                  AND receipt.consent_id = NEW.consent_id
+                  AND receipt.provider_id = NEW.provider_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_receipt_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_receipt_binding_update
+            BEFORE UPDATE OF receipt_id ON document_fact_extraction_runs
+            WHEN NEW.receipt_id IS NOT NULL AND NOT EXISTS (
+                SELECT 1 FROM agent_execution_receipts AS receipt
+                WHERE receipt.receipt_id = NEW.receipt_id
+                  AND receipt.execution_id = NEW.execution_id
+                  AND receipt.actor_id = NEW.actor_id
+                  AND receipt.person_id = NEW.person_id
+                  AND receipt.envelope_id = NEW.envelope_id
+                  AND receipt.consent_id = NEW.consent_id
+                  AND receipt.provider_id = NEW.provider_id
+            )
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_receipt_binding_mismatch');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_binding_immutable
+            BEFORE UPDATE OF consent_id, receipt_id ON document_fact_extraction_runs
+            WHEN (OLD.consent_id IS NOT NULL AND COALESCE(NEW.consent_id, '') <> OLD.consent_id)
+              OR (OLD.receipt_id IS NOT NULL AND COALESCE(NEW.receipt_id, '') <> OLD.receipt_id)
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_run_binding_immutable');
             END
             """,
             """
@@ -1870,6 +1967,34 @@ PRODUCT_MIGRATIONS = (
                OR COALESCE(NEW.completed_at, '') <> COALESCE(OLD.completed_at, ''))
             BEGIN
                 SELECT RAISE(ABORT, 'document_fact_run_terminal_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_item_immutable_update
+            BEFORE UPDATE ON document_fact_extraction_items
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_item_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_item_immutable_delete
+            BEFORE DELETE ON document_fact_extraction_items
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_item_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_registry_immutable_update
+            BEFORE UPDATE ON document_fact_extracted_facts
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_registry_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_registry_immutable_delete
+            BEFORE DELETE ON document_fact_extracted_facts
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_registry_immutable');
             END
             """,
             """

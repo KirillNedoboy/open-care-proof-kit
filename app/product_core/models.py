@@ -116,6 +116,8 @@ class DocumentFactExtractionRun(BaseModel):
     source_id: str = Field(min_length=1)
     extraction_id: str = Field(min_length=1)
     actor_id: str = Field(min_length=1)
+    execution_id: str = Field(min_length=1)
+    input_text_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     contract_version: Literal["opencare-document-facts/1"]
     status: DocumentFactRunStatus

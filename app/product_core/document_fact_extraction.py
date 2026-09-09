@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
-from typing import Any, cast
+from typing import Any, Literal, cast
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from app.agent.providers.contract import AgentProvider, ProviderExecutionRequest
+from app.agent.g2_runtime import G2Runtime
+from app.agent.providers.contract import AgentProvider
+from app.agent.validation import ValidationResult
+from app.agent_trust.canonical import canonical_bytes, sha256_hex
 from app.product_core.models import (
     CandidateFact,
     ConditionCandidateDetail,
@@ -22,14 +26,14 @@ from app.product_core.models import (
 )
 from app.product_core.runtime import ProductCoreRuntime
 
-CONTRACT_VERSION = "opencare-document-facts/1"
+CONTRACT_VERSION: Literal["opencare-document-facts/1"] = "opencare-document-facts/1"
 MAX_DOCUMENT_AI_TEXT_CHARS = 60_000
 MAX_DOCUMENT_AI_FACTS = 32
 MAX_DOCUMENT_AI_QUOTE_CHARS = 600
 
 
 class MedicationSuggestion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
     page_number: int = Field(ge=1, le=200)
     evidence_quote: str = Field(min_length=1, max_length=MAX_DOCUMENT_AI_QUOTE_CHARS)
     display_name: str = Field(min_length=1, max_length=200)
@@ -38,7 +42,7 @@ class MedicationSuggestion(BaseModel):
 
 
 class ConditionSuggestion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
     page_number: int = Field(ge=1, le=200)
     evidence_quote: str = Field(min_length=1, max_length=MAX_DOCUMENT_AI_QUOTE_CHARS)
     display_name: str = Field(min_length=1, max_length=200)
@@ -46,9 +50,21 @@ class ConditionSuggestion(BaseModel):
     onset_date: date | None = None
     note: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("onset_date", mode="before")
+    @classmethod
+    def parse_json_date(cls, value: Any) -> Any:
+        if value is None or isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                pass
+        raise ValueError("onset_date must be an ISO date")
+
 
 class LabSuggestion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
     page_number: int = Field(ge=1, le=200)
     evidence_quote: str = Field(min_length=1, max_length=MAX_DOCUMENT_AI_QUOTE_CHARS)
     test_name: str = Field(min_length=1, max_length=200)
@@ -59,9 +75,21 @@ class LabSuggestion(BaseModel):
     source_flag_text: str | None = Field(default=None, max_length=500)
     note: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("observed_date", mode="before")
+    @classmethod
+    def parse_json_date(cls, value: Any) -> Any:
+        if value is None or isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                pass
+        raise ValueError("observed_date must be an ISO date")
+
 
 class DocumentFactAnswer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
     medications: list[MedicationSuggestion]
     conditions: list[ConditionSuggestion]
     labs: list[LabSuggestion]
@@ -71,6 +99,69 @@ def _fingerprint(value: object) -> str:
     return hashlib.sha256(
         json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def _document_snapshot_hash(pages: list[Any]) -> str:
+    records = [
+        {"page_number": int(page.page_number), "text": str(page.normalized_text)}
+        for page in sorted(pages, key=lambda item: item.page_number)
+    ]
+    return sha256_hex(canonical_bytes(cast(Any, records)))
+
+
+def _d1_text_hash(pages: list[Any]) -> str:
+    digest = hashlib.sha256()
+    for page in sorted(pages, key=lambda item: item.page_number):
+        encoded = str(page.normalized_text).encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, "big"))
+        digest.update(encoded)
+    return digest.hexdigest()
+
+
+def _document_request_question(
+    *,
+    person_id: str,
+    source_id: str,
+    extraction_id: str,
+    input_text_hash: str,
+    allowed_fact_types: list[str],
+    page_count: int,
+    character_count: int,
+) -> str:
+    payload = {
+        "person_id": person_id,
+        "source_id": source_id,
+        "extraction_id": extraction_id,
+        "input_text_hash": input_text_hash,
+        "allowed_fact_types": sorted(set(allowed_fact_types)),
+        "page_count": page_count,
+        "character_count": character_count,
+    }
+    return "opencare-document-facts-request:" + json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+
+
+def _document_request_fingerprint(
+    *,
+    person_id: str,
+    source_id: str,
+    extraction_id: str,
+    input_text_hash: str,
+    provider_descriptor_hash: str,
+    allowed_fact_types: list[str],
+) -> str:
+    return _fingerprint(
+        [
+            person_id,
+            source_id,
+            extraction_id,
+            input_text_hash,
+            CONTRACT_VERSION,
+            provider_descriptor_hash,
+            sorted(set(allowed_fact_types)),
+        ]
+    )
 
 
 def _now(runtime: ProductCoreRuntime) -> datetime:
@@ -147,101 +238,245 @@ def _suggestions(answer: Any) -> list[tuple[FactType, Suggestion]]:
     ]
 
 
+def _validate_document_fact_answer(
+    answer: dict[str, Any], *, allowed_fact_types: Sequence[str] | None = None
+) -> ValidationResult:
+    """Validate the provider contract without applying any Product Core write."""
+    try:
+        suggestions = _suggestions(answer)
+    except (TypeError, ValueError, ValidationError):
+        return ValidationResult(False, "validation_failed")
+    if allowed_fact_types is not None:
+        allowed = set(allowed_fact_types)
+        if any(fact_type not in allowed for fact_type, _suggestion in suggestions):
+            return ValidationResult(False, "fact_type_not_allowed")
+    return ValidationResult(True)
+
+
 class DocumentFactExtractionService:
-    def __init__(self, runtime: ProductCoreRuntime, provider: AgentProvider) -> None:
+    def __init__(
+        self,
+        runtime: ProductCoreRuntime,
+        provider: AgentProvider,
+        g2_runtime: G2Runtime | None = None,
+    ) -> None:
         self.runtime = runtime
         self.provider = provider
+        self.g2_runtime = g2_runtime
 
     def prepare(
-        self, person_id: str, source_id: str, allowed_fact_types: list[str], *, actor_id: str
+        self,
+        person_id: str,
+        source_id: str,
+        allowed_fact_types: list[str],
+        *,
+        actor_id: str,
+        session_token: str | None = None,
     ) -> dict[str, Any]:
         descriptor = self.provider.descriptor
-        with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+        normalized_types = sorted(set(allowed_fact_types))
+        if (
+            not normalized_types
+            or normalized_types != allowed_fact_types
+            or any(item not in {"medication", "condition", "lab"} for item in normalized_types)
+        ):
+            raise ValueError("fact_types_invalid")
+        with self.runtime.database.uow() as uow:
             source = uow.sources.get(source_id)
             if source is None or source.person_id != person_id or source.source_type != "document":
                 raise ValueError("document_not_found")
             extraction = uow.document_extractions.get_complete_for_source(source_id)
             if extraction is None:
                 raise ValueError("document_extraction_missing")
-            request_fingerprint = _fingerprint(
-                [
-                    person_id,
-                    source_id,
-                    extraction.extraction_id,
-                    extraction.text_hash,
-                    CONTRACT_VERSION,
-                    descriptor.descriptor_hash,
-                    sorted(allowed_fact_types),
-                ]
-            )
+            pages = uow.document_extractions.list_pages(extraction.extraction_id)
+        input_text_hash = _document_snapshot_hash(pages)
+        request_fingerprint = _document_request_fingerprint(
+            person_id=person_id,
+            source_id=source_id,
+            extraction_id=extraction.extraction_id,
+            input_text_hash=input_text_hash,
+            provider_descriptor_hash=descriptor.descriptor_hash,
+            allowed_fact_types=normalized_types,
+        )
+        existing_items: list[DocumentFactExtractionItem] = []
+        with self.runtime.database.uow() as uow:
             existing = uow.document_fact_extractions.get_run_by_fingerprint(
                 person_id, source_id, extraction.extraction_id, request_fingerprint
             )
-            if existing is not None and existing.status == "completed":
-                return self.serialize_run(
-                    existing,
-                    uow.document_fact_extractions.list_items(existing.run_id),
+            if existing is not None:
+                existing_items = uow.document_fact_extractions.list_items(existing.run_id)
+        if existing is not None:
+            if (
+                existing.status == "prepared"
+                and not existing.external
+                and existing.consent_id is None
+                and self.g2_runtime is not None
+                and session_token is not None
+            ):
+                retry_question = _document_request_question(
+                    person_id=existing.person_id,
+                    source_id=existing.source_id,
+                    extraction_id=existing.extraction_id,
+                    input_text_hash=existing.input_text_hash,
+                    allowed_fact_types=list(existing.allowed_fact_types),
                     page_count=extraction.page_count,
                     character_count=extraction.total_chars,
                 )
-            if extraction.total_chars > MAX_DOCUMENT_AI_TEXT_CHARS:
-                now = _now(self.runtime)
-                run = DocumentFactExtractionRun(
-                    run_id=self.runtime.id_factory(),
-                    person_id=person_id,
-                    source_id=source_id,
-                    extraction_id=extraction.extraction_id,
-                    actor_id=actor_id,
-                    request_fingerprint=request_fingerprint,
-                    contract_version="opencare-document-facts/1",
-                    status="unavailable",
-                    allowed_fact_types=cast(list[FactType], sorted(allowed_fact_types)),
-                    provider_id=descriptor.provider_id,
-                    provider_kind=descriptor.provider_kind,
-                    provider_descriptor_hash=descriptor.descriptor_hash,
-                    model_id=descriptor.model_id,
-                    external=descriptor.external,
-                    reason_code="input_chars_limit_exceeded",
-                    created_at=now,
-                    updated_at=now,
+                consent_result = self.g2_runtime.grant_disclosure_consent(
+                    session_token,
+                    existing.execution_id,
+                    fields=list(existing.allowed_fact_types),
+                    question=retry_question,
                 )
-                uow.document_fact_extractions.insert_run(run)
-                return self.serialize_run(
-                    run,
-                    [],
-                    page_count=extraction.page_count,
-                    character_count=extraction.total_chars,
-                )
-            now = _now(self.runtime)
-            if descriptor.provider_id == "deterministic":
-                status: DocumentFactRunStatus = "unavailable"
-                reason_code = "automatic_analysis_unavailable"
-            else:
-                status = "consent_required" if descriptor.external else "prepared"
-                reason_code = None
+                with self.runtime.database.uow(begin_mode="IMMEDIATE") as update_uow:
+                    stored = update_uow.document_fact_extractions.get_run(existing.run_id)
+                    if stored is None:
+                        raise ValueError("run_not_found")
+                    stored.status = "consented"
+                    stored.consent_id = consent_result.consent_id
+                    stored.updated_at = _now(self.runtime)
+                    update_uow.document_fact_extractions.update_run(stored)
+                    existing = stored
+                    existing_items = update_uow.document_fact_extractions.list_items(
+                        existing.run_id
+                    )
+            return self.serialize_run(
+                existing,
+                existing_items,
+                page_count=extraction.page_count,
+                character_count=extraction.total_chars,
+            )
+
+        now = _now(self.runtime)
+        run_id = self.runtime.id_factory()
+        if extraction.total_chars > MAX_DOCUMENT_AI_TEXT_CHARS:
             run = DocumentFactExtractionRun(
-                run_id=self.runtime.id_factory(),
+                run_id=run_id,
                 person_id=person_id,
                 source_id=source_id,
                 extraction_id=extraction.extraction_id,
                 actor_id=actor_id,
+                execution_id=f"unavailable:{run_id}",
+                input_text_hash=input_text_hash,
                 request_fingerprint=request_fingerprint,
-                contract_version="opencare-document-facts/1",
-                status=status,
-                allowed_fact_types=cast(list[FactType], sorted(allowed_fact_types)),
+                contract_version=CONTRACT_VERSION,
+                status="unavailable",
+                allowed_fact_types=cast(list[FactType], normalized_types),
                 provider_id=descriptor.provider_id,
                 provider_kind=descriptor.provider_kind,
                 provider_descriptor_hash=descriptor.descriptor_hash,
                 model_id=descriptor.model_id,
                 external=descriptor.external,
-                reason_code=reason_code,
+                reason_code="input_chars_limit_exceeded",
                 created_at=now,
                 updated_at=now,
             )
-            uow.document_fact_extractions.insert_run(run)
+            with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+                uow.document_fact_extractions.insert_run(run)
             return self.serialize_run(
-                run, [], page_count=extraction.page_count, character_count=extraction.total_chars
+                run,
+                [],
+                page_count=extraction.page_count,
+                character_count=extraction.total_chars,
             )
+        if descriptor.provider_kind == "deterministic":
+            # The deterministic/demo provider is intentionally not an analysis
+            # provider.  No Envelope, consent, or provider call is created.
+            run = DocumentFactExtractionRun(
+                run_id=run_id,
+                person_id=person_id,
+                source_id=source_id,
+                extraction_id=extraction.extraction_id,
+                actor_id=actor_id,
+                execution_id=f"unavailable:{run_id}",
+                input_text_hash=input_text_hash,
+                request_fingerprint=request_fingerprint,
+                contract_version=CONTRACT_VERSION,
+                status="unavailable",
+                allowed_fact_types=cast(list[FactType], normalized_types),
+                provider_id=descriptor.provider_id,
+                provider_kind=descriptor.provider_kind,
+                provider_descriptor_hash=descriptor.descriptor_hash,
+                model_id=descriptor.model_id,
+                external=descriptor.external,
+                reason_code="automatic_analysis_unavailable",
+                created_at=now,
+                updated_at=now,
+            )
+            with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+                uow.document_fact_extractions.insert_run(run)
+            return self.serialize_run(
+                run,
+                [],
+                page_count=extraction.page_count,
+                character_count=extraction.total_chars,
+            )
+
+        if self.g2_runtime is None or session_token is None:
+            raise ValueError("document_trust_unavailable")
+        question = _document_request_question(
+            person_id=person_id,
+            source_id=source_id,
+            extraction_id=extraction.extraction_id,
+            input_text_hash=input_text_hash,
+            allowed_fact_types=normalized_types,
+            page_count=extraction.page_count,
+            character_count=extraction.total_chars,
+        )
+        prepared = self.g2_runtime.prepare(
+            session_token,
+            question,
+            purpose_id="document_fact_extraction",
+            action_id="document.extract_facts",
+        )
+        status: DocumentFactRunStatus = "consent_required" if descriptor.external else "prepared"
+        run = DocumentFactExtractionRun(
+            run_id=run_id,
+            person_id=person_id,
+            source_id=source_id,
+            extraction_id=extraction.extraction_id,
+            actor_id=actor_id,
+            execution_id=prepared.execution_id,
+            input_text_hash=input_text_hash,
+            request_fingerprint=request_fingerprint,
+            contract_version=CONTRACT_VERSION,
+            status=status,
+            allowed_fact_types=cast(list[FactType], normalized_types),
+            provider_id=descriptor.provider_id,
+            provider_kind=descriptor.provider_kind,
+            provider_descriptor_hash=descriptor.descriptor_hash,
+            model_id=descriptor.model_id,
+            external=descriptor.external,
+            envelope_id=prepared.envelope_id,
+            created_at=now,
+            updated_at=now,
+        )
+        with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+            uow.document_fact_extractions.insert_run(run)
+        if not descriptor.external:
+            consent_result = self.g2_runtime.grant_disclosure_consent(
+                session_token,
+                prepared.execution_id,
+                fields=normalized_types,
+                question=question,
+            )
+            with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+                stored = uow.document_fact_extractions.get_run(run_id)
+                if stored is None:
+                    raise ValueError("run_not_found")
+                stored.status = "consented"
+                stored.consent_id = consent_result.consent_id
+                stored.updated_at = _now(self.runtime)
+                uow.document_fact_extractions.update_run(stored)
+                run = stored
+        result = self.serialize_run(
+            run,
+            [],
+            page_count=extraction.page_count,
+            character_count=extraction.total_chars,
+        )
+        result["preview"] = prepared.preview
+        return result
 
     def consent(
         self,
@@ -250,12 +485,13 @@ class DocumentFactExtractionService:
         *,
         person_id: str | None = None,
         source_id: str | None = None,
+        session_token: str | None = None,
     ) -> dict[str, Any]:
         if decision == "decline":
             return self.decline(run_id)
         if decision != "approve":
             raise ValueError("invalid_consent_decision")
-        with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+        with self.runtime.database.uow() as uow:
             run = uow.document_fact_extractions.get_run(run_id)
             if run is None:
                 raise ValueError("run_not_found")
@@ -263,11 +499,42 @@ class DocumentFactExtractionService:
                 source_id is not None and run.source_id != source_id
             ):
                 raise ValueError("run_not_found")
-            if run.external and run.status == "consent_required":
-                run.status = "consented"
-                run.updated_at = _now(self.runtime)
-                uow.document_fact_extractions.update_run(run)
-            return self.serialize_run(run, uow.document_fact_extractions.list_items(run_id))
+            if not run.external or run.status != "consent_required":
+                return self.serialize_run(run, uow.document_fact_extractions.list_items(run_id))
+            if self.g2_runtime is None or session_token is None:
+                raise ValueError("document_trust_unavailable")
+            execution_id = run.execution_id
+            question = self._question_for_run(run)
+        consent_result = self.g2_runtime.grant_disclosure_consent(
+            session_token,
+            execution_id,
+            fields=list(run.allowed_fact_types),
+            question=question,
+        )
+        with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
+            stored = uow.document_fact_extractions.get_run(run_id)
+            if stored is None:
+                raise ValueError("run_not_found")
+            stored.status = "consented"
+            stored.consent_id = consent_result.consent_id
+            stored.updated_at = _now(self.runtime)
+            uow.document_fact_extractions.update_run(stored)
+            return self.serialize_run(stored, uow.document_fact_extractions.list_items(run_id))
+
+    def _question_for_run(self, run: DocumentFactExtractionRun) -> str:
+        with self.runtime.database.uow() as uow:
+            extraction = uow.document_extractions.get(run.extraction_id)
+        if extraction is None:
+            raise ValueError("document_extraction_missing")
+        return _document_request_question(
+            person_id=run.person_id,
+            source_id=run.source_id,
+            extraction_id=run.extraction_id,
+            input_text_hash=run.input_text_hash,
+            allowed_fact_types=list(run.allowed_fact_types),
+            page_count=extraction.page_count,
+            character_count=extraction.total_chars,
+        )
 
     def execute(
         self,
@@ -277,6 +544,7 @@ class DocumentFactExtractionService:
         source_id: str | None = None,
         consent: bool = False,
         authorized_fact_types: list[str] | None = None,
+        session_token: str | None = None,
     ) -> dict[str, Any]:
         with self.runtime.database.uow() as uow:
             run = uow.document_fact_extractions.get_run(run_id)
@@ -290,73 +558,95 @@ class DocumentFactExtractionService:
                 return self.serialize_run(run, uow.document_fact_extractions.list_items(run_id))
             if run.external and run.status != "consented" and not consent:
                 raise ValueError("consent_required")
-            effective_fact_types = [
-                item
-                for item in run.allowed_fact_types
-                if authorized_fact_types is None or item in authorized_fact_types
-            ]
-            if not effective_fact_types:
-                raise ValueError("no_writable_fact_types")
+            effective_fact_types = sorted(
+                set(run.allowed_fact_types)
+                if authorized_fact_types is None
+                else set(authorized_fact_types)
+            )
+            if effective_fact_types != sorted(run.allowed_fact_types):
+                raise ValueError("context_changed")
             source = uow.sources.get(run.source_id)
             extraction = uow.document_extractions.get(run.extraction_id)
             if source is None or extraction is None:
                 raise ValueError("document_not_found")
             pages = uow.document_extractions.list_pages(run.extraction_id)
-        if self.provider.descriptor.provider_id == "deterministic":
-            return self._finish_unavailable(run_id)
-        representation = tuple(
-            {"page_number": p.page_number, "text": p.normalized_text} for p in pages
+        if self.provider.descriptor.provider_kind == "deterministic":
+            if run.provider_kind == "deterministic":
+                return self._finish_unavailable(run_id)
+            raise ValueError("context_changed")
+        if self.g2_runtime is None or session_token is None:
+            raise ValueError("document_trust_unavailable")
+        question = _document_request_question(
+            person_id=run.person_id,
+            source_id=run.source_id,
+            extraction_id=run.extraction_id,
+            input_text_hash=run.input_text_hash,
+            allowed_fact_types=effective_fact_types,
+            page_count=extraction.page_count,
+            character_count=extraction.total_chars,
         )
-        request = ProviderExecutionRequest(
-            question="Extract only explicit medication, condition, and lab facts from these pages.",
-            purpose_id="document_fact_extraction",
-            action_id="document.extract_facts",
-            requested_action=(
-                "Extract source-stated document facts without diagnosis or treatment advice."
-            ),
-            evidence=representation,
-            allowed_tools=(),
-            allowed_fields=tuple(effective_fact_types),
-            output_contract=DocumentFactAnswer.model_json_schema(),
-            system_instructions=(
-                "Copy only the supplied document. Do not infer, diagnose, interpret labs, "
-                "or recommend treatment. Every fact requires one exact verbatim quote; "
-                "omit uncertainty."
-            ),
-            disclosure_constraints=("disclose_only_selected_fields",),
-            prohibited_operations=("canonical_record_mutation", "diagnosis", "treatment_planning"),
-        )
+        result = self.g2_runtime.execute(session_token, run.execution_id, question)
+        if result.status != "answered" or not isinstance(result.answer, dict):
+            if result.receipt_id is None:
+                raise ValueError(result.reason_code or "context_changed")
+            return self._finish_failed(
+                run_id,
+                result.reason_code or "provider_failed",
+                receipt_id=result.receipt_id,
+            )
         try:
-            result = self.provider.execute(request)
-            if result.failure is not None or result.answer is None:
-                raise ValueError("provider_failed")
             suggestions = _suggestions(result.answer)
-        except Exception:
-            return self._finish_failed(run_id, "provider_failed")
+        except (TypeError, ValueError, ValidationError):
+            return self._finish_failed(
+                run_id, "validation_failed", receipt_id=result.receipt_id
+            )
         if len(suggestions) > MAX_DOCUMENT_AI_FACTS:
-            return self._finish_failed(run_id, "fact_count_limit_exceeded")
-        return self._materialize(
-            run_id, suggestions, source, extraction, pages, authorized_fact_types
-        )
+            return self._finish_failed(
+                run_id, "fact_count_limit_exceeded", receipt_id=result.receipt_id
+            )
+        try:
+            return self._materialize(
+                run_id,
+                suggestions,
+                source,
+                extraction,
+                pages,
+                effective_fact_types,
+                receipt_id=result.receipt_id,
+            )
+        except ValueError as error:
+            if str(error) != "context_changed":
+                raise
+            return self._finish_failed(
+                run_id, "context_changed", receipt_id=result.receipt_id
+            )
 
     def decline(self, run_id: str) -> dict[str, Any]:
         with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
             run = uow.document_fact_extractions.get_run(run_id)
             if run is None:
                 raise ValueError("run_not_found")
+            if run.status == "declined":
+                return self.serialize_run(
+                    run, uow.document_fact_extractions.list_items(run_id)
+                )
             run.status = "declined"
             run.updated_at = _now(self.runtime)
             run.completed_at = run.updated_at
             uow.document_fact_extractions.update_run(run)
             return self.serialize_run(run, uow.document_fact_extractions.list_items(run_id))
 
-    def _finish_failed(self, run_id: str, reason: str) -> dict[str, Any]:
+    def _finish_failed(
+        self, run_id: str, reason: str, *, receipt_id: str | None = None
+    ) -> dict[str, Any]:
         with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
             run = uow.document_fact_extractions.get_run(run_id)
             if run is None:
                 raise ValueError("run_not_found")
             run.status = "failed"
             run.reason_code = reason
+            if receipt_id is not None:
+                run.receipt_id = receipt_id
             run.updated_at = _now(self.runtime)
             run.completed_at = run.updated_at
             uow.document_fact_extractions.update_run(run)
@@ -382,11 +672,38 @@ class DocumentFactExtractionService:
         extraction: Any,
         pages: list[Any],
         authorized_fact_types: list[str] | None = None,
+        *,
+        receipt_id: str | None = None,
     ) -> dict[str, Any]:
         with self.runtime.database.uow(begin_mode="IMMEDIATE") as uow:
             run = uow.document_fact_extractions.get_run(run_id)
             if run is None:
                 raise ValueError("run_not_found")
+            current_source = uow.sources.get(run.source_id)
+            current_extraction = uow.document_extractions.get(run.extraction_id)
+            current_pages = uow.document_extractions.list_pages(run.extraction_id)
+            if (
+                current_source is None
+                or current_extraction is None
+                or current_source.person_id != run.person_id
+                or current_source.source_type != "document"
+                or current_extraction.source_id != run.source_id
+                or current_extraction.person_id != run.person_id
+                or _document_snapshot_hash(current_pages) != run.input_text_hash
+                or _d1_text_hash(current_pages) != current_extraction.text_hash
+                or any(
+                    page.extracted_chars != len(page.normalized_text)
+                    or hashlib.sha256(page.normalized_text.encode("utf-8")).hexdigest()
+                    != page.page_hash
+                    for page in current_pages
+                )
+                or source.id != current_source.id
+                or extraction.extraction_id != current_extraction.extraction_id
+            ):
+                raise ValueError("context_changed")
+            source = current_source
+            extraction = current_extraction
+            pages = current_pages
             valid = 0
             invalid = 0
             new = 0
@@ -508,6 +825,8 @@ class DocumentFactExtractionService:
             run.reason_code = None if valid or not suggestions else "no_source_valid_facts"
             run.updated_at = _now(self.runtime)
             run.completed_at = run.updated_at
+            if receipt_id is not None:
+                run.receipt_id = receipt_id
             uow.document_fact_extractions.update_run(run)
             return self.serialize_run(run, items)
 

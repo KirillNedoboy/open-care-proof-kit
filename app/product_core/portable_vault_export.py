@@ -136,7 +136,8 @@ class PortableVaultExportService:
                 dict(row)
                 for row in connection.execute(
                     "SELECT run_id, person_id, source_id, extraction_id, actor_id, "
-                    "request_fingerprint, contract_version, status, allowed_fact_types_json, "
+                    "execution_id, input_text_hash, request_fingerprint, contract_version, status, "
+                    "allowed_fact_types_json, "
                     "provider_id, provider_kind, provider_descriptor_hash, model_id, external, "
                     "envelope_id, consent_id, receipt_id, reason_code, total_facts, valid_facts, "
                     "invalid_facts, new_candidates, reused_candidates, created_at, updated_at, "

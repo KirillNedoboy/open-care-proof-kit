@@ -43,6 +43,19 @@ class MemoryG2Repository:
     def save_consent(self, **kwargs: Any) -> None:
         self.consents.append(dict(kwargs))
 
+    def get_consent(
+        self, execution_id: str, *, actor_id: str, person_id: str
+    ) -> dict[str, object] | None:
+        """Return the canonical consent bound to this execution and identity."""
+        for consent in reversed(self.consents):
+            if (
+                consent.get("execution_id") == execution_id
+                and consent.get("actor_id") == actor_id
+                and consent.get("person_id") == person_id
+            ):
+                return dict(consent)
+        return None
+
     def save_execution_receipt(
         self,
         receipt: ExecutionReceipt,

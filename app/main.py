@@ -20,6 +20,7 @@ from jinja2 import pass_context
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app import __version__
+from app.agent.document_fact_trust import DocumentFactTrustAdapter
 from app.agent.g2_product_repository import ProductCoreG2Repository
 from app.agent.g2_runtime import G2Runtime
 from app.agent.live_chat import (
@@ -209,6 +210,25 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             authorize_receipt=authorize_receipt,
             clock=runtime.clock,
         )
+        document_fact_trust = DocumentFactTrustAdapter(
+            runtime,
+            family_runtime.service,
+            provider,
+            clock=runtime.clock,
+        )
+        document_fact_g2_runtime = G2Runtime(
+            family_runtime.sessions,
+            prepare_envelope=document_fact_trust.build_envelope,
+            revalidate=document_fact_trust.revalidate,
+            provider=provider,
+            repository=ProductCoreG2Repository(runtime.database),
+            project=document_fact_trust.project,
+            resolve_evidence=document_fact_trust.resolve_evidence,
+            provider_request_builder=document_fact_trust.provider_request_builder,
+            answer_validator=document_fact_trust.answer_validator,
+            authorize_receipt=document_fact_trust.authorize_receipt,
+            clock=runtime.clock,
+        )
     except Exception:
         logger.error("Product Core startup failed", exc_info=False)
         raise
@@ -216,6 +236,8 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.family_access_runtime = family_runtime
     application.state.agent_provider = provider
     application.state.g2_runtime = g2_runtime
+    application.state.document_fact_trust = document_fact_trust
+    application.state.document_fact_g2_runtime = document_fact_g2_runtime
     try:
         yield
     finally:
@@ -227,6 +249,10 @@ async def product_core_lifespan(application: FastAPI) -> AsyncIterator[None]:
             del application.state.agent_provider
         if hasattr(application.state, "g2_runtime"):
             del application.state.g2_runtime
+        if hasattr(application.state, "document_fact_g2_runtime"):
+            del application.state.document_fact_g2_runtime
+        if hasattr(application.state, "document_fact_trust"):
+            del application.state.document_fact_trust
 
 
 app = FastAPI(title="OpenCare Proof Kit", version=__version__, lifespan=product_core_lifespan)

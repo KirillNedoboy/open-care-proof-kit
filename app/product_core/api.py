@@ -1481,7 +1481,16 @@ def _d2_service(request: Request, runtime: ProductCoreRuntime) -> DocumentFactEx
         from app.agent.providers.deterministic import DeterministicProvider
 
         provider = DeterministicProvider()
-    return DocumentFactExtractionService(runtime, provider)
+    g2_runtime = getattr(request.app.state, "document_fact_g2_runtime", None)
+    trust_adapter = getattr(request.app.state, "document_fact_trust", None)
+    if g2_runtime is not None:
+        # Tests and operator reconfiguration may replace the provider object
+        # after lifespan startup; keep the trust runtime's descriptor binding
+        # synchronized before a new request is prepared.
+        g2_runtime.provider = provider
+    if trust_adapter is not None:
+        trust_adapter.set_provider(provider)
+    return DocumentFactExtractionService(runtime, provider, g2_runtime)
 
 
 def _d2_allowed_types(access: ProductCoreAccess, person_id: str) -> list[str]:
@@ -1491,7 +1500,16 @@ def _d2_allowed_types(access: ProductCoreAccess, person_id: str) -> list[str]:
         for fact_type in ("medication", "condition", "lab"):
             if access._assignment_allows(uow.connection, person_id, (f"{fact_type}.write",)):
                 allowed.append(fact_type)
-    return allowed
+    return sorted(allowed)
+
+
+def _d2_session_token(access: ProductCoreAccess, person_id: str) -> str:
+    """Return the authenticated session only when its Person is already bound."""
+    token = access.authenticated.session_token
+    record = access.family_runtime.sessions.resolve(token)
+    if record is None or record.active_person_id != person_id:
+        raise PermissionError("session_or_person_unavailable")
+    return token
 
 
 @router.post(
@@ -1515,10 +1533,21 @@ def prepare_document_fact_extraction(
         raise HTTPException(status_code=403, detail="No writable fact family is authorized.")
     try:
         return _d2_service(request, runtime).prepare(
-            person_id, source_id, allowed, actor_id=access.actor_id
+            person_id,
+            source_id,
+            allowed,
+            actor_id=access.actor_id,
+            session_token=_d2_session_token(access, person_id),
         )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        status_code = (
+            404
+            if str(exc) in {"document_not_found", "document_extraction_missing"}
+            else 403
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @router.post(
@@ -1548,9 +1577,13 @@ async def consent_document_fact_extraction(
         ):
             raise HTTPException(status_code=422, detail="invalid_consent_decision")
         return _d2_service(request, runtime).consent(
-            run_id, str(decision), person_id=person_id, source_id=source_id
+            run_id,
+            str(decision),
+            person_id=person_id,
+            source_id=source_id,
+            session_token=_d2_session_token(access, person_id),
         )
-    except ValueError as exc:
+    except (PermissionError, ValueError) as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
@@ -1577,8 +1610,9 @@ def execute_document_fact_extraction(
             person_id=person_id,
             source_id=source_id,
             authorized_fact_types=_d2_allowed_types(access, person_id),
+            session_token=_d2_session_token(access, person_id),
         )
-    except ValueError as exc:
+    except (PermissionError, ValueError) as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 

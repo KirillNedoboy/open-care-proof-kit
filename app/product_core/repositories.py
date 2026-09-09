@@ -79,6 +79,10 @@ class DocumentExtractionRepository(Protocol):
 class DocumentFactExtractionRepository(Protocol):
     def get_run(self, run_id: str) -> DocumentFactExtractionRun | None: ...
 
+    def get_run_by_execution_id(
+        self, execution_id: str
+    ) -> DocumentFactExtractionRun | None: ...
+
     def get_run_by_fingerprint(
         self,
         person_id: str,
@@ -452,6 +456,15 @@ class SQLiteDocumentFactExtractionRepository:
         ).fetchone()
         return None if row is None else _document_fact_run_from_row(row)
 
+    def get_run_by_execution_id(
+        self, execution_id: str
+    ) -> DocumentFactExtractionRun | None:
+        row = self.connection.execute(
+            "SELECT * FROM document_fact_extraction_runs WHERE execution_id = ?",
+            (execution_id,),
+        ).fetchone()
+        return None if row is None else _document_fact_run_from_row(row)
+
     def get_run_by_fingerprint(
         self,
         person_id: str,
@@ -473,13 +486,16 @@ class SQLiteDocumentFactExtractionRepository:
         self.connection.execute(
             """
             INSERT INTO document_fact_extraction_runs (
-                run_id, person_id, source_id, extraction_id, actor_id,
-                request_fingerprint, contract_version, status, allowed_fact_types_json,
+                run_id, person_id, source_id, extraction_id, actor_id, execution_id,
+                input_text_hash, request_fingerprint, contract_version, status,
+                allowed_fact_types_json,
                 provider_id, provider_kind, provider_descriptor_hash, model_id, external,
                 envelope_id, consent_id, receipt_id, reason_code,
                 total_facts, valid_facts, invalid_facts, new_candidates, reused_candidates,
                 created_at, updated_at, completed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
             """,
             (
                 run.run_id,
@@ -487,6 +503,8 @@ class SQLiteDocumentFactExtractionRepository:
                 run.source_id,
                 run.extraction_id,
                 run.actor_id,
+                run.execution_id,
+                run.input_text_hash,
                 run.request_fingerprint,
                 run.contract_version,
                 run.status,
@@ -1490,6 +1508,8 @@ def _document_fact_run_from_row(row: sqlite3.Row) -> DocumentFactExtractionRun:
         source_id=row["source_id"],
         extraction_id=row["extraction_id"],
         actor_id=row["actor_id"],
+        execution_id=row["execution_id"],
+        input_text_hash=row["input_text_hash"],
         request_fingerprint=row["request_fingerprint"],
         contract_version=row["contract_version"],
         status=row["status"],

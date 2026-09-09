@@ -715,6 +715,33 @@ def _validate_document_fact_extractions(connection: sqlite3.Connection) -> None:
         WHERE person.person_id IS NULL OR source.person_id <> run.person_id
            OR source.source_type <> 'document'
            OR extraction.person_id <> run.person_id OR extraction.source_id <> run.source_id
+           OR length(run.input_text_hash) <> 64
+           OR run.input_text_hash <> lower(run.input_text_hash)
+           OR run.input_text_hash GLOB '*[^0-9a-f]*'
+           OR run.execution_id IS NULL OR length(trim(run.execution_id)) = 0
+        LIMIT 1
+        """
+    ).fetchone()
+    invalid_binding = connection.execute(
+        """
+        SELECT 1
+        FROM document_fact_extraction_runs AS run
+        LEFT JOIN agent_disclosure_consents AS consent
+          ON consent.consent_id = run.consent_id
+        LEFT JOIN agent_execution_receipts AS receipt
+          ON receipt.receipt_id = run.receipt_id
+        WHERE (run.consent_id IS NOT NULL AND (
+                 consent.execution_id <> run.execution_id
+              OR consent.actor_id <> run.actor_id
+              OR consent.person_id <> run.person_id
+              OR consent.envelope_id <> run.envelope_id
+            ))
+           OR (run.receipt_id IS NOT NULL AND (
+                 receipt.execution_id <> run.execution_id
+              OR receipt.actor_id <> run.actor_id
+              OR receipt.person_id <> run.person_id
+              OR receipt.envelope_id <> run.envelope_id
+            ))
         LIMIT 1
         """
     ).fetchone()
@@ -730,7 +757,7 @@ def _validate_document_fact_extractions(connection: sqlite3.Connection) -> None:
         LIMIT 1
         """
     ).fetchone()
-    if invalid_run is not None or invalid_item is not None:
+    if invalid_run is not None or invalid_binding is not None or invalid_item is not None:
         raise InstallationBackupError("document_fact_extraction_consistency_failed")
 
 

@@ -9,6 +9,7 @@ from typing import Any, Protocol, cast
 
 from app.agent.providers.contract import (
     AgentProvider,
+    ProviderExecutionRequest,
     ProviderUnavailableError,
     build_provider_execution_request,
 )
@@ -51,6 +52,32 @@ def _receipt_provider_facts(
             descriptor.external,
         )
     return getattr(envelope.provider_disclosure, "provider_id", None), None, None, None
+
+
+def _consent_integrity_matches(consent: dict[str, object]) -> bool:
+    """Check the canonical consent content hash before using its fields."""
+    try:
+        contract = {
+            "execution_id": str(consent["execution_id"]),
+            "actor_id": str(consent["actor_id"]),
+            "person_id": str(consent["person_id"]),
+            "purpose_id": str(consent["purpose_id"]),
+            "action_id": str(consent["action_id"]),
+            "envelope_id": str(consent["envelope_id"]),
+            "provider_id": str(consent["provider_id"]),
+            "provider_hash": str(consent["provider_hash"]),
+            "fields": list(cast(list[str], consent["fields"])),
+            "policy_version": str(consent["policy_version"]),
+            "consented_at": consent["consented_at"],
+            "expires_at": consent["expires_at"],
+        }
+        digest = sha256_hex(canonical_bytes(contract))
+        return (
+            str(consent.get("consent_hash")) == digest
+            and str(consent.get("consent_id")) == f"sha256:{digest}"
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def _validate_provider_answer(
@@ -185,6 +212,10 @@ class G2Repository(Protocol):
         self, execution_id: str, *, actor_id: str, person_id: str
     ) -> ExecutionReceipt | dict[str, Any] | None: ...
 
+    def get_consent(
+        self, execution_id: str, *, actor_id: str, person_id: str
+    ) -> dict[str, Any] | None: ...
+
 
 
 class G2Runtime:
@@ -200,6 +231,9 @@ class G2Runtime:
         repository: G2Repository | None = None,
         project: Callable[[EnvelopeProjection, str], dict[str, Any]] | None = None,
         resolve_evidence: Callable[[TrustEnvelope], tuple[dict[str, Any], ...]] | None = None,
+        provider_request_builder: Callable[..., ProviderExecutionRequest] | None = None,
+        answer_validator: Callable[[dict[str, Any], EnvelopeProjection], ValidationResult]
+        | None = None,
         authorize_receipt: Callable[[str, str, str], bool] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -220,6 +254,12 @@ class G2Runtime:
                 for item in envelope.evidence
             )
         )
+        self.provider_request_builder = provider_request_builder or (
+            lambda projection, question, evidence: build_provider_execution_request(
+                projection, question, evidence=evidence
+            )
+        )
+        self.answer_validator = answer_validator or _validate_provider_answer
         self.authorize_receipt = authorize_receipt or (lambda _actor, _credential, _person: True)
         self.provider, self.project = (
             provider,
@@ -272,7 +312,12 @@ class G2Runtime:
         )
 
     def grant_disclosure_consent(
-        self, session_token: str, execution_id: str, *, fields: list[str]
+        self,
+        session_token: str,
+        execution_id: str,
+        *,
+        fields: list[str],
+        question: str | None = None,
     ) -> ConsentResult:
         session = self.sessions.resolve(session_token)
         pending = self.sessions.get_pending(execution_id)
@@ -290,7 +335,7 @@ class G2Runtime:
                 actor_id=session.actor_id, credential_id=session.credential_id,
                 person_id=pending.person_id,
                 purpose_id=pending.purpose_id, action_id=pending.action_id,
-                question="",
+                question=question or "",
             )
         projection = EnvelopeProjection.from_envelope(envelope)
         consent_fields = sorted(set(fields))
@@ -315,8 +360,44 @@ class G2Runtime:
             or getattr(envelope, "expires_at", pending.expires_at) <= self.clock()
         ):
             raise PermissionError("consent_contract_changed")
+        if self.repository is not None:
+            getter = getattr(self.repository, "get_consent", None)
+            existing = (
+                getter(
+                    execution_id,
+                    actor_id=session.actor_id,
+                    person_id=pending.person_id,
+                )
+                if callable(getter)
+                else None
+            )
+            if existing is not None:
+                existing_expires = existing.get("expires_at")
+                if isinstance(existing_expires, datetime):
+                    expires_at = existing_expires
+                else:
+                    expires_at = datetime.fromisoformat(str(existing_expires))
+                if (
+                    str(existing.get("execution_id")) != execution_id
+                    or str(existing.get("actor_id")) != session.actor_id
+                    or str(existing.get("person_id")) != pending.person_id
+                    or str(existing.get("purpose_id")) != pending.purpose_id
+                    or str(existing.get("action_id")) != pending.action_id
+                    or str(existing.get("envelope_id")) != pending.envelope_id
+                    or str(existing.get("provider_hash")) != pending.provider_hash
+                    or list(cast(list[str], existing.get("fields", [])))
+                    != consent_fields
+                    or expires_at <= self.clock()
+                    or not _consent_integrity_matches(cast(dict[str, object], existing))
+                ):
+                    raise PermissionError("consent_contract_changed")
+                return ConsentResult(
+                    execution_id, str(existing["consent_id"]), expires_at
+                )
+            expires_at = getattr(envelope, "expires_at", pending.expires_at)
+        else:
+            expires_at = getattr(envelope, "expires_at", pending.expires_at)
         consented_at = self.clock()
-        expires_at = getattr(envelope, "expires_at", pending.expires_at)
         policy_version = POLICY_VERSION
         contract = {
             "execution_id": execution_id, "actor_id": session.actor_id,
@@ -328,9 +409,18 @@ class G2Runtime:
         }
         consent_hash = sha256_hex(canonical_bytes(contract))
         consent_id = f"sha256:{consent_hash}"
-        data: dict[str, object] = {**contract, "consent_id": consent_id,
-                                   "consent_hash": consent_hash}
+        data: dict[str, object] = {
+            **contract,
+            "consent_id": consent_id,
+            "consent_hash": consent_hash,
+        }
         self._consents[execution_id] = data
+        # Keep the shared pending store in sync for process-local integrations.
+        # Product Core repositories remain the source of truth when configured.
+        session_data = dict(data)
+        if isinstance(session_data.get("expires_at"), datetime):
+            session_data["expires_at"] = cast(datetime, session_data["expires_at"]).isoformat()
+        self.sessions.save_consent(session_data)
         if self.repository is not None:
             self.repository.save_consent(
                 execution_id=execution_id, consent_id=consent_id,
@@ -346,7 +436,15 @@ class G2Runtime:
     def execute(self, session_token: str, execution_id: str, question: str) -> ExecuteResult:
         session = self.sessions.resolve(session_token)
         pending = self.sessions.get_pending(execution_id)
-        consent = self._consents.get(execution_id)
+        if self.repository is None:
+            consent = self._consents.get(execution_id)
+        else:
+            getter = getattr(self.repository, "get_consent", None)
+            consent = (
+                getter(execution_id, actor_id=session.actor_id, person_id=pending.person_id)
+                if callable(getter) and session is not None and pending is not None
+                else None
+            )
         if session is None or pending is None or consent is None:
             return ExecuteResult(execution_id, "refused", None, reason_code="context_changed")
         if (
@@ -360,6 +458,13 @@ class G2Runtime:
             or str(consent["provider_hash"]) != pending.provider_hash
             or str(consent["actor_id"]) != session.actor_id
             or str(consent["person_id"]) != pending.person_id
+            or str(consent["execution_id"]) != pending.execution_id
+            or str(consent["purpose_id"]) != pending.purpose_id
+            or str(consent["action_id"]) != pending.action_id
+            or not _consent_integrity_matches(consent)
+            or list(cast(list[str], consent["fields"])) != sorted(
+                set(cast(list[str], consent["fields"]))
+            )
             or not self.revalidate(pending, session)
         ):
             return ExecuteResult(execution_id, "refused", None, reason_code="context_changed")
@@ -396,7 +501,7 @@ class G2Runtime:
         provider_id, model_id, provider_kind, external = _receipt_provider_facts(envelope)
         try:
             resolved_evidence = self.resolve_evidence(envelope)
-            request = build_provider_execution_request(
+            request = self.provider_request_builder(
                 projection, question, evidence=resolved_evidence
             )
             result = self.provider.execute(request)
@@ -404,6 +509,12 @@ class G2Runtime:
                 raise ProviderUnavailableError(result.failure.message)
             if result.answer is None:
                 raise ProviderUnavailableError("Provider returned no answer.")
+            descriptor = self.provider.descriptor
+            if (
+                result.provider_id != descriptor.provider_id
+                or result.model_id != descriptor.model_id
+            ):
+                raise BuildRefused(["provider_descriptor_changed"])
         except BuildRefused as refused:
             completed_at = self.clock()
             reasons = refused.reason_codes or ["context_changed"]
@@ -464,7 +575,7 @@ class G2Runtime:
             reasons = ["tool_not_allowed"]
             output = None
         else:
-            validation = _validate_provider_answer(result.answer, projection)
+            validation = self.answer_validator(result.answer, projection)
             if not validation.valid:
                 answer = None
                 status = "refused"

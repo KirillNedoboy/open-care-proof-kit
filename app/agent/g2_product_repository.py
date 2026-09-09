@@ -33,6 +33,27 @@ class ProductCoreG2Repository:
         audit_id = f"g2-consent:{consent_id}"
         with self.database.uow(begin_mode="IMMEDIATE") as uow:
             assert uow.connection is not None
+            existing = uow.connection.execute(
+                "SELECT * FROM agent_disclosure_consents WHERE execution_id = ?",
+                (execution_id,),
+            ).fetchone()
+            if existing is not None:
+                metadata = json.loads(str(existing["disclosure_metadata_json"] or "{}"))
+                if (
+                    existing["consent_id"] != consent_id
+                    or existing["actor_id"] != actor_id
+                    or existing["person_id"] != person_id
+                    or existing["purpose"] != purpose_id
+                    or existing["action"] != action_id
+                    or existing["envelope_id"] != envelope_id
+                    or existing["provider_id"] != provider_id
+                    or existing["provider_descriptor_hash"] != provider_hash
+                    or metadata.get("fields") != fields
+                    or existing["policy_version"] != policy_version
+                    or existing["consent_hash"] != consent_hash
+                ):
+                    raise ValueError("consent_binding_conflict")
+                return
             uow.consent_records.insert(
                 {
                     "consent_id": consent_id,
@@ -144,4 +165,48 @@ class ProductCoreG2Repository:
             "output_sha256": data["output_sha256"],
             "reason_codes": json.loads(str(data["reason_codes_json"])),
             "receipt_sha256": data["receipt_sha256"],
+        }
+
+    def get_consent(
+        self, execution_id: str, *, actor_id: str, person_id: str
+    ) -> dict[str, object] | None:
+        """Load the canonical disclosure consent bound to one execution.
+
+        Consent is intentionally read from Product Core rather than the
+        process-local runtime cache.  A restarted worker therefore cannot
+        execute a pending document request without the durable consent row.
+        """
+        with self.database.uow() as uow:
+            assert uow.connection is not None
+            row = uow.connection.execute(
+                """SELECT * FROM agent_disclosure_consents
+                   WHERE execution_id = ? AND actor_id = ? AND person_id = ?""",
+                (execution_id, actor_id, person_id),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            metadata = json.loads(str(row["disclosure_metadata_json"] or "{}"))
+            consented_at = datetime.fromisoformat(str(row["consented_at"]))
+            expires_at = datetime.fromisoformat(str(row["expires_at"]))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+        fields = metadata.get("fields") if isinstance(metadata, dict) else None
+        if not isinstance(fields, list) or not all(isinstance(item, str) for item in fields):
+            return None
+        return {
+            "consent_id": row["consent_id"],
+            "execution_id": row["execution_id"],
+            "actor_id": row["actor_id"],
+            "person_id": row["person_id"],
+            "purpose_id": row["purpose"],
+            "action_id": row["action"],
+            "envelope_id": row["envelope_id"],
+            "provider_id": row["provider_id"],
+            "provider_hash": row["provider_descriptor_hash"],
+            "fields": fields,
+            "policy_version": row["policy_version"],
+            "consented_at": consented_at,
+            "expires_at": expires_at,
+            "consent_hash": row["consent_hash"],
         }
