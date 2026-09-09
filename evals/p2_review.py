@@ -19,7 +19,7 @@ capability / usability / security contract:
 - timeline readability mapping applied without mutating stored event codes;
 - Visit + Questions + a three-family Visit Brief (content schema v2) with v1
   revisions still readable;
-- export filename/version coherence (``PORTABLE_VAULT_FORMAT_VERSION == 5``,
+- export filename/version coherence (``PORTABLE_VAULT_FORMAT_VERSION == 6``,
   server ``Content-Disposition`` derives from the constant);
 - revocation fail-closed, and the six P2 security counters all zero.
 
@@ -45,8 +45,8 @@ from app.config import Settings
 from app.family_access import policy as family_policy
 from app.family_access.policy import (
     CAREGIVER_BASE_SCOPES_V1,
-    CAREGIVER_BASE_SCOPES_V3,
-    OWNER_SCOPES_V3,
+    CAREGIVER_BASE_SCOPES_V4,
+    OWNER_SCOPES_V4,
     build_scopes,
 )
 from app.family_access.runtime import FamilyAccessRuntime
@@ -91,7 +91,7 @@ from app.product_core.visits import VisitPlanningService
 
 NOW = datetime(2026, 8, 20, 9, 30, tzinfo=UTC)
 
-#: The 19 workspace capability booleans (§5) and the scope string each maps to.
+#: The 25 workspace capability booleans (§5) and the scope string each maps to.
 CAPABILITY_SCOPES: dict[str, str] = {
     "person_update": "person.update",
     "document_read": "document.read",
@@ -104,6 +104,12 @@ CAPABILITY_SCOPES: dict[str, str] = {
     "condition_write": "condition.write",
     "lab_read": "lab.read",
     "lab_write": "lab.write",
+    "procedure_read": "procedure.read",
+    "procedure_write": "procedure.write",
+    "recommendation_read": "recommendation.read",
+    "recommendation_write": "recommendation.write",
+    "follow_up_read": "follow_up.read",
+    "follow_up_write": "follow_up.write",
     "timeline_read": "timeline.read",
     "visit_read": "visit.read",
     "visit_write": "visit.write",
@@ -543,10 +549,10 @@ def run_review() -> tuple[int, dict[str, str]]:
     # ------------------------------------------------------------------ #
     alice_caps = _capability_map(alice_access.effective_scopes("child-person"))
     checks.check(
-        alice_access.effective_scopes("child-person") == OWNER_SCOPES_V3
+        alice_access.effective_scopes("child-person") == OWNER_SCOPES_V4
         and all(alice_caps.values())
         and set(alice_caps) == set(CAPABILITY_SCOPES),
-        "owner does not have all 19 workspace capabilities true on child-person",
+        "owner does not have all 25 workspace capabilities true on child-person",
     )
     bob_caps = _capability_map(bob_access.effective_scopes("child-person"))
     expected_bob = _capability_map(build_scopes("caregiver", BOB_OPTIONAL_SCOPES))
@@ -569,15 +575,17 @@ def run_review() -> tuple[int, dict[str, str]]:
     )
     readonly_caps = _capability_map(readonly_access.effective_scopes("child-person"))
     checks.check(
-        readonly_access.effective_scopes("child-person") == CAREGIVER_BASE_SCOPES_V3
-        and readonly_caps == _capability_map(CAREGIVER_BASE_SCOPES_V3),
+        readonly_access.effective_scopes("child-person") == CAREGIVER_BASE_SCOPES_V4
+        and readonly_caps == _capability_map(CAREGIVER_BASE_SCOPES_V4),
         "read-only caregiver effective scopes are not exactly the current base set",
     )
     checks.check(
         readonly_caps["medication_read"] is True
         and readonly_caps["condition_read"] is True
         and readonly_caps["lab_read"] is True
-        and readonly_caps["document_read"] is True
+        and readonly_caps["procedure_read"] is True
+        and readonly_caps["recommendation_read"] is True
+        and readonly_caps["follow_up_read"] is True
         and readonly_caps["document_write"] is False
         and readonly_caps["timeline_read"] is True
         and readonly_caps["visit_read"] is True
@@ -894,9 +902,9 @@ def run_review() -> tuple[int, dict[str, str]]:
     # 11. Export filename/version coherence.
     # ------------------------------------------------------------------ #
     expected_vault_filename = f"opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"
-    checks.check(PORTABLE_VAULT_FORMAT_VERSION == 5, "portable vault format version is not 5")
+    checks.check(PORTABLE_VAULT_FORMAT_VERSION == 6, "portable vault format version is not 6")
     checks.check(
-        expected_vault_filename == "opencare-person-vault-v5.zip",
+        expected_vault_filename == "opencare-person-vault-v6.zip",
         "server vault filename does not derive from the format version",
     )
     api_spec = importlib.util.find_spec("app.product_core.api")
@@ -923,17 +931,17 @@ def run_review() -> tuple[int, dict[str, str]]:
 
     # ------------------------------------------------------------------ #
     checks.check(
-        product_migrations.PRODUCT_MIGRATIONS[-1].version == 10,
-        "product schema version is not the current v10",
+        product_migrations.PRODUCT_MIGRATIONS[-1].version == 11,
+        "product schema version is not the current v11",
     )
     checks.check(
-        PORTABLE_VAULT_FORMAT_VERSION == 5
+        PORTABLE_VAULT_FORMAT_VERSION == 6
         and CONTENT_SCHEMA_VERSION == 2
         and frozenset({1, 2}) == SUPPORTED_CONTENT_SCHEMA_VERSIONS,
         "P2 format constants drifted",
     )
     checks.check(
-        family_policy.POLICY_VERSION == "family-access-v3"
+        family_policy.POLICY_VERSION == "family-access-v4"
         and family_policy.V2_POLICY_VERSION == "family-access-v2"
         and family_policy.V1_POLICY_VERSION == "family-access-v1",
         "family access policy generations changed unexpectedly",
@@ -941,8 +949,8 @@ def run_review() -> tuple[int, dict[str, str]]:
     policy_file = family_policy.__file__
     assert policy_file is not None
     checks.check(
-        "family-access-v3" in Path(policy_file).read_text(encoding="utf-8"),
-        "current family-access-v3 generation is missing",
+        "family-access-v4" in Path(policy_file).read_text(encoding="utf-8"),
+        "current family-access-v4 generation is missing",
     )
     lines["migration"] = "pass"
 

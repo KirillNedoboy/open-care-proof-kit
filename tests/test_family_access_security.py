@@ -107,7 +107,7 @@ def test_password_minimum_and_constant_time_verification_boundary(
 
 
 def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default() -> None:
-    assert POLICY_VERSION == "family-access-v3"
+    assert POLICY_VERSION == "family-access-v4"
     assert {
         "person.read",
         "person.update",
@@ -135,6 +135,12 @@ def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default(
         "access.read",
         "access.manage",
         "chat.use",
+        "procedure.read",
+        "procedure.write",
+        "recommendation.read",
+        "recommendation.write",
+        "follow_up.read",
+        "follow_up.write",
     } == OWNER_SCOPES
     assert {
         "person.read",
@@ -149,6 +155,9 @@ def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default(
         "brief.read",
         "relationship.read",
         "chat.use",
+        "procedure.read",
+        "recommendation.read",
+        "follow_up.read",
     } == CAREGIVER_BASE_SCOPES
     assert {
         "source.write",
@@ -161,6 +170,9 @@ def test_owner_and_caregiver_scope_matrix_is_fixed_and_policy_denies_by_default(
         "brief.write",
         "brief.export",
         "vault.export",
+        "procedure.write",
+        "recommendation.write",
+        "follow_up.write",
     } == CAREGIVER_OPTIONAL_SCOPES
     assert build_scopes("owner", {"person.read"}) == OWNER_SCOPES
     assert build_scopes("caregiver", {"vault.export"}) == (CAREGIVER_BASE_SCOPES | {"vault.export"})

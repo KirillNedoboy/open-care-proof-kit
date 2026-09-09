@@ -49,7 +49,7 @@ def test_person_portable_vault_export_returns_verified_zip(
         )
         vault = json.loads(archive.read("vault.json"))
     assert vault["person"]["person_id"] == "person-1"
-    assert vault["format_version"] == 5
+    assert vault["format_version"] == 6
     assert "relative_path" not in response.text
     assert "visit_brief_audit_events" not in response.text
 
@@ -72,8 +72,8 @@ def test_vault_download_filename_version_matches_format_version(
         == f'attachment; filename="opencare-person-vault-v{PORTABLE_VAULT_FORMAT_VERSION}.zip"'
     )
     assert f"v{PORTABLE_VAULT_FORMAT_VERSION}.zip" in disposition
-    assert PORTABLE_VAULT_FORMAT_VERSION == 5
-    assert "opencare-person-vault-v5.zip" in disposition
+    assert PORTABLE_VAULT_FORMAT_VERSION == 6
+    assert "opencare-person-vault-v6.zip" in disposition
 
 def test_person_portable_vault_export_uses_existing_error_envelope(
     product_core_client: TestClient,

@@ -28,7 +28,7 @@ def test_current_repository_truth_is_published_and_versioned() -> None:
     assert "Genetics remains a future layer" not in readme
     assert "no document ingestion" not in readme.lower()
     assert project["version"] == __version__ == "0.3.0.dev0"
-    assert PRODUCT_MIGRATIONS[-1].version == 10
+    assert PRODUCT_MIGRATIONS[-1].version == 11
 
 
 def test_current_authentication_truth_keeps_registration_and_sharing_boundaries() -> None:

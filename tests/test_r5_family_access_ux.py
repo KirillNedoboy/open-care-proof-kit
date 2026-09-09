@@ -40,6 +40,24 @@ SCOPE_LABELS = {
     ),
     "lab.read": ("View lab records", "Просмотр анализов"),
     "lab.write": ("Manage lab records", "Управление анализами"),
+    "procedure.read": ("View procedures", "Просмотр процедур"),
+    "procedure.write": ("Manage procedures", "Управление процедурами"),
+    "recommendation.read": (
+        "View recommendations",
+        "Просмотр рекомендаций",
+    ),
+    "recommendation.write": (
+        "Manage recommendations",
+        "Управление рекомендациями",
+    ),
+    "follow_up.read": (
+        "View follow-up records",
+        "Просмотр записей о наблюдении",
+    ),
+    "follow_up.write": (
+        "Manage follow-up records",
+        "Управление записями о наблюдении",
+    ),
     "timeline.read": ("View timeline", "Просмотр хронологии"),
     "visit.read": ("View visits", "Просмотр визитов"),
     "visit.write": ("Manage visits", "Управление визитами"),

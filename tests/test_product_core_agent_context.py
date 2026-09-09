@@ -214,3 +214,100 @@ def test_context_excludes_other_person_records(product_runtime: object) -> None:
     assert all(
         item.kind != "condition" or "Asthma" in item.text for item in context.items
     )
+
+
+NEW_RECORD_READ_SCOPES = frozenset(
+    {"procedure.read", "recommendation.read", "follow_up.read"}
+)
+
+
+def _confirm_new_record(runtime: object, person_id: str, fact_type: str) -> str:
+    from app.product_core.models import (
+        FollowUpCandidateInput,
+        ProcedureCandidateInput,
+        RecommendationCandidateInput,
+    )
+
+    source = runtime.sources.register_manual_entry(person_id, f"{fact_type} source")
+    if fact_type == "procedure":
+        detail = ProcedureCandidateInput(
+            display_name="Colonoscopy",
+            status_text="completed",
+            date_text="March 2026",
+        )
+    elif fact_type == "recommendation":
+        detail = RecommendationCandidateInput(
+            instruction_text="Reduce sodium intake",
+            context_text="cardiology visit",
+        )
+    else:
+        detail = FollowUpCandidateInput(
+            action_text="Repeat blood panel",
+            timing_text="in 3 months",
+            destination_text="Lab 12",
+        )
+    candidate = runtime.lifecycle.create_fact_candidate(
+        person_id=person_id,
+        source_id=source.id,
+        fact_type=fact_type,
+        detail_input=detail,
+    )
+    return candidate.id
+
+
+def test_context_excludes_pending_new_type_candidates(
+    product_runtime: object,
+) -> None:
+    for fact_type in ("procedure", "recommendation", "follow_up"):
+        _confirm_new_record(product_runtime, "person-1", fact_type)
+
+    context = build_product_core_agent_context(
+        product_runtime, "person-1", read_scopes=NEW_RECORD_READ_SCOPES
+    )
+
+    assert [
+        item.kind for item in context.items
+        if item.kind in ("procedure", "recommendation", "follow_up")
+    ] == []
+
+
+def test_context_includes_confirmed_new_records_with_read_scopes(
+    product_runtime: object,
+) -> None:
+    for fact_type in ("procedure", "recommendation", "follow_up"):
+        candidate_id = _confirm_new_record(product_runtime, "person-1", fact_type)
+        product_runtime.lifecycle.confirm(candidate_id)
+
+    context = build_product_core_agent_context(
+        product_runtime, "person-1", read_scopes=NEW_RECORD_READ_SCOPES
+    )
+    by_kind = {item.kind: item for item in context.items if item.kind ==
+               "procedure" or item.kind == "recommendation" or item.kind == "follow_up"}
+
+    assert sorted(by_kind) == ["follow_up", "procedure", "recommendation"]
+    assert by_kind["procedure"].text.startswith("Recorded procedure")
+    assert "completed" in by_kind["procedure"].text
+    assert "March 2026" in by_kind["procedure"].text
+    assert by_kind["recommendation"].text.startswith("Recorded recommendation")
+    assert "cardiology visit" in by_kind["recommendation"].text
+    assert by_kind["follow_up"].text.startswith("Recorded follow-up instruction")
+    assert "in 3 months" in by_kind["follow_up"].text
+    assert "Lab 12" in by_kind["follow_up"].text
+    assert all(item.provenance_status == "source_backed" for item in by_kind.values())
+
+
+def test_context_excludes_confirmed_new_records_without_read_scopes(
+    product_runtime: object,
+) -> None:
+    for fact_type in ("procedure", "recommendation", "follow_up"):
+        candidate_id = _confirm_new_record(product_runtime, "person-1", fact_type)
+        product_runtime.lifecycle.confirm(candidate_id)
+
+    context = build_product_core_agent_context(
+        product_runtime, "person-1", read_scopes=frozenset({"procedure.read"})
+    )
+    kinds = [item.kind for item in context.items]
+
+    assert "procedure" in kinds
+    assert "recommendation" not in kinds
+    assert "follow_up" not in kinds

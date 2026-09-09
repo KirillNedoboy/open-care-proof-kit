@@ -1,10 +1,12 @@
-"""Offline D2.1 browser-acceptance server.
+"""Offline D2.2 browser-acceptance server.
 
 Run this file directly from the repository root.  It creates an isolated
 Product Core/session/source/report tree, installs one synthetic external
 provider before the application lifespan starts, and serves the real app via
 uvicorn.  The provider never performs network I/O and records only its call
-count in the report file.
+count in the report file.  Under extraction contract
+``opencare-document-facts/2`` its canned answer covers all six fact
+families.
 
 Example::
 
@@ -37,10 +39,24 @@ from app.agent.providers.contract import (  # noqa: E402
     ProviderFailure,
 )
 
-SYNTHETIC_DOCUMENT_TEXT = (
-    "Current medication: Aspirin 81 mg daily. "
-    "Diagnosis: hypertension. "
-    "Lab: Hemoglobin 13.2 g/dL."
+SYNTHETIC_MEDICATION_LINE = "Current medication: Examplemed 5 mg daily."
+SYNTHETIC_CONDITION_LINE = "Diagnosis: Synthetic hypertension."
+SYNTHETIC_LAB_LINE = "Lab: Example marker 12 units."
+SYNTHETIC_PROCEDURE_LINE = "Procedure performed: Example endoscopy on 1 January 2026."
+SYNTHETIC_RECOMMENDATION_LINE = "Recommendation: Limit synthetic dietary sodium."
+SYNTHETIC_FOLLOW_UP_LINE = "Follow up: Repeat Example marker in two weeks."
+
+# One explicit synthetic statement per fact family; the provider's canned
+# evidence quotes are these exact substrings of the persisted page text.
+SYNTHETIC_DOCUMENT_TEXT = "\n".join(
+    (
+        SYNTHETIC_MEDICATION_LINE,
+        SYNTHETIC_CONDITION_LINE,
+        SYNTHETIC_LAB_LINE,
+        SYNTHETIC_PROCEDURE_LINE,
+        SYNTHETIC_RECOMMENDATION_LINE,
+        SYNTHETIC_FOLLOW_UP_LINE,
+    )
 )
 
 
@@ -166,25 +182,48 @@ class BrowserAcceptanceProvider:
                 "medications": [
                     {
                         "page_number": 1,
-                        "evidence_quote": "Current medication: Aspirin 81 mg daily.",
-                        "display_name": "Aspirin",
-                        "schedule_text": "81 mg daily",
+                        "evidence_quote": SYNTHETIC_MEDICATION_LINE,
+                        "display_name": "Examplemed",
+                        "schedule_text": "5 mg daily",
                     }
                 ],
                 "conditions": [
                     {
                         "page_number": 1,
-                        "evidence_quote": "Diagnosis: hypertension.",
-                        "display_name": "hypertension",
+                        "evidence_quote": SYNTHETIC_CONDITION_LINE,
+                        "display_name": "Synthetic hypertension",
                     }
                 ],
                 "labs": [
                     {
                         "page_number": 1,
-                        "evidence_quote": "Lab: Hemoglobin 13.2 g/dL.",
-                        "test_name": "Hemoglobin",
-                        "result_text": "13.2",
-                        "unit_text": "g/dL",
+                        "evidence_quote": SYNTHETIC_LAB_LINE,
+                        "test_name": "Example marker",
+                        "result_text": "12",
+                        "unit_text": "units",
+                    }
+                ],
+                "procedures": [
+                    {
+                        "page_number": 1,
+                        "evidence_quote": SYNTHETIC_PROCEDURE_LINE,
+                        "display_name": "Example endoscopy",
+                        "date_text": "1 January 2026",
+                    }
+                ],
+                "recommendations": [
+                    {
+                        "page_number": 1,
+                        "evidence_quote": SYNTHETIC_RECOMMENDATION_LINE,
+                        "instruction_text": "Limit synthetic dietary sodium.",
+                    }
+                ],
+                "follow_ups": [
+                    {
+                        "page_number": 1,
+                        "evidence_quote": SYNTHETIC_FOLLOW_UP_LINE,
+                        "action_text": "Repeat Example marker",
+                        "timing_text": "in two weeks",
                     }
                 ],
             },

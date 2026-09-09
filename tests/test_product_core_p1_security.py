@@ -432,7 +432,7 @@ def test_backup_recovery_preserves_populated_v7_p1_state(tmp_path: Path) -> None
     destination = tmp_path / "backup"
     report = backup.backup(destination)
     assert report.valid is True
-    assert report.product_core_schema_version == 10
+    assert report.product_core_schema_version == 11
 
     target = tmp_path / "recovered"
     recovery = InstallationRecoveryService(clock=lambda: clock())
@@ -593,7 +593,7 @@ def test_v6_to_v7_backup_recovers_preserving_state(tmp_path: Path) -> None:
     )
     recovered = verify_recovered_installation(target)
     assert recovered.valid is True
-    assert recovered.product_core_schema_version == 10
+    assert recovered.product_core_schema_version == 11
     with sqlite3.connect(target / "database.sqlite3") as connection:
         assert (
             connection.execute(

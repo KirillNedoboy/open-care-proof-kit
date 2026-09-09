@@ -7,9 +7,13 @@ from app.product_core.errors import (
     VisitBriefAlreadyExistsError,
     VisitBriefConflictError,
     VisitBriefIntegrityError,
+    VisitBriefValidationError,
 )
-from app.product_core.models import Person
-from app.product_core.persisted_visit_briefs import PersistedVisitBriefService
+from app.product_core.models import Person, RecommendationCandidateInput
+from app.product_core.persisted_visit_briefs import (
+    CONTENT_SCHEMA_VERSION,
+    PersistedVisitBriefService,
+)
 from app.product_core.services import MedicationLifecycleService, SourceService
 from app.product_core.sqlite import SQLiteDatabase
 from app.product_core.visits import VisitPlanningService
@@ -138,3 +142,66 @@ def test_generation_edit_and_restore_append_immutable_revisions(tmp_path: Path) 
         )
     with pytest.raises(VisitBriefIntegrityError):
         briefs.get_revision(visit.visit_id, first.revision_number)
+
+
+def test_deferred_recommendation_is_excluded_from_brief_v2_evidence(tmp_path: Path) -> None:
+    database = SQLiteDatabase(tmp_path / "product.sqlite3")
+    database.migrate()
+    clock = FixedClock(datetime(2026, 7, 30, 12, tzinfo=UTC))
+    ids = SequenceIds()
+    with database.uow() as uow:
+        uow.people.insert(
+            Person(
+                person_id="person-1",
+                display_name="Ada",
+                created_at=clock(),
+                updated_at=clock(),
+                is_active=True,
+            )
+        )
+    sources = SourceService(database, tmp_path / "sources", clock=clock, id_factory=ids)
+    lifecycle = MedicationLifecycleService(database, clock=clock, id_factory=ids)
+    visits = VisitPlanningService(database, clock=clock, id_factory=ids)
+    briefs = PersistedVisitBriefService(
+        database, clock=clock, id_factory=ids, source_reader=sources.store.read
+    )
+    source = sources.register_manual_entry("person-1", "Aspirin")
+    medication = lifecycle.confirm(
+        lifecycle.create_candidate(
+            person_id="person-1",
+            source_id=source.id,
+            display_name="Aspirin",
+            schedule_text=None,
+            note=None,
+        ).id
+    )
+    recommendation = lifecycle.confirm(
+        lifecycle.create_fact_candidate(
+            person_id="person-1",
+            source_id=source.id,
+            fact_type="recommendation",
+            detail_input=RecommendationCandidateInput(
+                instruction_text="Bring a blood pressure log",
+            ),
+        ).id
+    )
+    visit = visits.create_visit("person-1", title="Cardiology review")
+    briefs.initialize(visit.visit_id)
+
+    evidence = briefs.list_eligible_evidence(visit.visit_id)
+
+    assert [item["canonical_record_id"] for item in evidence] == [medication.id]
+    with pytest.raises(VisitBriefValidationError, match="not eligible"):
+        briefs.generate(
+            visit.visit_id,
+            selected_record_ids=[recommendation.id],
+            expected_current_revision_number=None,
+        )
+    revision = briefs.generate(
+        visit.visit_id,
+        selected_record_ids=[medication.id],
+        expected_current_revision_number=None,
+    )
+    assert CONTENT_SCHEMA_VERSION == 2
+    assert revision.content_schema_version == 2
+    assert "Aspirin" in revision.rendered_markdown

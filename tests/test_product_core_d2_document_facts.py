@@ -45,7 +45,7 @@ def test_d2_migration_creates_durable_runs_items_and_fingerprint_registry(
             ).fetchall()
         }
 
-    assert versions == list(range(1, 11))
+    assert versions == list(range(1, 12))
     assert {
         "document_fact_extraction_runs",
         "document_fact_extraction_items",
@@ -213,7 +213,14 @@ def test_d21_external_approval_discloses_bounded_snapshot_and_executes_once(
     assert preview["external"] is True
     assert preview["page_count"] == 1
     assert preview["character_count"] == 40
-    assert preview["enabled_categories"] == ["condition", "lab", "medication"]
+    assert preview["enabled_categories"] == [
+        "condition",
+        "follow_up",
+        "lab",
+        "medication",
+        "procedure",
+        "recommendation",
+    ]
     assert preview["retention"] == "provider_policy"
     approved = product_core_client.post(
         f"/api/product-core/v1/people/person-1/documents/{source_id}/fact-extractions/{payload['run_id']}/consent",
@@ -291,7 +298,14 @@ def test_d21_document_runtime_is_built_and_provider_receives_only_d1_page_text(
         {"page_number": 1, "text": "Current medication: Aspirin 81 mg daily."},
     )
     assert set(request.evidence[0]) == {"page_number", "text"}
-    assert request.allowed_fields == ("condition", "lab", "medication")
+    assert request.allowed_fields == (
+        "condition",
+        "follow_up",
+        "lab",
+        "medication",
+        "procedure",
+        "recommendation",
+    )
     with runtime.database.connect() as connection:
         row = connection.execute(
             "SELECT execution_id, input_text_hash, consent_id, receipt_id "
@@ -764,3 +778,59 @@ def test_d21_strict_schema_rejects_unexpected_provider_fields(
     assert response.json()["status"] == "failed"
     assert response.json()["reason_code"] == "validation_failed"
     assert provider.calls == 1
+
+
+def test_d22_historical_v1_run_remains_loadable_without_retroactive_categories(
+    product_core_client: TestClient,
+) -> None:
+    _select_person(product_core_client)
+    uploaded = product_core_client.post(
+        "/api/product-core/v1/people/person-1/documents",
+        content=b"Current medication: Aspirin 81 mg daily.",
+        headers={"content-type": "text/plain", "x-opencare-filename": "meds.txt"},
+    )
+    source_id = uploaded.json()["document"]["source_id"]
+    extraction_id = uploaded.json()["document"]["extraction"]["extraction_id"]
+    owner_id = product_core_client.get("/api/family-access/v1/me").json()["actor"][
+        "actor_id"
+    ]
+    runtime = main_module.app.state.product_core_runtime
+    with runtime.database.connect() as connection:
+        connection.execute(
+            "INSERT INTO document_fact_extraction_runs ("
+            "run_id, person_id, source_id, extraction_id, actor_id, execution_id, "
+            "input_text_hash, request_fingerprint, contract_version, status, "
+            "allowed_fact_types_json, total_facts, valid_facts, invalid_facts, "
+            "new_candidates, reused_candidates, external, created_at, updated_at, "
+            "completed_at) VALUES ("
+            "'run-v1-legacy', 'person-1', ?, ?, ?, 'exec-v1-legacy', "
+            "?, ?, 'opencare-document-facts/1', 'completed', "
+            "'[\"condition\", \"lab\", \"medication\"]', 0, 0, 0, 0, 0, 0, "
+            "'2026-08-01T12:00:00+00:00', '2026-08-01T12:00:05+00:00', "
+            "'2026-08-01T12:00:05+00:00')",
+            (
+                source_id,
+                extraction_id,
+                owner_id,
+                "a" * 64,
+                "b" * 64,
+            ),
+        )
+    loaded = product_core_client.get(
+        "/api/product-core/v1/people/person-1/documents/"
+        f"{source_id}/fact-extractions/run-v1-legacy"
+    )
+    assert loaded.status_code == 200, loaded.text
+    body = loaded.json()
+    assert body["contract_version"] == "opencare-document-facts/1"
+    assert body["status"] == "completed"
+    assert body["allowed_fact_types"] == ["condition", "lab", "medication"]
+    assert not {"procedure", "recommendation", "follow_up"} & set(
+        body["allowed_fact_types"]
+    )
+    latest = product_core_client.get(
+        f"/api/product-core/v1/people/person-1/documents/{source_id}/fact-extractions"
+    )
+    assert latest.status_code == 200, latest.text
+    assert latest.json()["contract_version"] == "opencare-document-facts/1"
+    assert latest.json()["allowed_fact_types"] == ["condition", "lab", "medication"]

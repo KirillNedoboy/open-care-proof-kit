@@ -95,6 +95,12 @@ def test_workspace_generation_helper_rejects_stale_person_responses() -> None:
         "if(helper.shouldRefreshCapabilities(409))process.exit(7);"
         "if(helper.evidenceFactType({fact_type:'medication'})!=='medication')process.exit(8);"
         "if(helper.evidenceFactType({record_type:'confirmed_condition'})!=='condition')process.exit(9);"
+        "if(helper.evidenceFactType({fact_type:'procedure'})!=='procedure')process.exit(11);"
+        "if(helper.evidenceFactType({fact_type:'recommendation'})!=='recommendation')process.exit(12);"
+        "if(helper.evidenceFactType({fact_type:'follow_up'})!=='follow_up')process.exit(13);"
+        "if(helper.evidenceFactType({record_type:'confirmed_procedure'})!=='procedure')process.exit(14);"
+        "if(helper.evidenceFactType({record_type:'confirmed_recommendation'})!=='recommendation')process.exit(15);"
+        "if(helper.evidenceFactType({record_type:'confirmed_follow_up'})!=='follow_up')process.exit(16);"
         "if(helper.evidenceFactType({record_type:'unknown'})!=='')process.exit(10);"
     )
 
@@ -156,6 +162,9 @@ def test_workspace_script_defends_exact_frontend_labels_and_provenance() -> None
         "Medication record confirmed",
         "Condition record confirmed",
         "Lab record confirmed",
+        "Procedure record confirmed",
+        "Recommendation record confirmed",
+        "Follow-up record confirmed",
         "Record superseded by reviewed correction",
         "Recorded in OpenCare",
         "Onset date (as recorded)",

@@ -1693,7 +1693,7 @@ def test_routine_caregiver_revision_does_not_silently_upgrade_generation(
 def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
     tmp_path: Path,
 ) -> None:
-    from app.family_access.policy import OWNER_SCOPES_V1, OWNER_SCOPES_V3, infer_generation
+    from app.family_access.policy import OWNER_SCOPES_V1, OWNER_SCOPES_V4, infer_generation
 
     service = _service(tmp_path)
     owner = service.bootstrap(
@@ -1733,8 +1733,8 @@ def test_owner_generation_upgrade_requires_confirmation_and_records_consent(
         assignment_id,
         confirm_full_owner_access=True,
     )
-    assert upgraded.scopes == OWNER_SCOPES_V3
-    assert infer_generation(upgraded.scopes) == "family-access-v3"
+    assert upgraded.scopes == OWNER_SCOPES_V4
+    assert infer_generation(upgraded.scopes) == "family-access-v4"
     assert service.authorize_person(
         owner.actor_id, "existing-person", "condition.read"
     ).allowed is True

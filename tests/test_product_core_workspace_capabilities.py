@@ -39,6 +39,12 @@ CAPABILITY_KEYS = frozenset(
         "condition_write",
         "lab_read",
         "lab_write",
+        "procedure_read",
+        "procedure_write",
+        "recommendation_read",
+        "recommendation_write",
+        "follow_up_read",
+        "follow_up_write",
         "timeline_read",
         "visit_read",
         "visit_write",
@@ -78,6 +84,12 @@ CAREGIVER_READ_ONLY = {
     "condition_write": False,
     "lab_read": True,
     "lab_write": False,
+    "procedure_read": True,
+    "procedure_write": False,
+    "recommendation_read": True,
+    "recommendation_write": False,
+    "follow_up_read": True,
+    "follow_up_write": False,
     "timeline_read": True,
     "visit_read": True,
     "visit_write": False,
@@ -105,6 +117,12 @@ V1_CAREGIVER_READ_ONLY = {
     "condition_write": False,
     "lab_read": False,
     "lab_write": False,
+    "procedure_read": False,
+    "procedure_write": False,
+    "recommendation_read": False,
+    "recommendation_write": False,
+    "follow_up_read": False,
+    "follow_up_write": False,
     "timeline_read": True,
     "visit_read": True,
     "visit_write": False,
@@ -397,10 +415,10 @@ def test_hidden_person_returns_standard_error_envelope(
     }
 
 
-def test_response_shape_is_closed_with_exactly_twenty_four_keys(
+def test_response_shape_is_closed_with_exactly_thirty_keys(
     access_harness: AccessHarness,
 ) -> None:
     access_harness.login("alice")
     capabilities = _capabilities(access_harness, "alice-person")
-    assert len(capabilities) == 24
+    assert len(capabilities) == 30
     assert all(isinstance(value, bool) for value in capabilities.values())

@@ -22,23 +22,35 @@ ecosystem evidence pending.
 
 ## Implemented boundary
 
-- Product Core schema v10 owns Person-scoped Sources, medications, recorded
-  conditions, labs, Visits, Visit Questions, Visit Briefs, document
-  extractions, genetics datasets, findings, grants, research sessions, export,
-  backup, and recovery.
-- Visit Brief content schema remains v2; v1 revisions remain readable.
+- Product Core schema v11 locally owns Person-scoped Sources, medications,
+  recorded conditions, labs, procedures, recommendations, follow-ups, Visits,
+  Visit Questions, Visit Briefs, document extractions, genetics datasets,
+  findings, grants, research sessions, export, backup, and recovery. v10 rows
+  are preserved by the migration.
+- Visit Brief content schema remains v2; v1 revisions remain readable. The D2.2
+  categories are explicitly not part of Brief v2.
 - Family Access v1 and v2 are frozen. v3 adds `document.read` and
-  `document.write` without silent legacy expansion.
+  `document.write` without silent legacy expansion. `family-access-v4` locally
+  adds `procedure.read/write`, `recommendation.read/write`, and
+  `follow_up.read/write`; v1/v2/v3 remain frozen verbatim with no silent
+  expansion, and existing v3 grants upgrade only through the explicit audited
+  revision mechanism.
 - Genetics authority is separate from Family Access generations:
   `genetics.read`, `genetics.write`, `genetics.research`,
   `genetics.compare`, and `genetics.export`.
 - D1 PDF/TXT document ingest is implemented and published on public `main`:
   immutable Source bytes, bounded embedded-text extraction, page/span
   provenance, document grants, review lifecycle, export v4, and recovery.
-- D2.1 automatic source-grounded medication/condition/lab extraction is complete
-  locally on schema v10; D2 as a whole remains incomplete. D2.2 procedures,
-  recommendations, and follow-up extraction is next. UI redesign follows D2;
-  R7 Docker Distribution remains paused until then.
+- D2.1 automatic source-grounded medication/condition/lab extraction = DONE /
+  published. D2.2 procedures, recommendations, and follow-up extraction =
+  COMPLETE locally (not yet published or merged). D2 Document Intelligence =
+  COMPLETE locally. Supported automatic source-grounded categories:
+  medication, condition, lab, procedure, recommendation, follow_up. New runs
+  use extraction contract `opencare-document-facts/2`; historical
+  `opencare-document-facts/1` runs remain valid, readable, and exportable and
+  are never retroactively enlarged. Visit Brief content schema remains
+  v2 (unchanged). NEXT: UI Redesign. R7 Docker Distribution remains paused
+  until the redesign completes.
 - P3 Genetics Research Studio is implemented and published on public `main`:
   bounded local consumer-genotype import, selective indexing, evidence-backed
   reviewed findings, PGx associations, family comparison, Genetics Workspace,
@@ -193,8 +205,8 @@ trust-flow = VERIFIED. Free-model compatibility remains NOT VERIFIED; the two
 bounded candidate failures are recorded above. Ollama live smoke remains
 DEFERRED / UNVERIFIED, and OpenAI Responses live smoke remains UNVERIFIED.
 
-NEXT: D2.2 — Procedures / Recommendations / Follow-up extraction.
-After D2: UI Redesign. R7 Docker Distribution remains paused.
+NEXT: UI Redesign. R7 Docker Distribution remains paused until the redesign
+completes.
 
 ## HTTP privacy contract
 
