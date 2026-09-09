@@ -2,12 +2,27 @@ from __future__ import annotations
 
 from typing import Final, Literal
 
-PurposeId = Literal["visit_preparation", "record_explanation", "clinician_briefing"]
-ActionId = Literal["answer_question", "draft_visit_brief", "summarize_records"]
+PurposeId = Literal[
+    "visit_preparation",
+    "record_explanation",
+    "clinician_briefing",
+    "document_fact_extraction",
+]
+ActionId = Literal[
+    "answer_question",
+    "draft_visit_brief",
+    "summarize_records",
+    "document.extract_facts",
+]
 ToolId = Literal["context.read", "source.read", "brief.draft"]
 
 PURPOSE_IDS: Final[frozenset[str]] = frozenset(
-    {"visit_preparation", "record_explanation", "clinician_briefing"}
+    {
+        "visit_preparation",
+        "record_explanation",
+        "clinician_briefing",
+        "document_fact_extraction",
+    }
 )
 ACTION_REQUIREMENTS: Final[dict[str, tuple[frozenset[str], frozenset[str]]]] = {
     "answer_question": (
@@ -21,6 +36,10 @@ ACTION_REQUIREMENTS: Final[dict[str, tuple[frozenset[str], frozenset[str]]]] = {
     "summarize_records": (
         frozenset({"person.read", "source.read"}),
         frozenset({"context.read", "source.read"}),
+    ),
+    "document.extract_facts": (
+        frozenset({"document.read"}),
+        frozenset({"source.read"}),
     ),
 }
 TOOL_IDS: Final[frozenset[str]] = frozenset({"context.read", "source.read", "brief.draft"})

@@ -128,7 +128,10 @@
     return { personId: state.person?.person_id || "", generation: state.loadVersion, signal: state.controller?.signal };
   }
   function documentCandidateAllowed(type = byId("document-candidate-type")?.value) {
-    return Boolean(state.capabilities.document_read && state.capabilities.candidate_review && state.capabilities[`${type}_write`] && state.capabilities[`${type}_read`]);
+    // D2 automatic extraction is the normal document workflow. Keep the
+    // legacy manual-candidate endpoint for compatibility, but do not expose
+    // its span/category form in the Documents surface.
+    return false;
   }
   async function sha256Hex(value) {
     const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -161,14 +164,14 @@
     const section = byId("documents"), list = byId("document-list"); section.hidden = !state.capabilities.document_read; clear(list);
     byId("document-upload-panel").hidden = !(state.capabilities.document_write && state.capabilities.source_write);
     byId("documents-empty").hidden = state.documents.length > 0;
-    state.documents.forEach((doc) => { const card = make("article", "", "record"), button = make("button", doc.original_filename || t("workspace.page_text", "Open document")); button.type = "button"; button.addEventListener("click", () => { state.selectedDocument = doc; state.selectedPage = null; state.selectedSpan = null; renderDocumentViewer(); void loadDocumentPage(doc, 1, button); }); card.append(make("strong", doc.original_filename || t("workspace.page_text", "Untitled document")), make("p", `${doc.document_kind === "pdf" ? "PDF" : "Text"} · ${doc.extraction.page_count} · ${t("workspace.created", "Added")} ${doc.created_at}`, "meta"), button); list.append(card); });
+    state.documents.forEach((doc) => { const card = make("article", "", "record"), button = make("button", doc.original_filename || t("workspace.page_text", "Open document")); button.type = "button"; button.addEventListener("click", () => { state.selectedDocument = doc; state.selectedPage = null; state.selectedSpan = null; renderDocumentViewer(); void loadDocumentPage(doc, 1, button); }); const run = doc.fact_extraction, statusText = run?.status === "completed" ? `${t("workspace.ai_extracted", "AI extracted")}: ${run.valid_facts || 0}` : run?.status === "partial" ? t("workspace.ai_partial", "Partial AI extraction") : run?.status === "unavailable" ? t("workspace.ai_unavailable", "AI analysis unavailable") : t("workspace.ai_not_analyzed", "Not analyzed"); card.append(make("strong", doc.original_filename || t("workspace.page_text", "Untitled document")), make("p", `${doc.document_kind === "pdf" ? "PDF" : "Text"} · ${doc.extraction.page_count} · ${statusText}`, "meta"), button); list.append(card); });
     renderDocumentViewer();
   }
   async function loadDocuments(personIdContext) {
     if (!state.capabilities.document_read) { state.documents = []; return []; }
     const response = await request(`/people/${encodeURIComponent(personIdContext)}/documents`, {}, documentContext());
     if (response.documents.some((doc) => doc.person_id !== personIdContext)) return [];
-    return response.documents;
+    return Promise.all(response.documents.map(async (doc) => { try { doc.fact_extraction = await request(`/people/${encodeURIComponent(personIdContext)}/documents/${encodeURIComponent(doc.source_id)}/fact-extraction`, {}, documentContext()); } catch (_) { doc.fact_extraction = { status: "not_analyzed" }; } return doc; }));
   }
   async function uploadDocument(event) {
     event.preventDefault();
@@ -179,7 +182,16 @@
     try {
       const body = await file.arrayBuffer();
       const filename = OpenCareWorkspaceState.sanitizeDocumentFilename(file.name);
-      await personRequest(`/people/${encodeURIComponent(state.person.person_id)}/documents`, { method: "POST", body, headers: { "Content-Type": file.type === "application/pdf" ? "application/pdf" : "text/plain", "X-OpenCare-Filename": filename } });
+      const uploaded = await personRequest(`/people/${encodeURIComponent(state.person.person_id)}/documents`, { method: "POST", body, headers: { "Content-Type": file.type === "application/pdf" ? "application/pdf" : "text/plain", "X-OpenCare-Filename": filename } });
+      const sourceId = uploaded.document.source_id;
+      const base = `/people/${encodeURIComponent(state.person.person_id)}/documents/${encodeURIComponent(sourceId)}/fact-extractions`;
+      const prepared = await personRequest(`${base}/prepare`, { method: "POST", body: "{}" });
+      if (prepared.status === "consent_required") {
+        const approved = window.confirm(`${t("workspace.document_external_disclosure", "Analyze this document with the external provider?")}\n${t("chat.provider", "Provider")}: ${prepared.provider_id || "configured"}\n${t("chat.model", "Model")}: ${prepared.model_id || "configured"}`);
+        await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/consent`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "decline" }) });
+        if (!approved) { event.target.reset(); await loadWorkspace(); status(t("workspace.document_analysis_declined", "Document stored; analysis was declined."), "success"); return; }
+      }
+      if (!["unavailable", "declined"].includes(prepared.status)) await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/execute`, { method: "POST", body: "{}" });
       event.target.reset(); await loadWorkspace(); status(t("workspace.document_uploaded", "Document uploaded."), "success");
     } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { submit.disabled = false; }
   }
@@ -457,6 +469,7 @@
     const card = make("article", "", "record");
     const name = candidate.fact_type === "lab" ? candidate.test_name : candidate.display_name;
     card.append(make("strong", name));
+    if (candidate.status === "pending" && candidate.provenance_locator?.kind === "document_text_span") card.append(make("p", `${t("workspace.ai_extracted", "AI extracted")} · ${t("workspace.not_confirmed", "Not confirmed")}`, "meta"));
     card.append(make("p", `${t("workspace.fact", "Fact")}: ${factLabel(candidate.fact_type)} · ${t("workspace.status", "Status")}: ${statusLabel(candidate.status)} · ${t("workspace.created", "Created")}: ${candidate.created_at}`, "meta"));
     if (candidate.fact_type === "medication" && candidate.schedule_text) card.append(make("p", candidate.schedule_text));
     if (candidate.fact_type === "condition") { if (candidate.status_text) card.append(make("p", `${t("workspace.recorded_status", "Recorded status")}: ${candidate.status_text}`)); if (candidate.onset_date) card.append(make("p", `${t("workspace.recorded_onset", "Recorded onset")}: ${candidate.onset_date}`)); }
@@ -889,7 +902,7 @@
   byId("clear-workspace").addEventListener("click", () => { void clearWorkspace(); });
   byId("open-vault-export").addEventListener("click", (event) => { if (!state.person || !state.capabilities.vault_export) return; state.vaultExportTrigger = event.currentTarget; byId("vault-export-warning").hidden = false; byId("confirm-vault-export").focus(); });
   byId("cancel-vault-export").addEventListener("click", () => { byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); });
-  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person || !state.capabilities.vault_export) return; const button = event.currentTarget, personContext = { personId: state.person.person_id, generation: state.loadVersion, signal: state.controller?.signal }; button.disabled = true; try { const { blob, response } = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }, personContext); const serverName = OpenCareWorkspaceState.contentDispositionFilename(response.headers.get("Content-Disposition")); const filename = OpenCareWorkspaceState.sanitizeDownloadFilename(serverName, "opencare-person-vault-v4.zip"); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status(t("workspace.vault_downloaded", "Vault download prepared."), "success"); } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { button.disabled = false; } });
+  byId("confirm-vault-export").addEventListener("click", async (event) => { if (!state.person || !state.capabilities.vault_export) return; const button = event.currentTarget, personContext = { personId: state.person.person_id, generation: state.loadVersion, signal: state.controller?.signal }; button.disabled = true; try { const { blob, response } = await requestBlob(`/people/${encodeURIComponent(state.person.person_id)}/vault-export`, { method: "POST", body: "{}" }, personContext); const serverName = OpenCareWorkspaceState.contentDispositionFilename(response.headers.get("Content-Disposition")); const filename = OpenCareWorkspaceState.sanitizeDownloadFilename(serverName, "opencare-person-vault-v5.zip"); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); URL.revokeObjectURL(link.href); byId("vault-export-warning").hidden = true; state.vaultExportTrigger?.focus(); status(t("workspace.vault_downloaded", "Vault download prepared."), "success"); } catch (error) { if (error.name !== "AbortError") status(error.message, "error"); } finally { button.disabled = false; } });
   byId("inbox-fact-filter").addEventListener("change", render);
   byId("inbox-status-filter").addEventListener("change", render);
   byId("review-search").addEventListener("input", render);

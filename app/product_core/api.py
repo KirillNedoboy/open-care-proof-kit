@@ -6,7 +6,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, Path, Query, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
@@ -88,6 +88,7 @@ from app.product_core.api_models import (
     WorkspaceCapabilitiesResponse,
     _validate_identifier,
 )
+from app.product_core.document_fact_extraction import DocumentFactExtractionService
 from app.product_core.errors import (
     AccessAuditUnavailableError,
     CandidateNotFoundError,
@@ -1472,6 +1473,169 @@ def get_document_page(
         extracted_chars=page.extracted_chars,
         page_hash=page.page_hash,
     )
+
+
+def _d2_service(request: Request, runtime: ProductCoreRuntime) -> DocumentFactExtractionService:
+    provider = getattr(request.app.state, "agent_provider", None)
+    if provider is None:
+        from app.agent.providers.deterministic import DeterministicProvider
+
+        provider = DeterministicProvider()
+    return DocumentFactExtractionService(runtime, provider)
+
+
+def _d2_allowed_types(access: ProductCoreAccess, person_id: str) -> list[str]:
+    allowed: list[str] = []
+    with access.runtime.database.uow() as uow:
+        assert uow.connection is not None
+        for fact_type in ("medication", "condition", "lab"):
+            if access._assignment_allows(uow.connection, person_id, (f"{fact_type}.write",)):
+                allowed.append(fact_type)
+    return allowed
+
+
+@router.post(
+    "/people/{person_id}/documents/{source_id}/fact-extractions/prepare",
+    operation_id="product_core_prepare_document_fact_extraction",
+)
+@router.post(
+    "/people/{person_id}/documents/{source_id}/fact-extraction/prepare",
+    operation_id="product_core_prepare_document_fact_extraction_singular",
+)
+def prepare_document_fact_extraction(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    request: Request,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    allowed = _d2_allowed_types(access, person_id)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="No writable fact family is authorized.")
+    try:
+        return _d2_service(request, runtime).prepare(
+            person_id, source_id, allowed, actor_id=access.actor_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/people/{person_id}/documents/{source_id}/fact-extractions/{run_id}/consent",
+    operation_id="product_core_consent_document_fact_extraction",
+)
+@router.post(
+    "/people/{person_id}/documents/{source_id}/fact-extraction/{run_id}/consent",
+    operation_id="product_core_consent_document_fact_extraction_singular",
+)
+async def consent_document_fact_extraction(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    run_id: ProductCoreIdentifier,
+    request: Request,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    payload = await request.json()
+    decision = payload.get("decision") if isinstance(payload, dict) else None
+    try:
+        if (
+            not isinstance(payload, dict)
+            or set(payload) != {"decision"}
+            or decision not in {"approve", "decline"}
+        ):
+            raise HTTPException(status_code=422, detail="invalid_consent_decision")
+        return _d2_service(request, runtime).consent(
+            run_id, str(decision), person_id=person_id, source_id=source_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.post(
+    "/people/{person_id}/documents/{source_id}/fact-extractions/{run_id}/execute",
+    operation_id="product_core_execute_document_fact_extraction",
+)
+@router.post(
+    "/people/{person_id}/documents/{source_id}/fact-extraction/{run_id}/execute",
+    operation_id="product_core_execute_document_fact_extraction_singular",
+)
+def execute_document_fact_extraction(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    run_id: ProductCoreIdentifier,
+    request: Request,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    try:
+        return _d2_service(request, runtime).execute(
+            run_id,
+            person_id=person_id,
+            source_id=source_id,
+            authorized_fact_types=_d2_allowed_types(access, person_id),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.get(
+    "/people/{person_id}/documents/{source_id}/fact-extractions/{run_id}",
+    operation_id="product_core_get_document_fact_extraction",
+)
+@router.get(
+    "/people/{person_id}/documents/{source_id}/fact-extraction/{run_id}",
+    operation_id="product_core_get_document_fact_extraction_singular",
+)
+def get_document_fact_extraction(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    run_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    with runtime.database.uow() as uow:
+        run = uow.document_fact_extractions.get_run(run_id)
+        if run is None or run.person_id != person_id or run.source_id != source_id:
+            raise HTTPException(status_code=404, detail="run_not_found")
+        return DocumentFactExtractionService.serialize_run(
+            run, uow.document_fact_extractions.list_items(run_id)
+        )
+
+
+@router.get(
+    "/people/{person_id}/documents/{source_id}/fact-extraction",
+    operation_id="product_core_get_latest_document_fact_extraction",
+)
+@router.get(
+    "/people/{person_id}/documents/{source_id}/fact-extractions",
+    operation_id="product_core_get_latest_document_fact_extraction_plural",
+)
+def get_latest_document_fact_extraction(
+    person_id: ProductCoreIdentifier,
+    source_id: ProductCoreIdentifier,
+    runtime: RuntimeDependency,
+    access: AccessDependency,
+) -> dict[str, Any]:
+    access.require_source_for_person(source_id, person_id, "document.read")
+    with runtime.database.uow() as uow:
+        assert uow.connection is not None
+        row = uow.connection.execute(
+            "SELECT * FROM document_fact_extraction_runs WHERE person_id = ? AND source_id = ? "
+            "ORDER BY created_at DESC, run_id DESC LIMIT 1",
+            (person_id, source_id),
+        ).fetchone()
+        if row is None:
+            return {"status": "not_analyzed", "source_id": source_id, "items": []}
+        run = uow.document_fact_extractions.get_run(str(row["run_id"]))
+        assert run is not None
+        return DocumentFactExtractionService.serialize_run(
+            run, uow.document_fact_extractions.list_items(run.run_id)
+        )
 
 
 @router.post(

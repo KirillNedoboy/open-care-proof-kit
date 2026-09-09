@@ -291,6 +291,15 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
             "Correction lineage: superseded by a newer confirmed record."
         ),
         "workspace.document_uploaded": "Document uploaded.",
+        "workspace.document_external_disclosure": (
+            "Analyze this document with the external provider?"
+        ),
+        "workspace.document_analysis_declined": "Document stored; analysis was declined.",
+        "workspace.ai_extracted": "AI extracted",
+        "workspace.ai_partial": "Partial AI extraction",
+        "workspace.ai_unavailable": "AI analysis unavailable",
+        "workspace.ai_not_analyzed": "Not analyzed",
+        "workspace.not_confirmed": "Not confirmed",
         "workspace.typed_candidate_pending": "Typed candidate is waiting for review.",
         "workspace.condition_pending": "Condition entry is waiting for review.",
         "workspace.lab_pending": "Lab entry is waiting for review.",
@@ -1820,6 +1829,15 @@ TRANSLATIONS["ru"].update(
             "Связь исправления: запись заменена новой подтверждённой записью."
         ),
         "workspace.document_uploaded": "Документ загружен.",
+        "workspace.document_external_disclosure": (
+            "Проанализировать этот документ внешним провайдером?"
+        ),
+        "workspace.document_analysis_declined": "Документ сохранён; анализ отклонён.",
+        "workspace.ai_extracted": "Извлечено ИИ",
+        "workspace.ai_partial": "Частичное извлечение ИИ",
+        "workspace.ai_unavailable": "ИИ-анализ недоступен",
+        "workspace.ai_not_analyzed": "Не анализировался",
+        "workspace.not_confirmed": "Не подтверждено",
         "workspace.typed_candidate_pending": "Запись добавлена и ожидает проверки.",
         "workspace.condition_pending": "Состояние добавлено и ожидает проверки.",
         "workspace.lab_pending": "Анализ добавлен и ожидает проверки.",

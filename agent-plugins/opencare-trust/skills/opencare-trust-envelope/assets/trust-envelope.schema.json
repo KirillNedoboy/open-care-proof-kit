@@ -465,7 +465,8 @@
       "enum": [
         "answer_question",
         "draft_visit_brief",
-        "summarize_records"
+        "summarize_records",
+        "document.extract_facts"
       ],
       "title": "Action Id",
       "type": "string"
@@ -567,7 +568,8 @@
       "enum": [
         "visit_preparation",
         "record_explanation",
-        "clinician_briefing"
+        "clinician_briefing",
+        "document_fact_extraction"
       ],
       "title": "Purpose Id",
       "type": "string"

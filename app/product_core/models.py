@@ -9,6 +9,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 SourceType = Literal["manual_entry", "plain_text", "document", "genetics"]
 FactType = Literal["medication", "condition", "lab"]
 CandidateStatus = Literal["pending", "confirmed", "corrected", "rejected", "unsupported"]
+DocumentFactRunStatus = Literal[
+    "prepared",
+    "consent_required",
+    "consented",
+    "executing",
+    "completed",
+    "partial",
+    "failed",
+    "declined",
+    "unavailable",
+]
+DocumentFactItemStatus = Literal["valid", "invalid", "reused"]
 VisitBriefRevisionOrigin = Literal["deterministic_generation", "user_edit", "regeneration"]
 VisitBriefState = Literal["current", "stale", "unavailable"]
 
@@ -92,6 +104,74 @@ class DocumentExtractionPage(BaseModel):
     decoded_content_bytes: int = Field(ge=0, le=200_000)
     extracted_chars: int = Field(ge=0, le=100_000)
     page_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class DocumentFactExtractionRun(BaseModel):
+    """Durable, provider-independent state for one document fact request."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1)
+    person_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    extraction_id: str = Field(min_length=1)
+    actor_id: str = Field(min_length=1)
+    request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
+    contract_version: Literal["opencare-document-facts/1"]
+    status: DocumentFactRunStatus
+    allowed_fact_types: list[FactType] = Field(min_length=1, max_length=3)
+    provider_id: str | None = None
+    provider_kind: str | None = None
+    provider_descriptor_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    model_id: str | None = None
+    external: bool = False
+    envelope_id: str | None = None
+    consent_id: str | None = None
+    receipt_id: str | None = None
+    reason_code: str | None = None
+    total_facts: int = Field(default=0, ge=0)
+    valid_facts: int = Field(default=0, ge=0)
+    invalid_facts: int = Field(default=0, ge=0)
+    new_candidates: int = Field(default=0, ge=0)
+    reused_candidates: int = Field(default=0, ge=0)
+    created_at: datetime
+    updated_at: datetime
+    completed_at: datetime | None = None
+
+    @field_validator("created_at", "updated_at", "completed_at")
+    @classmethod
+    def validate_timestamps(cls, value: datetime | None) -> datetime | None:
+        return None if value is None else ensure_utc_datetime(value)
+
+
+class DocumentFactExtractionItem(BaseModel):
+    """A validated or rejected provider item retained for audit and status."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str = Field(min_length=1)
+    run_id: str = Field(min_length=1)
+    person_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    extraction_id: str = Field(min_length=1)
+    ordinal: int = Field(ge=0, lt=32)
+    fact_type: FactType
+    payload: dict[str, Any]
+    quote: str | None = None
+    page_number: int | None = Field(default=None, ge=1, le=200)
+    start_codepoint: int | None = Field(default=None, ge=0)
+    end_codepoint: int | None = Field(default=None, ge=0)
+    selected_text_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    validation_status: DocumentFactItemStatus
+    invalid_reason: str | None = None
+    candidate_id: str | None = None
+    candidate_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: datetime) -> datetime:
+        return ensure_utc_datetime(value)
 
 
 class Person(BaseModel):

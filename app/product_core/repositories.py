@@ -15,6 +15,8 @@ from app.product_core.models import (
     ConditionCandidateDetail,
     DocumentExtractionPage,
     DocumentExtractionSnapshot,
+    DocumentFactExtractionItem,
+    DocumentFactExtractionRun,
     LabCandidateDetail,
     MedicationCandidateDetail,
     PersistedVisitBrief,
@@ -71,6 +73,41 @@ class DocumentExtractionRepository(Protocol):
         self,
         snapshot: DocumentExtractionSnapshot,
         pages: list[DocumentExtractionPage],
+    ) -> None: ...
+
+
+class DocumentFactExtractionRepository(Protocol):
+    def get_run(self, run_id: str) -> DocumentFactExtractionRun | None: ...
+
+    def get_run_by_fingerprint(
+        self,
+        person_id: str,
+        source_id: str,
+        extraction_id: str,
+        request_fingerprint: str,
+    ) -> DocumentFactExtractionRun | None: ...
+
+    def insert_run(self, run: DocumentFactExtractionRun) -> None: ...
+
+    def update_run(self, run: DocumentFactExtractionRun) -> None: ...
+
+    def list_items(self, run_id: str) -> list[DocumentFactExtractionItem]: ...
+
+    def insert_item(self, item: DocumentFactExtractionItem) -> None: ...
+
+    def get_candidate_id_by_fingerprint(
+        self, person_id: str, candidate_fingerprint: str
+    ) -> str | None: ...
+
+    def insert_fingerprint(
+        self,
+        *,
+        candidate_fingerprint: str,
+        person_id: str,
+        source_id: str,
+        fact_type: str,
+        candidate_id: str,
+        created_at: datetime,
     ) -> None: ...
 
 
@@ -399,6 +436,194 @@ class SQLiteDocumentExtractionRepository:
                 )
                 for page in pages
             ],
+        )
+
+
+class SQLiteDocumentFactExtractionRepository:
+    """Durable D2 run/item state and the cross-run candidate registry."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get_run(self, run_id: str) -> DocumentFactExtractionRun | None:
+        row = self.connection.execute(
+            "SELECT * FROM document_fact_extraction_runs WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+        return None if row is None else _document_fact_run_from_row(row)
+
+    def get_run_by_fingerprint(
+        self,
+        person_id: str,
+        source_id: str,
+        extraction_id: str,
+        request_fingerprint: str,
+    ) -> DocumentFactExtractionRun | None:
+        row = self.connection.execute(
+            """
+            SELECT * FROM document_fact_extraction_runs
+            WHERE person_id = ? AND source_id = ? AND extraction_id = ?
+              AND request_fingerprint = ?
+            """,
+            (person_id, source_id, extraction_id, request_fingerprint),
+        ).fetchone()
+        return None if row is None else _document_fact_run_from_row(row)
+
+    def insert_run(self, run: DocumentFactExtractionRun) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO document_fact_extraction_runs (
+                run_id, person_id, source_id, extraction_id, actor_id,
+                request_fingerprint, contract_version, status, allowed_fact_types_json,
+                provider_id, provider_kind, provider_descriptor_hash, model_id, external,
+                envelope_id, consent_id, receipt_id, reason_code,
+                total_facts, valid_facts, invalid_facts, new_candidates, reused_candidates,
+                created_at, updated_at, completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run.run_id,
+                run.person_id,
+                run.source_id,
+                run.extraction_id,
+                run.actor_id,
+                run.request_fingerprint,
+                run.contract_version,
+                run.status,
+                json.dumps(run.allowed_fact_types, ensure_ascii=False, sort_keys=True),
+                run.provider_id,
+                run.provider_kind,
+                run.provider_descriptor_hash,
+                run.model_id,
+                int(run.external),
+                run.envelope_id,
+                run.consent_id,
+                run.receipt_id,
+                run.reason_code,
+                run.total_facts,
+                run.valid_facts,
+                run.invalid_facts,
+                run.new_candidates,
+                run.reused_candidates,
+                run.created_at.isoformat(),
+                run.updated_at.isoformat(),
+                None if run.completed_at is None else run.completed_at.isoformat(),
+            ),
+        )
+
+    def update_run(self, run: DocumentFactExtractionRun) -> None:
+        self.connection.execute(
+            """
+            UPDATE document_fact_extraction_runs SET
+                status = ?, allowed_fact_types_json = ?, provider_id = ?, provider_kind = ?,
+                provider_descriptor_hash = ?, model_id = ?, external = ?, envelope_id = ?,
+                consent_id = ?, receipt_id = ?, reason_code = ?, total_facts = ?,
+                valid_facts = ?, invalid_facts = ?, new_candidates = ?, reused_candidates = ?,
+                updated_at = ?, completed_at = ?
+            WHERE run_id = ?
+            """,
+            (
+                run.status,
+                json.dumps(run.allowed_fact_types, ensure_ascii=False, sort_keys=True),
+                run.provider_id,
+                run.provider_kind,
+                run.provider_descriptor_hash,
+                run.model_id,
+                int(run.external),
+                run.envelope_id,
+                run.consent_id,
+                run.receipt_id,
+                run.reason_code,
+                run.total_facts,
+                run.valid_facts,
+                run.invalid_facts,
+                run.new_candidates,
+                run.reused_candidates,
+                run.updated_at.isoformat(),
+                None if run.completed_at is None else run.completed_at.isoformat(),
+                run.run_id,
+            ),
+        )
+
+    def list_items(self, run_id: str) -> list[DocumentFactExtractionItem]:
+        rows = self.connection.execute(
+            """
+            SELECT * FROM document_fact_extraction_items
+            WHERE run_id = ? ORDER BY ordinal, item_id
+            """,
+            (run_id,),
+        ).fetchall()
+        return [_document_fact_item_from_row(row) for row in rows]
+
+    def insert_item(self, item: DocumentFactExtractionItem) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO document_fact_extraction_items (
+                item_id, run_id, person_id, source_id, extraction_id, ordinal, fact_type,
+                payload_json, quote, page_number, start_codepoint, end_codepoint,
+                selected_text_sha256, validation_status, invalid_reason, candidate_id,
+                candidate_fingerprint, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                item.item_id,
+                item.run_id,
+                item.person_id,
+                item.source_id,
+                item.extraction_id,
+                item.ordinal,
+                item.fact_type,
+                json.dumps(item.payload, ensure_ascii=False, sort_keys=True),
+                item.quote,
+                item.page_number,
+                item.start_codepoint,
+                item.end_codepoint,
+                item.selected_text_sha256,
+                item.validation_status,
+                item.invalid_reason,
+                item.candidate_id,
+                item.candidate_fingerprint,
+                item.created_at.isoformat(),
+            ),
+        )
+
+    def get_candidate_id_by_fingerprint(
+        self, person_id: str, candidate_fingerprint: str
+    ) -> str | None:
+        row = self.connection.execute(
+            """
+            SELECT candidate_id FROM document_fact_extracted_facts
+            WHERE person_id = ? AND candidate_fingerprint = ?
+            """,
+            (person_id, candidate_fingerprint),
+        ).fetchone()
+        return None if row is None else str(row[0])
+
+    def insert_fingerprint(
+        self,
+        *,
+        candidate_fingerprint: str,
+        person_id: str,
+        source_id: str,
+        fact_type: str,
+        candidate_id: str,
+        created_at: datetime,
+    ) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO document_fact_extracted_facts (
+                candidate_fingerprint, person_id, source_id, fact_type,
+                candidate_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                candidate_fingerprint,
+                person_id,
+                source_id,
+                fact_type,
+                candidate_id,
+                created_at.isoformat(),
+            ),
         )
 
 
@@ -1255,6 +1480,62 @@ def _document_page_from_row(row: sqlite3.Row) -> DocumentExtractionPage:
         decoded_content_bytes=row["decoded_content_bytes"],
         extracted_chars=row["extracted_chars"],
         page_hash=row["page_hash"],
+    )
+
+
+def _document_fact_run_from_row(row: sqlite3.Row) -> DocumentFactExtractionRun:
+    return DocumentFactExtractionRun(
+        run_id=row["run_id"],
+        person_id=row["person_id"],
+        source_id=row["source_id"],
+        extraction_id=row["extraction_id"],
+        actor_id=row["actor_id"],
+        request_fingerprint=row["request_fingerprint"],
+        contract_version=row["contract_version"],
+        status=row["status"],
+        allowed_fact_types=json.loads(row["allowed_fact_types_json"]),
+        provider_id=row["provider_id"],
+        provider_kind=row["provider_kind"],
+        provider_descriptor_hash=row["provider_descriptor_hash"],
+        model_id=row["model_id"],
+        external=bool(row["external"]),
+        envelope_id=row["envelope_id"],
+        consent_id=row["consent_id"],
+        receipt_id=row["receipt_id"],
+        reason_code=row["reason_code"],
+        total_facts=row["total_facts"],
+        valid_facts=row["valid_facts"],
+        invalid_facts=row["invalid_facts"],
+        new_candidates=row["new_candidates"],
+        reused_candidates=row["reused_candidates"],
+        created_at=parse_utc_datetime(row["created_at"]),
+        updated_at=parse_utc_datetime(row["updated_at"]),
+        completed_at=(
+            None if row["completed_at"] is None else parse_utc_datetime(row["completed_at"])
+        ),
+    )
+
+
+def _document_fact_item_from_row(row: sqlite3.Row) -> DocumentFactExtractionItem:
+    return DocumentFactExtractionItem(
+        item_id=row["item_id"],
+        run_id=row["run_id"],
+        person_id=row["person_id"],
+        source_id=row["source_id"],
+        extraction_id=row["extraction_id"],
+        ordinal=row["ordinal"],
+        fact_type=row["fact_type"],
+        payload=json.loads(row["payload_json"]),
+        quote=row["quote"],
+        page_number=row["page_number"],
+        start_codepoint=row["start_codepoint"],
+        end_codepoint=row["end_codepoint"],
+        selected_text_sha256=row["selected_text_sha256"],
+        validation_status=row["validation_status"],
+        invalid_reason=row["invalid_reason"],
+        candidate_id=row["candidate_id"],
+        candidate_fingerprint=row["candidate_fingerprint"],
+        created_at=parse_utc_datetime(row["created_at"]),
     )
 
 

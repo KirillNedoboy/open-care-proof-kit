@@ -33,7 +33,7 @@ from app.product_core.persisted_visit_briefs import verify_persisted_visit_brief
 from app.product_core.services import ImmutableSourceStore
 from app.product_core.sqlite import SQLiteDatabase
 
-PORTABLE_VAULT_FORMAT_VERSION = 4
+PORTABLE_VAULT_FORMAT_VERSION = 5
 PRODUCT_CORE_SCHEMA_VERSION = PRODUCT_MIGRATIONS[-1].version
 
 
@@ -116,6 +116,8 @@ class PortableVaultExportService:
             source_payloads: dict[str, bytes] = {}
             document_extractions: list[DocumentExtractionSnapshot] = []
             document_pages: list[DocumentExtractionPage] = []
+            document_fact_runs: list[dict[str, object]] = []
+            document_fact_items: list[dict[str, object]] = []
             for source in sources:
                 _source_archive_path(source)
                 source_payloads[source.id] = self.source_store.read_for_portable_export(source)
@@ -130,6 +132,31 @@ class PortableVaultExportService:
                 document_pages.extend(pages)
             connection = uow.connection
             assert connection is not None
+            document_fact_runs = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT run_id, person_id, source_id, extraction_id, actor_id, "
+                    "request_fingerprint, contract_version, status, allowed_fact_types_json, "
+                    "provider_id, provider_kind, provider_descriptor_hash, model_id, external, "
+                    "envelope_id, consent_id, receipt_id, reason_code, total_facts, valid_facts, "
+                    "invalid_facts, new_candidates, reused_candidates, created_at, updated_at, "
+                    "completed_at FROM document_fact_extraction_runs WHERE person_id = ? "
+                    "ORDER BY created_at, run_id",
+                    (person_id,),
+                ).fetchall()
+            ]
+            document_fact_items = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT item_id, run_id, person_id, source_id, extraction_id, ordinal, "
+                    "fact_type, payload_json, quote, page_number, start_codepoint, "
+                    "end_codepoint, selected_text_sha256, validation_status, invalid_reason, "
+                    "candidate_id, candidate_fingerprint, created_at "
+                    "FROM document_fact_extraction_items WHERE person_id = ? "
+                    "ORDER BY run_id, ordinal, item_id",
+                    (person_id,),
+                ).fetchall()
+            ]
             memberships = [
                 _membership_dto(row)
                 for row in connection.execute(
@@ -200,6 +227,8 @@ class PortableVaultExportService:
                 "document_extraction_pages": [
                     _document_extraction_page_dto(item) for item in document_pages
                 ],
+                "document_fact_extraction_runs": document_fact_runs,
+                "document_fact_extraction_items": document_fact_items,
                 "candidate_facts": [_candidate_dto(item) for item in candidates],
                 "candidate_medication_details": [
                     _candidate_medication_detail_dto(item)

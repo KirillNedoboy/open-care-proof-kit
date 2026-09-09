@@ -102,6 +102,14 @@ class DocumentValidationError(ProductCoreError, ValueError):
         self.reason_code = reason_code
 
 
+class DocumentFactExtractionError(ProductCoreError, ValueError):
+    """Raised when a bounded automatic document fact run cannot proceed."""
+
+    def __init__(self, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
 class DocumentTooLargeError(DocumentValidationError):
     """Raised when the raw request body exceeds the upload byte limit."""
 

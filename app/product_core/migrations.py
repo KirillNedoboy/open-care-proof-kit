@@ -1708,6 +1708,184 @@ PRODUCT_MIGRATIONS = (
             ),
         ),
     ),
+    Migration(
+        version=10,
+        statements=(
+            "PRAGMA defer_foreign_keys=ON",
+            """
+            CREATE TABLE document_fact_extraction_runs (
+                run_id TEXT PRIMARY KEY CHECK (length(trim(run_id)) > 0),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                extraction_id TEXT NOT NULL,
+                actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+                request_fingerprint TEXT NOT NULL CHECK (
+                    length(request_fingerprint) = 64
+                    AND request_fingerprint = lower(request_fingerprint)
+                    AND request_fingerprint NOT GLOB '*[^0-9a-f]*'
+                ),
+                contract_version TEXT NOT NULL CHECK (
+                    contract_version = 'opencare-document-facts/1'
+                ),
+                status TEXT NOT NULL CHECK (
+                    status IN (
+                        'prepared', 'consent_required', 'consented', 'executing',
+                        'completed', 'partial', 'failed', 'declined', 'unavailable'
+                    )
+                ),
+                allowed_fact_types_json TEXT NOT NULL CHECK (
+                    json_valid(allowed_fact_types_json)
+                ),
+                provider_id TEXT,
+                provider_kind TEXT,
+                provider_descriptor_hash TEXT CHECK (
+                    provider_descriptor_hash IS NULL
+                    OR length(provider_descriptor_hash) = 64
+                ),
+                model_id TEXT,
+                external INTEGER NOT NULL DEFAULT 0 CHECK (external IN (0, 1)),
+                envelope_id TEXT,
+                consent_id TEXT,
+                receipt_id TEXT,
+                reason_code TEXT,
+                total_facts INTEGER NOT NULL DEFAULT 0 CHECK (total_facts >= 0),
+                valid_facts INTEGER NOT NULL DEFAULT 0 CHECK (valid_facts >= 0),
+                invalid_facts INTEGER NOT NULL DEFAULT 0 CHECK (invalid_facts >= 0),
+                new_candidates INTEGER NOT NULL DEFAULT 0 CHECK (new_candidates >= 0),
+                reused_candidates INTEGER NOT NULL DEFAULT 0 CHECK (reused_candidates >= 0),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT,
+                UNIQUE (run_id, person_id, source_id, extraction_id),
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id),
+                FOREIGN KEY (extraction_id, source_id, person_id)
+                    REFERENCES document_extractions(extraction_id, source_id, person_id)
+            )
+            """,
+            """
+            CREATE TABLE document_fact_extraction_items (
+                item_id TEXT PRIMARY KEY CHECK (length(trim(item_id)) > 0),
+                run_id TEXT NOT NULL REFERENCES document_fact_extraction_runs(run_id),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                extraction_id TEXT NOT NULL,
+                ordinal INTEGER NOT NULL CHECK (ordinal >= 0 AND ordinal < 32),
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN ('medication', 'condition', 'lab')
+                ),
+                payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+                quote TEXT,
+                page_number INTEGER,
+                start_codepoint INTEGER,
+                end_codepoint INTEGER,
+                selected_text_sha256 TEXT CHECK (
+                    selected_text_sha256 IS NULL OR length(selected_text_sha256) = 64
+                ),
+                validation_status TEXT NOT NULL CHECK (
+                    validation_status IN ('valid', 'invalid', 'reused')
+                ),
+                invalid_reason TEXT,
+                candidate_id TEXT REFERENCES candidate_facts(id),
+                candidate_fingerprint TEXT,
+                created_at TEXT NOT NULL,
+                UNIQUE (run_id, ordinal),
+                FOREIGN KEY (run_id, person_id, source_id, extraction_id)
+                    REFERENCES document_fact_extraction_runs(
+                        run_id, person_id, source_id, extraction_id
+                    ),
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id),
+                FOREIGN KEY (extraction_id, source_id, person_id)
+                    REFERENCES document_extractions(extraction_id, source_id, person_id),
+                CHECK (
+                    (validation_status = 'invalid' AND invalid_reason IS NOT NULL)
+                    OR (validation_status <> 'invalid')
+                )
+            )
+            """,
+            """
+            CREATE TABLE document_fact_extracted_facts (
+                candidate_fingerprint TEXT PRIMARY KEY CHECK (
+                    length(candidate_fingerprint) = 64
+                    AND candidate_fingerprint = lower(candidate_fingerprint)
+                    AND candidate_fingerprint NOT GLOB '*[^0-9a-f]*'
+                ),
+                person_id TEXT NOT NULL REFERENCES people(person_id),
+                source_id TEXT NOT NULL,
+                fact_type TEXT NOT NULL CHECK (
+                    fact_type IN ('medication', 'condition', 'lab')
+                ),
+                candidate_id TEXT NOT NULL UNIQUE REFERENCES candidate_facts(id),
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (source_id, person_id)
+                    REFERENCES sources(id, person_id)
+            )
+            """,
+            (
+                "CREATE INDEX document_fact_runs_person_created_idx ON "
+                "document_fact_extraction_runs(person_id, created_at, run_id)"
+            ),
+            (
+                "CREATE INDEX document_fact_runs_source_status_idx ON "
+                "document_fact_extraction_runs(source_id, status, updated_at)"
+            ),
+            (
+                "CREATE UNIQUE INDEX document_fact_active_request_idx ON "
+                "document_fact_extraction_runs(person_id, source_id, extraction_id, request_fingerprint) "
+                "WHERE status IN ('prepared', 'consent_required', 'consented', 'executing', 'completed')"
+            ),
+            (
+                "CREATE INDEX document_fact_items_run_status_idx ON "
+                "document_fact_extraction_items(run_id, validation_status, ordinal)"
+            ),
+            (
+                "CREATE INDEX document_fact_registry_person_source_idx ON "
+                "document_fact_extracted_facts(person_id, source_id, fact_type)"
+            ),
+            """
+            CREATE TRIGGER document_fact_run_identity_immutable
+            BEFORE UPDATE OF person_id, source_id, extraction_id, actor_id,
+                request_fingerprint, contract_version, provider_descriptor_hash
+                ON document_fact_extraction_runs
+            WHEN NEW.person_id <> OLD.person_id
+              OR NEW.source_id <> OLD.source_id
+              OR NEW.extraction_id <> OLD.extraction_id
+              OR NEW.actor_id <> OLD.actor_id
+              OR NEW.request_fingerprint <> OLD.request_fingerprint
+              OR NEW.contract_version <> OLD.contract_version
+              OR COALESCE(NEW.provider_descriptor_hash, '') <> COALESCE(OLD.provider_descriptor_hash, '')
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_run_identity_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_run_terminal_immutable
+            BEFORE UPDATE ON document_fact_extraction_runs
+            WHEN OLD.status IN ('completed', 'partial', 'failed', 'declined', 'unavailable')
+             AND (NEW.status <> OLD.status OR NEW.total_facts <> OLD.total_facts
+               OR NEW.valid_facts <> OLD.valid_facts OR NEW.invalid_facts <> OLD.invalid_facts
+               OR NEW.new_candidates <> OLD.new_candidates OR NEW.reused_candidates <> OLD.reused_candidates
+               OR COALESCE(NEW.reason_code, '') <> COALESCE(OLD.reason_code, '')
+               OR COALESCE(NEW.completed_at, '') <> COALESCE(OLD.completed_at, ''))
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_run_terminal_immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER document_fact_item_identity_immutable
+            BEFORE UPDATE OF run_id, person_id, source_id, extraction_id, ordinal,
+                fact_type, candidate_fingerprint ON document_fact_extraction_items
+            WHEN NEW.run_id <> OLD.run_id OR NEW.person_id <> OLD.person_id
+              OR NEW.source_id <> OLD.source_id OR NEW.extraction_id <> OLD.extraction_id
+              OR NEW.ordinal <> OLD.ordinal OR NEW.fact_type <> OLD.fact_type
+              OR COALESCE(NEW.candidate_fingerprint, '') <> COALESCE(OLD.candidate_fingerprint, '')
+            BEGIN
+                SELECT RAISE(ABORT, 'document_fact_item_identity_immutable');
+            END
+            """,
+        ),
+    ),
 )
 
 

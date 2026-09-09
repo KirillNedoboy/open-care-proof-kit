@@ -241,6 +241,7 @@ def _validate_snapshot(connection: sqlite3.Connection) -> int:
     _validate_lifecycle(connection)
     _validate_brief_revisions(connection)
     _validate_documents(connection)
+    _validate_document_fact_extractions(connection)
     _validate_family_access(connection)
     _validate_security_evidence(connection)
     return versions[-1]
@@ -702,6 +703,35 @@ def _validate_documents(connection: sqlite3.Connection) -> None:
             raise InstallationBackupError(
                 "document_provenance_integrity_failed"
             ) from exc
+
+
+def _validate_document_fact_extractions(connection: sqlite3.Connection) -> None:
+    invalid_run = connection.execute(
+        """
+        SELECT 1 FROM document_fact_extraction_runs AS run
+        LEFT JOIN people AS person ON person.person_id = run.person_id
+        LEFT JOIN sources AS source ON source.id = run.source_id
+        LEFT JOIN document_extractions AS extraction ON extraction.extraction_id = run.extraction_id
+        WHERE person.person_id IS NULL OR source.person_id <> run.person_id
+           OR source.source_type <> 'document'
+           OR extraction.person_id <> run.person_id OR extraction.source_id <> run.source_id
+        LIMIT 1
+        """
+    ).fetchone()
+    invalid_item = connection.execute(
+        """
+        SELECT 1 FROM document_fact_extraction_items AS item
+        LEFT JOIN document_fact_extraction_runs AS run ON run.run_id = item.run_id
+        LEFT JOIN candidate_facts AS candidate ON candidate.id = item.candidate_id
+        WHERE run.run_id IS NULL OR run.person_id <> item.person_id
+           OR run.source_id <> item.source_id OR run.extraction_id <> item.extraction_id
+           OR (item.candidate_id IS NOT NULL AND
+               (candidate.person_id <> item.person_id OR candidate.source_id <> item.source_id))
+        LIMIT 1
+        """
+    ).fetchone()
+    if invalid_run is not None or invalid_item is not None:
+        raise InstallationBackupError("document_fact_extraction_consistency_failed")
 
 
 def _validate_family_access(connection: sqlite3.Connection) -> None:
