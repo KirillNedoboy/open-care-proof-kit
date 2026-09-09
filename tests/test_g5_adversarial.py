@@ -7,10 +7,11 @@ mutations leave canonical state unchanged, and the corpus is synthetic-only.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from evals.g5.corpus import CATEGORIES, load_corpus
-from evals.g5.harness import HARNESS_NOW, run_scenario
+from evals.g5.harness import HARNESS_NOW, MemoryG2Repository, run_scenario
 
 _SYNTHETIC_PREFIXES = ("actor-", "person-", "credential-", "evidence-", "consent-", "source-")
 
@@ -47,6 +48,34 @@ def test_corpus_uses_only_synthetic_identities() -> None:
                 assert phase.actor_id.startswith("actor-")
             if phase.evidence_id:
                 assert phase.evidence_id.startswith("evidence-")
+
+
+def test_memory_g2_repository_loads_canonical_consent_by_execution() -> None:
+    repository = MemoryG2Repository()
+    consented_at = datetime(2026, 1, 1, tzinfo=UTC)
+    repository.save_consent(
+        execution_id="execution-1",
+        consent_id="consent-1",
+        actor_id="actor-alice",
+        person_id="person-alice",
+        purpose_id="visit_preparation",
+        action_id="summarize_records",
+        envelope_id="sha256:" + "e" * 64,
+        provider_id="provider-1",
+        provider_hash="a" * 64,
+        fields=["medication.name"],
+        policy_version="policy-1",
+        consented_at=consented_at,
+        expires_at=consented_at.replace(hour=2),
+        consent_hash="b" * 64,
+    )
+    loaded = repository.get_consent(
+        "execution-1", actor_id="actor-alice", person_id="person-alice"
+    )
+    assert loaded is not None
+    assert loaded["execution_id"] == "execution-1"
+    assert loaded["consent_id"] == "consent-1"
+    assert loaded["fields"] == ["medication.name"]
 
 
 def test_every_case_enforces_its_expected_outcome(tmp_path: Path) -> None:

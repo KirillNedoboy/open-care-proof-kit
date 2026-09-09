@@ -173,6 +173,23 @@
     if (response.documents.some((doc) => doc.person_id !== personIdContext)) return [];
     return Promise.all(response.documents.map(async (doc) => { try { doc.fact_extraction = await request(`/people/${encodeURIComponent(personIdContext)}/documents/${encodeURIComponent(doc.source_id)}/fact-extraction`, {}, documentContext()); } catch (_) { doc.fact_extraction = { status: "not_analyzed" }; } return doc; }));
   }
+  function documentDisclosureMessage(prepared) {
+    const disclosure = prepared?.preview || prepared || {};
+    const categories = Array.isArray(disclosure.enabled_categories)
+      ? disclosure.enabled_categories.join(", ")
+      : "";
+    return [
+      t("workspace.document_external_disclosure", "Analyze this document with the external provider?"),
+      `${t("workspace.document_filename", "Filename")}: ${disclosure.safe_filename || disclosure.filename || "document"}`,
+      `${t("workspace.document_provider", "Provider")}: ${disclosure.provider_id || "configured"}`,
+      `${t("workspace.document_model", "Model")}: ${disclosure.model_id || "configured"}`,
+      `${t("workspace.document_external", "External provider")}: ${disclosure.external === true ? "true" : "false"}`,
+      `${t("workspace.document_pages", "Pages")}: ${Number.isInteger(disclosure.page_count) ? disclosure.page_count : "?"}`,
+      `${t("workspace.document_characters", "Characters")}: ${Number.isInteger(disclosure.character_count) ? disclosure.character_count : "?"}`,
+      `${t("workspace.document_categories", "Enabled categories")}: ${categories || "none"}`,
+      `${t("workspace.document_retention", "Retention")}: ${disclosure.retention || "provider_policy"}`,
+    ].join("\n");
+  }
   async function uploadDocument(event) {
     event.preventDefault();
     if (!state.person || !state.capabilities.document_write || !state.capabilities.source_write) return;
@@ -187,7 +204,7 @@
       const base = `/people/${encodeURIComponent(state.person.person_id)}/documents/${encodeURIComponent(sourceId)}/fact-extractions`;
       const prepared = await personRequest(`${base}/prepare`, { method: "POST", body: "{}" });
       if (prepared.status === "consent_required") {
-        const approved = window.confirm(`${t("workspace.document_external_disclosure", "Analyze this document with the external provider?")}\n${t("chat.provider", "Provider")}: ${prepared.provider_id || "configured"}\n${t("chat.model", "Model")}: ${prepared.model_id || "configured"}`);
+        const approved = window.confirm(documentDisclosureMessage(prepared));
         await personRequest(`${base}/${encodeURIComponent(prepared.run_id)}/consent`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "decline" }) });
         if (!approved) { event.target.reset(); await loadWorkspace(); status(t("workspace.document_analysis_declined", "Document stored; analysis was declined."), "success"); return; }
       }
@@ -469,7 +486,7 @@
     const card = make("article", "", "record");
     const name = candidate.fact_type === "lab" ? candidate.test_name : candidate.display_name;
     card.append(make("strong", name));
-    if (candidate.status === "pending" && candidate.provenance_locator?.kind === "document_text_span") card.append(make("p", `${t("workspace.ai_extracted", "AI extracted")} · ${t("workspace.not_confirmed", "Not confirmed")}`, "meta"));
+    if (candidate.status === "pending" && candidate.provenance_locator?.kind === "document_text_span") card.append(make("p", `${t("workspace.from_document", "From document")} · ${t("workspace.ai_extracted", "AI extracted")} · ${t("workspace.not_confirmed", "Not confirmed")}`, "meta"));
     card.append(make("p", `${t("workspace.fact", "Fact")}: ${factLabel(candidate.fact_type)} · ${t("workspace.status", "Status")}: ${statusLabel(candidate.status)} · ${t("workspace.created", "Created")}: ${candidate.created_at}`, "meta"));
     if (candidate.fact_type === "medication" && candidate.schedule_text) card.append(make("p", candidate.schedule_text));
     if (candidate.fact_type === "condition") { if (candidate.status_text) card.append(make("p", `${t("workspace.recorded_status", "Recorded status")}: ${candidate.status_text}`)); if (candidate.onset_date) card.append(make("p", `${t("workspace.recorded_onset", "Recorded onset")}: ${candidate.onset_date}`)); }
