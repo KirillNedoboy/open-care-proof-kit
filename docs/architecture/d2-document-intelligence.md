@@ -26,7 +26,7 @@ to D2.2.
 
 D2.2 extends document intelligence from three fact families to six:
 `medication`, `condition`, `lab`, `procedure`, `recommendation`, and
-`follow_up`. D2.2 is complete locally; it is not published or merged. The D2.1
+`follow_up`. D2.2 is complete and published on public `main`. The D2.1
 contract above remains the historical record for `opencare-document-facts/1`
 runs, and the D2.1 deferral of procedures, recommendations, and follow-up to
 D2.2 above is now fulfilled by this section.

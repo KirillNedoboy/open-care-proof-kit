@@ -22,7 +22,7 @@ ecosystem evidence pending.
 
 ## Implemented boundary
 
-- Product Core schema v11 locally owns Person-scoped Sources, medications,
+- Product Core schema v11 owns Person-scoped Sources, medications,
   recorded conditions, labs, procedures, recommendations, follow-ups, Visits,
   Visit Questions, Visit Briefs, document extractions, genetics datasets,
   findings, grants, research sessions, export, backup, and recovery. v10 rows
@@ -30,8 +30,8 @@ ecosystem evidence pending.
 - Visit Brief content schema remains v2; v1 revisions remain readable. The D2.2
   categories are explicitly not part of Brief v2.
 - Family Access v1 and v2 are frozen. v3 adds `document.read` and
-  `document.write` without silent legacy expansion. `family-access-v4` locally
-  adds `procedure.read/write`, `recommendation.read/write`, and
+  `document.write` without silent legacy expansion. `family-access-v4` adds
+  `procedure.read/write`, `recommendation.read/write`, and
   `follow_up.read/write`; v1/v2/v3 remain frozen verbatim with no silent
   expansion, and existing v3 grants upgrade only through the explicit audited
   revision mechanism.
@@ -43,8 +43,8 @@ ecosystem evidence pending.
   provenance, document grants, review lifecycle, export v4, and recovery.
 - D2.1 automatic source-grounded medication/condition/lab extraction = DONE /
   published. D2.2 procedures, recommendations, and follow-up extraction =
-  COMPLETE locally (not yet published or merged). D2 Document Intelligence =
-  COMPLETE locally. Supported automatic source-grounded categories:
+  DONE / published. D2 Document Intelligence = DONE / published. Supported
+  automatic source-grounded categories:
   medication, condition, lab, procedure, recommendation, follow_up. New runs
   use extraction contract `opencare-document-facts/2`; historical
   `opencare-document-facts/1` runs remain valid, readable, and exportable and
