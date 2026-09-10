@@ -899,12 +899,12 @@ def test_authorize_signature_exact() -> None:
 
 
 def test_no_http_route_added() -> None:
-    """The authorizer is unwired: no file outside the module itself
-    references it, so no route can exist."""
+    """The authorizer is unwired: no file outside the module itself or the
+    stage C.1 projection module references it, so no route can exist."""
     offenders = []
     root = Path(__file__).resolve().parent.parent
     for path in (root / "app").rglob("*.py"):
-        if path.name == "scientific_observation.py":
+        if path.name in ("scientific_observation.py", "scientific_projection.py"):
             continue
         if "ScientificObservationAuthorizer" in path.read_text(encoding="utf-8"):
             offenders.append(str(path))

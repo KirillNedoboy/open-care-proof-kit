@@ -278,3 +278,38 @@ def test_load_settings_collapses_blank_alphagenome_api_key_to_none(raw: str) -> 
     settings = load_settings({"ALPHAGENOME_API_KEY": raw})
 
     assert settings.alphagenome_api_key is None
+
+
+# ---------------------------------------------------------------------------
+# GRCh38 reference FASTA (stage C.1)
+# ---------------------------------------------------------------------------
+
+
+def test_load_settings_grch38_reference_fasta_defaults_none() -> None:
+    settings = load_settings({})
+
+    assert settings.grch38_reference_fasta is None
+
+
+def test_load_settings_grch38_reference_fasta_set_to_path() -> None:
+    settings = load_settings(
+        {"OPENCARE_GRCH38_REFERENCE_FASTA": "/data/grch38.fasta"}
+    )
+
+    assert settings.grch38_reference_fasta == Path("/data/grch38.fasta")
+
+
+@pytest.mark.parametrize("raw", ["", "   ", "\t"])
+def test_load_settings_collapses_blank_grch38_reference_fasta_to_none(
+    raw: str,
+) -> None:
+    settings = load_settings({"OPENCARE_GRCH38_REFERENCE_FASTA": raw})
+
+    assert settings.grch38_reference_fasta is None
+
+
+def test_load_settings_grch38_reference_fasta_startup_without_var() -> None:
+    settings = load_settings({})
+
+    assert settings.grch38_reference_fasta is None
+    assert settings.alphagenome_enabled is False

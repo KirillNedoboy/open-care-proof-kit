@@ -287,6 +287,97 @@ one persisted P3 genetics observation for an authorized Actor; no consent
 - **Not wired into app.main.** The authorizer is constructible but not
   runtime-wired; stage D will integrate it with ``ProductCoreAccess``.
 
+---
+
+## Stage C.1 — Reference Allele Binding / Outbound SNV Projection (implemented)
+
+Local reference-allele resolution and outbound SNV query construction added
+2026-09-10. Closes the REF/ALT gap that Stage C permanently pinned as
+``reference_allele_unresolved`` — the ``ScientificVariantProjector`` binds
+authorized observations to a local operator-supplied GRCh38 reference FASTA
+and produces exactly one minimized ``SelectedVariantQuery`` ready for stage D
+disclosure and future stage E transport.
+
+- **Why C.1 exists.** Stage C always appends ``reference_allele_unresolved``
+  because consumer-genotype diploid data carries no authoritative
+  forward-strand reference or alternate alleles. C.1 resolves REF from a
+  local reference and derives ALT strictly from the authorized normalized
+  genotype — no guessing, no inference.
+
+- **Local-only operator-supplied reference.** The reference is a standard
+  FASTA file at a path the operator controls (env
+  ``OPENCARE_GRCH38_REFERENCE_FASTA``). It is never a secret, never
+  persisted or exported, and never stored in any model, database row, or
+  audit record. A pre-existing ``.fai`` sidecar at ``<FASTA>.fai`` is
+  required — no samtools, no download, no index generation.
+
+- **GRCh38.p13 / GCF_000001405.39 contract.** The exact primary-contig
+  RefSeq accession→version manifest is pinned in code from the official
+  NCBI assembly report ``GCF_000001405.39_GRCh38.p13_assembly_report.txt``
+  (development-time lookup 2026-09-10, report URL in module docstring).
+  Only the 24 primary contigs (1–22, X, Y) are mapped; MT, alt, scaffold,
+  and patch contigs are excluded. Contig lookup is by exact RefSeq
+  accession name — no chr-prefix stripping, no aliases, no GenBank names.
+
+- **Bounded one-base random access.** The ``LocalIndexedFastaReferenceResolver``
+  reads at most one byte of sequence per lookup — never a whole chromosome
+  or whole genome. Coordinates are 1-based. Reference bases must be
+  A/C/G/T (any other byte → ``reference_base_not_acgt``). The .fai length
+  field is used as-is for bounds — no cryptographic verification of the
+  FASTA contents is performed.
+
+- **REF ONLY from the local resolver, ALT ONLY from the authorized
+  normalized genotype.** The projector never decides REF from genotype
+  and never infers/complements/flips strands. Genotype cases:
+  - Homozygous reference (both alleles match REF) → ``no_alternate_allele_observed`` (no query).
+  - Heterozygous ref/alt (one allele matches REF, one differs) → one query (REF→ALT).
+  - Homozygous alternate (both alleles match each other but not REF) → one query (REF→ALT).
+  - Two non-reference alleles (both differ from REF and each other) →
+    ``multiple_alternate_alleles``; NO arbitrary pick. No strand
+    flipping, no liftover, no rsID inference.
+
+- **Canonical Foundation ``SelectedVariantQuery`` owns outbound validation.**
+  The projector builds a ``SelectedVariantQuery`` with chr-prefixed
+  chromosome, 1-based position, single-base REF/ALT, and
+  ``AtlasGenomeBuild.GRCH38``. The Foundation model's validators
+  (chromosome ∈ chr1-22/chrX/chrY, single A/C/G/T base, REF≠ALT,
+  unsupported-build guard) provide the authoritative outbound-safety
+  layer. The transport payload stays minimized: ``{variant, assembly}``
+  only.
+
+- **Authorization BEFORE any reference file access.** The projector calls
+  Stage C's ``authorize`` first (B gate → genetics.research authority →
+  resolution → eligibility). ``AlphaGenomeSelectionUnavailableError`` and
+  ``PersonNotFoundError`` propagate untouched — no rsID, genotype,
+  position, build, or dataset leakage for hidden/foreign/missing
+  observations. The internal eligibility check (only
+  ``reference_allele_unresolved`` and no other reason, matching
+  connector_id, GRCh38/hg38 build, primary contig, resolved orientation,
+  present coverage, 2-char A/C/G/T genotype, position≥1) runs before any
+  ``open()`` on the FASTA. The resolver object is constructed lazily —
+  never before all authorization and eligibility pass.
+
+- **Zero raw Person Source reads.** The authorizer never calls
+  ``SourceStore.read``, and the projector adds no source read of its
+  own. The raw genome remains local.
+
+- **Zero network, no SDK.** No ``alphagenome`` module is imported; the
+  autouse network guard in tests proves zero sockets. Wire-format
+  compatibility with the live API is UNVERIFIED.
+
+- **No disclosure/consent (D), no persistence (F), no UI (G), no
+  transport (E).** The projector produces an ``AuthorizedVariantProjection``
+  (connector_id, actor_id, person_id, observation_id, dataset_id,
+  ``ReferenceAlleleBinding``, ``SelectedVariantQuery``) — not persisted
+  anywhere.
+
+- **Reference-source honesty.** What IS verified: configured local path
+  contract, pinned RefSeq contig-name match in .fai, indexed local bytes.
+  What is NOT verified: cryptographic authenticity of the operator FASTA
+  contents (no checksum verification in C.1).
+
+- **Product Core v11 / Family Access v4 / export v6 unchanged.**
+
 ## G5 freeze note
 
 Unchanged: Agent Skills interoperability **verified** on OMP 17.3.5 + Hermes Agent 0.19.0; the root Agent Plugins gate is **external validation pending**; machine state `READY_FOR_SECOND_CLIENT_SMOKE`. There is no G6.
