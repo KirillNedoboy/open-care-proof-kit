@@ -238,3 +238,43 @@ def test_load_settings_rejects_unsafe_external_responses_url(url: str) -> None:
                 "OPENCARE_LLM_MODEL": "test-model",
             }
         )
+
+
+# ---------------------------------------------------------------------------
+# AlphaGenome operator configuration (stage B)
+# ---------------------------------------------------------------------------
+
+
+def test_load_settings_alphagenome_defaults_disabled_no_key() -> None:
+    settings = load_settings({})
+
+    assert settings.alphagenome_enabled is False
+    assert settings.alphagenome_api_key is None
+
+
+@pytest.mark.parametrize("raw, expected", [("true", True), ("false", False)])
+def test_load_settings_parses_alphagenome_enabled_strict_boolean(
+    raw: str, expected: bool
+) -> None:
+    settings = load_settings({"OPENCARE_ALPHAGENOME_ENABLED": raw})
+
+    assert settings.alphagenome_enabled is expected
+
+
+@pytest.mark.parametrize("raw", ["1", "yes", "0"])
+def test_load_settings_rejects_noncanonical_alphagenome_enabled(raw: str) -> None:
+    with pytest.raises(ConfigError, match="OPENCARE_ALPHAGENOME_ENABLED"):
+        load_settings({"OPENCARE_ALPHAGENOME_ENABLED": raw})
+
+
+def test_load_settings_reads_alphagenome_api_key() -> None:
+    settings = load_settings({"ALPHAGENOME_API_KEY": "secret-key-xyz"})
+
+    assert settings.alphagenome_api_key == "secret-key-xyz"
+
+
+@pytest.mark.parametrize("raw", ["", "   ", "\t"])
+def test_load_settings_collapses_blank_alphagenome_api_key_to_none(raw: str) -> None:
+    settings = load_settings({"ALPHAGENOME_API_KEY": raw})
+
+    assert settings.alphagenome_api_key is None

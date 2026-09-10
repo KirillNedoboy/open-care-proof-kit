@@ -163,6 +163,66 @@ Implement **none** of these here:
 - **I** — backup/export/recovery alignment.
 - **J** — one bounded live API smoke test.
 
+---
+
+## Stage B — Operator Configuration (implemented)
+
+Operator-controlled runtime configuration added 2026-09-10 as a minimal,
+safe seam — no network, no SDK, no persistence, and no Product Core or
+Family Access dependency.
+
+- **Disabled by default.** A fresh install or unconfigured deployment always
+  has `alphagenome_enabled: false` and `alphagenome_api_key: None`. No
+  startup error, no missing-config warning, no log; AlphaGenome is
+  completely inert until the operator opts in.
+
+- **Activation flag:** `OPENCARE_ALPHAGENOME_ENABLED`, following the
+  established `OPENCARE_*` convention. Strict boolean parsing only
+  (exactly `"true"` or `"false"`, case-insensitive after stripping);
+  any other value raises `ConfigError` naming the env var. The flag
+  carries no secret and may appear in config summaries.
+
+- **API key:** `ALPHAGENOME_API_KEY`, following the official
+  science-skills convention (no `OPENCARE_` prefix — the Foundation
+  documented name is preserved as-is). Operator-supplied, environment
+  only. Never surfaced in any UI, never persisted to any OpenCare
+  database or export, never logged, never stored in product config
+  State, never included in `ConfigError` messages or `repr()` output.
+  The Settings dataclass holds it as `str | None` (presence-normalised);
+  the operator config model wraps it in `pydantic.SecretStr` for safe
+  typed handling. Blank and whitespace-only values are collapsed to
+  `None` by `_read_optional_secret`, and direct `SecretStr("  ")`
+  construction is rejected by field validator.
+
+- **Derived runtime status** (`AlphaGenomeRuntimeStatus`):
+  - `disabled` — when `enabled` is `false` (regardless of key presence).
+  - `missing_api_key` — when `enabled` is `true` but no key is supplied.
+  - `configured` — when `enabled` is `true` and a non-empty key is present.
+
+- **Configured ≠ live verified.** Status `configured` means runtime
+  configuration is sufficient for a FUTURE transport to be constructed.
+  It does **not** imply the API key is valid, the Atlas endpoint is
+  reachable, or any live smoke test succeeded. `live_verified` is
+  always `false` in this stage; stage E (official SDK/transport) will
+  handle actual verification.
+
+- **Static truth derived from `ATLAS_CONNECTOR_DESCRIPTOR`** (single
+  source, no hardcoded literals on `AlphaGenomeRuntimeStatus`):
+  `connector_id`, `source_name`, `external`, `research_only`,
+  `clinical_use_allowed`, and `commercial_use_class` are all copied
+  from the descriptor. The nuance of `PARTIAL_AVI_SCORE_ONLY`
+  commercial use is preserved.
+
+- **No Product Core persistence, no Person authorization, no UI
+  credential entry.** The configuration seam is purely process-level.
+  Stage C (selected-observation authorization) and stage D (genetics
+  disclosure + consent) remain separate concerns.
+
+- **Real SDK/gRPC/AnnData transport is NOT implemented** in this
+  stage. Wire-format compatibility with the live API is UNVERIFIED.
+  The offline normalized evidence contract (AVI phred/raw/quantile
+  bounds, 18-modality attribution cap) is unchanged.
+
 ## G5 freeze note
 
 Unchanged: Agent Skills interoperability **verified** on OMP 17.3.5 + Hermes Agent 0.19.0; the root Agent Plugins gate is **external validation pending**; machine state `READY_FOR_SECOND_CLIENT_SMOKE`. There is no G6.
