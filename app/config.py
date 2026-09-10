@@ -46,6 +46,7 @@ class Settings:
     bootstrap_secret: str | None = None
     alphagenome_enabled: bool = False
     alphagenome_api_key: str | None = None
+    grch38_reference_fasta: Path | None = None
 
     @property
     def is_production(self) -> bool:
@@ -159,6 +160,12 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         var_name="OPENCARE_ALPHAGENOME_ENABLED",
     )
     alphagenome_api_key = _read_optional_secret(values, "ALPHAGENOME_API_KEY")
+    grch38_fasta_raw = values.get("OPENCARE_GRCH38_REFERENCE_FASTA")
+    grch38_reference_fasta = (
+        None
+        if grch38_fasta_raw is None or not grch38_fasta_raw.strip()
+        else Path(grch38_fasta_raw)
+    )
 
     settings = Settings(
         env=app_env,
@@ -190,6 +197,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         ollama_max_response_bytes=ollama_max_response_bytes,
         alphagenome_enabled=alphagenome_enabled,
         alphagenome_api_key=alphagenome_api_key,
+        grch38_reference_fasta=grch38_reference_fasta,
     )
     _validate_settings(settings)
     return settings
