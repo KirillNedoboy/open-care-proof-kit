@@ -44,6 +44,8 @@ class Settings:
     source_dir: Path = Path("data/sources")
     session_db_path: Path = Path(tempfile.gettempdir()) / "opencare-default" / "sessions.sqlite3"
     bootstrap_secret: str | None = None
+    alphagenome_enabled: bool = False
+    alphagenome_api_key: str | None = None
 
     @property
     def is_production(self) -> bool:
@@ -152,6 +154,12 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
             else _default_session_db_path(product_db_path)
         )
     )
+    alphagenome_enabled = _parse_bool(
+        values.get("OPENCARE_ALPHAGENOME_ENABLED", "false"),
+        var_name="OPENCARE_ALPHAGENOME_ENABLED",
+    )
+    alphagenome_api_key = _read_optional_secret(values, "ALPHAGENOME_API_KEY")
+
     settings = Settings(
         env=app_env,
         demo_mode=demo_mode,
@@ -180,6 +188,8 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         ollama_model=_read_optional_secret(values, "OPENCARE_OLLAMA_MODEL"),
         ollama_timeout_seconds=ollama_timeout_seconds,
         ollama_max_response_bytes=ollama_max_response_bytes,
+        alphagenome_enabled=alphagenome_enabled,
+        alphagenome_api_key=alphagenome_api_key,
     )
     _validate_settings(settings)
     return settings

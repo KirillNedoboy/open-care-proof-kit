@@ -27,14 +27,25 @@ from app.scientific_evidence.contracts import (
     SourceKind,
     UsagePolicy,
 )
+from app.scientific_evidence.operator_config import (
+    AlphaGenomeConfigurationState,
+    AlphaGenomeOperatorConfig,
+    AlphaGenomeRuntimeStatus,
+    alphagenome_runtime_status_from_settings,
+    build_alphagenome_operator_config,
+    derive_alphagenome_runtime_status,
+)
 
 __all__ = [
     "ATLAS_CONNECTOR_DESCRIPTOR",
     "AVI_SCORE",
     "AVI_SCORE_FEATURE_IMPORTANCE",
     "AlphaGenomeAtlasConnector",
+    "AlphaGenomeConfigurationState",
     "AlphaGenomeEvidenceResult",
     "AlphaGenomeEvidenceValidationError",
+    "AlphaGenomeOperatorConfig",
+    "AlphaGenomeRuntimeStatus",
     "AlphaGenomeTransport",
     "AtlasGenomeBuild",
     "CommercialUseClass",
@@ -45,5 +56,8 @@ __all__ = [
     "SelectedVariantQuery",
     "SourceKind",
     "UsagePolicy",
+    "alphagenome_runtime_status_from_settings",
+    "build_alphagenome_operator_config",
+    "derive_alphagenome_runtime_status",
     "normalize_atlas_response",
 ]
