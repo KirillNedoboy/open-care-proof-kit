@@ -223,6 +223,70 @@ Family Access dependency.
   The offline normalized evidence contract (AVI phred/raw/quantile
   bounds, 18-modality attribution cap) is unchanged.
 
+## Stage C — Selected Observation Authorization (implemented)
+
+Server-side read-only authorization seam added 2026-09-10. Resolves exactly
+one persisted P3 genetics observation for an authorized Actor; no consent
+(D), no transport (E), no persistence (F), no UI, no HTTP route.
+
+- **Single method, two inputs.** ``ScientificObservationAuthorizer.authorize``
+  accepts only ``person_id`` and ``observation_id`` — no dataset, source,
+  or client-authoritative fields on the signature. The returned
+  ``AuthorizedGeneticsObservation`` is frozen; ``reported_genotype`` and
+  ``source_locator_json`` are absent.
+
+- **Config gating before any resolution.** Operator configuration state
+  ``disabled`` or ``missing_api_key`` raises ``AlphaGenomeSelectionUnavailableError``
+  with a bounded reason code before any database query. Configured state
+  proceeds; ``live_verified`` stays ``False`` everywhere. Configuration
+  ≠ authority — the gate is independent of Person authorization.
+
+- **Authority: genetics.research delegated.** The authorizer delegates
+  Person authority to the existing ``ProductCoreAccess.require_genetics``
+  boundary — ``require_person(person_id, "person.read")`` + active assignment
+  + non-revoked genetics grant with ``genetics.research``. Hidden, foreign,
+  denied, and revoked all propagate identical not-found semantics. The
+  inherited ``person.read`` success audit fires through that path; no new
+  audit writes are added at stage C. No parallel authorization
+  implementation exists — the module imports ``ProductCoreAccess`` directly.
+
+- **Full ownership chain.** The observation is resolved via a single JOIN
+  through ``genetic_variant_observations → genetic_datasets → sources``,
+  all gated on ``person_id``. A direct SELECT on observations alone would
+  find the row; the JOIN is the structural requirement. Foreign, guessed,
+  or broken-lineage observation IDs are indistinguishable from not-found.
+
+- **No raw Source bytes.** The authorizer never invokes any source-read path
+  (``SourceStore.read``, ``GeneticsService.export_package``, or similar);
+  the raw genome remains local.
+
+- **Deterministic local eligibility** from persisted values only. Reasons
+  are stable, bounded codes collected in deterministic order:
+  ``observation_no_call`` (coverage_state ≠ "present" or no_call truthy),
+  ``unsupported_genome_build`` (anything other than ``GRCh38/hg38``),
+  ``unsupported_chromosome`` (MT, chr-prefixed, or non-primary contigs),
+  ``orientation_ambiguous`` / ``orientation_unresolved`` /
+  ``orientation_not_applicable``, and **always** ``reference_allele_unresolved``.
+  ``query_eligible`` is ``True`` only when reasons is empty — currently
+  always ``False`` due to the permanent REF/ALT gap.
+
+- **The REF/ALT gap.** Consumer-genotype diploid data contains no
+  authoritative forward-strand reference or alternate alleles. The
+  ``genetic_variant_observations`` table has no REF/ALT columns. Genotype
+  is NEVER guessed into REF/ALT. ``SelectedVariantQuery`` is NOT
+  constructible from an ``AuthorizedGeneticsObservation`` — stage C.1
+  (Reference Allele Binding / Outbound SNV Projection) is REQUIRED
+  before stage D.
+
+- **No writes, no new audit table.** The authorizer is read-only. The
+  inherited ``person.read`` audit from ``require_person`` (stage D wiring)
+  is the only audit event; no new audit writes are added in stage C.
+  All genetics payload tables (observations, datasets, sources, grants)
+  are verified byte-for-byte identical before and after.
+
+- **Not wired into app.main.** The authorizer is constructible but not
+  runtime-wired; stage D will integrate it with ``ProductCoreAccess``.
+
 ## G5 freeze note
 
 Unchanged: Agent Skills interoperability **verified** on OMP 17.3.5 + Hermes Agent 0.19.0; the root Agent Plugins gate is **external validation pending**; machine state `READY_FOR_SECOND_CLIENT_SMOKE`. There is no G6.
