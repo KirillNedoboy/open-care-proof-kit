@@ -59,6 +59,23 @@ What this category teaches us:
 - Any future MCP or external knowledge integration should be optional, explicit, and bounded by source/audit rules.
 - OpenCare should not invent external integration claims or fake ecosystem support.
 
+## Design / UI Workflow References
+
+- https://github.com/pbakaus/impeccable
+- https://impeccable.style
+
+Impeccable is a design-process and implementation-quality reference only. It is
+not a dependency, implementation source, partnership, or endorsement, and no
+code is copied from it.
+
+What this category teaches us:
+
+- Separate durable product truth from visual direction.
+- Prefer task-first Operate UI with a consistent component and state vocabulary.
+- Avoid generic card-heavy AI UI and nested cards as default structure.
+- Use bounded critique and audit passes for accessibility, responsive behavior,
+  state coverage, and implementation integrity.
+
 ## Our Baseline
 
 - https://github.com/KirillNedoboy/open-care-proof-kit
