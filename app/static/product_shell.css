@@ -1,113 +1,238 @@
+/* ============================================================
+   OpenCare authenticated app shell + shared UI foundation (UI-R1).
+
+   Direction: "Private Evidence Workspace" — calm, trustworthy,
+   document-aware, privacy-sensitive. Light theme only.
+
+   This file is the single canonical source of design tokens for
+   authenticated surfaces. Consumers must use the --ui-* vocabulary;
+   the --shell-* block at the end of :root is a temporary
+   migration-only compatibility layer (removed in UI-R4).
+   ============================================================ */
+
 :root {
-  --shell-bg: #f3f6f4;
-  --shell-surface: #fff;
-  --shell-muted-surface: #e9f0ed;
-  --shell-border: #d5e0dc;
-  --shell-text: #18302b;
-  --shell-muted: #5c706b;
-  --shell-accent: #177568;
-  --shell-accent-strong: #0e5b51;
-  --shell-accent-soft: #d9ece7;
-  --shell-radius: 10px;
-  --shell-radius-large: 12px;
-  --page-background: var(--shell-bg);
-  --surface: var(--shell-surface);
-  --elevated-surface: #fff;
-  --primary-text: var(--shell-text);
-  --secondary-text: var(--shell-muted);
-  --muted-text: #72837e;
-  --border: var(--shell-border);
-  --primary-action: var(--shell-accent);
-  --primary-action-hover: var(--shell-accent-strong);
-  --focus-state: #095fc1;
-  --success: #1d6b4f;
-  --warning: #76520f;
-  --danger: #883c35;
-  --info: #245f7a;
-  --space-1: .25rem;
-  --space-2: .5rem;
-  --space-3: .75rem;
-  --space-4: 1rem;
-  --content-width: 90rem;
+  color-scheme: light;
+
+  /* ---- Color: surfaces ------------------------------------ */
+  --ui-canvas: #f3f6f4;
+  --ui-surface: #ffffff;
+  --ui-surface-raised: #ffffff;
+  --ui-surface-muted: #e9f0ed;
+
+  /* ---- Color: text (tinted deep green, never pure black) -- */
+  --ui-text: #18302b;            /* 14.0:1 on surface, 12.9:1 on canvas */
+  --ui-text-secondary: #556b66;  /* 5.7:1 on surface, 5.2:1 on canvas   */
+  --ui-text-quiet: #5f746e;      /* 5.0:1 on surface, 4.6:1 on canvas   */
+
+  /* ---- Color: boundaries ----------------------------------- */
+  --ui-divider: #d5e0dc;                    /* routine row/section separation */
+  --ui-divider-strong: #7e938c;             /* 3.3:1 surface / 3.0:1 canvas  */
+
+  /* ---- Color: action / selection (restrained petrol-green) -- */
+  --ui-accent: #14675c;           /* white on it: 6.7:1 */
+  --ui-accent-hover: #0f544a;
+  --ui-accent-active: #0b423a;
+  --ui-accent-soft: #dbeae5;      /* selected-state background; text on it: --ui-accent-hover */
+
+  /* ---- Color: focus ---------------------------------------- */
+  --ui-focus: #095fc1;            /* 6.5:1 on surface, 5.7:1 on canvas */
+
+  /* ---- Color: semantic state (always paired with text or icon) */
+  --ui-success: #1d6b4f;          /* 6.4:1 on surface  */
+  --ui-success-soft: #e2efe9;
+  --ui-warning: #76520f;          /* 7.0:1 on surface  */
+  --ui-warning-soft: #f8eeda;
+  --ui-danger: #8f3b33;           /* 7.4:1 on surface  */
+  --ui-danger-soft: #f7e8e5;
+  --ui-info: #245f7a;             /* 7.0:1 on surface  */
+  --ui-info-soft: #e2edf2;
+
+  /* ---- Typography (local/system only; EN + RU; no web fonts) */
+  --ui-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --ui-font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --ui-text-xs: .75rem;
+  --ui-text-sm: .8125rem;
+  --ui-text-md: .9375rem;         /* shell body size */
+  --ui-text-lg: 1.125rem;
+  --ui-text-xl: 1.375rem;
+  --ui-text-2xl: 1.75rem;
+
+  /* ---- Spacing (one compact scale) -------------------------- */
+  --ui-space-1: .25rem;
+  --ui-space-2: .5rem;
+  --ui-space-3: .75rem;
+  --ui-space-4: 1rem;
+  --ui-space-5: 1.5rem;
+  --ui-space-6: 2rem;
+
+  /* ---- Shape ------------------------------------------------ */
+  --ui-radius-control: 8px;
+  --ui-radius-surface: 12px;
+  --ui-radius-notice: 10px;
+
+  /* ---- Depth (used only for overlays / genuine elevation) --- */
+  --ui-shadow-raised: 0 1px 2px rgb(21 51 43 / .05), 0 6px 18px rgb(21 51 43 / .08);
+  --ui-shadow-overlay: 0 16px 44px rgb(21 51 43 / .20);
+
+  /* ---- Motion (nav open/close, selection, state change only) */
+  --ui-motion-fast: 150ms;
+  --ui-motion-normal: 220ms;
+  --ui-ease-standard: cubic-bezier(.2, 0, 0, 1);
+
+  /* ==========================================================
+     TEMPORARY migration-only compatibility aliases (UI-R1).
+     Existing chat.css / public_auth.css rules still read these
+     old names; they map to the canonical --ui-* tokens above.
+     Do not use these in new code. UI-R2/R3 migrate consumers,
+     UI-R4 deletes this block.
+     ========================================================== */
+  --shell-bg: var(--ui-canvas);
+  --shell-surface: var(--ui-surface);
+  --shell-muted-surface: var(--ui-surface-muted);
+  --shell-border: var(--ui-divider);
+  --shell-text: var(--ui-text);
+  --shell-muted: var(--ui-text-secondary);
+  --shell-accent: var(--ui-accent);
+  --shell-accent-strong: var(--ui-accent-hover);
+  --shell-accent-soft: var(--ui-accent-soft);
+  --shell-radius: var(--ui-radius-control);
+  --shell-radius-large: var(--ui-radius-surface);
+  --focus-state: var(--ui-focus);
+  --success: var(--ui-success);
+  --danger: var(--ui-danger);
 }
 
+
 * { box-sizing: border-box; }
-html { background: var(--shell-bg); }
+html { background: var(--ui-canvas); }
+
 body.product-shell {
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0;
   display: grid;
-  grid-template: "sidebar header" auto "sidebar main" minmax(0, 1fr) / 14.5rem minmax(0, 1fr);
-  background: var(--shell-bg);
-  color: var(--shell-text);
-  font: .9375rem/1.5 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  grid-template:
+    "sidebar header" auto
+    "sidebar main"   minmax(0, 1fr)
+    / 15.5rem minmax(0, 1fr);
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+  font: var(--ui-text-md)/1.5 var(--ui-font-sans);
+  accent-color: var(--ui-accent);
   text-rendering: optimizeLegibility;
 }
-.product-shell a { color: inherit; }
-.product-shell button, .product-shell select { font: inherit; }
+
+.product-shell a { color: inherit; text-underline-offset: .15em; }
+.product-shell ::selection { background: var(--ui-accent-soft); color: var(--ui-text); }
+.product-shell button, .product-shell select, .product-shell input, .product-shell textarea { font: inherit; }
+.product-shell :where(a, button, select, input, textarea, summary):focus-visible {
+  outline: 3px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+.product-shell :where(a, button, select, input, textarea) { touch-action: manipulation; }
+
+/* ========================= Skip link ========================= */
+
 .product-shell__skip-link {
   position: fixed;
   z-index: 100;
-  top: .75rem;
-  left: .75rem;
+  top: var(--ui-space-3);
+  left: var(--ui-space-3);
   padding: .65rem .85rem;
-  border-radius: var(--shell-radius);
-  background: var(--shell-accent-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-accent-active);
   color: #fff;
   font-weight: 700;
   text-decoration: none;
   transform: translateY(-180%);
 }
 .product-shell__skip-link:focus { transform: translateY(0); }
+
+/* =========================== Sidebar ========================== */
+
 .product-shell__sidebar {
   grid-area: sidebar;
   position: sticky;
   top: 0;
   z-index: 20;
-  min-height: 100vh;
-  min-height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.25rem 1rem;
-  border-right: 1px solid var(--shell-border);
-  background: var(--shell-surface);
+  gap: var(--ui-space-5);
+  padding: var(--ui-space-5) var(--ui-space-4);
+  border-right: 1px solid var(--ui-divider);
+  background: var(--ui-surface);
 }
+
 .product-shell__identity, .product-shell__mobile-identity {
   width: fit-content;
-  color: var(--shell-text);
-  font-weight: 760;
-  letter-spacing: -.025em;
+  color: var(--ui-text);
+  font-weight: 700;
+  letter-spacing: -.02em;
   text-decoration: none;
 }
-.product-shell__identity { display: inline-flex; align-items: center; gap: .65rem; padding: .25rem .35rem; font-size: 1.05rem; }
+.product-shell__identity {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .25rem .35rem;
+  font-size: var(--ui-text-lg);
+}
 .product-shell__identity-mark {
-  width: 2rem;
-  height: 2rem;
+  width: 1.9rem;
+  height: 1.9rem;
   display: grid;
   place-items: center;
-  border: 1px solid var(--shell-accent);
+  border: 1px solid var(--ui-accent);
   border-radius: 50%;
-  background: var(--shell-accent-soft);
-  color: var(--shell-accent-strong);
-  font-size: .9rem;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-hover);
+  font-size: var(--ui-text-sm);
   font-weight: 800;
 }
-.product-shell__nav { display: grid; gap: .2rem; }
-.product-shell__nav-link, .product-shell__account-link {
+
+/* ---- Navigation: three grouped destinations ----------------
+   Group headings are visible text labels; active state is
+   background + left bar + weight (never color alone). --------- */
+
+.product-shell__nav { display: grid; gap: var(--ui-space-5); min-width: 0; }
+.product-shell__nav-group { display: grid; gap: var(--ui-space-1); min-width: 0; }
+.product-shell__nav-group-title {
+  padding: 0 var(--ui-space-3);
+  color: var(--ui-text-quiet);
+  font-size: .6875rem;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.product-shell__nav-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  list-style: none;
+}
+.product-shell__nav-list > li { min-width: 0; }
+
+.product-shell__nav-link {
   position: relative;
   min-height: 2.5rem;
   display: flex;
   align-items: center;
   padding: .55rem .75rem;
-  border-radius: var(--shell-radius);
-  color: var(--shell-muted);
-  font-size: .875rem;
-  font-weight: 620;
+  border-radius: var(--ui-radius-control);
+  color: var(--ui-text-secondary);
+  font-size: var(--ui-text-sm);
+  font-weight: 600;
   text-decoration: none;
+  transition: background-color var(--ui-motion-fast) var(--ui-ease-standard),
+    color var(--ui-motion-fast) var(--ui-ease-standard);
 }
-.product-shell__nav-link::before, .product-shell__account-link::before {
+.product-shell__nav-link::before {
   content: "";
   width: .2rem;
   align-self: stretch;
@@ -115,92 +240,361 @@ body.product-shell {
   border-radius: 999px;
   background: transparent;
 }
-.product-shell__nav-link:hover, .product-shell__account-link:hover { background: var(--shell-muted-surface); color: var(--shell-text); }
-.product-shell__nav-link.is-active, .product-shell__account-link.is-active { background: var(--shell-accent-soft); color: var(--shell-accent-strong); }
-.product-shell__nav-link.is-active::before, .product-shell__account-link.is-active::before { background: var(--shell-accent); }
-.product-shell__account { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--shell-border); }
-.product-shell__account-label {
-  display: block;
-  padding: 0 .75rem .35rem;
-  color: var(--shell-muted);
-  font-size: .6875rem;
-  font-weight: 750;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+.product-shell__nav-link:hover { background: var(--ui-surface-muted); color: var(--ui-text); }
+.product-shell__nav-link:active { background: var(--ui-accent-soft); color: var(--ui-accent-active); }
+.product-shell__nav-link.is-active {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-hover);
+  font-weight: 700;
 }
+.product-shell__nav-link.is-active::before { background: var(--ui-accent); }
+
+/* ============================ Header ========================== */
+
 .product-shell__header {
   grid-area: header;
   position: sticky;
   top: 0;
   z-index: 15;
-  min-height: 4.25rem;
+  min-height: 3.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: .75rem clamp(1rem, 3vw, 2rem);
-  border-bottom: 1px solid var(--shell-border);
-  background: rgba(255, 255, 255, .96);
+  gap: var(--ui-space-4);
+  padding: .5rem clamp(var(--ui-space-4), 3vw, var(--ui-space-6));
+  border-bottom: 1px solid var(--ui-divider);
+  background: var(--ui-surface);
 }
-.product-shell__header-start { min-width: 0; display: flex; align-items: center; gap: .75rem; }
+.product-shell__header-start { min-width: 0; display: flex; align-items: center; gap: var(--ui-space-3); }
 .product-shell__menu-button, .product-shell__mobile-identity { display: none; }
-.product-shell__person { min-width: 0; display: flex; align-items: baseline; gap: .5rem; }
-.product-shell__person-status { min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.product-shell__person-status:empty { display: none; }
-.product-shell__locale { display: flex; align-items: center; gap: .55rem; color: var(--shell-muted); font-size: .75rem; font-weight: 700; }
-.product-shell__locale select {
-  min-height: 2.35rem;
-  padding: .35rem 2rem .35rem .65rem;
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius);
-  background: var(--shell-surface);
-  color: var(--shell-text);
-  cursor: pointer;
+
+/* ---- Person context rail: "Who am I viewing?" -------------- */
+
+.product-shell__person {
+  min-width: 0;
+  max-width: 26rem;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-2);
+  padding: .3rem .65rem;
+  border: 1px solid var(--ui-divider);
+  border-radius: var(--ui-radius-notice);
+  background: var(--ui-surface-muted);
 }
+.product-shell__person-label {
+  flex: 0 0 auto;
+  color: var(--ui-text-quiet);
+  font-size: .6875rem;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.product-shell__person-status {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-shell__person-status:empty { display: none; }
+
+/* ---- Locale control (EN/RU; cookie semantics unchanged) ---- */
+
+.product-shell__locale {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  color: var(--ui-text-secondary);
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+}
+.product-shell__locale select {
+  min-height: 2.5rem;
+  padding: .3rem 2rem .3rem .6rem;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  cursor: pointer;
+  transition: background-color var(--ui-motion-fast) var(--ui-ease-standard);
+}
+.product-shell__locale select:hover { background: var(--ui-surface-muted); }
+
+/* ============================= Main =========================== */
+
 .product-shell__main {
   grid-area: main;
   width: 100%;
   min-width: 0;
   max-width: 90rem;
   margin-inline: auto;
-  padding: clamp(1rem, 3vw, 2rem);
-  scroll-margin-top: 5.25rem;
+  padding: clamp(var(--ui-space-4), 3vw, var(--ui-space-6));
+  scroll-margin-top: 4.5rem;
 }
-.product-shell :where(a, button, select, input, textarea, summary):focus-visible { outline: 3px solid var(--shell-accent-strong); outline-offset: 2px; }
-.product-shell :where(a, button, select) { touch-action: manipulation; }
+
+/* ========================= Menu button ======================== */
+
 .product-shell__menu-button {
   width: 2.75rem;
   height: 2.75rem;
+  flex: 0 0 auto;
   padding: .7rem;
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius);
-  background: var(--shell-surface);
-  color: var(--shell-text);
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   cursor: pointer;
+  transition: background-color var(--ui-motion-fast) var(--ui-ease-standard);
 }
 .product-shell__menu-button span { width: 100%; height: 2px; display: block; margin-block: .22rem; border-radius: 2px; background: currentColor; }
-.product-shell__menu-button:hover, .product-shell__locale select:hover { border-color: #9fb7af; background: var(--shell-muted-surface); }
+.product-shell__menu-button:hover { background: var(--ui-surface-muted); }
+.product-shell__menu-button:active { background: var(--ui-accent-soft); }
 
-@media (max-width: 52rem) {
-  body.product-shell { grid-template: "header" auto "sidebar" auto "main" minmax(0, 1fr) / minmax(0, 1fr); }
-  .product-shell__header { min-height: 4rem; padding-inline: 1rem; }
-  .product-shell__menu-button, .product-shell__mobile-identity { display: block; }
-  .product-shell__sidebar { position: relative; min-height: 0; padding: .75rem 1rem 1rem; border-right: 0; border-bottom: 1px solid var(--shell-border); }
-  .product-shell__identity { display: none; }
-  .product-shell__nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .product-shell__account { margin-top: 0; padding-top: .75rem; }
-  .product-shell--enhanced[data-navigation-open="false"] .product-shell__sidebar { display: none; }
-  .product-shell__main { padding: 1rem; }
+/* ======================== Responsiveness ======================
+   Structural changes only; no page-level horizontal overflow.
+   ============================================================= */
+
+/* Laptop: narrower sidebar, navigation remains persistent. */
+@media (max-width: 68rem) {
+  body.product-shell { grid-template-columns: 13.5rem minmax(0, 1fr); }
 }
-@media (max-width: 34rem) {
-  .product-shell__locale > span, .product-shell__person {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    white-space: nowrap;
+
+/* Tablet / mobile: single-column shell, collapsed navigation. */
+@media (max-width: 52rem) {
+  body.product-shell {
+    grid-template:
+      "header"  auto
+      "sidebar" auto
+      "main"    minmax(0, 1fr)
+      / minmax(0, 1fr);
   }
-  .product-shell__nav { grid-template-columns: minmax(0, 1fr); }
+  .product-shell__header { gap: var(--ui-space-2); padding-inline: var(--ui-space-4); }
+  .product-shell__menu-button, .product-shell__mobile-identity { display: block; }
+  .product-shell__mobile-identity { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  .product-shell__sidebar {
+    position: relative;
+    max-height: none;
+    overflow-y: visible;
+    padding: var(--ui-space-3) var(--ui-space-4) var(--ui-space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-divider);
+  }
+  .product-shell__identity { display: none; }
+  .product-shell__nav { gap: var(--ui-space-4); }
+  .product-shell__nav-link { min-height: 2.75rem; }
+  .product-shell__main { padding: var(--ui-space-4); }
+  .product-shell--enhanced[data-navigation-open="false"] .product-shell__sidebar { display: none; }
+}
+
+/* Phone (390px): header reflows to two rows; Person context
+   stays visible; everything one column. */
+@media (max-width: 34rem) {
+  .product-shell__header { flex-wrap: wrap; }
+  .product-shell__header-start { flex-wrap: wrap; min-width: 0; }
+  .product-shell__person {
+    flex: 1 1 100%;
+    order: 3;
+    max-width: none;
+  }
+  .product-shell__locale { order: 2; }
+  .product-shell__locale select { min-height: 2.75rem; }
+}
+
+/* ====================== Shared primitives =====================
+   Small R1 vocabulary for the shell + immediate R2 migration.
+   State contract: default / hover / focus-visible (global above)
+   / active / disabled everywhere; loading on buttons/skeletons.
+   Status is never communicated by color alone.
+   ============================================================= */
+
+/* ---- Buttons ------------------------------------------------ */
+
+.ui-button {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-space-2);
+  padding: .5rem var(--ui-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-control);
+  color: var(--ui-text);
+  background: var(--ui-surface-muted);
+  font-size: var(--ui-text-sm);
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color var(--ui-motion-fast) var(--ui-ease-standard),
+    border-color var(--ui-motion-fast) var(--ui-ease-standard),
+    color var(--ui-motion-fast) var(--ui-ease-standard);
+}
+.ui-button--primary {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: #fff;
+}
+.ui-button--primary:hover { border-color: var(--ui-accent-hover); background: var(--ui-accent-hover); }
+.ui-button--primary:active { border-color: var(--ui-accent-active); background: var(--ui-accent-active); }
+.ui-button--secondary {
+  border-color: var(--ui-divider-strong);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.ui-button--secondary:hover { background: var(--ui-surface-muted); }
+.ui-button--secondary:active { background: var(--ui-accent-soft); border-color: var(--ui-accent); color: var(--ui-accent-active); }
+.ui-button--danger {
+  border-color: var(--ui-danger);
+  background: var(--ui-surface);
+  color: var(--ui-danger);
+}
+.ui-button--danger:hover { background: var(--ui-danger-soft); }
+.ui-button--danger:active { background: var(--ui-danger); color: #fff; }
+.ui-button:disabled, .ui-button[aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.ui-button[aria-busy="true"] { cursor: progress; }
+.ui-button[aria-busy="true"]::before {
+  content: "";
+  width: .8em;
+  height: .8em;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-block-start-color: transparent;
+  border-radius: 50%;
+  animation: ui-spin .8s linear infinite;
+}
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ---- Shared control base (inputs, selects, textareas) ------- */
+
+.ui-control {
+  min-height: 2.75rem;
+  width: 100%;
+  padding: .5rem .65rem;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: var(--ui-text-sm);
+}
+select.ui-control { cursor: pointer; }
+textarea.ui-control { min-height: 6rem; resize: vertical; }
+.ui-control:hover { border-color: var(--ui-text-quiet); }
+.ui-control:disabled { opacity: .55; cursor: not-allowed; background: var(--ui-surface-muted); }
+.ui-control[aria-invalid="true"] { border-color: var(--ui-danger); border-width: 2px; }
+
+/* ---- Status badge (text label is the primary cue; color is
+   a reinforcement, never the only signal) ---------------------- */
+
+.ui-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  padding: .1rem .55rem;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: 999px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-text);
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ui-status::before {
+  content: "";
+  width: .5em;
+  height: .5em;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ui-status--success { border-color: rgb(29 107 79 / .45); background: var(--ui-success-soft); color: var(--ui-success); }
+.ui-status--warning { border-color: rgb(118 82 15 / .45); background: var(--ui-warning-soft); color: var(--ui-warning); }
+.ui-status--danger  { border-color: rgb(143 59 51 / .45); background: var(--ui-danger-soft); color: var(--ui-danger); }
+.ui-status--info    { border-color: rgb(36 95 122 / .45); background: var(--ui-info-soft); color: var(--ui-info); }
+
+/* ---- Inline notice ----------------------------------------- */
+
+.ui-notice {
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border: 1px solid var(--ui-divider-strong);
+  border-left: 4px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-notice);
+  background: var(--ui-surface-muted);
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.ui-notice--info    { border-color: rgb(36 95 122 / .4); border-left-color: var(--ui-info); background: var(--ui-info-soft); }
+.ui-notice--success { border-color: rgb(29 107 79 / .4); border-left-color: var(--ui-success); background: var(--ui-success-soft); }
+.ui-notice--warning { border-color: rgb(118 82 15 / .4); border-left-color: var(--ui-warning); background: var(--ui-warning-soft); }
+.ui-notice--danger  { border-color: rgb(143 59 51 / .4); border-left-color: var(--ui-danger); background: var(--ui-danger-soft); }
+
+/* ---- Data row: rows before cards (default content grammar) -- */
+
+.ui-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-4);
+  padding: var(--ui-space-3) var(--ui-space-2);
+  border-top: 1px solid var(--ui-divider);
+  overflow-wrap: anywhere;
+}
+.ui-row:last-child { border-bottom: 1px solid var(--ui-divider); }
+.ui-row--interactive { border-radius: var(--ui-radius-control); cursor: pointer; transition: background-color var(--ui-motion-fast) var(--ui-ease-standard); }
+.ui-row--interactive:hover { background: var(--ui-surface-muted); }
+.ui-row[aria-selected="true"] {
+  background: var(--ui-accent-soft);
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+.ui-row__title { font-weight: 650; }
+.ui-row__meta { color: var(--ui-text-secondary); font-size: var(--ui-text-xs); }
+
+/* ---- Empty state (preserves layout, names the next step) --- */
+
+.ui-empty-state {
+  max-width: 46ch;
+  margin-inline: auto;
+  padding: var(--ui-space-6) var(--ui-space-4);
+  border: 1px dashed var(--ui-divider-strong);
+  border-radius: var(--ui-radius-surface);
+  color: var(--ui-text-secondary);
+  text-align: center;
+}
+.ui-empty-state h3, .ui-empty-state p { margin: 0; }
+.ui-empty-state h3 { margin-bottom: var(--ui-space-2); color: var(--ui-text); font-size: var(--ui-text-lg); }
+
+/* ---- Skeleton / loading (static under reduced motion) ------ */
+
+.ui-skeleton {
+  min-height: 1em;
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-muted);
+  animation: ui-pulse 1.6s var(--ui-ease-standard) infinite alternate;
+}
+@keyframes ui-pulse { from { opacity: 1; } to { opacity: .45; } }
+
+/* ---- Disclosure (native details/summary) ------------------- */
+
+.ui-disclosure { border-top: 1px solid var(--ui-divider); padding-top: var(--ui-space-2); }
+.ui-disclosure > summary {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-accent-hover);
+  font-weight: 650;
+  cursor: pointer;
+}
+.ui-disclosure > summary:hover { color: var(--ui-accent-active); }
+
+/* ====================== Reduced motion ======================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .product-shell *, .product-shell *::before, .product-shell *::after,
+  .ui-button, .ui-row--interactive {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
