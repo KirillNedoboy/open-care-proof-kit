@@ -1,37 +1,238 @@
-:root { --ink:#18332c; --muted:#5a6b64; --line:#d8e0da; --canvas:#f7f8f5; --side:#eaf0eb; --surface:#fff; --accent:#166049; --danger:#9b4335; }
-* { box-sizing:border-box; }
-body.chat-body { margin:0; min-width:320px; background:var(--canvas); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
-button,textarea { font:inherit; }
-.chat-workspace { min-height:100vh; display:grid; grid-template-columns:272px minmax(0,1fr); }
-.chat-sidebar { display:flex; flex-direction:column; gap:22px; padding:22px 18px; background:var(--side); border-right:1px solid var(--line); }
-.brand-row { display:flex; gap:9px; align-items:center; font-size:1.1rem; }.brand-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; color:white; background:var(--accent); font-weight:800; }
-.new-chat,.source-link,.prompt-button { border:1px solid var(--line); border-radius:9px; color:var(--ink); background:var(--surface); text-decoration:none; text-align:left; cursor:pointer; }.new-chat { padding:10px 12px; font-weight:700; }.prompt-button { padding:7px 0; border:0; background:transparent; font-size:.88rem; color:var(--muted); }.prompt-button:hover,.source-link:hover { color:var(--accent); }.context-block { display:grid; gap:5px; font-size:.9rem; }.context-block > span { color:var(--muted); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }.context-block small { color:var(--muted); line-height:1.45; }.source-link { padding:10px 12px; font-weight:650; }.sidebar-boundaries { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; }.sidebar-boundaries span,.provider-status { padding:5px 8px; border-radius:999px; background:#dce9df; color:#285742; font-size:.75rem; font-weight:700; }
-.chat-panel { display:grid; grid-template-rows:auto minmax(0,1fr) auto; min-height:100vh; }.chat-header { display:flex; gap:16px; align-items:center; justify-content:space-between; padding:18px clamp(18px,4vw,44px); border-bottom:1px solid var(--line); background:rgba(255,255,255,.82); }.chat-header h1 { margin:0; font-size:1.05rem; }.chat-header p { margin:4px 0 0; color:var(--muted); font-size:.86rem; }.sidebar-toggle { display:none; }.message-stream { width:min(820px,100%); margin:0 auto; padding:32px clamp(16px,4vw,42px); overflow:auto; }.empty-state { max-width:620px; margin:12vh auto; text-align:center; }.empty-state h2 { font-size:1.65rem; }.empty-state p { color:var(--muted); line-height:1.6; }.message { display:grid; gap:8px; margin-bottom:24px; }.message-user { justify-items:end; }.user-bubble { max-width:min(75ch,90%); padding:11px 14px; border-radius:16px 16px 3px 16px; background:var(--ink); color:#fff; line-height:1.5; }.answer-card { border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:18px; box-shadow:0 5px 16px rgba(29,51,43,.05); }.answer-card p { line-height:1.6; }.answer-section { margin-top:16px; }.answer-section h3 { margin:0 0 7px; font-size:.85rem; }.answer-section ul { margin:0; padding-left:20px; color:var(--muted); }.citation-card { display:grid; gap:4px; padding:10px; margin-top:8px; border-radius:9px; background:#edf5ef; border:1px solid #cde0d0; }.citation-card strong { color:var(--accent); font-size:.8rem; }.composer { position:sticky; bottom:0; padding:14px clamp(16px,4vw,42px) 22px; border-top:1px solid var(--line); background:rgba(247,248,245,.96); }.composer textarea { width:100%; resize:none; min-height:52px; max-height:160px; padding:14px; border:1px solid #aebdb3; border-radius:12px; background:#fff; color:var(--ink); outline:none; }.composer textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(22,96,73,.13); }.composer-actions { display:flex; min-height:30px; align-items:center; justify-content:space-between; gap:12px; padding-top:8px; color:var(--muted); font-size:.85rem; }.composer button { padding:8px 16px; border:0; border-radius:9px; background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }.composer button:disabled { opacity:.55; cursor:wait; }.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
-@media (max-width:760px) { .chat-workspace { display:block; }.chat-sidebar { position:fixed; inset:0 auto 0 0; width:min(86vw,320px); z-index:2; transform:translateX(-105%); transition:transform .2s ease-out; box-shadow:10px 0 28px rgba(0,0,0,.12); }.chat-sidebar.is-open { transform:translateX(0); }.sidebar-toggle { display:inline-flex; border:1px solid var(--line); border-radius:8px; padding:7px 9px; background:#fff; color:var(--ink); }.provider-status { display:none; }.message-stream { padding:20px 14px; }.empty-state { margin:8vh auto; text-align:left; }.composer { padding:12px 14px 16px; } }
-@media (prefers-reduced-motion:reduce) { .chat-sidebar { transition:none; } }
+/* ============================================================
+   OpenCare Chat (UI-R3) — presentation layer.
 
-body.product-shell.chat-page { min-width: 320px; overflow-x: hidden; }
-.chat-page .product-shell__main { min-width: 0; }
-.chat-content { width: min(68rem, 100%); margin: 0 auto; padding: clamp(1rem, 3vw, 2.5rem); }
-.chat-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; padding-bottom:1.25rem; border-bottom:1px solid var(--shell-border); }
-.chat-heading h1 { margin:.15rem 0 .25rem; font-size:clamp(1.5rem, 3vw, 2.25rem); letter-spacing:-.03em; }
-.chat-heading p { margin:0; color:var(--shell-muted); }
-.chat-kicker { font-size:.75rem; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
-.chat-page .provider-status { flex:0 1 auto; padding:.35rem .65rem; border-radius:999px; background:var(--shell-accent-soft); color:var(--shell-accent-strong); font-size:.75rem; font-weight:700; }
-.chat-context-row { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem 1.25rem; padding:1rem 0; color:var(--shell-muted); font-size:.9rem; }
-.chat-context-row strong { color:var(--shell-text); overflow-wrap:anywhere; }
-.chat-new-button { margin-left:auto; padding:.5rem .75rem; border:1px solid var(--shell-border); border-radius:var(--shell-radius); background:var(--shell-surface); color:var(--shell-text); cursor:pointer; }
-.chat-new-button:disabled { opacity:.55; cursor:wait; }
-.chat-suggestions { margin-bottom:1rem; padding:1rem; border:1px solid var(--shell-border); border-radius:var(--shell-radius-large); background:var(--shell-surface); }
-.chat-suggestions h2 { margin:0 0 .5rem; font-size:.9rem; }
-.chat-suggestions > div { display:flex; flex-wrap:wrap; gap:.5rem 1rem; }
-.chat-page .prompt-button { border:0; color:var(--shell-accent-strong); }
-.chat-page .message-stream { width:100%; min-height:18rem; max-height:55vh; padding:1rem 0; }
-.chat-page .empty-state { margin:4rem auto; max-width:42rem; text-align:center; }
-.chat-page .empty-state p { color:var(--shell-muted); }
-.chat-page .composer { position:sticky; bottom:0; padding:1rem 0 .25rem; border-top:1px solid var(--shell-border); background:var(--shell-bg); }
-.chat-page .composer textarea { width:100%; border:1px solid var(--shell-border); border-radius:var(--shell-radius); padding:.8rem; background:var(--shell-surface); color:var(--shell-text); resize:vertical; }
-.chat-page .composer-actions { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding-top:.5rem; color:var(--shell-muted); }
-.chat-page .composer-actions button { padding:.55rem 1rem; border:0; border-radius:var(--shell-radius); background:var(--shell-accent); color:#fff; font-weight:700; cursor:pointer; }
-.chat-page .answer-card, .chat-page .citation-card { overflow-wrap:anywhere; }
-@media (max-width: 42rem) { .chat-heading { flex-direction:column; } .chat-new-button { margin-left:0; } .chat-page .message-stream { max-height:none; } }
+   Consumer of the UI-R1 shell foundation (product_shell.css):
+   all colors, typography, spacing, shape, focus, and controls
+   come from the --ui-* vocabulary and the shared primitives
+   (.ui-button, .ui-status, .ui-notice, .ui-row, .ui-empty-state).
+   This file defines no palette of its own.
+
+   Two roots are supported:
+   - .chat-page — the authenticated surface inside the shell;
+   - body.chat-body — the standalone public demo (/demo/chat,
+     route registered in app/main.py). The demo does not load
+     product_shell.css, so it carries scoped, concrete fallback
+     values for the primitives it renders — declared on the demo
+     body itself, never on :root.
+   Containment (bordered surfaces) is reserved for the consent
+   confirmation, the refusal/error notices, and the receipt —
+   each an independently bounded trust object. Everything else
+   reads as rows on the work surface.
+   ============================================================ */
+
+/* ================= Transcript grammar (shared) ===============
+   .message-stream is chat-specific, so these rules cannot restyle
+   any other surface. Values are token-only. --------------------- */
+
+.message-stream { display:grid; gap: var(--ui-space-5); min-width:0; }
+.message-stream :where(h2, h3, p) { margin:0; }
+.message-stream dd { margin:0; }
+.message { display:grid; gap: var(--ui-space-2); min-width:0; }
+.message-user { justify-items:end; }
+.user-bubble {
+  max-width:min(75ch, 90%);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  line-height:1.55;
+  overflow-wrap:anywhere;
+}
+/* chat.css is only ever linked by chat.html and chat_demo.html, so
+   these grammar classes cannot leak to other surfaces. .sr-only is
+   required here for the composer label (outside the transcript). */
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); }
+.message-stream .ui-empty-state h2 { margin:0 0 var(--ui-space-2); color: var(--ui-text); font-size: var(--ui-text-lg); }
+.chat-answer { max-width:74ch; line-height:1.6; overflow-wrap:anywhere; }
+.chat-refusal, .chat-declined, .chat-error { max-width:46rem; display:grid; gap: var(--ui-space-2); line-height:1.55; text-align:start; }
+.chat-refusal > h3, .chat-declined > h3, .chat-error > h3 { font-size: var(--ui-text-lg); }
+.answer-section { margin-top: var(--ui-space-4); min-width:0; }
+.answer-section > h3 { margin-bottom: var(--ui-space-1); color: var(--ui-text-secondary); font-size: var(--ui-text-sm); font-weight:700; }
+.answer-section ul { margin:0; padding-left:1.25rem; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); overflow-wrap:anywhere; }
+.chat-evidence { display:grid; }
+/* Permanent record of the approved disclosure, adjacent to the answer. */
+.disclosure-preview { margin-top:0; padding-top: var(--ui-space-2); border-top:1px solid var(--ui-divider); }
+.chat-detail-grid { margin: var(--ui-space-2) 0 0; display:grid; min-width:0; }
+.chat-count { font-variant-numeric: tabular-nums; }
+.chat-detail-grid ul { margin: var(--ui-space-1) 0 0; padding-left:1.15rem; color: var(--ui-text-secondary); font-size: var(--ui-text-xs); }
+.chat-detail-grid li { overflow-wrap:anywhere; }
+.chat-state__next { margin-top: var(--ui-space-2); font-weight:650; overflow-wrap:anywhere; }
+
+body.product-shell.chat-page { min-width:320px; overflow-x:hidden; }
+
+.chat-page .product-shell__main { min-width:0; }
+.chat-content { width:min(68rem, 100%); margin:0 auto; padding: clamp(1rem, 3vw, 2.5rem) 0; display:grid; gap: var(--ui-space-4); min-width:0; }
+.chat-heading { display:flex; align-items:flex-start; justify-content:space-between; gap: var(--ui-space-4); padding-bottom: var(--ui-space-4); border-bottom:1px solid var(--ui-divider); }
+.chat-heading h1 { margin:.15rem 0 .25rem; font-size: var(--ui-text-2xl); line-height:1.2; letter-spacing:-.02em; }
+.chat-heading p { margin:0; max-width:62ch; color: var(--ui-text-secondary); }
+.chat-context-row { display:flex; flex-wrap:wrap; align-items:center; gap: var(--ui-space-2) var(--ui-space-5); color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.chat-context-row strong { color: var(--ui-text); overflow-wrap:anywhere; }
+.chat-new-button { margin-left:auto; }
+.chat-suggestions { display:grid; gap: var(--ui-space-1); }
+.chat-suggestions h2 { margin:0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); font-weight:700; }
+.chat-suggestions > div { display:flex; flex-wrap:wrap; gap: var(--ui-space-1) var(--ui-space-3); }
+.chat-page .prompt-button {
+  min-height:2.75rem;
+  display:inline-flex;
+  align-items:center;
+  padding:.35rem var(--ui-space-3);
+  border:0;
+  border-radius: var(--ui-radius-control);
+  background:transparent;
+  color: var(--ui-accent-hover);
+  font-size: var(--ui-text-sm);
+  font-weight:650;
+  cursor:pointer;
+  text-align:left;
+}
+.chat-page .prompt-button:hover { background: var(--ui-accent-soft); color: var(--ui-accent-active); }
+.chat-page .message-stream { min-height:14rem; max-height:56vh; overflow:auto; padding: var(--ui-space-4) var(--ui-space-1); border-top:1px solid var(--ui-divider); }
+.chat-page .ui-empty-state { margin-block: var(--ui-space-5); }
+
+/* Consent confirmation: bounded interactive surface, in reading
+   order between the disclosure detail and the answer. */
+.chat-page .chat-consent {
+  max-width:46rem;
+  display:grid;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-4);
+  border:1px solid var(--ui-divider-strong);
+  border-left:4px solid var(--ui-accent);
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-raised);
+}
+.chat-page .chat-consent h3 { font-size: var(--ui-text-lg); }
+.chat-page .chat-consent h3:focus { outline:3px solid var(--ui-focus); outline-offset:2px; }
+.chat-page .chat-consent__help { color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.chat-page .chat-consent__actions { display:flex; flex-wrap:wrap; gap: var(--ui-space-2); }
+
+/* Receipt: explicit execution record (a bounded trust object). */
+.chat-page .chat-receipt {
+  max-width:46rem;
+  display:grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-4);
+  border:1px solid var(--ui-divider);
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface-muted);
+}
+.chat-page .chat-receipt h3 { font-size: var(--ui-text-md); }
+.chat-page .chat-receipt__id { font-family: var(--ui-font-mono); font-variant-numeric: tabular-nums; overflow-wrap:anywhere; }
+
+/* Composer: in normal flow below the (internally scrolling)
+   transcript — deliberately not sticky, so it can never cover
+   rendered evidence or receipts. */
+.chat-page .composer { display:grid; gap: var(--ui-space-2); padding-top: var(--ui-space-3); border-top:1px solid var(--ui-divider); }
+.chat-page .composer textarea { max-height:14rem; }
+.composer .composer-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap: var(--ui-space-3); min-height:2.75rem; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.composer #chat-status { min-width:0; overflow-wrap:anywhere; }
+
+@media (max-width: 42rem) {
+  .chat-heading { flex-direction:column; }
+  .chat-new-button { margin-left:0; }
+  .chat-page .message-stream { max-height:none; overflow:visible; }
+  .chat-page .chat-consent__actions > .ui-button { flex:1 1 100%; }
+}
+
+/* =================== Standalone demo (chat_demo.html) =========
+   Concrete fallback values for the primitives chat.js renders,
+   scoped to the demo body (never :root). No authenticated page
+   consumes this block: it is inert inside .product-shell. ------ */
+
+body.chat-body {
+  margin:0;
+  min-width:320px;
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+  font:.9375rem/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --ui-canvas:#f7f8f5;
+  --ui-surface:#ffffff;
+  --ui-surface-muted:#eaf0eb;
+  --ui-text:#18332c;
+  --ui-text-secondary:#5a6b64;
+  --ui-divider:#d8e0da;
+  --ui-divider-strong:#aebdb3;
+  --ui-accent:#166049;
+  --ui-accent-hover:#166049;
+  --ui-accent-soft:#dce9df;
+  --ui-accent-active:#0f4a38;
+  --ui-success:#285742;
+  --ui-success-soft:#dce9df;
+  --ui-warning:#76520f;
+  --ui-warning-soft:#f8eeda;
+  --ui-danger:#9b4335;
+  --ui-danger-soft:#f7e8e5;
+  --ui-info:#245f7a;
+  --ui-info-soft:#e2edf2;
+  --ui-focus:#095fc1;
+  --ui-space-1:.25rem;
+  --ui-space-2:.5rem;
+  --ui-space-3:.75rem;
+  --ui-space-4:1rem;
+  --ui-space-5:1.5rem;
+  --ui-space-6:2rem;
+  --ui-text-sm:.8125rem;
+  --ui-text-xs:.75rem;
+  --ui-text-md:.9375rem;
+  --ui-text-lg:1.125rem;
+  --ui-text-2xl:1.75rem;
+  --ui-radius-control:8px;
+  --ui-radius-surface:12px;
+  --ui-radius-notice:10px;
+  --ui-shadow-raised:0 5px 16px rgba(29,51,43,.05);
+  --ui-font-mono:ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+body.chat-body * { box-sizing:border-box; }
+body.chat-body :where(button, textarea, input, select) { font:inherit; }
+body.chat-body :where(a, button, select, input, textarea, summary):focus-visible { outline:3px solid var(--ui-focus); outline-offset:2px; }
+
+/* Demo copies of only the primitives chat.js renders in demo mode:
+   citation rows (.ui-row) and refusal/error notices (.ui-notice).
+   Consent, receipt, .ui-button, and .ui-status markup exists only
+   on the live authenticated surface, so the demo does not define them. */
+body.chat-body .ui-row { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap: var(--ui-space-2) var(--ui-space-4); padding: var(--ui-space-3) var(--ui-space-2); border-top:1px solid var(--ui-divider); overflow-wrap:anywhere; }
+body.chat-body .ui-row:last-child { border-bottom:1px solid var(--ui-divider); }
+body.chat-body .ui-row__title { font-weight:650; }
+body.chat-body .ui-row__meta { color: var(--ui-text-secondary); font-size: var(--ui-text-xs); }
+body.chat-body .ui-notice { padding: var(--ui-space-3) var(--ui-space-4); border:1px solid var(--ui-divider-strong); border-left:4px solid var(--ui-divider-strong); border-radius: var(--ui-radius-notice); background: var(--ui-surface-muted); color: var(--ui-text); overflow-wrap:anywhere; }
+body.chat-body .ui-notice--warning { border-color:rgb(118,82,15,.4); border-left-color: var(--ui-warning); background: var(--ui-warning-soft); }
+body.chat-body .ui-notice--danger { border-color:rgb(155,67,53,.4); border-left-color: var(--ui-danger); background: var(--ui-danger-soft); }
+body.chat-body .ui-empty-state { max-width:46ch; margin-inline:auto; padding: var(--ui-space-6) var(--ui-space-4); border:1px dashed var(--ui-divider-strong); border-radius: var(--ui-radius-surface); color: var(--ui-text-secondary); text-align:center; }
+
+/* Demo chrome (chat_demo.html structure). */
+body.chat-body .chat-workspace { min-height:100vh; display:grid; grid-template-columns:272px minmax(0,1fr); }
+body.chat-body .chat-sidebar { display:flex; flex-direction:column; gap:22px; padding:22px 18px; background: var(--ui-surface-muted); border-right:1px solid var(--ui-divider); }
+body.chat-body .brand-row { display:flex; gap:9px; align-items:center; font-size:1.1rem; }
+body.chat-body .brand-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; color:white; background: var(--ui-accent); font-weight:800; }
+body.chat-body .new-chat { padding:10px 12px; border:1px solid var(--ui-divider); border-radius:9px; color: var(--ui-text); background: var(--ui-surface); text-align:left; cursor:pointer; font-weight:700; }
+body.chat-body .prompt-button { padding:7px 0; border:0; background:transparent; text-align:left; cursor:pointer; color: var(--ui-text-secondary); font-size:.88rem; }
+body.chat-body .prompt-button:hover { color: var(--ui-accent); }
+body.chat-body .context-block { display:grid; gap:5px; font-size:.9rem; }
+body.chat-body .context-block > span { color: var(--ui-text-secondary); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+body.chat-body .context-block small { color: var(--ui-text-secondary); line-height:1.45; }
+body.chat-body .sidebar-boundaries { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; }
+body.chat-body .sidebar-boundaries span, body.chat-body .provider-status { padding:5px 8px; border-radius:999px; background: var(--ui-success-soft); color: var(--ui-success); font-size:.75rem; font-weight:700; }
+body.chat-body .empty-state { max-width:620px; margin:12vh auto; text-align:center; }
+body.chat-body .empty-state h2 { margin:0 0 .5rem; font-size:1.65rem; }
+body.chat-body .empty-state p { color: var(--ui-text-secondary); line-height:1.6; }
+body.chat-body .chat-header { display:flex; gap:16px; align-items:center; justify-content:space-between; padding:18px clamp(18px,4vw,44px); border-bottom:1px solid var(--ui-divider); background: var(--ui-surface); }
+body.chat-body .chat-header h1 { margin:0; font-size:1.05rem; }
+body.chat-body .chat-header p { margin:4px 0 0; color: var(--ui-text-secondary); font-size:.86rem; }
+body.chat-body .sidebar-toggle { display:none; }
+body.chat-body .chat-panel { display:grid; grid-template-rows:auto minmax(0,1fr) auto; min-height:100vh; min-height:100dvh; min-width:0; }
+body.chat-body .message-stream { width:min(820px,100%); margin:0 auto; padding:32px clamp(16px,4vw,42px); overflow:auto; }
+body.chat-body .composer { padding:14px clamp(16px,4vw,42px) 22px; border-top:1px solid var(--ui-divider); background: var(--ui-canvas); }
+body.chat-body .composer textarea { width:100%; resize:none; min-height:52px; max-height:160px; padding:14px; border:1px solid var(--ui-divider-strong); border-radius:12px; background: var(--ui-surface); color: var(--ui-text); }
+body.chat-body .composer-actions { padding-top:8px; }
+body.chat-body .composer button { padding:8px 16px; border:0; border-radius:9px; background: var(--ui-accent); color:#fff; font-weight:700; cursor:pointer; }
+body.chat-body .composer button:disabled { opacity:.55; cursor:wait; }
+
+@media (max-width:760px) {
+  body.chat-body .chat-workspace { display:block; }
+  body.chat-body .chat-sidebar { border-right:0; border-bottom:1px solid var(--ui-divider); }
+  body.chat-body .provider-status { display:none; }
+  body.chat-body .message-stream { padding:20px 14px; }
+  body.chat-body .empty-state { margin:8vh auto; text-align:left; }
+  body.chat-body .composer { padding:12px 14px 16px; }
+}

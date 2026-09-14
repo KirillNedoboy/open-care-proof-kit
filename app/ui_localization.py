@@ -2050,6 +2050,75 @@ TRANSLATIONS["ru"].update(
     }
 )
 
+# UI-R3 chat consent flow, execution states, refusal copy, and receipt labels.
+# Exact EN/RU parity is asserted by tests/test_ui_localization.py; provider
+# ids, model ids, hashes, contract versions, and reason codes stay untranslated.
+TRANSLATIONS["en"].update(
+    {
+        "chat.status_await_consent": "Waiting for your explicit approval…",
+        "chat.status_execute": "Executing the approved request…",
+        "chat.status_receipt": "Finalizing the execution receipt…",
+        "chat.approve_disclosure": "Approve this disclosure",
+        "chat.consent_help": (
+            "Nothing is sent before you approve this exact disclosure."
+        ),
+        "chat.declined_heading": "Disclosure was not approved",
+        "chat.refusal_heading": (
+            "OpenCare refused this request before contacting a provider"
+        ),
+        "chat.refusal_next_step": (
+            "Safe next step: review the recorded sources in Workspace or ask "
+            "a source-backed question instead."
+        ),
+        "chat.error_heading": "This request did not complete",
+        "chat.receipt_id": "Receipt id",
+    }
+)
+
+TRANSLATIONS["ru"].update(
+    {
+        "chat.status_await_consent": "Ожидаем вашего явного одобрения…",
+        "chat.status_execute": "Выполняем одобренный запрос…",
+        "chat.status_receipt": "Завершаем оформление квитанции…",
+        "chat.approve_disclosure": "Одобрить это раскрытие",
+        "chat.consent_help": (
+            "Ничего не будет отправлено, пока вы не одобрите это точное "
+            "раскрытие."
+        ),
+        "chat.declined_heading": "Раскрытие не одобрено",
+        "chat.refusal_heading": (
+            "OpenCare отклонил этот запрос до обращения к провайдеру"
+        ),
+        "chat.refusal_next_step": (
+            "Безопасный следующий шаг: проверьте записанные источники в "
+            "рабочей области или задайте вопрос с опорой на источники."
+        ),
+        "chat.error_heading": "Этот запрос не выполнен",
+        "chat.receipt_id": "Идентификатор квитанции",
+    }
+)
+
+# UI-R3 genetics category labels and evidence disclosure summary copy.
+# Exact EN/RU parity is asserted by tests/test_ui_localization.py; provider
+# ids, model ids, hashes, contract versions, and reason codes stay untranslated.
+TRANSLATIONS["en"].update(
+    {
+        "genetics.category_nutrition": "Nutrition",
+        "genetics.category_exploratory": "Exploratory",
+        "genetics.evidence_details": "Evidence and limits",
+        "genetics.evidence_pack": "evidence pack",
+    }
+)
+
+TRANSLATIONS["ru"].update(
+    {
+        "genetics.category_nutrition": "Питание",
+        "genetics.category_exploratory": "Исследовательское",
+        "genetics.evidence_details": "Источники и ограничения",
+        "genetics.evidence_pack": "набор доказательств",
+    }
+)
+
 
 def _normalize_locale(locale: str | None) -> Locale:
     if locale == "ru":
