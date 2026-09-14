@@ -1,7 +1,6 @@
 {% extends "product_shell.html" %}
 {% block title %}{{ t("page.family_title") }}{% endblock %}
 {% block page_styles %}
-<link rel="stylesheet" href="{{ url_for('static', path='/product_core_workspace.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/family_access_workspace.css') }}">
 {% endblock %}
 {% block page_scripts %}
@@ -11,10 +10,10 @@
 {% block page_class %}family-access-page{% endblock %}
 {% block content %}
   <header class="family-access-intro" aria-labelledby="family-access-title">
-    <p class="eyebrow">{{ t("nav.family_access") }}</p>
+    <p class="family-access-intro__eyebrow">{{ t("nav.family_access") }}</p>
     <h1 id="family-access-title">{{ t("family.heading") }}</h1>
-    <p>{{ t("family.intro") }}</p>
-    <p class="meta">{{ t("family.boundary") }}</p>
+    <p class="family-access-intro__summary">{{ t("family.intro") }}</p>
+    <p class="family-access-intro__boundary">{{ t("family.boundary") }}</p>
   </header>
 
   <p id="family-access-status" class="family-access-status" role="status" aria-live="polite"></p>
@@ -23,14 +22,16 @@
     <div class="family-section-heading">
       <div>
         <h2 id="family-person-context-heading">{{ t("family.active_person") }}</h2>
-        <p id="selected-access-person-detail" class="meta">{{ t("family.choose_person") }}</p>
+        <p id="selected-access-person-detail">{{ t("family.choose_person") }}</p>
       </div>
-      <button id="clear-family-person" class="button-secondary" type="button" hidden>{{ t("family.clear_person") }}</button>
+      <button id="clear-family-person" class="ui-button ui-button--secondary" type="button" hidden>{{ t("family.clear_person") }}</button>
     </div>
-    <label for="access-person-selector">{{ t("family.switch_person") }}</label>
-    <select id="access-person-selector" disabled>
-      <option value="">{{ t("person.no_selection") }}</option>
-    </select>
+    <div class="family-field">
+      <label for="access-person-selector">{{ t("family.switch_person") }}</label>
+      <select id="access-person-selector" class="ui-control" disabled>
+        <option value="">{{ t("person.no_selection") }}</option>
+      </select>
+    </div>
     <p id="selected-access-person" class="family-selected-person">{{ t("family.no_active_person") }}</p>
   </section>
 
@@ -47,58 +48,70 @@
           <p>{{ t("family.people_help") }}</p>
         </div>
       </div>
-      <div id="family-access-read-only" hidden>
+      <div id="family-access-read-only" class="ui-notice ui-notice--info" hidden>
         <h3>{{ t("family.read_only_heading") }}</h3>
         <p>{{ t("family.read_only_help") }}</p>
       </div>
       <div id="assignment-list"></div>
-      <p id="no-additional-access" hidden>{{ t("family.no_additional_access") }}</p>
+      <p id="no-additional-access" class="family-quiet-note" hidden>{{ t("family.no_additional_access") }}</p>
       <form id="revise-access-form" class="family-inline-form" hidden>
         <h3>{{ t("family.revise_access") }}</h3>
-        <p id="revise-access-label" tabindex="-1"></p>
+        <p id="revise-access-label" class="family-inline-form__target" tabindex="-1"></p>
         <fieldset id="revise-caregiver-scopes">
           <legend>{{ t("family.caregiver_permissions") }}</legend>
           <div class="family-scope-options"></div>
         </fieldset>
         <div class="family-form-actions">
-          <button type="submit">{{ t("family.save_permissions") }}</button>
-          <button id="cancel-access-revision" class="button-secondary" type="button">{{ t("action.cancel") }}</button>
+          <button type="submit" class="ui-button ui-button--primary">{{ t("family.save_permissions") }}</button>
+          <button id="cancel-access-revision" class="ui-button ui-button--secondary" type="button">{{ t("action.cancel") }}</button>
         </div>
       </form>
     </section>
 
     <section id="invite-someone" aria-labelledby="invite-someone-heading">
-      <h2 id="invite-someone-heading">{{ t("family.invite_heading") }}</h2>
-      <h3 id="share-access-to-person"></h3>
-      <p>{{ t("family.invite_help") }}</p>
+      <div class="family-section-heading">
+        <div>
+          <h2 id="invite-someone-heading">{{ t("family.invite_heading") }}</h2>
+          <p>{{ t("family.invite_help") }}</p>
+        </div>
+      </div>
+      <h3 id="share-access-to-person" class="family-share-target"></h3>
       <form id="create-invitation-form" hidden>
-        <label for="invitation-role-select">{{ t("family.role_label") }}</label>
-        <select id="invitation-role-select">
-          <option value="caregiver">{{ t("family.role_caregiver") }}</option>
-          <option value="owner">{{ t("family.role_owner") }}</option>
-        </select>
-        <label for="invitation-expiry">{{ t("family.expires_at") }}</label>
-        <input id="invitation-expiry" type="datetime-local" required>
+        <div class="family-field">
+          <label for="invitation-role-select">{{ t("family.role_label") }}</label>
+          <select id="invitation-role-select" class="ui-control">
+            <option value="caregiver">{{ t("family.role_caregiver") }}</option>
+            <option value="owner">{{ t("family.role_owner") }}</option>
+          </select>
+        </div>
+        <div class="family-field">
+          <label for="invitation-expiry">{{ t("family.expires_at") }}</label>
+          <input id="invitation-expiry" class="ui-control" type="datetime-local" required>
+        </div>
         <fieldset id="invitation-caregiver-scopes">
           <legend>{{ t("family.caregiver_permissions") }}</legend>
           <div class="family-scope-options"></div>
         </fieldset>
-        <label class="confirmation"><input id="confirm-full-owner-access" type="checkbox"> {{ t("family.owner_confirmation") }}</label>
-        <button type="submit">{{ t("family.create_invitation") }}</button>
+        <label class="confirmation"><input id="confirm-full-owner-access" type="checkbox"> <span>{{ t("family.owner_confirmation") }}</span></label>
+        <button type="submit" class="ui-button ui-button--primary">{{ t("family.create_invitation") }}</button>
       </form>
-      <p id="invitation-empty">{{ t("family.invitation_empty") }}</p>
+      <p id="invitation-empty" class="family-quiet-note">{{ t("family.invitation_empty") }}</p>
       <div id="issued-invitation" tabindex="-1" hidden>
         <h3>{{ t("family.invitation_issued") }}</h3>
-        <p class="error">{{ t("family.invitation_warning") }}</p>
+        <p class="ui-notice ui-notice--warning">{{ t("family.invitation_warning") }}</p>
         <pre id="issued-invitation-code"></pre>
-        <button id="clear-invitation-code" class="button-secondary" type="button">{{ t("family.clear_code") }}</button>
+        <button id="clear-invitation-code" class="ui-button ui-button--secondary" type="button">{{ t("family.clear_code") }}</button>
       </div>
     </section>
   </div>
 
   <section id="account-settings" aria-labelledby="account-settings-heading">
-    <h2 id="account-settings-heading">{{ t("family.account_heading") }}</h2>
-    <p>{{ t("family.account_help") }}</p>
+    <div class="family-section-heading">
+      <div>
+        <h2 id="account-settings-heading">{{ t("family.account_heading") }}</h2>
+        <p>{{ t("family.account_help") }}</p>
+      </div>
+    </div>
     <section id="ai-provider" aria-labelledby="ai-provider-heading">
       <h3 id="ai-provider-heading">{{ t("provider.heading") }}</h3>
       <dl class="family-account-summary">
@@ -130,28 +143,32 @@
         <dd>{{ t("provider.operator_managed") if provider_status.configured else t("provider.unavailable") }}</dd>
       </dl>
       {% if provider_status.external %}
-        <p class="meta">{{ t("provider.external_boundary") }}</p>
+        <p class="family-quiet-note">{{ t("provider.external_boundary") }}</p>
       {% elif provider_status.provider_kind == "self_hosted_http" %}
-        <p class="meta">{{ t("provider.local_ollama_boundary") }}</p>
+        <p class="family-quiet-note">{{ t("provider.local_ollama_boundary") }}</p>
       {% endif %}
     </section>
     <dl id="current-actor" class="family-account-summary"></dl>
     <form id="change-password-form">
       <input class="family-visually-hidden" type="text" name="username" autocomplete="username" tabindex="-1">
       <h3>{{ t("family.change_password") }}</h3>
-      <p class="meta">{{ t("family.password_help") }}</p>
-      <label for="current-password">{{ t("family.current_password") }}</label>
-      <input id="current-password" type="password" required minlength="1" maxlength="1024" autocomplete="current-password">
-      <label for="new-password">{{ t("family.new_password") }}</label>
-      <input id="new-password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
-      <button type="submit">{{ t("family.change_password") }}</button>
+      <p class="family-quiet-note">{{ t("family.password_help") }}</p>
+      <div class="family-field">
+        <label for="current-password">{{ t("family.current_password") }}</label>
+        <input id="current-password" class="ui-control" type="password" required minlength="1" maxlength="1024" autocomplete="current-password">
+      </div>
+      <div class="family-field">
+        <label for="new-password">{{ t("family.new_password") }}</label>
+        <input id="new-password" class="ui-control" type="password" required minlength="12" maxlength="1024" autocomplete="new-password">
+      </div>
+      <button type="submit" class="ui-button ui-button--primary">{{ t("family.change_password") }}</button>
     </form>
-    <button id="actor-logout" class="button-secondary" type="button">{{ t("action.sign_out") }}</button>
+    <button id="actor-logout" class="ui-button ui-button--secondary" type="button">{{ t("action.sign_out") }}</button>
   </section>
 
   <details id="family-access-advanced">
     <summary>{{ t("family.advanced_heading") }}</summary>
-    <p>{{ t("family.advanced_help") }}</p>
+    <p class="family-quiet-note">{{ t("family.advanced_help") }}</p>
 
     <section id="technical-context" aria-labelledby="technical-context-heading">
       <h2 id="technical-context-heading">{{ t("family.technical_context") }}</h2>
@@ -166,19 +183,23 @@
     <section id="direct-grant" aria-labelledby="direct-grant-heading">
       <h2 id="direct-grant-heading">{{ t("family.direct_grant_heading") }}</h2>
       <form id="grant-access-form" hidden>
-        <label for="grant-actor-id">{{ t("family.recipient_actor_id") }}</label>
-        <input id="grant-actor-id" required maxlength="128" autocomplete="off">
-        <label for="grant-role">{{ t("family.role_label") }}</label>
-        <select id="grant-role">
-          <option value="caregiver">{{ t("family.role_caregiver") }}</option>
-          <option value="owner">{{ t("family.role_owner") }}</option>
-        </select>
+        <div class="family-field">
+          <label for="grant-actor-id">{{ t("family.recipient_actor_id") }}</label>
+          <input id="grant-actor-id" class="ui-control" required maxlength="128" autocomplete="off">
+        </div>
+        <div class="family-field">
+          <label for="grant-role">{{ t("family.role_label") }}</label>
+          <select id="grant-role" class="ui-control">
+            <option value="caregiver">{{ t("family.role_caregiver") }}</option>
+            <option value="owner">{{ t("family.role_owner") }}</option>
+          </select>
+        </div>
         <fieldset id="grant-caregiver-scopes">
           <legend>{{ t("family.caregiver_permissions") }}</legend>
           <div class="family-scope-options"></div>
         </fieldset>
-        <label class="confirmation"><input id="grant-owner-confirmation" type="checkbox"> {{ t("family.owner_confirmation") }}</label>
-        <button type="submit">{{ t("family.grant_access") }}</button>
+        <label class="confirmation"><input id="grant-owner-confirmation" type="checkbox"> <span>{{ t("family.owner_confirmation") }}</span></label>
+        <button type="submit" class="ui-button ui-button--primary">{{ t("family.grant_access") }}</button>
       </form>
     </section>
 
@@ -192,28 +213,42 @@
       <h2 id="family-records-heading">{{ t("family.families_heading") }}</h2>
       <p>{{ t("family.family_context_help") }}</p>
       <form id="create-family-form">
-        <label for="family-display-name">{{ t("family.family_name") }}</label>
-        <input id="family-display-name" required maxlength="200">
-        <button type="submit">{{ t("family.create_family") }}</button>
+        <div class="family-field">
+          <label for="family-display-name">{{ t("family.family_name") }}</label>
+          <input id="family-display-name" class="ui-control" required maxlength="200">
+        </div>
+        <button type="submit" class="ui-button ui-button--primary">{{ t("family.create_family") }}</button>
       </form>
-      <label for="family-selector">{{ t("family.select_family") }}</label>
-      <select id="family-selector" disabled><option value="">{{ t("family.no_family_selected") }}</option></select>
+      <div class="family-field">
+        <label for="family-selector">{{ t("family.select_family") }}</label>
+        <select id="family-selector" class="ui-control" disabled><option value="">{{ t("family.no_family_selected") }}</option></select>
+      </div>
       <div id="family-details"><p>{{ t("family.no_family_selected") }}</p></div>
       <form id="add-family-member-form" hidden>
         <h3>{{ t("family.add_family_member") }}</h3>
-        <label for="family-member-person">{{ t("shell.person") }}</label>
-        <select id="family-member-person"></select>
-        <button type="submit">{{ t("family.add_family_member") }}</button>
+        <div class="family-field">
+          <label for="family-member-person">{{ t("shell.person") }}</label>
+          <select id="family-member-person" class="ui-control"></select>
+        </div>
+        <button type="submit" class="ui-button ui-button--primary">{{ t("family.add_family_member") }}</button>
       </form>
       <form id="create-relationship-form" hidden>
         <h3>{{ t("family.add_relationship") }}</h3>
-        <label for="relationship-person">{{ t("shell.person") }}</label><select id="relationship-person"></select>
-        <label for="relationship-related-person">{{ t("family.related_person") }}</label><select id="relationship-related-person"></select>
-        <label for="relationship-type">{{ t("family.relationship") }}</label>
-        <select id="relationship-type">
-          <option value="parent">{{ t("family.relationship_parent") }}</option><option value="child">{{ t("family.relationship_child") }}</option><option value="spouse">{{ t("family.relationship_spouse") }}</option><option value="partner">{{ t("family.relationship_partner") }}</option><option value="sibling">{{ t("family.relationship_sibling") }}</option><option value="guardian">{{ t("family.relationship_guardian") }}</option><option value="dependent">{{ t("family.relationship_dependent") }}</option><option value="other">{{ t("family.relationship_other") }}</option>
-        </select>
-        <button type="submit">{{ t("family.add_relationship") }}</button>
+        <div class="family-field">
+          <label for="relationship-person">{{ t("shell.person") }}</label>
+          <select id="relationship-person" class="ui-control"></select>
+        </div>
+        <div class="family-field">
+          <label for="relationship-related-person">{{ t("family.related_person") }}</label>
+          <select id="relationship-related-person" class="ui-control"></select>
+        </div>
+        <div class="family-field">
+          <label for="relationship-type">{{ t("family.relationship") }}</label>
+          <select id="relationship-type" class="ui-control">
+            <option value="parent">{{ t("family.relationship_parent") }}</option><option value="child">{{ t("family.relationship_child") }}</option><option value="spouse">{{ t("family.relationship_spouse") }}</option><option value="partner">{{ t("family.relationship_partner") }}</option><option value="sibling">{{ t("family.relationship_sibling") }}</option><option value="guardian">{{ t("family.relationship_guardian") }}</option><option value="dependent">{{ t("family.relationship_dependent") }}</option><option value="other">{{ t("family.relationship_other") }}</option>
+          </select>
+        </div>
+        <button type="submit" class="ui-button ui-button--primary">{{ t("family.add_relationship") }}</button>
       </form>
     </section>
   </details>

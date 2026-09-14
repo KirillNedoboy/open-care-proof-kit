@@ -316,8 +316,8 @@
         ? `${resolvedName} (${t("family.you", "You")})`
         : resolvedName));
       const secondary = actorSecondary(assignment.actor_id);
-      if (secondary) heading.append(make("p", secondary, "meta"));
-      const roleStatus = make("p", `${roleLabel(assignment.role)} · ${t("family.status_active", "Active")}`, "family-access-card__status");
+      if (secondary) heading.append(make("p", secondary, "ui-row__meta"));
+      const roleStatus = make("p", `${roleLabel(assignment.role)} · ${t("family.status_active", "Active")}`, "family-access-card__status ui-status ui-status--success");
       record.append(heading, roleStatus, scopeSummary(assignment.scopes));
       if (state.canManageAccess) {
         const actions = make("div", "", "family-card-actions");
@@ -330,7 +330,7 @@
             renderScopeOptions("revise-caregiver-scopes", inferPolicyGeneration(assignment.scopes), assignment.scopes);
             byId("revise-access-form").hidden = false;
             byId("revise-access-form").querySelector("input:not(:disabled), button:not(:disabled)")?.focus();
-          }, "button-secondary");
+          }, "ui-button ui-button--secondary");
           actions.append(revise);
         }
         actions.append(makeButton(t("family.revoke_access", "Revoke access"), async () => {
@@ -341,7 +341,7 @@
             status(t("family.access_revoked", "Access revoked."), "success");
             focusStatus();
           } catch (error) { handleError(error); }
-        }, "family-action-danger"));
+        }, "ui-button ui-button--danger"));
         record.append(actions);
       }
       ordinary.append(record);
@@ -556,7 +556,7 @@
             renderActors();
             focusStatus();
           } catch (error) { handleError(error); }
-        }, "family-action-danger"));
+        }, "ui-button ui-button--danger"));
       }
       target.append(record);
     });
@@ -593,7 +593,7 @@
             await renderFamily();
             focusStatus();
           } catch (error) { handleError(error); }
-        }, "family-action-danger"));
+        }, "ui-button ui-button--danger"));
         details.append(record);
       });
       payload.relationships.forEach((relationship) => {
@@ -609,10 +609,10 @@
             await renderFamily();
             focusStatus();
           } catch (error) { handleError(error); }
-        }, "family-action-danger"));
+        }, "ui-button ui-button--danger"));
         details.append(record);
       });
-    } catch (error) { details.append(make("p", error.message, "error")); }
+    } catch (error) { details.append(make("p", error.message, "ui-notice ui-notice--danger")); }
   };
   const renderFamilies = () => setOptions(
     byId("family-selector"), state.families, t("family.no_family_selected", "No Family selected."), "family_id", "display_name",
