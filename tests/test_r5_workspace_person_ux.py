@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -44,6 +45,7 @@ def test_workspace_sections_are_localized_in_both_catalogs(
         "Fact type",
         "Status",
         "Add for review",
+        "Needs attention",
     ):
         assert label in english.text
 
@@ -59,6 +61,7 @@ def test_workspace_sections_are_localized_in_both_catalogs(
         "Тип факта",
         "Статус",
         "Добавить на проверку",
+        "Требует внимания",
     ):
         assert label in russian.text
     for label in ("Review", "Documents", "Records", "Timeline", "Fact type"):
@@ -92,9 +95,6 @@ def test_workspace_reads_real_zero_state_through_authorized_paths(
     script = (ROOT / "app" / "static" / "product_core_workspace.js").read_text(
         encoding="utf-8"
     )
-    assert 'metric(t("workspace.metric_records"), records.length)' in script
-    assert 'metric(t("workspace.metric_documents"), state.documents.length)' in script
-    assert 'metric(t("workspace.metric_medications"),' in script
     assert "demo_patients" not in script
     assert "data/demo" not in script
 
@@ -143,8 +143,17 @@ def test_workspace_preserves_machine_values_and_navigation_contracts() -> None:
     script = (ROOT / "app" / "static" / "product_core_workspace.js").read_text(
         encoding="utf-8"
     )
-    for anchor in ("records", "documents", "timeline"):
-        assert f'href="#{anchor}"' in template
+    navigation = template[template.index('id="section-navigation"') : template.index("</nav>")]
+    assert re.findall(r'href="#([^"]+)"', navigation) == [
+        "person-context",
+        "overview",
+        "review",
+        "records",
+        "documents",
+        "timeline",
+        "visits-brief",
+        "export",
+    ]
     for value in ('"pending"', '"confirmed"', '"corrected"', '"rejected"', '"unsupported"'):
         assert value in template or value in script
     assert all(route not in template for route in ("/health", "/documents", "/activity"))

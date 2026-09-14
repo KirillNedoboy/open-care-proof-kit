@@ -39,7 +39,6 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "workspace.metric_records": "Confirmed records",
         "workspace.metric_documents": "Documents",
-        "workspace.metric_medications": "Current medications",
         "workspace.metric_activity": "Recent activity",
         "workspace.metric_pending": "Items awaiting review",
         "workspace.no_health_data": "No health data has been added for this Person yet.",
@@ -986,7 +985,6 @@ TRANSLATIONS: Final[dict[Locale, dict[str, str]]] = {
         ),
         "workspace.metric_records": "Подтверждённые записи",
         "workspace.metric_documents": "Документы",
-        "workspace.metric_medications": "Текущие лекарства",
         "workspace.metric_activity": "Недавняя активность",
         "workspace.metric_pending": "Ожидают проверки",
         "workspace.no_health_data": "Для этого пользователя пока нет данных о здоровье.",
@@ -1960,6 +1958,95 @@ TRANSLATIONS["ru"].update(
         "workspace.copy_unavailable": "Копирование недоступно в этом браузере.",
         "workspace.markdown_downloaded": "Загрузка Markdown подготовлена.",
         "workspace.vault_downloaded": "Загрузка хранилища подготовлена.",
+    }
+)
+
+# UI-R2 workspace hierarchy, document analysis states, and recovery copy.
+# Exact EN/RU parity is asserted by tests/test_ui_localization.py; provider
+# ids, model ids, hashes, contract versions, and reason codes stay untranslated.
+TRANSLATIONS["en"].update(
+    {
+        "workspace.section_navigation": "Workspace sections",
+        "workspace.attention_title": "Needs attention",
+        "workspace.attention_clear": "Nothing is waiting for review or recovery.",
+        "workspace.text_extraction": "Text extraction",
+        "workspace.text_ready": "Text ready",
+        "workspace.review_state": "Review state",
+        "workspace.analysis_prepared": "Analysis prepared",
+        "workspace.analysis_consent_required": "Consent required",
+        "workspace.analysis_consented": "Consent recorded",
+        "workspace.analysis_in_progress": "Analysis in progress",
+        "workspace.analysis_complete": "Analysis complete",
+        "workspace.analysis_ready_for_review": "Ready for review",
+        "workspace.analysis_failed": "Analysis failed",
+        "workspace.analysis_declined": "Analysis declined",
+        "workspace.analysis_contract": "Contract",
+        "workspace.analysis_reason": "Reason code",
+        "workspace.analyze_document": "Analyze document",
+        "workspace.continue_analysis": "Continue analysis",
+        "workspace.open_document": "Open document",
+        "workspace.analysis_review_help": (
+            "Review available candidates against the extracted text."
+        ),
+        "workspace.analysis_source_only_help": (
+            "The source remains stored and available for manual review."
+        ),
+        "workspace.analysis_wait_help": "Reload the workspace to refresh this state.",
+        "workspace.valid": "Valid",
+        "workspace.invalid": "Invalid",
+        "workspace.new": "New",
+        "workspace.reused": "Reused",
+        "workspace.value_configured": "Configured",
+        "workspace.value_yes": "Yes",
+        "workspace.value_no": "No",
+        "workspace.value_none": "None",
+        "workspace.retention_request_only": "Request only",
+        "workspace.retention_provider_policy": "Provider policy",
+    }
+)
+
+TRANSLATIONS["ru"].update(
+    {
+        "workspace.section_navigation": "Разделы рабочей области",
+        "workspace.attention_title": "Требует внимания",
+        "workspace.attention_clear": (
+            "Нет элементов, ожидающих проверки или восстановления."
+        ),
+        "workspace.text_extraction": "Извлечение текста",
+        "workspace.text_ready": "Текст готов",
+        "workspace.review_state": "Статус проверки",
+        "workspace.analysis_prepared": "Анализ подготовлен",
+        "workspace.analysis_consent_required": "Требуется согласие",
+        "workspace.analysis_consented": "Согласие получено",
+        "workspace.analysis_in_progress": "Анализ выполняется",
+        "workspace.analysis_complete": "Анализ завершён",
+        "workspace.analysis_ready_for_review": "Готово к проверке",
+        "workspace.analysis_failed": "Анализ не выполнен",
+        "workspace.analysis_declined": "Анализ отклонён",
+        "workspace.analysis_contract": "Контракт",
+        "workspace.analysis_reason": "Код причины",
+        "workspace.analyze_document": "Проанализировать документ",
+        "workspace.continue_analysis": "Продолжить анализ",
+        "workspace.open_document": "Открыть документ",
+        "workspace.analysis_review_help": (
+            "Сверьте доступные записи с извлечённым текстом."
+        ),
+        "workspace.analysis_source_only_help": (
+            "Источник сохранён и доступен для ручной проверки."
+        ),
+        "workspace.analysis_wait_help": (
+            "Перезагрузите рабочую область, чтобы обновить этот статус."
+        ),
+        "workspace.valid": "Корректно",
+        "workspace.invalid": "Некорректно",
+        "workspace.new": "Новые",
+        "workspace.reused": "Повторно",
+        "workspace.value_configured": "Настроено",
+        "workspace.value_yes": "Да",
+        "workspace.value_no": "Нет",
+        "workspace.value_none": "Нет",
+        "workspace.retention_request_only": "Только на время запроса",
+        "workspace.retention_provider_policy": "Политика провайдера",
     }
 )
 
