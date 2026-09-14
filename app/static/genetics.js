@@ -42,8 +42,21 @@
     loadVersion: 0,
   };
 
+  // Local tab nav renders as a horizontal strip below this width
+  // (must stay in sync with the .workspace-tabs breakpoint in
+  // genetics.css, max-width: 62.5rem == 1000px).
+  const tabStripQuery = window.matchMedia("(max-width: 1000px)");
+
+  function syncTabOrientation() {
+    const tabList = document.querySelector('[role="tablist"]');
+    if (tabList) tabList.setAttribute("aria-orientation", tabStripQuery.matches ? "horizontal" : "vertical");
+  }
+
   // DOM refs
   const status = byId("genetics-status");
+
+  syncTabOrientation();
+  tabStripQuery.addEventListener("change", syncTabOrientation);
   const tabs = Array.from(document.querySelectorAll('[role="tab"][data-tab]'));
   const panels = Array.from(document.querySelectorAll('[role="tabpanel"][data-panel]'));
   const workspaceShell = byId("genetics-workspace-shell");
@@ -105,7 +118,7 @@
   function handleTabKeydown(event) {
     const currentIndex = tabs.indexOf(event.target);
     if (currentIndex < 0) return;
-    const isHorizontal = window.matchMedia("(max-width: 980px)").matches;
+    const isHorizontal = tabStripQuery.matches;
     const previousKey = isHorizontal ? "ArrowLeft" : "ArrowUp";
     const nextKey = isHorizontal ? "ArrowRight" : "ArrowDown";
     if (event.key === previousKey || event.key === nextKey) {
@@ -289,12 +302,13 @@
     };
     return map[statusValue] || statusValue;
   }
-
   function categoryLabel(category) {
     const map = {
       pgx: t("genetics.category_pgx"),
       health: t("genetics.category_health"),
       health_association: t("genetics.category_health"),
+      nutrition: t("genetics.category_nutrition", "Nutrition"),
+      exploratory: t("genetics.category_exploratory", "Exploratory"),
       trait: t("genetics.category_trait"),
     };
     return map[category] || category;
@@ -313,11 +327,10 @@
   function donutGradient(coverage, targets) {
     const present = Number(coverage?.present_loci) || 0;
     const noCall = Number(coverage?.no_call_loci) || 0;
-    const notPresent = Number(coverage?.not_present_loci) || 0;
-    if (!targets) return "var(--surface-alt)";
+    if (!targets) return "var(--ui-surface-muted)";
     const p1 = (present / targets) * 100;
     const p2 = ((present + noCall) / targets) * 100;
-    return `conic-gradient(var(--accent) 0 ${p1}%, #b8892e ${p1}% ${p2}%, #cbd5d1 ${p2}% 100%)`;
+    return `conic-gradient(var(--ui-accent) 0 ${p1}%, var(--genetics-coverage-nocall) ${p1}% ${p2}%, var(--genetics-coverage-absent) ${p2}% 100%)`;
   }
 
   function renderAll() {
@@ -367,7 +380,7 @@
       .map((level) => `<span class="evidence-badge evidence-${evidenceClass(level)}">${escapeHtml(level)} ${Number(distribution[level])}</span>`)
       .join("");
     host.innerHTML = `
-      <div class="coverage-notice" role="note">
+      <div class="coverage-notice ui-notice ui-notice--warning" role="note">
         <strong>${escapeHtml(t("genetics.coverage_note_title"))}</strong>
         <p>${escapeHtml(t("genetics.coverage_note_body"))}</p>
       </div>
@@ -460,7 +473,7 @@
 
     const filtersActive = Boolean(search) || coverageFilter !== "all" || categoryFilter !== "all";
     if (!filtered.length) {
-      host.innerHTML = `<div class="state-card"><h3>${escapeHtml(t("genetics.variants_empty"))}</h3>${filtersActive ? `<button class="button-secondary" type="button" data-action="clear-variant-filters">${escapeHtml(t("genetics.filter_all"))}</button>` : ""}</div>`;
+      host.innerHTML = `<div class="state-card"><h3>${escapeHtml(t("genetics.variants_empty"))}</h3>${filtersActive ? `<button class="ui-button ui-button--secondary" type="button" data-action="clear-variant-filters">${escapeHtml(t("genetics.filter_all"))}</button>` : ""}</div>`;
       renderVariantCountMessage(filtered.length);
       return;
     }
@@ -559,8 +572,7 @@
     }
     host.innerHTML = findings.map((f) => `
       <article class="pathway-card">
-        <div class="pathway-map" aria-hidden="true"><i></i><i></i></div>
-        <div><span class="evidence-badge evidence-${evidenceClass(f.evidence_level)}">${escapeHtml(f.evidence_level || "")}</span><h3>${escapeHtml(f.title || "")}</h3><p>${escapeHtml(f.association || "")}</p><details><summary>${escapeHtml(t("genetics.provenance_label"))}</summary><div class="provenance-detail"><p><strong>${escapeHtml(t("genetics.status_reviewed"))}:</strong> ${escapeHtml(statusLabel(f.status))}</p><p>${escapeHtml(t("genetics.raw_source_note"))}</p></div></details></div>
+        <span class="evidence-badge evidence-${evidenceClass(f.evidence_level)}">${escapeHtml(f.evidence_level || "")}</span><h3>${escapeHtml(f.title || "")}</h3><p>${escapeHtml(f.association || "")}</p><details><summary>${escapeHtml(t("genetics.provenance_label"))}</summary><div class="provenance-detail"><p><strong>${escapeHtml(t("genetics.status_reviewed"))}:</strong> ${escapeHtml(statusLabel(f.status))}</p><p>${escapeHtml(t("genetics.raw_source_note"))}</p></div></details>
       </article>`).join("");
   }
 
@@ -585,12 +597,12 @@
         } catch (_) { return []; }
       })();
       return `<article>
-        <div><span class="evidence-badge evidence-${evidenceClass(entry.evidence_level)}">${escapeHtml(entry.evidence_level || "")}</span><h3>${escapeHtml(entry.title || "")}</h3><p>${escapeHtml(entry.pack_id || "")} · ${escapeHtml(t("genetics.overview_evidence"))} ${escapeHtml(entry.pack_version || "")}</p></div>
+        <div><span class="evidence-badge evidence-${evidenceClass(entry.evidence_level)}">${escapeHtml(entry.evidence_level || "")}</span><h3>${escapeHtml(entry.title || "")}</h3><p>${escapeHtml(entry.pack_id || "")} · ${escapeHtml(t("genetics.evidence_pack", "evidence pack"))} ${escapeHtml(entry.pack_version || "")}</p></div>
         <dl>
           <div><dt>${escapeHtml(t("genetics.tab_variants_sub"))}</dt><dd>${escapeHtml(statusLabel(entry.status))}</dd></div>
           <div><dt>${escapeHtml(t("genetics.provenance_label"))}</dt><dd>${escapeHtml(entry.source_name || "")}</dd></div>
         </dl>
-        <details><summary>${escapeHtml(t("genetics.evidence_help"))}</summary><div class="provenance-detail">
+        <details><summary>${escapeHtml(t("genetics.evidence_details", "Evidence and limits"))}</summary><div class="provenance-detail">
           <p><strong>${escapeHtml(t("genetics.provenance_label"))}:</strong> ${escapeHtml(entry.source_citation || "")}</p>
           ${limitations.map((limit) => `<p>${escapeHtml(limit)}</p>`).join("")}
           <p>${escapeHtml(t("genetics.raw_source_note"))}</p>
@@ -813,7 +825,11 @@
       renderResearchOutput(result, output);
     } catch (error) {
       if (output) {
-        output.innerHTML = `<div class="state-card error"><h3>${escapeHtml(t("genetics.load_error"))}</h3><p>${escapeHtml(t("genetics.research_context_none"))}</p></div>`;
+        const confidenceNode = byId("research-confidence");
+        const titleNode = byId("research-output-title");
+        if (confidenceNode) confidenceNode.textContent = "";
+        if (titleNode) titleNode.textContent = "";
+        (byId("research-output-body") || output).innerHTML = `<div class="state-card error"><h3>${escapeHtml(t("genetics.load_error"))}</h3><p>${escapeHtml(t("genetics.research_context_none"))}</p></div>`;
       }
       announce(t("genetics.load_error"));
     } finally {
@@ -864,9 +880,10 @@
       <section>
         <h4>${escapeHtml(t("genetics.research_session"))}</h4>
         <p>${escapeHtml(t("genetics.research_help"))}</p>
-        <p><strong>context_hash:</strong> ${escapeHtml(result?.packet?.context_hash || "")} · <strong>raw_genome_included:</strong> ${String(result?.packet?.raw_genome_included === false)}</p>
+        <p><strong>context_hash:</strong> ${escapeHtml(result?.packet?.context_hash || "")} · <strong>raw_genome_included:</strong> ${String(Boolean(result?.packet?.raw_genome_included))}</p>
       </section>`;
-    output.innerHTML = sections
+    const body = byId("research-output-body") || output;
+    body.innerHTML = sections
       .filter((section) => section.body)
       .map((section) => `<section class="${section.extraClass || ""}"><h4>${escapeHtml(section.heading)}</h4>${section.body}</section>`)
       .join("") + claimsMarkup + sessionMarkup;

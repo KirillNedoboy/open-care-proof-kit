@@ -1,322 +1,646 @@
-:root {
-  color-scheme: light;
-  --ink: #17332c;
-  --ink-soft: #354f47;
-  --muted: #526961;
-  --line: #c9d6d1;
-  --line-strong: #9eb2aa;
-  --page: #f3f6f4;
-  --surface: #ffffff;
-  --surface-alt: #eaf0ed;
-  --accent: #17664f;
-  --accent-dark: #104b3a;
-  --accent-soft: #dcece6;
-  --focus: #095fc1;
-  --warning: #76520f;
-  --warning-bg: #fff8e8;
-  --danger: #883c35;
-  --danger-bg: #fff2ef;
-  --violet: #66557b;
-  --shadow: 0 10px 32px rgb(21 51 43 / 8%);
-  --radius: 12px;
-  --control-radius: 7px;
+/* ============================================================
+   OpenCare Genetics Research Studio (UI-R3) — presentation layer.
+
+   This file is a *consumer* of the UI-R1 shell foundation:
+   color, typography, spacing, shape, depth, focus, and motion
+   come from the --ui-* vocabulary in product_shell.css, and
+   interactive components come from the shared primitives
+   (.ui-button, .ui-control, .ui-status, .ui-notice, .ui-row,
+   .ui-empty-state, .ui-disclosure).
+
+   It defines no :root palette, no font stack for body copy, no
+   global element rules, and no control implementation of its
+   own. Every rule is scoped beneath .genetics-page (the body
+   class emitted by product_shell.html), so this file cannot
+   restyle the shell, Workspace, Chat, or Family Access.
+
+   The only local custom properties are genuine domain/layout
+   values: the navigation rail width, the dataset definition-list
+   column, and the two coverage-figure data colors (no-call /
+   absent segments), which carry scientific meaning and are
+   always paired with text labels and numeric values.
+   ============================================================ */
+
+.genetics-page {
+  --genetics-rail-width: 13.5rem;
+  --genetics-fact-col: 8.75rem;
+  --genetics-coverage-nocall: #b8892e;
+  --genetics-coverage-absent: #cbd5d1;
 }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 1rem; }
-body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 Arial, Helvetica, sans-serif; }
-button, input, textarea, select { font: inherit; }
-button, select, input, textarea, summary, a { -webkit-tap-highlight-color: transparent; }
-button, summary, a, input, textarea, select { outline-offset: 3px; }
-button:focus-visible, summary:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible { outline: 3px solid var(--focus); }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:disabled { cursor: not-allowed; opacity: .5; }
-[hidden] { display: none !important; }
+/* A layout rule must never be able to expose a hidden region:
+   the tab panels, import form, and every state section depend
+   on this while their containers carry display rules. */
+.genetics-page [hidden] { display: none !important; }
 
-.skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .65rem .9rem; color: #fff; background: var(--ink); border-radius: var(--control-radius); transform: translateY(-150%); }
-.skip-link:focus { transform: translateY(0); }
-.sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
-
-.site-header, main { width: min(1240px, calc(100% - 2rem)); margin-inline: auto; }
-.site-header { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; border-bottom: 1px solid var(--line); }
-.brand { color: var(--ink); font-size: 1.1rem; font-weight: 800; text-decoration: none; }
-.primary-nav { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
-.primary-nav a { min-height: 44px; display: inline-flex; align-items: center; color: var(--muted); text-decoration-thickness: 1px; text-underline-offset: .35rem; }
-.primary-nav a[aria-current="page"] { color: var(--ink); font-weight: 700; text-decoration-thickness: 2px; }
-
-main { padding: 2rem 0 5rem; }
-h1, h2, h3, h4 { color: var(--ink); line-height: 1.2; text-wrap: balance; }
-p { text-wrap: pretty; }
-h1 { margin: .15rem 0 .65rem; font-size: 2.4rem; letter-spacing: -.03em; }
-h2 { margin: 0; font-size: 1.6rem; letter-spacing: -.015em; }
-h3 { margin: 0; font-size: 1.08rem; }
-h4 { margin: 0; font-size: 1rem; }
-
-.workspace-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin: .8rem 0 1.5rem; }
-.workspace-heading > div:first-child { max-width: 720px; }
-.workspace-heading p { margin: 0; color: var(--muted); }
-.section-kicker { color: var(--accent-dark) !important; font-size: .82rem; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
-.genetics-person-context { min-width: 280px; display: grid; gap: .65rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-.genetics-person-identity { display: grid; gap: .15rem; color: var(--muted); }
-.genetics-person-identity strong { color: var(--ink); font-size: 1rem; overflow-wrap: anywhere; }
-.context-label { margin: 0; color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.person-switcher { display: grid; grid-template-columns: 1fr auto; gap: .35rem .6rem; align-items: end; }
-.person-switcher label { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: .8rem; font-weight: 700; }
-.genetics-privacy-note, .genetics-upload-limit { color: var(--muted); font-size: .82rem; }
-.genetics-privacy-note { max-width: 64ch; margin: .8rem 0 0; }
-
-.boundary-banner { display: grid; grid-template-columns: auto minmax(260px, 1fr) minmax(220px, .55fr); align-items: center; gap: 1rem 1.25rem; margin-bottom: 1.2rem; padding: 1rem 1.15rem; color: #fff; background: var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); }
-.boundary-banner h2 { color: #fff; font-size: 1.08rem; }
-.boundary-banner p { margin: .3rem 0 0; color: #dce8e3; font-size: .92rem; }
-.boundary-mark { padding: .35rem .55rem; border: 1px solid rgb(255 255 255 / 45%); border-radius: var(--control-radius); font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
-.boundary-banner details { justify-self: end; }
-.boundary-banner summary { min-height: 44px; display: flex; align-items: center; color: #fff; cursor: pointer; font-weight: 700; }
-.boundary-banner ul { grid-column: 2 / -1; margin: .6rem 0 .2rem; padding-left: 1.2rem; color: #dce8e3; font-size: .9rem; }
-
-.workspace-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 1rem; align-items: start; }
-.workspace-tabs { position: sticky; top: .75rem; }
-.tab-list { display: grid; gap: .2rem; padding: .4rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius); }
-.tab-list button { min-height: 56px; display: grid; gap: .05rem; padding: .55rem .7rem; text-align: left; color: var(--ink-soft); background: transparent; border: 1px solid transparent; border-radius: var(--control-radius); cursor: pointer; }
-.tab-list button:hover { background: rgb(255 255 255 / 70%); }
-.tab-list button[aria-selected="true"] { color: var(--ink); background: var(--surface); border-color: var(--line-strong); box-shadow: 0 3px 12px rgb(21 51 43 / 7%); }
-.tab-list button span { font-weight: 800; }
-.tab-list button small { color: var(--muted); font-size: .76rem; }
-
-.workspace-content { min-width: 0; }
-select, input, textarea { width: 100%; min-height: 44px; padding: .6rem .7rem; color: var(--ink); background: #fff; border: 1px solid var(--line-strong); border-radius: var(--control-radius); }
-.import-panel { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(160px, .7fr) minmax(160px, .7fr); gap: .85rem; align-items: end; margin-bottom: 1rem; padding: 1rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius); }
-.import-panel > div { align-self: start; }
-.import-panel p { margin: .25rem 0 0; color: var(--muted); font-size: .86rem; }
-.import-panel label { display: grid; gap: .35rem; color: var(--ink-soft); font-size: .8rem; font-weight: 700; }
-.import-panel .confirmation-check { grid-column: 1 / -1; display: flex; align-items: center; gap: .5rem; font-weight: 400; }
-.import-panel .confirmation-check input { width: 1.1rem; min-height: 1.1rem; }
-.import-panel button { min-height: 44px; padding: .6rem 1rem; color: #fff; background: var(--accent-dark); border: 0; border-radius: var(--control-radius); font-weight: 800; cursor: pointer; }
-.import-panel #genetics-import-status { grid-column: 1 / -1; }
-textarea { resize: vertical; }
-
-.tab-panel { min-height: 640px; padding: 1.3rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-.panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
-.panel-heading p { max-width: 68ch; margin: .25rem 0 0; color: var(--muted); }
-.source-seal, .count-label, .context-count { flex: 0 0 auto; padding: .3rem .55rem; color: var(--accent-dark); background: var(--accent-soft); border: 1px solid #a9cbbf; border-radius: 999px; font-size: .8rem; font-weight: 800; }
-
-.overview-ledger { display: grid; grid-template-columns: 1.25fr .75fr; gap: 1.2rem; margin-top: 1.2rem; }
-.dataset-facts, .coverage-figure { padding: 1rem; background: var(--surface-alt); border-radius: var(--radius); }
-.dataset-facts dl { display: grid; margin: .8rem 0 0; }
-.dataset-facts dl div { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; padding: .55rem 0; border-top: 1px solid var(--line); }
-dt { color: var(--muted); font-size: .85rem; font-weight: 700; }
-dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
-.coverage-figure { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: .5rem 1rem; }
-.coverage-figure h3 { grid-column: 1 / -1; }
-.coverage-donut { width: 116px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; background: conic-gradient(var(--accent) 0 66.7%, #b8892e 66.7% 75%, #cbd5d1 75%); }
-.coverage-donut::before { content: ""; grid-area: 1 / 1; width: 78px; aspect-ratio: 1; border-radius: 50%; background: var(--surface-alt); }
-.coverage-donut span { z-index: 1; grid-area: 1 / 1; display: grid; text-align: center; color: var(--muted); font-size: .72rem; }
-.coverage-donut strong { color: var(--ink); font-size: 1.45rem; line-height: 1; }
-.coverage-key { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
-.coverage-key li { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: .45rem; font-size: .85rem; }
-.coverage-key i { width: 9px; height: 9px; border-radius: 2px; background: var(--accent); }
-.coverage-key .key-no-call { background: #b8892e; }
-.coverage-key .key-absent { background: #cbd5d1; }
-
-.coverage-notice { display: grid; grid-template-columns: minmax(190px, .35fr) 1fr; gap: 1rem; margin-top: 1rem; padding: .85rem 1rem; background: var(--warning-bg); border: 1px solid #dcc88f; border-radius: var(--radius); }
-.coverage-notice p { margin: 0; color: #634d21; }
-.coverage-notice.compact { margin: .8rem 0; font-size: .9rem; }
-.finding-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem; margin-top: 1rem; }
-.finding-summary article { min-height: 115px; display: grid; align-content: space-between; padding: .85rem; border: 1px solid var(--line); border-radius: var(--radius); }
-.finding-summary span, .finding-summary small { color: var(--muted); }
-.finding-summary strong { font-size: 1.6rem; }
-.evidence-strip { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
-.evidence-badge { display: inline-flex; align-items: center; width: fit-content; padding: .2rem .48rem; border: 1px solid; border-radius: 999px; font-size: .74rem; font-weight: 800; line-height: 1.3; white-space: nowrap; }
-.evidence-clinical { color: #0f553f; background: #e0f2eb; border-color: #9fcabb; }
-.evidence-high { color: #185168; background: #e7f3f8; border-color: #afd0dd; }
-.evidence-moderate { color: #68511a; background: #fff6dc; border-color: #dac785; }
-.evidence-low { color: #6c493d; background: #f9ece7; border-color: #ddbeb1; }
-.evidence-exploratory { color: #5b4c6b; background: #f0ebf5; border-color: #cbbdda; }
-.evidence-conflicting { color: #7b312c; background: #fff0ee; border-color: #e3aaa5; }
-
-.filter-bar { display: grid; grid-template-columns: 1.25fr .75fr .75fr; gap: .7rem; margin: 1rem 0 0; }
-.filter-bar label, .research-builder > label, .family-selectors label { color: var(--ink); font-size: .85rem; font-weight: 800; }
-.filter-bar input, .filter-bar select, .research-builder textarea, .family-selectors select { margin-top: .25rem; }
-.observation-list { display: grid; gap: .6rem; }
-.observation-row { display: grid; grid-template-columns: 1fr .75fr .8fr auto; gap: .8rem; align-items: center; padding: .8rem; border: 1px solid var(--line); border-radius: var(--radius); }
-.observation-row:hover { border-color: var(--line-strong); }
-.observation-row h3 { margin-top: .2rem; }
-.observation-row p, .observation-row small { margin: .2rem 0 0; color: var(--muted); }
-.observation-row .genotype { font: 700 .92rem/1.4 Consolas, monospace; }
-.coverage-state { width: fit-content; padding: .2rem .45rem; background: var(--surface-alt); border-radius: var(--control-radius); font-size: .78rem; font-weight: 800; }
-.coverage-state.not-present { color: var(--warning); background: var(--warning-bg); }
-.coverage-state.no-call { color: var(--danger); background: var(--danger-bg); }
-.observation-row details { justify-self: end; }
-summary { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-dark); cursor: pointer; font-weight: 700; }
-.observation-row details[open] { grid-column: 1 / -1; justify-self: stretch; }
-.provenance-detail { padding: .7rem .8rem; background: var(--surface-alt); border-radius: var(--control-radius); }
-.provenance-detail p { margin: .25rem 0; }
-
-.pgx-boundary, .traits-intro, .family-warning { display: flex; gap: .65rem 1rem; margin: 1rem 0; padding: .75rem .85rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius); }
-.pgx-boundary span, .traits-intro span, .family-warning span { color: var(--muted); }
-.pgx-path { display: grid; grid-template-columns: 1fr auto 1.3fr auto 1fr; align-items: center; gap: .55rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); }
-.path-node { min-height: 112px; display: grid; align-content: center; gap: .25rem; padding: .8rem; background: var(--surface-alt); border-radius: var(--radius); }
-.path-node span, .path-node small { color: var(--muted); font-size: .78rem; }
-.path-arrow { color: var(--accent); font-size: 1.2rem; font-weight: 800; }
-.path-result, .pgx-path details { grid-column: 1 / -1; }
-.path-result { display: flex; align-items: center; gap: .8rem; padding-top: .85rem; border-top: 1px solid var(--line); }
-.path-result p { margin: 0; }
-
-.association-groups { display: grid; gap: 1.2rem; margin-top: 1rem; }
-.association-group { padding-top: 1rem; border-top: 1px solid var(--line); }
-.association-group:first-child { padding-top: 0; border-top: 0; }
-.association-group > header { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
-.association-group > header span { color: var(--muted); font-size: .85rem; }
-.finding-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem; background: var(--surface-alt); border-radius: var(--radius); }
-.finding-row h4 { margin-top: .4rem; }
-.finding-row p { margin: .25rem 0 0; color: var(--muted); }
-.review-state { flex: 0 0 auto; font-size: .8rem; font-weight: 800; }
-
-.pathway-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
-.pathway-card { overflow: hidden; display: grid; grid-template-rows: 126px 1fr; border: 1px solid var(--line); border-radius: var(--radius); }
-.pathway-card > div:last-child { padding: 1rem; }
-.pathway-card h3 { margin-top: .5rem; }
-.pathway-card p { color: var(--muted); }
-.pathway-map { position: relative; display: flex; align-items: center; justify-content: space-around; padding: 1.5rem; background: #dfeee9; }
-.pathway-sleep .pathway-map { background: #ebe7f0; }
-.pathway-map::before { content: ""; position: absolute; width: 70%; height: 1px; background: rgb(23 102 79 / 45%); transform: rotate(-7deg); }
-.pathway-map i { z-index: 1; width: 18px; height: 18px; background: var(--surface); border: 4px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 6px rgb(23 102 79 / 11%); }
-.pathway-sleep .pathway-map i { border-color: var(--violet); box-shadow: 0 0 0 6px rgb(102 85 123 / 11%); }
-
-.button-secondary, button[type="submit"] { min-height: 44px; padding: .6rem .85rem; border-radius: var(--control-radius); font-weight: 800; cursor: pointer; }
-button[type="submit"] { color: #fff; background: var(--accent); border: 1px solid var(--accent); }
-button[type="submit"]:hover:not(:disabled) { background: var(--accent-dark); border-color: var(--accent-dark); }
-.button-secondary { color: var(--accent-dark); background: #fff; border: 1px solid var(--line-strong); }
-.button-secondary:hover { color: var(--ink); background: var(--surface-alt); border-color: var(--ink); }
-.evidence-help { margin-top: 1rem; padding: .8rem; background: var(--accent-soft); border-radius: var(--radius); }
-.evidence-help p { margin: .25rem 0 0; }
-.evidence-ledger { display: grid; gap: .75rem; margin-top: 1rem; }
-.evidence-ledger > article { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); }
-.evidence-ledger h3 { margin-top: .45rem; }
-.evidence-ledger p { margin: .3rem 0 0; color: var(--muted); }
-.evidence-ledger dl { display: grid; margin: 0; }
-.evidence-ledger dl div { display: grid; grid-template-columns: 100px 1fr; gap: .5rem; padding: .3rem 0; }
-.evidence-ledger details { grid-column: 1 / -1; }
-
-.family-warning { color: var(--danger); background: var(--danger-bg); border-color: #e3aaa5; }
-.family-warning span { color: #713e39; }
-.family-selectors { display: grid; grid-template-columns: 1fr auto 1fr auto; align-items: end; gap: .7rem; margin-top: 1rem; }
-.family-selectors > span { align-self: center; color: var(--muted); font-size: .85rem; }
-.permission-gate { margin-top: 1rem; padding: 2.5rem 1rem; text-align: center; background: var(--surface-alt); border-radius: var(--radius); }
-.permission-gate p { max-width: 52ch; margin: .4rem auto 0; color: var(--muted); }
-.comparison-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem; margin-top: 1rem; }
-.comparison-summary article { display: grid; gap: .2rem; padding: 1rem; background: var(--surface-alt); border-radius: var(--radius); }
-.comparison-summary strong { font-size: 1.5rem; }
-.comparison-summary span { color: var(--muted); }
-.comparison-limit { padding: .8rem; color: var(--muted); border-bottom: 1px solid var(--line); }
-
-.research-mode { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .6rem; margin-top: 1rem; }
-.research-mode > div { align-self: center; }
-.research-mode p { margin: .15rem 0 0; color: var(--muted); font-size: .85rem; }
-.research-mode label { position: relative; cursor: pointer; }
-.research-mode input { position: absolute; width: 1px; height: 1px; min-height: 0; opacity: 0; }
-.research-mode label > span { min-height: 70px; display: grid; align-content: center; padding: .7rem .8rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius); }
-.research-mode label small { color: var(--muted); }
-.research-mode input:checked + span { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.research-mode input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 3px; }
-.research-layout { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(360px, 1.2fr); gap: 1rem; margin-top: 1rem; }
-.research-builder { align-self: start; padding: 1rem; background: var(--surface-alt); border-radius: var(--radius); }
-.research-builder fieldset { margin: 0 0 1rem; padding: .6rem .8rem .8rem; border: 1px solid var(--line-strong); border-radius: var(--control-radius); }
-.research-builder legend { padding: 0 .25rem; font-weight: 800; }
-.research-builder fieldset label { min-height: 38px; display: flex; align-items: center; gap: .5rem; font-size: .88rem; }
-.research-builder input[type="checkbox"] { width: 1.1rem; min-height: 1.1rem; flex: 0 0 auto; }
-.disclosure-box { margin-top: 1rem; padding: .85rem; background: var(--warning-bg); border: 1px solid #dcc88f; border-radius: var(--radius); }
-.disclosure-box > div { display: grid; }
-.provider-label { color: var(--warning); font-size: .76rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-.disclosure-box p { margin: .5rem 0; color: #634d21; font-size: .88rem; }
-.confirmation-check { display: flex; align-items: flex-start; gap: .5rem; color: #4f3d1d; font-size: .86rem; font-weight: 700; }
-.confirmation-check input { width: 1.1rem; min-height: 1.1rem; flex: 0 0 auto; margin-top: .2rem; }
-.form-actions { display: grid; gap: .4rem; margin-top: .8rem; }
-.form-actions span { color: var(--muted); font-size: .8rem; }
-.research-output { padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); }
-.hypothesis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
-.epistemic-status { display: inline-block; margin-bottom: .35rem; color: var(--violet); font-size: .76rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-.hypothesis-summary { color: var(--muted); }
-.hypothesis-flow { display: grid; grid-template-columns: 1fr 36px 1fr 36px 1fr; align-items: center; margin: 1rem 0; padding: .8rem; background: var(--surface-alt); border-radius: var(--radius); font-size: .8rem; font-weight: 800; text-align: center; }
-.hypothesis-flow i { height: 1px; background: var(--accent); }
-.research-output section { padding: .8rem 0; border-top: 1px solid var(--line); }
-.research-output section p, .research-output section ul { margin: .35rem 0 0; color: var(--muted); }
-.research-output section ul { padding-left: 1.2rem; }
-.devils-advocate { margin-inline: -.35rem; padding-inline: .35rem !important; background: #fff8e8; }
-#visit-handoff-status { min-height: 1.3rem; color: var(--accent-dark); font-size: .85rem; font-weight: 700; }
-.research-context-note { margin: .3rem 0; color: var(--muted); font-size: .88rem; }
-
-.workspace-empty { display: flex; align-items: flex-start; gap: 1rem; margin-top: 1rem; padding: clamp(1.25rem, 3vw, 2rem); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-.workspace-empty h2, .workspace-empty h3 { margin: 0; }
-.workspace-empty p { max-width: 58ch; margin: .45rem 0 0; color: var(--muted); }
-.workspace-empty .button-secondary { margin-top: .8rem; }
-.empty-state__mark { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--accent-dark); font-size: 1.7rem; line-height: 1; }
-
-.state-card { display: grid; justify-items: start; gap: .45rem; min-height: 250px; align-content: center; padding: 1.5rem; background: var(--surface-alt); border-radius: var(--radius); }
-.state-card h3, .state-card p { margin: 0; }
-.state-card p { max-width: 60ch; color: var(--muted); }
-.state-card.error { color: var(--danger); background: var(--danger-bg); border: 1px solid #e3aaa5; }
-.state-skeleton { display: grid; gap: .65rem; width: 100%; }
-.state-skeleton i { height: 54px; display: block; background: linear-gradient(90deg, #dfe7e3 25%, #f2f6f4 50%, #dfe7e3 75%); background-size: 200% 100%; border-radius: var(--control-radius); animation: skeleton 1.4s ease-in-out infinite; }
-.state-skeleton i:first-child { width: 55%; height: 24px; }
-@keyframes skeleton { to { background-position: -200% 0; } }
-
-@media (max-width: 980px) {
-  .workspace-shell { grid-template-columns: 1fr; }
-  .workspace-tabs { position: sticky; top: 0; z-index: 20; min-width: 0; max-width: 100%; margin-inline: -.25rem; padding: .25rem; overflow: hidden; background: var(--page); }
-  .tab-list { width: 100%; min-width: 0; display: flex; overflow-x: auto; scrollbar-width: thin; }
-  .tab-list button { flex: 0 0 auto; min-height: 48px; }
-  .tab-list button small { display: none; }
-  .tab-panel { min-height: 0; }
-  .boundary-banner { grid-template-columns: auto 1fr; }
-  .boundary-banner details { grid-column: 2; justify-self: start; }
-  .overview-ledger, .research-layout { grid-template-columns: 1fr; }
+/* Live status region (visually hidden, announced politely). */
+.genetics-page .sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
-@media (max-width: 720px) {
-  .site-header, .workspace-heading, .panel-heading { align-items: flex-start; }
-  .site-header { flex-direction: column; gap: .2rem; padding: .75rem 0; }
-  .primary-nav { width: 100%; overflow-x: auto; flex-wrap: nowrap; }
-  main { padding-top: 1rem; }
-  h1 { font-size: 1.95rem; }
-  .workspace-heading { display: grid; grid-template-columns: 1fr; }
-  .genetics-person-context { min-width: 0; width: 100%; }
-  .person-switcher { grid-template-columns: 1fr; }
-  .person-switcher label { grid-column: auto; }
-  .boundary-banner { grid-template-columns: 1fr; }
-  .boundary-mark { width: fit-content; }
-  .boundary-banner details, .boundary-banner ul { grid-column: 1; }
-  .panel-heading { flex-direction: column; }
-  .overview-ledger, .coverage-notice, .filter-bar, .finding-summary, .pathway-grid, .evidence-ledger > article, .family-selectors, .comparison-summary, .research-mode, .import-panel { grid-template-columns: 1fr; }
-  .coverage-figure { grid-template-columns: 106px 1fr; }
-  .coverage-donut { width: 104px; }
-  .observation-row { grid-template-columns: 1fr 1fr; }
-  .observation-row details { grid-column: 1 / -1; justify-self: start; }
-  .pgx-path { grid-template-columns: 1fr; }
-  .path-arrow { transform: rotate(90deg); justify-self: center; }
-  .path-result, .pgx-path details { grid-column: 1; }
-  .family-selectors > span { justify-self: center; }
-  .hypothesis-flow { grid-template-columns: 1fr; gap: .35rem; }
-  .hypothesis-flow i { width: 1px; height: 18px; justify-self: center; }
-  .finding-row, .pgx-boundary, .traits-intro, .family-warning { align-items: flex-start; flex-direction: column; }
+/* ==================== Typography rhythm =====================
+   One shared UI-R1 stack (inherited from the shell); heading
+   sizes follow the shared scale. Counts, genotypes, dates, and
+   identifiers use tabular numerals for column scanning. */
+
+.genetics-page :is(h1, h2, h3, h4) { text-wrap: balance; }
+.genetics-page h1 { margin: .15rem 0 .65rem; font-size: var(--ui-text-2xl); line-height: 1.2; letter-spacing: -.02em; }
+.genetics-page h2 { margin: 0; font-size: var(--ui-text-xl); line-height: 1.25; }
+.genetics-page h3 { margin: 0; font-size: var(--ui-text-lg); line-height: 1.3; }
+.genetics-page h4 { margin: 0; font-size: var(--ui-text-md); line-height: 1.35; }
+.genetics-page p { text-wrap: pretty; }
+
+.genetics-page :is(.genotype, .source-seal, .dataset-facts dd, .coverage-donut strong,
+  .finding-summary strong, .comparison-summary strong, .count-label, .context-count) {
+  font-variant-numeric: tabular-nums;
+}
+.genetics-page :is(.genotype, .source-seal) { font-family: var(--ui-font-mono); }
+
+/* ======================= Page header ======================== */
+
+.genetics-page .workspace-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ui-space-6) var(--ui-space-5);
+  margin: var(--ui-space-2) 0 var(--ui-space-5);
+}
+.genetics-page .workspace-heading > div:first-child { max-width: 72ch; min-width: 0; }
+.genetics-page .workspace-heading p { margin: 0; color: var(--ui-text-secondary); }
+.genetics-page .section-kicker {
+  margin: 0;
+  color: var(--ui-accent-hover);
+  font-size: var(--ui-text-sm);
+  font-weight: 750;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
-@media (max-width: 460px) {
-  .site-header, main { width: min(100% - 1rem, 1240px); }
-  .tab-panel { padding: .9rem; }
-  .workspace-heading { margin-top: .4rem; }
-  .observation-row, .dataset-facts dl div { grid-template-columns: 1fr; gap: .2rem; }
-  .coverage-figure { grid-template-columns: 1fr; justify-items: center; }
-  .coverage-key { width: 100%; }
-  .form-actions button, .family-selectors button { width: 100%; }
+.genetics-page .genetics-person-context {
+  min-width: 17rem;
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border: 1px solid var(--ui-divider);
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface);
 }
+.genetics-page .genetics-person-identity { display: grid; gap: .1rem; min-width: 0; }
+.genetics-page .genetics-person-identity strong { font-size: var(--ui-text-md); overflow-wrap: anywhere; }
+.genetics-page .context-label {
+  margin: 0;
+  color: var(--ui-text-quiet);
+  font-size: var(--ui-text-xs);
+  font-weight: 750;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.genetics-page .person-switcher { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ui-space-1) var(--ui-space-2); align-items: end; }
+.genetics-page .person-switcher label { grid-column: 1 / -1; margin: 0; color: var(--ui-text-secondary); font-size: var(--ui-text-xs); font-weight: 700; }
+.genetics-page .person-switcher .ui-button { min-height: 2.75rem; }
+
+/* ==================== Boundary banner =======================
+   The raw-genome/local-source boundary. Rendered with the
+   shared .ui-notice--warning treatment (see template); only
+   layout is local. It is information, not security theater. */
+
+.genetics-page .boundary-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-4);
+  margin-bottom: var(--ui-space-5);
+}
+.genetics-page .boundary-banner h2 { font-size: var(--ui-text-md); }
+.genetics-page .boundary-banner p { margin: .25rem 0 0; font-size: var(--ui-text-sm); }
+.genetics-page .boundary-mark {
+  align-self: start;
+  padding: .15rem .5rem;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-text-secondary);
+  font-size: var(--ui-text-xs);
+  font-weight: 750;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.genetics-page .boundary-banner details { justify-self: end; }
+.genetics-page .boundary-banner summary { min-height: 2.75rem; display: inline-flex; align-items: center; color: var(--ui-accent-hover); font-weight: 650; cursor: pointer; }
+.genetics-page .boundary-banner summary:hover { color: var(--ui-accent-active); }
+.genetics-page .boundary-banner ul { grid-column: 2 / -1; margin: .5rem 0 0; padding-left: 1.2rem; font-size: var(--ui-text-sm); }
+.genetics-page .boundary-banner li + li { margin-top: .15rem; }
+
+/* =================== Page state sections ====================
+   no-person / no-access / empty / load-error. Quiet bordered
+   blocks (shared empty-state grammar); the mark glyph is a
+   non-color cue alongside the text. */
+
+.genetics-page .workspace-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-4);
+  margin-top: var(--ui-space-4);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px dashed var(--ui-divider-strong);
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface);
+}
+.genetics-page .workspace-empty h2 { margin-bottom: .25rem; }
+.genetics-page .workspace-empty p { max-width: 58ch; margin: .45rem 0 0; color: var(--ui-text-secondary); }
+.genetics-page .workspace-empty .ui-button { margin-top: var(--ui-space-3); }
+.genetics-page .empty-state__mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: 50%;
+  color: var(--ui-accent-hover);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.genetics-page .genetics-privacy-note { max-width: 64ch; margin: .8rem 0 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.genetics-page .genetics-upload-limit { margin: .35rem 0 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+
+/* ===================== Workspace shell ====================== */
+
+.genetics-page .workspace-shell {
+  display: grid;
+  grid-template-columns: var(--genetics-rail-width) minmax(0, 1fr);
+  gap: var(--ui-space-4);
+  align-items: start;
+  margin-top: var(--ui-space-4);
+}
+
+/* ---- Local navigation: eight ARIA tabs ---------------------
+   Vertical rail on wide desktop; horizontal scrollable strip
+   below 62.5rem (genetics.js maps arrow keys and syncs
+   aria-orientation to the rendered orientation). Selected tab
+   is background + inset bar + weight — never color alone. */
+
+.genetics-page .workspace-tabs { min-width: 0; }
+.genetics-page .tab-list { display: grid; gap: .1rem; min-width: 0; }
+.genetics-page .tab-list button {
+  min-height: 2.75rem;
+  display: grid;
+  gap: .05rem;
+  padding: .45rem .65rem;
+  text-align: left;
+  color: var(--ui-text-secondary);
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--ui-radius-control) var(--ui-radius-control) 0;
+  cursor: pointer;
+  transition: background-color var(--ui-motion-fast) var(--ui-ease-standard);
+}
+.genetics-page .tab-list button:hover { background: var(--ui-surface-muted); color: var(--ui-text); }
+.genetics-page .tab-list button[aria-selected="true"] {
+  background: var(--ui-accent-soft);
+  border-left-color: var(--ui-accent);
+  color: var(--ui-accent-active);
+}
+.genetics-page .tab-list button > span { font-weight: 650; }
+.genetics-page .tab-list button small { color: var(--ui-text-quiet); font-size: var(--ui-text-xs); }
+
+.genetics-page .workspace-content { min-width: 0; }
+
+/* ---- Tab panel: in-flow section, not a card ---------------- */
+
+.genetics-page .tab-panel { min-height: 30rem; padding-top: var(--ui-space-1); }
+
+.genetics-page .panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-3) var(--ui-space-4);
+  padding-bottom: var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-divider);
+}
+.genetics-page .panel-heading > div { min-width: 0; }
+.genetics-page .panel-heading p { max-width: 68ch; margin: .25rem 0 0; color: var(--ui-text-secondary); }
+
+/* Provenance seal, count, and selection labels: status pills
+   whose text is the primary cue; values are tabular/mono. */
+.genetics-page :is(.source-seal, .count-label, .context-count) {
+  flex: 0 0 auto;
+  padding: .15rem .55rem;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: 999px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-secondary);
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* ---- In-page disclosure summaries --------------------------- */
+.genetics-page summary { min-height: 2.75rem; display: inline-flex; align-items: center; color: var(--ui-accent-hover); font-weight: 650; cursor: pointer; }
+.genetics-page summary:hover { color: var(--ui-accent-active); }
+
+/* ====================== Import panel ========================
+   A bounded upload + confirmation surface — genuine containment:
+   an irreversible local import with consent semantics. */
+
+.genetics-page .import-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(160px, .7fr) minmax(160px, .7fr);
+  gap: var(--ui-space-3);
+  align-items: end;
+  margin: var(--ui-space-4) 0;
+  padding: var(--ui-space-4);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-surface);
+}
+.genetics-page .import-panel > div:first-child { grid-column: 1 / -1; }
+.genetics-page .import-panel p { margin: .25rem 0 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.genetics-page .import-panel > label { display: grid; gap: .3rem; color: var(--ui-text); font-size: var(--ui-text-xs); font-weight: 750; min-width: 0; }
+.genetics-page .import-panel input[type="file"] { font-size: var(--ui-text-sm); padding: .4rem .5rem; }
+.genetics-page .import-panel input[type="file"]::file-selector-button {
+  min-height: 2.25rem;
+  margin-right: .6rem;
+  padding: 0 .75rem;
+  border: 1px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-muted);
+  color: var(--ui-text);
+  font: 650 var(--ui-text-sm)/1 var(--ui-font-sans);
+  cursor: pointer;
+}
+.genetics-page .import-panel .confirmation-check { grid-column: 1 / -1; display: flex; }
+.genetics-page .import-panel #genetics-import-submit { justify-self: start; }
+.genetics-page #genetics-import-status { grid-column: 1 / -1; margin: 0; font-size: var(--ui-text-sm); font-weight: 650; color: var(--ui-text-secondary); overflow-wrap: anywhere; }
+.genetics-page #genetics-import-status:not(:empty) {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: 1px solid var(--ui-divider);
+  border-left: 4px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-notice);
+  background: var(--ui-surface-muted);
+}
+
+.genetics-page .confirmation-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-2);
+  color: var(--ui-text);
+  font-size: var(--ui-text-sm);
+  font-weight: 650;
+}
+.genetics-page .confirmation-check input[type="checkbox"] { width: 1.15rem; min-height: 1.15rem; flex: 0 0 auto; margin-top: .1rem; }
+
+/* =================== Panel state blocks =====================
+   Rendered by genetics.js into .state-host regions. */
+
+.genetics-page .state-card {
+  display: grid;
+  justify-items: start;
+  gap: .45rem;
+  min-height: 13rem;
+  align-content: center;
+  padding: var(--ui-space-5);
+  border: 1px dashed var(--ui-divider-strong);
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface-muted);
+}
+.genetics-page .state-card h3, .genetics-page .state-card p { margin: 0; }
+.genetics-page .state-card p { max-width: 60ch; color: var(--ui-text-secondary); }
+.genetics-page .state-card .ui-button { margin-top: var(--ui-space-2); }
+.genetics-page .state-card.error { border: 1px solid var(--ui-danger); border-left-width: 4px; background: var(--ui-danger-soft); color: var(--ui-danger); }
+.genetics-page .state-card.error p { color: var(--ui-danger); }
+
+/* ======================= Overview =========================== */
+
+.genetics-page .coverage-notice { margin: var(--ui-space-4) 0 0; }
+.genetics-page .coverage-notice p { margin: .25rem 0 0; font-size: var(--ui-text-sm); }
+
+.genetics-page .overview-ledger { display: grid; grid-template-columns: 1.25fr .75fr; gap: var(--ui-space-5); margin-top: var(--ui-space-5); }
+.genetics-page .dataset-facts, .genetics-page .coverage-figure { min-width: 0; }
+.genetics-page .dataset-facts h3 { margin-bottom: var(--ui-space-2); }
+.genetics-page .dataset-facts dl { display: grid; margin: 0; }
+.genetics-page .dataset-facts dl div { display: grid; grid-template-columns: var(--genetics-fact-col) minmax(0, 1fr); gap: var(--ui-space-4); padding: .5rem 0; border-top: 1px solid var(--ui-divider); }
+.genetics-page .dataset-facts dl div:last-child { border-bottom: 1px solid var(--ui-divider); }
+.genetics-page dt { color: var(--ui-text-quiet); font-size: var(--ui-text-sm); font-weight: 700; }
+.genetics-page dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+
+/* Coverage figure: proportions plus the exact labeled counts —
+   the donut is never the only carrier of the data. */
+.genetics-page .coverage-figure { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .4rem var(--ui-space-4); }
+.genetics-page .coverage-figure h3 { grid-column: 1 / -1; margin-bottom: var(--ui-space-1); }
+.genetics-page .coverage-donut {
+  width: 116px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--ui-divider-strong);
+}
+.genetics-page .coverage-donut::before { content: ""; grid-area: 1 / 1; width: 78px; aspect-ratio: 1; border-radius: 50%; background: var(--ui-canvas); }
+.genetics-page .coverage-donut span { z-index: 1; grid-area: 1 / 1; display: grid; text-align: center; color: var(--ui-text-quiet); font-size: var(--ui-text-xs); }
+.genetics-page .coverage-donut strong { color: var(--ui-text); font-size: var(--ui-text-xl); line-height: 1; }
+.genetics-page .coverage-key { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.genetics-page .coverage-key li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-2); font-size: var(--ui-text-sm); }
+.genetics-page .coverage-key i { width: 10px; height: 10px; border: 1px solid var(--ui-divider-strong); border-radius: 2px; background: var(--ui-accent); }
+.genetics-page .coverage-key .key-no-call { background: var(--genetics-coverage-nocall); }
+.genetics-page .coverage-key .key-absent { background: var(--genetics-coverage-absent); }
+.genetics-page .coverage-key strong { font-variant-numeric: tabular-nums; }
+
+.genetics-page .finding-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: var(--ui-space-2) var(--ui-space-4); margin-top: var(--ui-space-5); padding-top: var(--ui-space-3); border-top: 1px solid var(--ui-divider); }
+.genetics-page .finding-summary article { display: grid; gap: .15rem; min-width: 0; padding: .25rem var(--ui-space-2); }
+.genetics-page .finding-summary span, .genetics-page .finding-summary small { color: var(--ui-text-secondary); font-size: var(--ui-text-xs); }
+.genetics-page .finding-summary strong { font-size: var(--ui-text-xl); line-height: 1.15; }
+
+/* ---- Evidence category labels ------------------------------
+   Genetics-owned domain semantics (clinical / high / moderate /
+   low / exploratory / conflicting). The text label is the
+   category name itself; color is reinforcement only. ---------- */
+.genetics-page .evidence-strip { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-4); }
+.genetics-page .evidence-badge { display: inline-flex; align-items: center; width: fit-content; padding: .1rem .5rem; border: 1px solid; border-radius: 999px; font-size: var(--ui-text-xs); font-weight: 750; line-height: 1.4; white-space: nowrap; }
+.genetics-page .evidence-clinical { color: #0f553f; background: #e0f2eb; border-color: #9fcabb; }
+.genetics-page .evidence-high { color: #185168; background: #e7f3f8; border-color: #afd0dd; }
+.genetics-page .evidence-moderate { color: #68511a; background: #fff6dc; border-color: #dac785; }
+.genetics-page .evidence-low { color: #6c493d; background: #f9ece7; border-color: #ddbeb1; }
+.genetics-page .evidence-exploratory { color: #5b4c6b; background: #f0ebf5; border-color: #cbbdda; }
+.genetics-page .evidence-conflicting { color: #7b312c; background: #fff0ee; border-color: #e3aaa5; }
+
+/* ======================= Variants =========================== */
+
+.genetics-page .filter-bar { display: grid; grid-template-columns: 1.25fr .75fr .75fr; gap: var(--ui-space-3); margin: var(--ui-space-4) 0 var(--ui-space-2); }
+.genetics-page :is(.filter-bar, .research-builder, .family-selectors) > label { color: var(--ui-text); font-size: var(--ui-text-xs); font-weight: 750; display: grid; gap: .3rem; min-width: 0; }
+.genetics-page .observation-list { display: grid; min-width: 0; margin-top: var(--ui-space-1); }
+
+/* Observation rows: shared row grammar (dividers, not cards). */
+.genetics-page .observation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) .75fr .8fr auto;
+  gap: var(--ui-space-1) var(--ui-space-4);
+  align-items: center;
+  padding: var(--ui-space-3) var(--ui-space-1);
+  border-top: 1px solid var(--ui-divider);
+  overflow-wrap: anywhere;
+}
+.genetics-page .observation-row:last-child { border-bottom: 1px solid var(--ui-divider); }
+.genetics-page .observation-row h3 { margin-top: .1rem; }
+.genetics-page .observation-row small { display: block; color: var(--ui-text-quiet); font-size: var(--ui-text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.genetics-page .observation-row p { margin: .15rem 0 0; font-size: var(--ui-text-sm); }
+.genetics-page .observation-row .genotype { font-weight: 700; font-size: var(--ui-text-sm); letter-spacing: .02em; }
+
+/* Coverage state labels: text is the cue; color reinforces. */
+.genetics-page .coverage-state { width: fit-content; padding: .1rem .5rem; border: 1px solid var(--ui-divider-strong); border-radius: var(--ui-radius-control); background: var(--ui-surface-muted); font-size: var(--ui-text-xs); font-weight: 750; }
+.genetics-page .coverage-state.not-present { color: var(--ui-warning); border-color: rgb(118 82 15 / .45); background: var(--ui-warning-soft); }
+.genetics-page .coverage-state.no-call { color: var(--ui-danger); border-color: rgb(143 59 51 / .45); background: var(--ui-danger-soft); }
+
+.genetics-page .observation-row details { justify-self: end; }
+.genetics-page .observation-row details[open] { grid-column: 1 / -1; justify-self: stretch; }
+.genetics-page .provenance-detail { padding: var(--ui-space-2) var(--ui-space-3); background: var(--ui-surface-muted); border-radius: var(--ui-radius-control); font-size: var(--ui-text-sm); }
+.genetics-page .provenance-detail p { margin: .25rem 0; }
+
+/* ========================= PGx ============================== */
+
+.genetics-page .pgx-boundary { margin: var(--ui-space-4) 0; flex-direction: column; align-items: flex-start; gap: .25rem; }
+.genetics-page .pgx-boundary span { font-size: var(--ui-text-sm); }
+
+.genetics-page .pgx-path {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.3fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-4) var(--ui-space-2);
+  border-top: 1px solid var(--ui-divider);
+}
+.genetics-page .pgx-path:last-child { border-bottom: 1px solid var(--ui-divider); }
+.genetics-page .path-node { min-height: 4.5rem; display: grid; align-content: center; gap: .15rem; padding: var(--ui-space-2) var(--ui-space-3); background: var(--ui-surface-muted); border-radius: var(--ui-radius-control); min-width: 0; }
+.genetics-page .path-node span { color: var(--ui-text-quiet); font-size: var(--ui-text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.genetics-page .path-node small { color: var(--ui-text-secondary); font-size: var(--ui-text-xs); }
+.genetics-page .path-arrow { color: var(--ui-accent); font-size: var(--ui-text-lg); font-weight: 700; }
+.genetics-page :is(.path-result, .pgx-path details) { grid-column: 1 / -1; }
+.genetics-page .path-result { display: flex; align-items: center; gap: var(--ui-space-3); padding-top: var(--ui-space-2); }
+.genetics-page .path-result p { margin: 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+
+/* ================== Health associations ===================== */
+
+.genetics-page .association-groups { display: grid; gap: var(--ui-space-5); margin-top: var(--ui-space-4); min-width: 0; }
+.genetics-page .association-group { min-width: 0; }
+.genetics-page .association-group > header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ui-space-4); margin-bottom: var(--ui-space-1); padding-bottom: .3rem; border-bottom: 1px solid var(--ui-divider-strong); }
+.genetics-page .association-group > header span { color: var(--ui-text-secondary); font-size: var(--ui-text-sm); font-variant-numeric: tabular-nums; }
+.genetics-page .finding-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ui-space-3) var(--ui-space-4); padding: var(--ui-space-3) var(--ui-space-1); border-top: 1px solid var(--ui-divider); }
+.genetics-page .finding-row:last-child { border-bottom: 1px solid var(--ui-divider); }
+.genetics-page .finding-row > div { display: grid; gap: .2rem; justify-items: start; min-width: 0; }
+.genetics-page .finding-row p { margin: 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); overflow-wrap: anywhere; }
+.genetics-page .review-state { flex: 0 0 auto; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); font-weight: 700; }
+
+/* ===================== Traits / systems ===================== */
+
+.genetics-page .pathway-grid { display: grid; gap: 0; margin-top: var(--ui-space-3); min-width: 0; }
+.genetics-page .pathway-card { display: grid; gap: .2rem; justify-items: start; padding: var(--ui-space-3) var(--ui-space-1); border-top: 1px solid var(--ui-divider); min-width: 0; }
+.genetics-page .pathway-card:last-child { border-bottom: 1px solid var(--ui-divider); }
+.genetics-page .pathway-card h3 { margin-top: .15rem; }
+.genetics-page .pathway-card p { margin: 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); overflow-wrap: anywhere; }
+.genetics-page .pathway-card details { margin-top: .25rem; }
+
+/* ======================== Evidence ========================== */
+
+.genetics-page .evidence-help { margin-top: var(--ui-space-4); font-size: var(--ui-text-sm); }
+.genetics-page .evidence-help p { margin: .25rem 0 0; }
+
+.genetics-page .evidence-ledger { display: grid; gap: 0; margin-top: var(--ui-space-2); min-width: 0; }
+.genetics-page .evidence-ledger > article { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ui-space-3) var(--ui-space-5); align-items: start; padding: var(--ui-space-4) var(--ui-space-1); border-top: 1px solid var(--ui-divider); min-width: 0; }
+.genetics-page .evidence-ledger > article:last-child { border-bottom: 1px solid var(--ui-divider); }
+.genetics-page .evidence-ledger > article > div { display: grid; gap: .2rem; justify-items: start; min-width: 0; }
+.genetics-page .evidence-ledger h3 { margin-top: .2rem; }
+.genetics-page .evidence-ledger p { margin: .2rem 0 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.genetics-page .evidence-ledger dl { display: grid; gap: .1rem; margin: 0; min-width: 0; }
+.genetics-page .evidence-ledger dl div { display: grid; grid-template-columns: var(--genetics-fact-col) minmax(0, 1fr); gap: var(--ui-space-2); }
+.genetics-page .evidence-ledger dd { font-weight: 650; font-size: var(--ui-text-sm); }
+.genetics-page .evidence-ledger dt { font-size: var(--ui-text-xs); }
+.genetics-page .evidence-ledger details { grid-column: 1 / -1; }
+
+/* ==================== Family comparison ===================== */
+
+.genetics-page .family-warning { margin: var(--ui-space-4) 0 0; flex-direction: column; align-items: flex-start; gap: .25rem; }
+.genetics-page .family-warning span { font-size: var(--ui-text-sm); }
+.genetics-page .family-selectors { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: end; gap: var(--ui-space-2) var(--ui-space-3); margin-top: var(--ui-space-4); }
+.genetics-page .family-selectors > span { align-self: center; justify-self: center; color: var(--ui-text-quiet); font-size: var(--ui-text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.genetics-page .permission-gate { margin-top: var(--ui-space-4); padding: var(--ui-space-6) var(--ui-space-4); text-align: center; border: 1px dashed var(--ui-divider-strong); border-radius: var(--ui-radius-surface); background: var(--ui-surface-muted); }
+.genetics-page .permission-gate h3 { font-size: var(--ui-text-md); }
+.genetics-page .permission-gate p { max-width: 52ch; margin: .4rem auto 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+
+/* Comparison result: a bounded, generated object — contained. */
+.genetics-page #family-results:not([hidden]) { margin-top: var(--ui-space-4); padding: var(--ui-space-4); border: 1px solid var(--ui-divider-strong); border-radius: var(--ui-radius-surface); background: var(--ui-surface); }
+.genetics-page .comparison-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--ui-space-2) var(--ui-space-4); }
+.genetics-page .comparison-summary article { display: grid; gap: .1rem; min-width: 0; }
+.genetics-page .comparison-summary strong { font-size: var(--ui-text-xl); line-height: 1.2; }
+.genetics-page .comparison-summary span { color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.genetics-page .comparison-limit { margin: var(--ui-space-3) 0 0; padding-top: var(--ui-space-3); border-top: 1px solid var(--ui-divider); color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+
+/* ===================== Research Studio ====================== */
+
+/* Evidence vs Explore: two selectable modes, kept distinct by
+   label text + border + inset bar (never color alone). */
+.genetics-page .research-mode { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--ui-space-3); margin-top: var(--ui-space-4); }
+.genetics-page .research-mode > div { align-self: center; min-width: 0; }
+.genetics-page .research-mode p { margin: .15rem 0 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.genetics-page .research-mode label { position: relative; cursor: pointer; min-width: 0; }
+.genetics-page .research-mode input { position: absolute; width: 1px; height: 1px; min-height: 0; opacity: 0; }
+.genetics-page .research-mode label > span {
+  min-height: 4.5rem;
+  display: grid;
+  align-content: center;
+  gap: .15rem;
+  padding: var(--ui-space-3);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-divider-strong);
+  border-left: 3px solid var(--ui-divider-strong);
+  border-radius: var(--ui-radius-control);
+  transition: background-color var(--ui-motion-fast) var(--ui-ease-standard),
+    border-color var(--ui-motion-fast) var(--ui-ease-standard);
+}
+.genetics-page .research-mode label small { color: var(--ui-text-secondary); font-size: var(--ui-text-xs); }
+.genetics-page .research-mode input:checked + span {
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent);
+  border-left: 4px solid var(--ui-accent);
+  box-shadow: inset 0 0 0 1px var(--ui-accent);
+}
+.genetics-page .research-mode input:checked + span > strong { color: var(--ui-accent-active); }
+.genetics-page .research-mode input:focus-visible + span { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
+.genetics-page .research-mode input:disabled + span { opacity: .55; }
+
+.genetics-page .research-layout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: var(--ui-space-4); align-items: start; margin-top: var(--ui-space-4); }
+
+/* Open research builder: bounded work surface. */
+.genetics-page .research-builder { display: grid; gap: var(--ui-space-3); align-self: start; padding: var(--ui-space-4); min-width: 0; background: var(--ui-surface); border: 1px solid var(--ui-divider-strong); border-radius: var(--ui-radius-surface); }
+.genetics-page .research-builder fieldset { margin: 0; padding: var(--ui-space-2) var(--ui-space-3) var(--ui-space-3); border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-control); min-width: 0; }
+.genetics-page .research-builder legend { padding: 0 .25rem; font-size: var(--ui-text-xs); font-weight: 750; text-transform: uppercase; letter-spacing: .04em; color: var(--ui-text-secondary); }
+.genetics-page .research-builder fieldset label { min-height: 2.75rem; display: flex; align-items: center; gap: var(--ui-space-2); font-size: var(--ui-text-sm); font-weight: 400; }
+.genetics-page .research-builder input[type="checkbox"] { width: 1.15rem; min-height: 1.15rem; flex: 0 0 auto; }
+
+.genetics-page .disclosure-box { flex-direction: column; align-items: flex-start; gap: .35rem; }
+.genetics-page .disclosure-box > div { display: grid; gap: .1rem; min-width: 0; }
+.genetics-page .provider-label { color: var(--ui-warning); font-size: var(--ui-text-xs); font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
+.genetics-page .disclosure-box p { margin: 0; font-size: var(--ui-text-sm); }
+.genetics-page .form-actions { display: grid; gap: var(--ui-space-2); justify-items: start; }
+.genetics-page .form-actions #research-readiness { color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+.genetics-page .research-context-note { margin: .3rem 0; color: var(--ui-text-secondary); font-size: var(--ui-text-sm); }
+
+/* Research output: selected generated object — contained. */
+.genetics-page .research-output { padding: var(--ui-space-4); border: 1px solid var(--ui-divider-strong); border-radius: var(--ui-radius-surface); background: var(--ui-surface); min-width: 0; overflow-wrap: anywhere; }
+.genetics-page .research-output[aria-busy="true"] { opacity: .7; }
+.genetics-page .hypothesis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ui-space-3); min-width: 0; }
+
+/* Epistemic label (supported / plausible / confidence state):
+   text is the cue; info color reinforces. */
+.genetics-page .epistemic-status {
+  display: inline-block;
+  margin-bottom: .35rem;
+  color: var(--ui-info);
+  font-size: var(--ui-text-xs);
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.genetics-page .research-output section { padding: var(--ui-space-3) 0; border-top: 1px solid var(--ui-divider); }
+.genetics-page .research-output section h4 { margin-bottom: .2rem; }
+.genetics-page .research-output section p, .genetics-page .research-output section ul { margin: .35rem 0 0; color: var(--ui-text-secondary); }
+.genetics-page .research-output section ul { padding-left: 1.2rem; }
+
+/* Explore-mode counterevidence (Devil's Advocate) sections are
+   marked with a warning rail plus their own heading text. */
+.genetics-page .devils-advocate {
+  margin-inline: calc(-1 * var(--ui-space-2));
+  padding-inline: var(--ui-space-2) !important;
+  border-left: 3px solid var(--ui-warning);
+  background: var(--ui-warning-soft);
+}
+
+/* ==================== Responsiveness ========================
+   Structural changes only; no page-level horizontal overflow.
+   Typography size never shrinks as the responsive strategy. */
+
+/* Below 1000px: local navigation becomes a horizontal,
+   scrollable tab strip (genetics.js switches arrow-key mapping
+   at the same breakpoint and syncs aria-orientation). */
+@media (max-width: 62.5rem) {
+  .genetics-page .workspace-shell { grid-template-columns: minmax(0, 1fr); }
+  .genetics-page .workspace-tabs {
+    position: sticky;
+    top: 3.5rem;
+    z-index: 10;
+    margin-inline: calc(-1 * var(--ui-space-1));
+    padding: var(--ui-space-1) 0;
+    background: var(--ui-canvas);
+  }
+  .genetics-page .tab-list { display: flex; overflow-x: auto; scrollbar-width: thin; }
+  .genetics-page .tab-list button { flex: 0 0 auto; border-left: 0; border-bottom: 3px solid transparent; border-radius: 0; }
+  .genetics-page .tab-list button[aria-selected="true"] { border-left: 0; border-bottom-color: var(--ui-accent); }
+  .genetics-page .tab-list button small { display: none; }
+  .genetics-page .tab-panel { min-height: 0; }
+  .genetics-page .boundary-banner { grid-template-columns: auto minmax(0, 1fr); }
+  .genetics-page .boundary-banner details { grid-column: 2; justify-self: start; }
+  .genetics-page .overview-ledger, .genetics-page .research-layout, .genetics-page .research-mode { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The shell header becomes variable-height at 52rem; the tab
+   strip then returns to the flow instead of sticking. */
+@media (max-width: 52rem) {
+  .genetics-page .workspace-tabs { position: static; top: auto; background: transparent; }
+}
+
+@media (max-width: 45rem) {
+  .genetics-page .workspace-heading { flex-direction: column; align-items: flex-start; gap: var(--ui-space-4); }
+  .genetics-page .genetics-person-context { min-width: 0; width: 100%; }
+  .genetics-page .person-switcher { grid-template-columns: minmax(0, 1fr) auto; }
+  .genetics-page .boundary-banner { grid-template-columns: minmax(0, 1fr); }
+  .genetics-page .boundary-banner details { grid-column: 1; }
+  .genetics-page .boundary-banner ul { grid-column: 1; }
+  .genetics-page .import-panel, .genetics-page .filter-bar, .genetics-page .family-selectors { grid-template-columns: minmax(0, 1fr); }
+  .genetics-page .panel-heading { flex-direction: column; }
+  .genetics-page .coverage-figure { grid-template-columns: auto minmax(0, 1fr); }
+  .genetics-page .observation-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .genetics-page .observation-row details { grid-column: 1 / -1; justify-self: start; }
+  .genetics-page .evidence-ledger > article { grid-template-columns: minmax(0, 1fr); }
+  .genetics-page .pgx-path { grid-template-columns: minmax(0, 1fr); }
+  .genetics-page .path-arrow { transform: rotate(90deg); justify-self: center; }
+  .genetics-page :is(.path-result, .pgx-path details) { grid-column: 1; }
+  .genetics-page .family-selectors > span { justify-self: start; padding-top: var(--ui-space-2); }
+}
+
+/* Phone (390px): one column, stacked labeled rows, full-width
+   important actions, 44px+ targets, no page overflow. */
+@media (max-width: 28rem) {
+  .genetics-page .dataset-facts dl div { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
+  .genetics-page .observation-row { grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-3); }
+  .genetics-page .coverage-figure { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .genetics-page .coverage-key { width: 100%; }
+  .genetics-page :is(.form-actions, .import-panel) .ui-button,
+  .genetics-page .family-selectors .ui-button { width: 100%; }
+  .genetics-page .state-card { min-height: 10rem; padding: var(--ui-space-4); }
+}
+
+/* ====================== Motion / contrast =================== */
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+  .genetics-page *, .genetics-page *::before, .genetics-page *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 @media (forced-colors: active) {
-  .coverage-donut, .pathway-map, .state-skeleton i { background: Canvas; border: 2px solid CanvasText; }
-  .pathway-map i { box-shadow: none; }
-  .evidence-badge, .source-seal, .count-label, .context-count { border-color: CanvasText; }
+  .genetics-page .coverage-donut { border: 2px solid CanvasText; }
+  .genetics-page .coverage-key i { border-color: CanvasText; }
+  .genetics-page :is(.evidence-badge, .source-seal, .count-label, .context-count, .coverage-state) { border-color: CanvasText; }
+  .genetics-page .tab-list button[aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
 }

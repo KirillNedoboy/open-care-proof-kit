@@ -18,13 +18,13 @@
         </div>
         <div class="person-switcher">
           <label for="genetics-person-selector">{{ t("genetics.person_selector_label") }}</label>
-          <select id="genetics-person-selector" autocomplete="off"></select>
-          <button class="button-secondary" type="button" id="genetics-clear-person">{{ t("workspace.clear_selection") }}</button>
+          <select id="genetics-person-selector" class="ui-control" autocomplete="off"></select>
+          <button class="ui-button ui-button--secondary" type="button" id="genetics-clear-person">{{ t("workspace.clear_selection") }}</button>
         </div>
       </section>
     </header>
 
-    <section class="boundary-banner" aria-labelledby="boundary-title">
+    <section class="boundary-banner ui-notice ui-notice--info" aria-labelledby="boundary-title">
       <div class="boundary-mark" aria-hidden="true">{{ t("genetics.live_badge") }}</div>
       <div>
         <h2 id="boundary-title">{{ t("genetics.empty_help") }}</h2>
@@ -61,7 +61,7 @@
       <div>
         <h2>{{ t("genetics.empty_title") }}</h2>
         <p>{{ t("genetics.empty_help") }}</p>
-        <button class="button-secondary" type="button" id="genetics-import-cta" hidden>{{ t("genetics.import_cta") }}</button>
+        <button class="ui-button ui-button--secondary" type="button" id="genetics-import-cta" hidden>{{ t("genetics.import_cta") }}</button>
         <p class="genetics-privacy-note">{{ t("genetics.privacy_note") }}</p>
       </div>
     </section>
@@ -102,14 +102,14 @@
               <p>{{ t("genetics.import_help") }}</p>
               <p class="genetics-upload-limit">{{ t("genetics.upload_limit") }} {{ t("genetics.import_coverage_note") }}</p>
             </div>
-            <label for="genetics-file">{{ t("genetics.import_file_label") }}<input id="genetics-file" type="file" accept=".txt,text/plain" required></label>
-            <label for="genetics-build">{{ t("genetics.import_build_label") }}<select id="genetics-build">
+            <label for="genetics-file">{{ t("genetics.import_file_label") }}<input id="genetics-file" class="ui-control" type="file" accept=".txt,text/plain" required></label>
+            <label for="genetics-build">{{ t("genetics.import_build_label") }}<select id="genetics-build" class="ui-control">
               <option value="unknown">{{ t("genetics.build_unknown") }}</option>
               <option value="GRCh37/hg19">GRCh37 / hg19</option>
               <option value="GRCh38/hg38">GRCh38 / hg38</option>
             </select></label>
             <label class="confirmation-check"><input id="genetics-import-confirmation" type="checkbox" required> {{ t("genetics.import_confirmation") }}</label>
-            <button type="submit" id="genetics-import-submit">{{ t("genetics.import_submit") }}</button>
+            <button type="submit" class="ui-button ui-button--primary" id="genetics-import-submit">{{ t("genetics.import_submit") }}</button>
             <p id="genetics-import-status" role="status" aria-live="polite"></p>
           </form>
           <div class="state-host" data-state-host="overview"></div>
@@ -118,16 +118,16 @@
         <section id="panel-variants" class="tab-panel" role="tabpanel" aria-labelledby="tab-variants" tabindex="0" data-panel="variants" hidden>
           <div class="panel-heading"><div><h2>{{ t("genetics.variants_title") }}</h2><p>{{ t("genetics.variants_help") }}</p></div><span class="count-label" id="variant-count" hidden></span></div>
           <form class="filter-bar" id="variant-filters" role="search">
-            <label for="variant-search">{{ t("genetics.filter_search") }}<input id="variant-search" type="search" autocomplete="off"></label>
-            <label for="coverage-filter">{{ t("genetics.filter_coverage") }}<select id="coverage-filter"><option value="all">{{ t("genetics.filter_all") }}</option></select></label>
-            <label for="category-filter">{{ t("genetics.filter_category") }}<select id="category-filter"><option value="all">{{ t("genetics.filter_all") }}</option></select></label>
+            <label for="variant-search">{{ t("genetics.filter_search") }}<input id="variant-search" class="ui-control" type="search" autocomplete="off"></label>
+            <label for="coverage-filter">{{ t("genetics.filter_coverage") }}<select id="coverage-filter" class="ui-control"><option value="all">{{ t("genetics.filter_all") }}</option></select></label>
+            <label for="category-filter">{{ t("genetics.filter_category") }}<select id="category-filter" class="ui-control"><option value="all">{{ t("genetics.filter_all") }}</option></select></label>
           </form>
           <div class="state-host observation-list" data-state-host="variants"></div>
         </section>
 
         <section id="panel-pgx" class="tab-panel" role="tabpanel" aria-labelledby="tab-pgx" tabindex="0" data-panel="pgx" hidden>
           <div class="panel-heading"><div><h2>{{ t("genetics.pgx_title") }}</h2><p>{{ t("genetics.pgx_help") }}</p></div></div>
-          <div class="pgx-boundary" role="note"><strong>{{ t("genetics.pgx_boundary") }}</strong><span>{{ t("genetics.pgx_boundary_note") }}</span></div>
+          <div class="pgx-boundary ui-notice ui-notice--info" role="note"><strong>{{ t("genetics.pgx_boundary") }}</strong><span>{{ t("genetics.pgx_boundary_note") }}</span></div>
           <div class="state-host" data-state-host="pgx"></div>
         </section>
 
@@ -142,19 +142,19 @@
         </section>
 
         <section id="panel-evidence" class="tab-panel" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0" data-panel="evidence" hidden>
-          <div class="panel-heading"><div><h2>{{ t("genetics.evidence_title") }}</h2><p>{{ t("genetics.evidence_help") }}</p></div><button class="button-secondary" type="button" data-action="toggle-evidence-help" aria-expanded="false">{{ t("genetics.evidence_help") }}</button></div>
-          <div id="evidence-help" class="evidence-help" hidden><strong>{{ t("genetics.coverage_note_title") }}</strong><p>{{ t("genetics.coverage_note_body") }}</p></div>
+          <div class="panel-heading"><div><h2>{{ t("genetics.evidence_title") }}</h2><p>{{ t("genetics.evidence_help") }}</p></div><button class="ui-button ui-button--secondary" type="button" data-action="toggle-evidence-help" aria-expanded="false">{{ t("genetics.tab_evidence_sub") }}</button></div>
+          <div id="evidence-help" class="evidence-help ui-notice ui-notice--info" hidden><strong>{{ t("genetics.coverage_note_title") }}</strong><p>{{ t("genetics.coverage_note_body") }}</p></div>
           <div class="state-host evidence-ledger" data-state-host="evidence"></div>
         </section>
 
         <section id="panel-family" class="tab-panel" role="tabpanel" aria-labelledby="tab-family" tabindex="0" data-panel="family" hidden>
           <div class="panel-heading"><div><h2>{{ t("genetics.family_title") }}</h2><p>{{ t("genetics.family_help") }}</p></div></div>
-          <div class="family-warning" role="note"><strong>{{ t("genetics.family_warning") }}</strong><span>{{ t("genetics.family_limit") }}</span></div>
+          <div class="family-warning ui-notice ui-notice--warning" role="note"><strong>{{ t("genetics.family_warning") }}</strong><span>{{ t("genetics.family_limit") }}</span></div>
           <form id="family-comparison-form" class="family-selectors">
-            <label for="family-person-a">{{ t("genetics.family_person_a_label") }}<select id="family-person-a" disabled></select></label>
+            <label for="family-person-a">{{ t("genetics.family_person_a_label") }}<select id="family-person-a" class="ui-control" disabled></select></label>
             <span aria-hidden="true">{{ t("genetics.family_compared_with") }}</span>
-            <label for="family-person-b">{{ t("genetics.family_person_b_label") }}<select id="family-person-b"></select></label>
-            <button type="submit">{{ t("genetics.family_compare_submit") }}</button>
+            <label for="family-person-b">{{ t("genetics.family_person_b_label") }}<select id="family-person-b" class="ui-control"></select></label>
+            <button type="submit" class="ui-button ui-button--primary">{{ t("genetics.family_compare_submit") }}</button>
           </form>
           <div class="state-host" data-state-host="family">
             <div id="family-gate" class="permission-gate"><h3>{{ t("genetics.family_choose_person_b") }}</h3></div>
@@ -173,13 +173,13 @@
             <div class="research-layout">
               <form id="research-form" class="research-builder">
                 <fieldset><legend>{{ t("genetics.context_selected") }}</legend><div id="research-context-options"></div></fieldset>
-                <label for="research-question">{{ t("genetics.research_question_label") }}<textarea id="research-question" rows="4" required></textarea></label>
-                <div class="disclosure-box">
+                <label for="research-question">{{ t("genetics.research_question_label") }}<textarea id="research-question" class="ui-control" rows="4" required></textarea></label>
+                <div class="disclosure-box ui-notice ui-notice--warning">
                   <div><span class="provider-label">{{ t("genetics.research_provider_label") }}</span><strong id="research-provider-name"></strong></div>
                   <p id="research-context-summary" role="note"></p>
                   <label class="confirmation-check"><input id="disclosure-confirmation" type="checkbox"> {{ t("genetics.research_disclosure_confirm") }}</label>
                 </div>
-                <div class="form-actions"><button id="run-research" type="submit" disabled>{{ t("genetics.research_run") }}</button><span id="research-readiness">{{ t("genetics.research_readiness_confirm") }}</span></div>
+                <div class="form-actions"><button id="run-research" class="ui-button ui-button--primary" type="submit" disabled>{{ t("genetics.research_run") }}</button><span id="research-readiness">{{ t("genetics.research_readiness_confirm") }}</span></div>
               </form>
               <div class="research-output" id="research-output" aria-labelledby="research-output-title" hidden>
                 <div class="hypothesis-heading"><div><span class="epistemic-status" id="research-confidence"></span><h3 id="research-output-title"></h3></div></div>
