@@ -67,15 +67,15 @@ no `v0.3.0` tag exists.
 - G1 Trust Envelope, consent-gated G2 runtime, G3 provider portability, G4
   portable trust package, and G5 ecosystem validation.
 - Local/self-hosted model portability with explicit external-provider consent.
-- Product Core schema v9, Family Access v1/v2 frozen plus v3 document scopes,
-  and separate genetics grants: `genetics.read`, `genetics.write`,
+- Product Core schema v11, Family Access v1/v2/v3 frozen plus current v4
+  record-family scopes, and separate genetics grants: `genetics.read`, `genetics.write`,
   `genetics.research`, `genetics.compare`, `genetics.export`.
 - Genetics Workspace at `/genetics`, bounded consumer-genotype import, selective
   indexing, reviewed evidence, PGx associations, family comparison, and
   separate Genetics Export.
 - Research Studio Evidence Mode and Explore Mode with epistemic labels,
   counterevidence, citation validation, and no canonical-record mutation path.
-- Installation backup/recovery and ordinary Person portable vault export v4.
+- Installation backup/recovery and ordinary Person portable vault export v6.
 
 Development Compose, `/demo/health-vault`, and committed reviewer artifacts are
 synthetic/demo surfaces. They are separate from live actor-scoped Product Core.
@@ -213,11 +213,11 @@ downstream adapters, and the
 
 - Actor-scoped `/workspace`, `/vault`, `/chat`, `/family-access`, and
   `/genetics` surfaces.
-- Product Core schema v9 with Person-scoped Sources, medications, recorded
-  conditions, labs, timeline, Visits, Visit Questions, and Visit Briefs
-  (content schema v2; v1 revisions readable).
+- Product Core schema v11 with Person-scoped Sources, medications, recorded
+  conditions, labs, procedures, recommendations, follow-ups, timeline, Visits,
+  Visit Questions, and Visit Briefs (content schema v2; v1 revisions readable).
 - Immutable PDF/TXT evidence documents with bounded embedded-text extraction,
-  page/span provenance, review lifecycle, document grants, export v4, and
+  page/span provenance, review lifecycle, document grants, export v6, and
   backup/recovery.
 - Separate genetics Sources, bounded consumer-genotype import, selective
   indexed observations, evidence packs, reviewed findings, explicit genetics
@@ -375,7 +375,7 @@ Product Core migration smoke test:
 Product Core persists medication/condition/lab lifecycle records, active people
 profiles, Visits, user-authored Visit Questions, Visit Briefs (content schema
 v2 with readable v1 revisions), immutable document Sources/extractions, and
-schema v9 Family identity/access state. Ordinary Person portable vault export
+schema v11 Family identity/access state. Ordinary Person portable vault export
 is v4; Genetics Export is a separate explicit package. The API uses the same
 SQLite metadata and immutable UTF-8 source payloads configured through
 `OPENCARE_PRODUCT_DB_PATH` and `OPENCARE_SOURCE_DIR`. Migrations run during
@@ -442,7 +442,7 @@ verifies, atomically activates, verifies again, and rolls back handled failures.
 It cannot guarantee crash- or power-loss safety between filesystem operations;
 exact abandoned recovery artifacts block subsequent recovery until inspected.
 
-Recovery restores durable Actor credentials, schema v9 access/genetics state,
+Recovery restores durable Actor credentials, schema v11 access/genetics state,
 and revocations.
 It restores neither `.env`, plaintext passwords, invitation codes,
 `OPENCARE_SECRET_KEY`, provider keys, cookies, sessions, TLS files, nor
@@ -456,7 +456,7 @@ Start the local app:
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-On a fresh schema v9 installation, open `/bootstrap` while no Actor exists.
+On a fresh schema v11 installation, open `/bootstrap` while no Actor exists.
 Bootstrap creates the first local Actor and installation administrator; it
 grants no implicit Person access. Any selected existing Person becomes an owner
 grant only after the explicit full-access confirmation. Later sessions start at
@@ -617,7 +617,7 @@ for historical evolution and the completed current-state boundary. The older
 `/workspace` is the primary OpenCare entry point and `/` redirects there. It
 uses the versioned Product Core API for capability-aware Person switching,
 medication/condition/lab review, document evidence, timeline, Visits,
-Visit Questions, Visit Brief revisions, provenance, and portable vault v4.
+  Visit Questions, Visit Brief revisions, provenance, and portable vault v6.
 `/genetics` provides the separate Genetics Workspace, reviewed evidence,
 PGx associations, family comparison, Research Studio, and explicit Genetics
 Export. `/family-access` manages explicit identity/access consent. `/chat`

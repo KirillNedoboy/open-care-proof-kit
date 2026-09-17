@@ -11,8 +11,11 @@ OpenCare documents one bounded remote deployment path:
 
 This is a controlled self-hosted private-alpha path, not a production-readiness
 claim or clinical software. It does not provide diagnosis, treatment
-recommendation, dosage guidance, medication selection advice, start/stop
-medication advice, uploads, OCR, or Phase 3 ingest.
+recommendation, dosage guidance, medication selection advice, or start/stop
+medication advice. The supported ingest boundary is authenticated PDF/TXT
+document ingest with bounded embedded-text extraction (D1/D2) and local
+consumer-genotype import with selective projections (P3); OCR and raw-genome
+provider disclosure remain out of scope.
 
 ## Supported Production Path
 
@@ -29,7 +32,7 @@ vault is an explicit optional override: add
 `OPENCARE_LOCAL_VAULT_PATH` only when `/demo/health-vault` compatibility is
 needed. It is never a Product Core dependency.
 
-Advanced operators can adapt the container to other reverse proxies or orchestrators later, but that is outside the validated V2C path.
+Advanced operators can adapt the container to other reverse proxies or orchestrators later, but that is outside the validated R7 path.
 
 ## Operator Prerequisites
 
@@ -40,7 +43,7 @@ Advanced operators can adapt the container to other reverse proxies or orchestra
 - strong values for `OPENCARE_SECRET_KEY`, `OPENCARE_ACCESS_PASSWORD`, and the
   32+ character `OPENCARE_BOOTSTRAP_SECRET`.
 
-Do not expose the app container directly on the public internet. In V2C, the documented path is Caddy on `80/443` in front of the app container.
+Do not expose the app container directly on the public internet. In R7, the documented path is Caddy on `80/443` in front of the app container.
 
 ## Files To Prepare
 
@@ -69,7 +72,23 @@ OPENCARE_BOOTSTRAP_SECRET=<32+ character operator bootstrap secret>
 OPENCARE_PUBLIC_REGISTRATION=false
 OPENCARE_PRODUCT_DATA_DIR=./private/opencare-product-core
 OPENCARE_BACKUP_DIR=./private/opencare-backups
+OPENCARE_ALLOW_CLOUD_LLM=false
+OPENCARE_AGENT_MODE=demo
+OPENCARE_AGENT_ALLOW_EXTERNAL_LLM=false
+# Optional provider settings are passed through by Compose; leave unset for demo.
+# OPENCARE_LLM_RESPONSES_URL=https://api.example.com/v1/responses
+# OPENCARE_LLM_API_KEY=<operator-managed secret>
+# OPENCARE_LLM_MODEL=<explicit model id>
+# OPENCARE_OPENROUTER_API_KEY=<operator-managed secret>
+# OPENCARE_OPENROUTER_MODEL=<explicit provider/model>
+# OPENCARE_OLLAMA_ENDPOINT=http://127.0.0.1:11434
+# OPENCARE_OLLAMA_MODEL=<local model id>
+# OPENCARE_OLLAMA_TIMEOUT_SECONDS=15.0
+# OPENCARE_OLLAMA_MAX_RESPONSE_BYTES=1000000
 ```
+
+AlphaGenome remains paused after C.1 and is intentionally not a Docker
+dependency or deployment service in R7.
 
 Rules:
 
@@ -115,9 +134,9 @@ docker compose --env-file deploy/env.production -f docker-compose.prod.yml run -
 sudo chown -R <container-uid>:<container-gid> ./private/opencare-product-core ./private/opencare-backups
 ```
 
-The Dockerfile has no `USER` instruction, so the operator must use the reported
-UID/GID rather than assuming ownership values. Keep both directories writable by
-that UID/GID and restrict them to the operator; do not make them world-writable.
+The image runs as the fixed non-root UID/GID `10001:10001`. Keep both
+directories writable by that UID/GID and restrict them to the operator; do not
+make them world-writable. The session tmpfs is mounted with the same identity.
 
 ## Caddy File
 
@@ -146,9 +165,13 @@ The production stack:
 - mounts persistent Product Core state at `/var/lib/opencare/product-core`;
 - mounts operator backups at `/var/backups/opencare`;
 - keeps the server-side session database on non-persistent `/run/opencare` tmpfs;
+- attaches the app to a private Caddy network and a separate egress-capable
+  provider network; the Caddy network itself remains internal;
+- runs the app as UID/GID `10001:10001` with dropped Linux capabilities and
+  `no-new-privileges`;
 - keeps the app container off public ports;
 - publishes only Caddy on `80` and `443`;
-- includes a container healthcheck and restart policy.
+- checks `/readyz` for health and includes a restart policy.
 
 Bring the stack up with your operator env file:
 
@@ -234,7 +257,7 @@ docker compose --env-file deploy/env.production -f docker-compose.prod.yml exec 
   --backup /var/backups/opencare/<new-backup-directory>
 ```
 
-Backups contain schema v9 durable Product Core and identity/access state, including credential
+Backups contain schema v11 durable Product Core and identity/access state, including credential
 verifiers and invitation hashes. They exclude plaintext passwords, invitation
 codes, `.env`, `OPENCARE_SECRET_KEY`, provider credentials, cookies, sessions,
 TLS material, deployment configuration, and generated reports. Store the
@@ -253,8 +276,9 @@ owners, caregivers, and outstanding invitations in the restored snapshot.
 
 - Use a strong `OPENCARE_SECRET_KEY`.
 - Use a strong `OPENCARE_ACCESS_PASSWORD`.
-- Use a unique 32+ character `OPENCARE_BOOTSTRAP_SECRET`; clear it after the
-  first bootstrap attempt.
+- Keep a unique 32+ character `OPENCARE_BOOTSTRAP_SECRET` configured for every
+  production restart; the current runtime requires it in production and checks
+  it only during the bootstrap flow without storing or logging it.
 - Use real HTTPS/TLS through Caddy.
 - Open only the firewall ports you need, typically `80` and `443`.
 - Do not expose the app container directly without the reverse proxy.
@@ -269,11 +293,14 @@ owners, caregivers, and outstanding invitations in the restored snapshot.
 - Not clinical software.
 - No medical advice.
 - No clinical decision support.
-- No uploads.
+- Authenticated PDF/TXT document uploads are supported within D1/D2 bounds;
+  OCR and image interpretation are not.
 - Product Core persistence depends on the two required host bind mounts.
 - Local Actor username/password accounts only. Public self-registration is
   disabled by default and, when explicitly enabled after bootstrap, is a
   controlled self-hosted capability rather than public SaaS identity. There is
   no email verification or self-service account recovery.
-- No Phase 3 ingest, OCR, cloud synchronization, or deployment automation.
+- No OCR, FASTQ/BAM/CRAM/WGS pipeline, cloud synchronization, or deployment
+  automation. Bounded D1/D2 document ingest and P3 consumer-genotype import are
+  supported as described above.
 

@@ -5,6 +5,11 @@ services:
     build: .
     ports:
       - "8000:8000"
+    user: "10001:10001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       OPENCARE_ENV: ${OPENCARE_ENV:-development}
       OPENCARE_DEMO_MODE: ${OPENCARE_DEMO_MODE:-true}
@@ -12,15 +17,42 @@ services:
       OPENCARE_VAULT_FILE: ${OPENCARE_VAULT_FILE:-}
       OPENCARE_DATA_DIR: ${OPENCARE_DATA_DIR:-data}
       OPENCARE_REPORTS_DIR: ${OPENCARE_REPORTS_DIR:-reports}
+      OPENCARE_PRODUCT_DB_PATH: /var/lib/opencare/product-core/database.sqlite3
+      OPENCARE_SOURCE_DIR: /var/lib/opencare/product-core/sources
+      OPENCARE_SESSION_DB_PATH: ${OPENCARE_SESSION_DB_PATH:-}
+      OPENCARE_PUBLIC_REGISTRATION: ${OPENCARE_PUBLIC_REGISTRATION:-false}
       OPENCARE_ALLOW_CLOUD_LLM: ${OPENCARE_ALLOW_CLOUD_LLM:-false}
       OPENCARE_AGENT_MODE: ${OPENCARE_AGENT_MODE:-demo}
       OPENCARE_AGENT_ALLOW_EXTERNAL_LLM: ${OPENCARE_AGENT_ALLOW_EXTERNAL_LLM:-false}
       OPENCARE_LLM_RESPONSES_URL: ${OPENCARE_LLM_RESPONSES_URL:-}
       OPENCARE_LLM_API_KEY: ${OPENCARE_LLM_API_KEY:-}
       OPENCARE_LLM_MODEL: ${OPENCARE_LLM_MODEL:-}
+      OPENCARE_OPENROUTER_API_KEY: ${OPENCARE_OPENROUTER_API_KEY:-}
+      OPENCARE_OPENROUTER_MODEL: ${OPENCARE_OPENROUTER_MODEL:-}
+      OPENCARE_OLLAMA_ENDPOINT: ${OPENCARE_OLLAMA_ENDPOINT:-http://127.0.0.1:11434}
+      OPENCARE_OLLAMA_MODEL: ${OPENCARE_OLLAMA_MODEL:-}
+      OPENCARE_OLLAMA_TIMEOUT_SECONDS: ${OPENCARE_OLLAMA_TIMEOUT_SECONDS:-15.0}
+      OPENCARE_OLLAMA_MAX_RESPONSE_BYTES: ${OPENCARE_OLLAMA_MAX_RESPONSE_BYTES:-1000000}
       OPENCARE_SECRET_KEY: ${OPENCARE_SECRET_KEY:-}
       OPENCARE_ACCESS_PASSWORD: ${OPENCARE_ACCESS_PASSWORD:-}
+      OPENCARE_BOOTSTRAP_SECRET: ${OPENCARE_BOOTSTRAP_SECRET:-}
     volumes:
+      - opencare_product_data:/var/lib/opencare/product-core
       - ./reports:/app/reports
       # Local vault file mode example (read-only, synthetic/template-only sample):
       # - ./docs/examples/local-family-vault.template.json:/vault/local-family-vault.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3).read()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  opencare_product_data:

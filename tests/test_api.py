@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 import pytest
 
-from app.config import Settings
-from app.main import app
+from app.config import Settings, load_settings
+from app.main import _product_core_storage_ready, app
+from app.product_core.sqlite import SQLiteDatabase
 
 
 def request(
@@ -325,6 +326,26 @@ def test_readyz_endpoint_fails_closed_when_required_asset_is_missing(
         "service": "opencare-proof-kit",
         "missing_assets": ["missing.file"],
     }
+
+
+def test_product_core_storage_readiness_requires_current_database_and_source_dir(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "database.sqlite3"
+    source_dir = tmp_path / "sources"
+    SQLiteDatabase(database_path).migrate()
+    source_dir.mkdir()
+    settings = load_settings(
+        {
+            "OPENCARE_PRODUCT_DB_PATH": str(database_path),
+            "OPENCARE_SOURCE_DIR": str(source_dir),
+        }
+    )
+
+    assert _product_core_storage_ready(settings) is True
+
+    source_dir.rmdir()
+    assert _product_core_storage_ready(settings) is False
 
 
 def private_production_settings() -> Settings:

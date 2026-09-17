@@ -20,3 +20,10 @@ vault.local.json
 !.env.example
 deploy/env.production
 deploy/Caddyfile
+
+# Runtime state and operator data must never enter an image build context.
+*.sqlite3
+*.sqlite3-*
+data/sources/*
+!data/sources/.gitkeep
+data/private/*

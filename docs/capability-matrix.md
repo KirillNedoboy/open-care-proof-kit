@@ -15,7 +15,7 @@ release tags.
 | Local JSON vault | `PARTIAL` | `app/health_vault/loader.py`, `app/health_vault/runtime_loader.py`, `app/config.py`, `app/main.py`, `docs/examples/local-family-vault.template.json` |
 | Persistent editable vault | `PARTIAL` | Product Core medication/condition/lab and Visit lifecycle, active People, Family permissions, and actor-scoped JSON API are implemented; other fact families remain out of scope. |
 | Document upload | `IMPLEMENTED` | Authenticated Person-scoped PDF/TXT upload; exact raw bytes are immutable. |
-| Product Core schema | `IMPLEMENTED` | Current migration latest is v10; v1-v9 remain historical migrations. |
+| Product Core schema | `IMPLEMENTED` | Current migration latest is v11; earlier migrations remain historical and readable through the migration chain. |
 | Immutable source storage | `IMPLEMENTED` | `app/product_core/services.py`, `app/product_core/migrations.py`, source integrity tests, and P3 genetics source hashes. |
 | Extraction | `IMPLEMENTED` | Bounded deterministic embedded-text extraction; OCR and model extraction remain out of scope. |
 | Review inbox | `IMPLEMENTED` | P2 workspace: unified medication + condition + lab candidate review at `/workspace`; broader fact families remain unsupported. |
@@ -37,12 +37,13 @@ release tags.
 | Agent Skills interoperability | `IMPLEMENTED / VERIFIED` | G5 evidence verifies OMP 17.3.5 and Hermes Agent 0.19.0 interoperability. |
 | Root Agent Plugins interoperability | `EXTERNAL VALIDATION PENDING` | Machine gate remains exactly `READY_FOR_SECOND_CLIENT_SMOKE`; external two-client root-plugin evidence is not claimed as PASS. |
 | Citation validation | `IMPLEMENTED` | `app/agent/validation.py`, `app/agent/service.py`, `app/agent/portable.py`, `tests/test_agent.py`, `tests/test_portable_agent_cli.py` |
-| Audit | `IMPLEMENTED` | Metadata-only agent/report audit, schema v9 access audit, genetics review/research receipts, and denial-audit fail-closed behavior. |
+| Audit | `IMPLEMENTED` | Metadata-only agent/report audit, current Product Core access audit, genetics review/research receipts, and denial-audit fail-closed behavior. |
 | Evaluations | `IMPLEMENTED` | Deterministic G1/G2/G5/P1/P2/D1/P3 reviewers and focused tests; `python -m evals.p3_review` is offline. |
 | Wheel distribution | `IMPLEMENTED` | The source checkout and non-editable wheel startup have accepted validation evidence; runtime assets are packaged. |
+| Docker self-hosted distribution | `IMPLEMENTED / LIVE VALIDATION BLOCKED` | Existing Dockerfile and Compose paths are reconciled for current Product Core persistence, ephemeral sessions, Caddy proxying, non-root runtime, and optional provider configuration; live Engine acceptance remains blocked when Docker Engine is unavailable. |
 | Constrained Python 3.12 | `IMPLEMENTED` | `constraints/python312.txt` pins the accepted Python 3.12 release/test environment. |
 | PGx | `IMPLEMENTED/PARTIAL` | Deterministic reviewed genetics finding × exact confirmed medication intersection; association display only, no dosage/start/stop action. |
-| Genetics source | `IMPLEMENTED` | Immutable local consumer-genotype Source, bounded TXT import, schema v9 dataset/observation/finding/research tables; VCF remains demo-only. |
+| Genetics source | `IMPLEMENTED` | Immutable local consumer-genotype Source, bounded TXT import, current Product Core dataset/observation/finding/research tables; VCF remains demo-only. |
 | Genetics Workspace | `IMPLEMENTED` | `/genetics` live Person-scoped surface loading real authorized data; synthetic demo content removed; EN/RU localized; empty/access-denied states truthful. |
 | Research Mode | `IMPLEMENTED` | Offline deterministic Evidence/Explore contracts with structured epistemic labels, citations, counterevidence, and no canonical mutation path. |
 | Agent tools | `PARTIAL` | Existing trust tools remain unchanged; Research Mode uses a minimized genetics packet and metadata-only receipt boundary. |

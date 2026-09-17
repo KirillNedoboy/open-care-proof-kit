@@ -40,7 +40,7 @@ ecosystem evidence pending.
   `genetics.compare`, and `genetics.export`.
 - D1 PDF/TXT document ingest is implemented and published on public `main`:
   immutable Source bytes, bounded embedded-text extraction, page/span
-  provenance, document grants, review lifecycle, export v4, and recovery.
+  provenance, document grants, review lifecycle, export v6, and recovery.
 - D2.1 automatic source-grounded medication/condition/lab extraction = DONE /
   published. D2.2 procedures, recommendations, and follow-up extraction =
   DONE / published. D2 Document Intelligence = DONE / published. Supported
@@ -49,8 +49,8 @@ ecosystem evidence pending.
   use extraction contract `opencare-document-facts/2`; historical
   `opencare-document-facts/1` runs remain valid, readable, and exportable and
   are never retroactively enlarged. Visit Brief content schema remains
-  v2 (unchanged). NEXT: UI Redesign. R7 Docker Distribution remains paused
-  until the redesign completes.
+  v2 (unchanged). UI redesign is complete; R7 Docker Distribution is the
+  active deployment productization stage.
 - P3 Genetics Research Studio is implemented and published on public `main`:
   bounded local consumer-genotype import, selective indexing, evidence-backed
   reviewed findings, PGx associations, family comparison, Genetics Workspace,
@@ -205,8 +205,9 @@ trust-flow = VERIFIED. Free-model compatibility remains NOT VERIFIED; the two
 bounded candidate failures are recorded above. Ollama live smoke remains
 DEFERRED / UNVERIFIED, and OpenAI Responses live smoke remains UNVERIFIED.
 
-NEXT: UI Redesign. R7 Docker Distribution remains paused until the redesign
-completes.
+R7 Docker Distribution is the active deployment productization stage after the
+completed UI redesign. The supported path remains controlled self-hosting on a
+single node; it is not a production-readiness claim.
 
 ## HTTP privacy contract
 

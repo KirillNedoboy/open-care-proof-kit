@@ -2,7 +2,9 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import re
+import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -62,6 +64,7 @@ from app.product_core.errors import (
     ScopeForbiddenError,
 )
 from app.product_core.errors import NotFoundError as ProductCoreNotFoundError
+from app.product_core.installation_backup import PRODUCT_CORE_SCHEMA_VERSION
 from app.product_core.runtime import create_product_core_runtime
 from app.reports.json_audit import PIPELINE_STEPS
 from app.ui_localization import (
@@ -747,6 +750,27 @@ def get_required_asset_paths(settings: Settings) -> list[Path]:
     return required_paths
 
 
+def _product_core_storage_ready(settings: Settings) -> bool:
+    """Check local Product Core and Source storage without network or path output."""
+    database_path = Path(settings.product_db_path)
+    source_dir = Path(settings.source_dir)
+    if not database_path.is_file() or not source_dir.is_dir():
+        return False
+    if not os.access(source_dir, os.R_OK | os.W_OK | os.X_OK):
+        return False
+    try:
+        with sqlite3.connect(database_path) as connection:
+            quick_check = connection.execute("PRAGMA quick_check").fetchone()
+            if quick_check is None or str(quick_check[0]).lower() != "ok":
+                return False
+            row = connection.execute(
+                "SELECT MAX(version) FROM schema_migrations"
+            ).fetchone()
+    except (OSError, sqlite3.Error):
+        return False
+    return row is not None and row[0] == PRODUCT_CORE_SCHEMA_VERSION
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -787,6 +811,20 @@ def readyz() -> Response:
                 "status": "not_ready",
                 "service": SERVICE_NAME,
                 "missing_assets": missing_assets,
+            },
+            status_code=503,
+        )
+
+    # ASGI unit tests may call this endpoint without entering the lifespan.
+    # A live deployment always has the runtime initialized before readiness is
+    # queried, so storage failures are checked only in that state.
+    runtime_initialized = getattr(app.state, "product_core_runtime", None) is not None
+    if runtime_initialized and not _product_core_storage_ready(settings):
+        return JSONResponse(
+            {
+                "status": "not_ready",
+                "service": SERVICE_NAME,
+                "reason": "product_core_storage_unavailable",
             },
             status_code=503,
         )

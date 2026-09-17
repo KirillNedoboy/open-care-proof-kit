@@ -4,21 +4,29 @@ Current boundary: Product Core SQLite, immutable sources, and backups are the
 default self-hosted persistence. Sessions live on `/run/opencare` tmpfs in
 production. The legacy local-file vault is optional compatibility only; enable
 it with `deploy/docker-compose.legacy-vault.yml`, never as a Product Core
-dependency. Production bootstrap requires `OPENCARE_BOOTSTRAP_SECRET` (32+
-characters), which is checked once and never persisted. Backups are sensitive
+dependency. Production requires a 32+ character `OPENCARE_BOOTSTRAP_SECRET` at
+startup; the value is checked during bootstrap and never persisted. Backups are sensitive
 plaintext operator artifacts; this path is controlled self-hosting, not a
 production-readiness or clinical-readiness claim.
 
-OpenCare Proof Kit V2C is a self-hosted read-only MVP for a private personal/family medical workspace.
+OpenCare Proof Kit R7 is a self-hosted personal/family health workspace with a
+bounded Docker distribution. The supported remote path is one Linux host with
+Docker Compose, Caddy, and local persistent Product Core storage.
 
-This is not clinical software. It does not provide diagnosis, treatment recommendation, dosage guidance, medication selection advice, or start/stop medication advice. It does not support real genetics, raw genotype, VCF, FASTQ, BAM, or WGS uploads in this phase.
+This is not clinical software. It does not provide diagnosis, treatment
+recommendation, dosage guidance, medication selection advice, or start/stop
+medication advice. D1/D2 supports authenticated PDF/TXT document ingest with
+bounded embedded-text extraction; P3 supports bounded local consumer-genotype
+import and selective research projections. OCR, raw-genome provider disclosure,
+VCF/FASTQ/BAM/WGS pipelines, and clinical genetics authority remain out of
+scope.
 
 This document covers:
 
 - local run and local demo mode;
 - private local-file mode;
 - Docker development/demo usage;
-- the handoff to the single validated VPS production path.
+- the handoff to the single documented VPS production path.
 
 For the full remote deployment flow, use [docs/production_deployment.md](production_deployment.md).
 
@@ -92,7 +100,14 @@ Optional path overrides:
 OPENCARE_DATA_DIR=data
 OPENCARE_REPORTS_DIR=reports
 OPENCARE_ALLOW_CLOUD_LLM=false
+OPENCARE_AGENT_MODE=demo
+OPENCARE_AGENT_ALLOW_EXTERNAL_LLM=false
 ```
+
+Compose passes through the supported R6 operator provider settings for
+Responses, OpenRouter, and Ollama. AlphaGenome remains paused and is not
+productized or passed through by the R7 deployment; see
+[`deploy/env.production.example`](../deploy/env.production.example).
 
 Do not bake secrets into the image. Set them through the host environment, a local `.env` file that stays uncommitted, or your deployment system's secret store.
 Do not commit private health data. Keep local vault files outside Git or in ignored paths such as `private/` or `vault.local.json`.
@@ -183,7 +198,11 @@ Stop:
 docker compose down
 ```
 
-The compose service exposes port `8000` and mounts `./reports` to `/app/reports`.
+The development compose service exposes port `8000`, mounts `./reports` to
+`/app/reports`, and stores Product Core SQLite/source data in the named
+`opencare_product_data` volume at `/var/lib/opencare/product-core`. Production
+Compose publishes only Caddy on `80/443`; the app port is internal to the
+Compose networks.
 
 For local-file mode, set:
 
@@ -204,7 +223,7 @@ For real private data, replace the example file with your own local file in an i
 
 ## Single-VPS Production Path
 
-The validated remote deployment path in V2C is:
+The documented supported remote deployment path in R7 is:
 
 - one VPS;
 - `docker-compose.prod.yml`;
@@ -212,10 +231,12 @@ The validated remote deployment path in V2C is:
 - TLS at the proxy;
 - app container on an internal compose network;
 - `OPENCARE_DEMO_MODE=false`;
-- `OPENCARE_VAULT_SOURCE=local_file`;
-- read-only mounted vault JSON file.
+- `OPENCARE_VAULT_SOURCE=demo` by default, with the legacy local-file vault as
+  an explicit override;
 - explicit production bind mounts for Product Core SQLite, immutable sources, and
   operator backup artifacts.
+- D1/D2 PDF/TXT ingest and P3 consumer-genotype import remain available through
+  the authenticated Product Core workspace.
 
 Use [docs/production_deployment.md](production_deployment.md) for the complete operator flow. That document includes:
 
@@ -254,6 +275,12 @@ When `OPENCARE_ENV=production` and `OPENCARE_DEMO_MODE=false`:
 
 If `OPENCARE_VAULT_SOURCE=local_file`, readiness also checks that the configured local vault file path exists.
 
+When the Product Core runtime is initialized, readiness also performs a local
+SQLite integrity/schema check and confirms that the configured immutable Source
+directory is an accessible directory. It makes no provider or other network
+calls and returns only a generic storage failure reason; host paths are not
+included in that response.
+
 If any of these are missing, readiness fails closed.
 
 ## Security Boundaries
@@ -263,8 +290,10 @@ If any of these are missing, readiness fails closed.
 - Operator-mounted local file mode is read-only and private-by-operator, not a sharing or upload feature.
 - The documented remote production path is Caddy plus Docker Compose on one VPS.
 - TLS is strongly recommended for any remote deployment and handled at the reverse proxy.
-- No real genetics support in this phase.
-- No upload support in this phase.
+- Bounded local consumer-genotype import and selective Genetics Research are
+  supported; raw genome bytes never enter provider context.
+- Authenticated PDF/TXT document upload is supported within D1/D2 limits; OCR
+  and image interpretation are not.
 - No medical advice.
 - No clinical decision support.
 - Local username/password Actor accounts are available after operator bootstrap.
