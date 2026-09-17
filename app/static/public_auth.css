@@ -4,8 +4,8 @@ body.public-auth-shell {
   margin: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  background: var(--shell-bg);
-  color: var(--shell-text);
+  background: var(--ui-canvas);
+  color: var(--ui-text);
   font: .9375rem/1.5 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
 }
@@ -21,7 +21,7 @@ body.public-auth-shell {
 }
 
 .public-auth-shell a {
-  color: var(--shell-accent-strong);
+  color: var(--ui-accent-hover);
 }
 
 .public-auth-shell button,
@@ -37,8 +37,8 @@ body.public-auth-shell {
   top: .75rem;
   left: .75rem;
   padding: .65rem .85rem;
-  border-radius: var(--shell-radius);
-  background: var(--shell-accent-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-accent-hover);
   color: #fff;
   font-weight: 700;
   text-decoration: none;
@@ -56,8 +56,8 @@ body.public-auth-shell {
   justify-content: space-between;
   gap: 1rem;
   padding: .75rem clamp(1rem, 4vw, 2rem);
-  border-bottom: 1px solid var(--shell-border);
-  background: var(--shell-surface);
+  border-bottom: 1px solid var(--ui-divider);
+  background: var(--ui-surface);
 }
 
 .public-auth-shell__identity {
@@ -65,7 +65,7 @@ body.public-auth-shell {
   display: inline-flex;
   align-items: center;
   gap: .65rem;
-  color: var(--shell-text);
+  color: var(--ui-text);
   font-size: 1.05rem;
   font-weight: 760;
   letter-spacing: -.025em;
@@ -78,10 +78,10 @@ body.public-auth-shell {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--shell-accent);
+  border: 1px solid var(--ui-accent);
   border-radius: 50%;
-  background: var(--shell-accent-soft);
-  color: var(--shell-accent-strong);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-hover);
   font-size: .9rem;
   font-weight: 800;
 }
@@ -90,7 +90,7 @@ body.public-auth-shell {
   display: flex;
   align-items: center;
   gap: .55rem;
-  color: var(--shell-muted);
+  color: var(--ui-text-secondary);
   font-size: .75rem;
   font-weight: 700;
 }
@@ -98,10 +98,10 @@ body.public-auth-shell {
 .public-auth-shell__locale select {
   min-height: 2.75rem;
   padding: .45rem 2rem .45rem .7rem;
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius);
-  background: var(--shell-surface);
-  color: var(--shell-text);
+  border: 1px solid var(--ui-divider);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   cursor: pointer;
 }
 
@@ -120,9 +120,9 @@ body.public-auth-shell {
 .public-auth-card {
   width: min(100%, 32rem);
   padding: clamp(1.5rem, 5vw, 2.5rem);
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius-large);
-  background: var(--shell-surface);
+  border: 1px solid var(--ui-divider);
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface);
   box-shadow: 0 12px 32px rgb(24 48 43 / 8%);
 }
 
@@ -136,7 +136,7 @@ body.public-auth-shell {
 
 .public-auth-card h1,
 .public-auth-card h2 {
-  color: var(--shell-text);
+  color: var(--ui-text);
   line-height: 1.2;
   letter-spacing: -.025em;
 }
@@ -152,7 +152,7 @@ body.public-auth-shell {
 }
 
 .public-auth-card p {
-  color: var(--shell-muted);
+  color: var(--ui-text-secondary);
 }
 
 .public-auth-card form {
@@ -163,7 +163,7 @@ body.public-auth-shell {
 
 .public-auth-card form > label:not(.confirmation) {
   margin-bottom: -.4rem;
-  color: var(--shell-text);
+  color: var(--ui-text);
   font-size: .8125rem;
   font-weight: 700;
 }
@@ -174,10 +174,10 @@ body.public-auth-shell {
   width: 100%;
   min-height: 2.875rem;
   padding: .65rem .75rem;
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius);
-  background: var(--shell-surface);
-  color: var(--shell-text);
+  border: 1px solid var(--ui-divider);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-text);
 }
 
 .public-auth-card textarea {
@@ -190,14 +190,14 @@ body.public-auth-shell {
   grid-template-columns: 1.25rem minmax(0, 1fr);
   align-items: start;
   gap: .65rem;
-  color: var(--shell-text);
+  color: var(--ui-text);
 }
 
 .public-auth-card input[type="checkbox"] {
   width: 1.25rem;
   height: 1.25rem;
   margin: .1rem 0 0;
-  accent-color: var(--shell-accent);
+  accent-color: var(--ui-accent);
 }
 
 .public-auth-card button,
@@ -207,9 +207,9 @@ body.public-auth-shell {
   align-items: center;
   justify-content: center;
   padding: .65rem 1rem;
-  border: 1px solid var(--shell-accent);
-  border-radius: var(--shell-radius);
-  background: var(--shell-accent);
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-accent);
   color: #fff;
   font-weight: 700;
   text-decoration: none;
@@ -219,8 +219,8 @@ body.public-auth-shell {
 
 .public-auth-card button:hover,
 .public-auth-card a[role="button"]:hover {
-  border-color: var(--shell-accent-strong);
-  background: var(--shell-accent-strong);
+  border-color: var(--ui-accent-hover);
+  background: var(--ui-accent-hover);
 }
 
 .public-auth-card button:disabled {
@@ -233,15 +233,15 @@ body.public-auth-shell {
 .public-auth-card .success {
   padding: .75rem;
   border-left: .25rem solid currentColor;
-  background: var(--shell-muted-surface);
+  background: var(--ui-surface-muted);
 }
 
 .public-auth-card .error {
-  color: var(--danger);
+  color: var(--ui-danger);
 }
 
 .public-auth-card .success {
-  color: var(--success);
+  color: var(--ui-success);
 }
 
 .public-auth-card .meta {
@@ -254,14 +254,14 @@ body.public-auth-shell {
   align-items: center;
   justify-content: center;
   padding: .75rem 1rem;
-  border-top: 1px solid var(--shell-border);
-  color: var(--shell-muted);
+  border-top: 1px solid var(--ui-divider);
+  color: var(--ui-text-secondary);
   font-size: .75rem;
   font-weight: 700;
 }
 
 .public-auth-shell :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid var(--focus-state);
+  outline: 3px solid var(--ui-focus);
   outline-offset: 2px;
 }
 

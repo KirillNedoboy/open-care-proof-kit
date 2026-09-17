@@ -117,6 +117,20 @@ def test_demo_chat_keeps_demo_endpoint_without_authenticated_shell(
     assert 'class="product-shell__sidebar"' not in demo.text
 
 
+def test_public_auth_uses_canonical_ui_tokens_without_legacy_aliases() -> None:
+    public_auth = (Path("app") / "static" / "public_auth.css").read_text(encoding="utf-8")
+    shell = (Path("app") / "static" / "product_shell.css").read_text(encoding="utf-8")
+
+    assert "--shell-" not in public_auth
+    assert "var(--focus-state)" not in public_auth
+    assert "var(--success)" not in public_auth
+    assert "var(--danger)" not in public_auth
+    assert "--shell-" not in shell
+    assert "--focus-state" not in shell
+    assert "  --success:" not in shell
+    assert "  --danger:" not in shell
+
+
 def test_primary_navigation_exposes_stable_keys_and_existing_destinations() -> None:
     shell = (Path("app") / "templates" / "product_shell.html").read_text(encoding="utf-8")
     expected = {

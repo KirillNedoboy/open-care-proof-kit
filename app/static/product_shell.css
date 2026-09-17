@@ -5,9 +5,8 @@
    document-aware, privacy-sensitive. Light theme only.
 
    This file is the single canonical source of design tokens for
-   authenticated surfaces. Consumers must use the --ui-* vocabulary;
-   the --shell-* block at the end of :root is a temporary
-   migration-only compatibility layer (removed in UI-R4).
+   authenticated and public-auth surfaces. Consumers use the --ui-*
+   vocabulary.
    ============================================================ */
 
 :root {
@@ -81,27 +80,6 @@
   --ui-motion-normal: 220ms;
   --ui-ease-standard: cubic-bezier(.2, 0, 0, 1);
 
-  /* ==========================================================
-     TEMPORARY migration-only compatibility aliases (UI-R1).
-     Existing chat.css / public_auth.css rules still read these
-     old names; they map to the canonical --ui-* tokens above.
-     Do not use these in new code. UI-R2/R3 migrate consumers,
-     UI-R4 deletes this block.
-     ========================================================== */
-  --shell-bg: var(--ui-canvas);
-  --shell-surface: var(--ui-surface);
-  --shell-muted-surface: var(--ui-surface-muted);
-  --shell-border: var(--ui-divider);
-  --shell-text: var(--ui-text);
-  --shell-muted: var(--ui-text-secondary);
-  --shell-accent: var(--ui-accent);
-  --shell-accent-strong: var(--ui-accent-hover);
-  --shell-accent-soft: var(--ui-accent-soft);
-  --shell-radius: var(--ui-radius-control);
-  --shell-radius-large: var(--ui-radius-surface);
-  --focus-state: var(--ui-focus);
-  --success: var(--ui-success);
-  --danger: var(--ui-danger);
 }
 
 

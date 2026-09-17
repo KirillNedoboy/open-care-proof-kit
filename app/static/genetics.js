@@ -829,7 +829,7 @@
         const titleNode = byId("research-output-title");
         if (confidenceNode) confidenceNode.textContent = "";
         if (titleNode) titleNode.textContent = "";
-        (byId("research-output-body") || output).innerHTML = `<div class="state-card error"><h3>${escapeHtml(t("genetics.load_error"))}</h3><p>${escapeHtml(t("genetics.research_context_none"))}</p></div>`;
+        (byId("research-output-body") || output).innerHTML = `<div class="state-card error"><h3>${escapeHtml(t("genetics.load_error"))}</h3><p>${escapeHtml(t("status.request_failed"))}</p></div>`;
       }
       announce(t("genetics.load_error"));
     } finally {

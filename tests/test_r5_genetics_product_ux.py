@@ -402,3 +402,9 @@ def test_genetics_tabs_activate_on_click() -> None:
     script = Path("app/static/genetics.js").read_text(encoding="utf-8")
     assert 'tabList?.addEventListener("click"' in script
     assert 'activateTab(clickedTab.dataset.tab)' in script
+
+
+def test_genetics_research_failure_uses_request_failed_copy() -> None:
+    script = Path("app/static/genetics.js").read_text(encoding="utf-8")
+    assert 'escapeHtml(t("status.request_failed"))' in script
+    assert '<p>${escapeHtml(t("genetics.research_context_none"))}</p>' not in script
